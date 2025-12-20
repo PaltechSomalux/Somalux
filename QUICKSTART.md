@@ -28,7 +28,7 @@ git push -u origin main
 Copy-paste each into Render dashboard (Environment section):
 
 ```
-SUPABASE_URL=https://hoegjepmtegvgnnaohdr.supabase.co
+SUPABASE_URL=https://wuwlnawtuhjoubfkdtgc.supabase.co
 
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvZWdqZXBtdGVndmdubmFvaGRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0MTY3NzEsImV4cCI6MjA3Nzk5Mjc3MX0.uCh8GEV2rplB6QUXEWCNoiPRY9-heNxldNAOJJzQdF8
 

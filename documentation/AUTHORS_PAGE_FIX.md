@@ -5,7 +5,7 @@
 ### The Root Cause
 Your **frontend was connected to the WRONG Supabase project**:
 - ❌ Frontend was using: `vvthqvznuikymyqkiqlw.supabase.co` (old/empty project)
-- ✅ Backend was using: `hoegjepmtegvgnnaohdr.supabase.co` (correct project with your data)
+- ✅ Backend was using: `wuwlnawtuhjoubfkdtgc.supabase.co` (current active project)
 
 This is why the Authors page showed no data - it was querying a completely different database!
 
@@ -13,7 +13,7 @@ This is why the Authors page showed no data - it was querying a completely diffe
 Updated `src/SomaLux/Books/supabaseClient.js` to use the **correct Supabase URL and keys**:
 ```javascript
 // Now points to the correct project with your books & authors data
-const fallbackUrl = 'https://hoegjepmtegvgnnaohdr.supabase.co';
+const fallbackUrl = 'https://wuwlnawtuhjoubfkdtgc.supabase.co';
 const fallbackKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvZWdqZXBtdGVndmdubmFvaGRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0MTY3NzEsImV4cCI6MjA3Nzk5Mjc3MX0.uCh8GEV2rplB6QUXEWCNoiPRY9-heNxldNAOJJzQdF8';
 ```
 
@@ -76,7 +76,7 @@ localStorage.removeItem('author_enrichment_v1');
 
 ### Verify Backend Connection:
 The data comes from this location:
-- **Database**: Supabase project `hoegjepmtegvgnnaohdr`
+- **Database**: Supabase project `wuwlnawtuhjoubfkdtgc` (current active)
 - **Table**: `books`
 - **Fields used**: `author`, `cover_url`, `average_rating`, `rating_count`
 

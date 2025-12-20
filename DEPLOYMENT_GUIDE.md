@@ -18,7 +18,7 @@
 
 ### 2. Database (Supabase) ✅
 - **Status**: Already configured in backend
-- **Supabase Project**: hoegjepmtegvgnnaohdr
+- **Supabase Project**: wuwlnawtuhjoubfkdtgc (current active project)
 - **Connection**: Backend can connect via `.env` variables
 
 ---
@@ -67,7 +67,7 @@ In Render dashboard, go to Environment:
 GOOGLE_APPLICATION_CREDENTIALS=./paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json
 
 # Supabase
-SUPABASE_URL=https://hoegjepmtegvgnnaohdr.supabase.co
+SUPABASE_URL=https://wuwlnawtuhjoubfkdtgc.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 

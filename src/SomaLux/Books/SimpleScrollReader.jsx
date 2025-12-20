@@ -32,6 +32,14 @@ try {
 }
 
 const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
+  // Debug: Log the PDF source
+  useEffect(() => {
+    console.log('🔍 SimpleScrollReader received src:', src);
+    if (!src) {
+      console.warn('⚠️ No PDF source provided!');
+    }
+  }, [src]);
+
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1.0);
   const [isLoading, setIsLoading] = useState(true);

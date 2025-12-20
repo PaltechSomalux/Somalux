@@ -35,7 +35,7 @@ REACT_APP_FIREBASE_MEASUREMENT_ID=G-VTDGJHPFFW
 ### Environment Variables (backend/.env)
 **Supabase Configuration:**
 ```
-SUPABASE_URL=https://hoegjepmtegvgnnaohdr.supabase.co
+SUPABASE_URL=https://wuwlnawtuhjoubfkdtgc.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvZWdqZXBtdGVndmdubmFvaGRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0MTY3NzEsImV4cCI6MjA3Nzk5Mjc3MX0.uCh8GEV2rplB6QUXEWCNoiPRY9-heNxldNAOJJzQdF8
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvZWdqZXBtdGVndmdubmFvaGRyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjQxNjc3MSwiZXhwIjoyMDc3OTkyNzcxfQ.M7hhl-czTO2fn_dIDZvAX0JVJrJGeqAwEn1aoziMBRI
 ```
@@ -80,7 +80,7 @@ MPESA_CALLBACK_URL=https://somalux-backend.onrender.com/api/subscriptions/mpesa/
 ## 💾 DATABASE CONFIGURATION
 
 ### Supabase
-- **Project**: hoegjepmtegvgnnaohdr
+- **Project**: wuwlnawtuhjoubfkdtgc (current active project)
 - **Database**: PostgreSQL
 - **Region**: Determined by Supabase
 - **Connection Method**: supabase-js SDK

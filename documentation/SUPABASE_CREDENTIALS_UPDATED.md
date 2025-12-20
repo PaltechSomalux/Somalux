@@ -8,11 +8,11 @@ SUMMARY
 ✅ Your SomaLux project is now configured to use the NEW Supabase account
 
 OLD ACCOUNT (Replaced):
-  URL: https://hoegjepmtegvgnnaohdr.supabase.co
+  URL: [REMOVED - Old project no longer in use]
 
 NEW ACCOUNT (Active):
-  URL: https://vvthqvznuikymyqkiqlw.supabase.co
-  Project ID: vvthqvznuikymyqkiqlw
+  URL: https://wuwlnawtuhjoubfkdtgc.supabase.co
+  Project ID: wuwlnawtuhjoubfkdtgc
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

@@ -23,7 +23,7 @@
 ### 3. Database ✅ CONFIGURED
 - **Status**: Connected and ready
 - **Platform**: Supabase (PostgreSQL)
-- **Project**: hoegjepmtegvgnnaohdr
+- **Project**: wuwlnawtuhjoubfkdtgc (current active project)
 - **Backend Connection**: Active with service role key
 - **Configuration**: In `backend/.env`
 
@@ -85,7 +85,7 @@ Add these to Render dashboard (Environment section):
 
 ```
 # Supabase
-SUPABASE_URL=https://hoegjepmtegvgnnaohdr.supabase.co
+SUPABASE_URL=https://wuwlnawtuhjoubfkdtgc.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
@@ -232,7 +232,7 @@ fetch(`${API_BASE_URL}/api/test/check-dir?dirPath=/tmp`)
 |-----------|-----|--------|
 | Frontend | https://somalux-eb820.web.app | ✅ Live |
 | Backend | https://somalux-backend.onrender.com | ⏳ Pending |
-| Database | hoegjepmtegvgnnaohdr.supabase.co | ✅ Ready |
+| Database | wuwlnawtuhjoubfkdtgc.supabase.co | ✅ Ready |
 | Admin Panel | somalux-eb820.firebaseapp.com/admin | ✅ Live |
 
 ---
