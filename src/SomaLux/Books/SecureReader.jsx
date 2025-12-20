@@ -4,6 +4,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { supabase } from './supabaseClient';
+import { API_URL } from '../../config';
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -125,7 +126,7 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
     try {
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token;
-      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/reading/session`, {
+      await fetch(`${API_URL}/api/reading/session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

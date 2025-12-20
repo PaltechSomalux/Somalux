@@ -38,6 +38,7 @@ import { BiCommentDetail } from 'react-icons/bi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CommentsSection } from './CommentsSection';
 import { UniversityGrid } from './UniversityGrid';
+import { API_URL } from '../../config';
 import { PaperGrid } from './PaperGrid';
 import './PaperPanel.css';
 
@@ -1122,15 +1123,17 @@ export const PaperPanel = ({ demoMode = false }) => {
 
         let origin = '';
         if (typeof window !== 'undefined') {
-          origin = window.__API_ORIGIN__ || '';
-          if (!origin) {
-            const { protocol, hostname } = window.location || {};
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-              origin = `${protocol}//${hostname}:5000`;
-            }
+          const { protocol, hostname } = window.location || {};
+          if (window.__API_ORIGIN__) {
+            origin = window.__API_ORIGIN__;
+          } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            origin = `${protocol}//${hostname}:5000`;
+          } else {
+            origin = API_URL;
           }
+        } else {
+          origin = API_URL;
         }
-        if (!origin) origin = 'http://localhost:5000';
 
         await fetch(`${origin}/api/elib/search-events`, {
           method: 'POST',

@@ -1,6 +1,7 @@
 import { supabase } from '../supabaseClient';
+import { API_URL } from '../../../config';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = API_URL;
 
 const PAST_PAPERS_BUCKET = 'past-papers';
 

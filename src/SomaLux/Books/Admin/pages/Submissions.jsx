@@ -3,8 +3,9 @@ import { FiRefreshCw, FiBook, FiFileText } from 'react-icons/fi';
 import { useAdminUI } from '../AdminUIContext';
 import SubmissionsList from './SubmissionsList';
 import SubmissionDetailModal from './SubmissionDetailModal';
+import { API_URL } from '../../../../config';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = API_URL;
 
 const Submissions = ({ userProfile }) => {
   const [items, setItems] = useState([]);

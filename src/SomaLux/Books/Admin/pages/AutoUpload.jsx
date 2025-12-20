@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FiUpload, FiFolderPlus, FiPlay, FiRefreshCw, FiCheck, FiX, FiClock, FiAlertCircle, FiTrash2 } from 'react-icons/fi';
+import { API_URL } from '../../../../config';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = API_URL;
 
 const AutoUpload = ({ userProfile, asSubmission = false }) => {
   const [booksDirectory, setBooksDirectory] = useState('');

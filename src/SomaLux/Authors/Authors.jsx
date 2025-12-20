@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { API_URL } from '../../config';
 import { supabase } from '../Books/supabaseClient';
 import { FaSearch } from 'react-icons/fa';
 import { AuthorCard } from './AuthorCard';
@@ -377,15 +378,18 @@ export const Authors = () => {
 
       let origin = '';
       if (typeof window !== 'undefined') {
-        origin = window.__API_ORIGIN__ || '';
-        if (!origin) {
-          const { protocol, hostname } = window.location || {};
-          if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            origin = `${protocol}//${hostname}:5000`;
-          }
+        const { protocol, hostname } = window.location || {};
+        // Prefer explicit override, otherwise use localhost for dev or API_URL for production
+        if (window.__API_ORIGIN__) {
+          origin = window.__API_ORIGIN__;
+        } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          origin = `${protocol}//${hostname}:5000`;
+        } else {
+          origin = API_URL;
         }
+      } else {
+        origin = API_URL;
       }
-      if (!origin) origin = 'http://localhost:5000';
 
       await fetch(`${origin}/api/elib/search-events`, {
         method: 'POST',

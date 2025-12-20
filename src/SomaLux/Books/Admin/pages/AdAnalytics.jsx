@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../../../../config';
 import { FiBarChart2, FiTrendingUp, FiUsers, FiMousePointer } from 'react-icons/fi';
 
 import './AdAnalytics.css';
@@ -22,7 +23,7 @@ export default function AdAnalytics() {
       try {
         setLoading(true);
         console.log('📊 [Analytics] Fetching all ads...');
-        const response = await axios.get('http://localhost:5000/api/admin/analytics/all');
+        const response = await axios.get(`${API_URL}/api/admin/analytics/all`);
         console.log('✅ [Analytics] Ads fetched:', response.data.data);
         setAds(response.data.data || []);
         if (response.data.data && response.data.data.length > 0) {
@@ -52,7 +53,7 @@ export default function AdAnalytics() {
   const fetchAnalytics = async (adId) => {
     try {
       console.log('📈 [Analytics] Fetching detailed metrics for ad:', adId);
-      const response = await axios.get(`http://localhost:5000/api/admin/analytics/${adId}`);
+      const response = await axios.get(`${API_URL}/api/admin/analytics/${adId}`);
       console.log('✅ [Analytics] Metrics received:', response.data.data);
       setAnalytics(response.data.data);
     } catch (err) {
@@ -63,7 +64,7 @@ export default function AdAnalytics() {
   const fetchEngagement = async (adId) => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/admin/analytics/${adId}/engagement`,
+        `${API_URL}/api/admin/analytics/${adId}/engagement`,
         {
           params: {
             startDate: dateRange.startDate,

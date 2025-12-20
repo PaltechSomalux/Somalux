@@ -1,16 +1,17 @@
 import { supabase } from '../supabaseClient';
+import { API_URL } from '../../../config';
 
 const BOOKS_BUCKET = 'elib-books';
 
 // Backend origin helper (mirrors patterns used elsewhere in the app)
 export function getBackendOrigin() {
-  if (typeof window === 'undefined') return 'http://localhost:5000';
+  if (typeof window === 'undefined') return API_URL;
   if (window.__API_ORIGIN__) return window.__API_ORIGIN__;
   const { protocol, hostname } = window.location || {};
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return `${protocol}//${hostname}:5000`;
   }
-  return '';
+  return API_URL;
 }
 
 export async function fetchCategories() {
@@ -220,7 +221,7 @@ export async function uploadFile(file) {
     });
 
     // Call backend endpoint
-    const response = await fetch('http://localhost:5000/api/elib/books/upload-file', {
+    const response = await fetch(`${getBackendOrigin()}/api/elib/books/upload-file`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -269,7 +270,7 @@ export async function uploadCover(file) {
     });
 
     // Call backend endpoint
-    const response = await fetch('http://localhost:5000/api/elib/books/upload-cover', {
+    const response = await fetch(`${getBackendOrigin()}/api/elib/books/upload-cover`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

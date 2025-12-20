@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { API_URL } from '../../config';
 import { FiX } from 'react-icons/fi';
 import ReactDOM from 'react-dom';
 import './AdBanner.css';
@@ -53,7 +54,7 @@ export function AdBanner({ placement, limit = 1, className = '', demo = false })
           setLoading(false);
           return;
         }
-        const response = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/ads/${placement}?limit=${limit}`);
+        const response = await axios.get(`${API_URL}/api/ads/${placement}?limit=${limit}`);
         console.log('✅ [AdBanner] Ads fetched - Total:', response.data.data.length, 'Data:', response.data);
         if (response.data.success && response.data.data.length > 0) {
           const allAds = response.data.data;
@@ -193,7 +194,7 @@ export function AdBanner({ placement, limit = 1, className = '', demo = false })
         userAgent: navigator.userAgent
       };
       console.log('📊 [Impression] Sending:', payload);
-      const response = await axios.post('http://localhost:5000/api/ad-impression', payload);
+      const response = await axios.post(`${API_URL}/api/ad-impression`, payload);
       console.log('✅ [Impression] Response:', response.data);
     } catch (err) {
       console.error('❌ [Impression] Failed to log impression:', err);
@@ -227,7 +228,7 @@ export function AdBanner({ placement, limit = 1, className = '', demo = false })
         deviceType: getDeviceType()
       };
       console.log('🖱️ [Click] Sending:', clickPayload);
-      const response = await axios.post('http://localhost:5000/api/ad-click', clickPayload);
+      const response = await axios.post(`${API_URL}/api/ad-click`, clickPayload);
       console.log('✅ [Click] Response:', response.data);
       
       if (ad.click_url) {
@@ -253,7 +254,7 @@ export function AdBanner({ placement, limit = 1, className = '', demo = false })
         deviceType: getDeviceType()
       };
       console.log('❌ [Dismiss] Sending:', dismissPayload);
-      const response = await axios.post('http://localhost:5000/api/ad-dismiss', dismissPayload);
+      const response = await axios.post(`${API_URL}/api/ad-dismiss`, dismissPayload);
       console.log('✅ [Dismiss] Response:', response.data);
     } catch (err) {
       console.error('❌ [Dismiss] Failed to log dismiss:', err);
@@ -318,13 +319,13 @@ export function AdBanner({ placement, limit = 1, className = '', demo = false })
   const imageUrl = !isVideoAd && currentAd.image_url 
     ? (currentAd.image_url.startsWith('http') 
       ? currentAd.image_url 
-      : `http://localhost:5000${currentAd.image_url}`)
+      : `${API_URL}${currentAd.image_url}`)
     : null;
 
   const videoUrl = isVideoAd && currentAd.video_url
     ? (currentAd.video_url.startsWith('http')
       ? currentAd.video_url
-      : `http://localhost:5000${currentAd.video_url}`)
+      : `${API_URL}${currentAd.video_url}`)
     : null;
 
   // Log video URL for debugging

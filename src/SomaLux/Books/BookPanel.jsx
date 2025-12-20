@@ -36,6 +36,7 @@ import {
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import SimpleScrollReader from './SimpleScrollReader';
+import { API_URL } from '../../config';
 import './BookPanel.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { booksCache, categoriesCache, statsCache } from './utils/cacheManager';
@@ -75,7 +76,7 @@ const ReaderSessionPinger = ({ user, book }) => {
       try {
         const { data } = await supabase.auth.getSession();
         const token = data?.session?.access_token;
-        await fetch('http://localhost:5000/api/reading/session', {
+        await fetch(`${API_URL}/api/reading/session`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -321,7 +322,7 @@ export const BookPanel = ({ demoMode = false }) => {
             }
           }
         }
-        if (!origin) origin = 'http://localhost:5000';
+        if (!origin) origin = API_URL;
 
         await fetch(`${origin}/api/elib/search-events`, {
           method: 'POST',
@@ -1537,7 +1538,7 @@ export const BookPanel = ({ demoMode = false }) => {
         try {
           const { data } = await supabase.auth.getSession();
           const token = data?.session?.access_token;
-          await fetch('http://localhost:5000/api/reading/session', {
+          await fetch(`${API_URL}/api/reading/session`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1718,7 +1719,7 @@ export const BookPanel = ({ demoMode = false }) => {
     try {
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token;
-      await fetch('http://localhost:5000/api/reading/session', {
+      await fetch(`${API_URL}/api/reading/session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

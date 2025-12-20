@@ -7,8 +7,8 @@ import SpeedTracker from './SpeedTracker';
 // 🔧 Configure PDF.js worker BEFORE any PDF loading happens
 import * as pdfjsLib from 'pdfjs-dist';
 if (typeof pdfjsLib !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
-  // Use unpkg CDN with fixed version path
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist/build/pdf.worker.min.js';
+  // Use local worker file hosted in public folder
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

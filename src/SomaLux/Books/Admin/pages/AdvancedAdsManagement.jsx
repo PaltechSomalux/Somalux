@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../../../../config';
 import { FiTrash2, FiEdit2, FiPlus, FiVideo, FiImage, FiBarChart2, FiTrendingUp, FiUsers, FiMousePointer } from 'react-icons/fi';
 import './AdvancedAdsManagement.css';
 
@@ -68,7 +69,7 @@ export default function AdvancedAdsManagement() {
     try {
       setLoading(true);
       console.log('🔄 [FETCH_ADS] Fetching ads from backend...');
-      const response = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/ads/all`);
+      const response = await axios.get(`${API_URL}/api/admin/ads/all`);
       console.log('✅ [FETCH_ADS] Response:', response.data);
       console.log('✅ [FETCH_ADS] Ads array:', response.data.data);
       setAds(response.data.data || []);
@@ -87,7 +88,7 @@ export default function AdvancedAdsManagement() {
     try {
       setAnalyticsLoading(true);
       console.log('📈 [Analytics] Fetching detailed metrics for ad:', adId);
-      const response = await axios.get(`http://localhost:5000/api/admin/analytics/${adId}`);
+      const response = await axios.get(`${API_URL}/api/admin/analytics/${adId}`);
       console.log('✅ [Analytics] Metrics received:', response.data.data);
       setAnalytics(response.data.data);
     } catch (err) {
@@ -100,7 +101,7 @@ export default function AdvancedAdsManagement() {
   const fetchEngagement = async (adId) => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/admin/analytics/${adId}/engagement`,
+        `${API_URL}/api/admin/analytics/${adId}/engagement`,
         {
           params: {
             startDate: dateRange.startDate,

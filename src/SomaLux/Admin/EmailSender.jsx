@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_URL } from '../../config';
 
 export const EmailSender = () => {
   const [to, setTo] = useState('');
@@ -18,7 +19,7 @@ export const EmailSender = () => {
 
     try {
       setSending(true);
-      const res = await fetch('http://localhost:5000/api/utils/send-test-email', {
+      const res = await fetch(`${API_URL}/api/utils/send-test-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to, subject, message }),

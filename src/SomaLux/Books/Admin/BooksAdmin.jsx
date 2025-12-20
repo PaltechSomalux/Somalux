@@ -10,6 +10,7 @@ import { BiSpeaker } from 'react-icons/bi';
 import { AiOutlineLineChart } from 'react-icons/ai';
 
 import { getCurrentUserProfile } from './api';
+import { API_URL } from '../../../config';
 import './admin.css';
 import { AdminUIProvider } from './AdminUIContext';
 import { supabase } from '../supabaseClient';
@@ -68,7 +69,7 @@ export const BooksAdmin = () => {
   useEffect(() => {
     const fetchSummary = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/elib/submissions/summary');
+        const res = await fetch(`${API_URL}/api/elib/submissions/summary`);
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Failed to load submissions summary');
         setPendingSubmissions(json.totalPending || 0);
