@@ -643,7 +643,7 @@ app.get('/api/elib/audit', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message || 'fetch failed' }); }
 });
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 // Server will be started at the end after all routes are defined
 let server;
 let wss;

@@ -1,0 +1,61 @@
+services:
+  - type: web
+    name: somalux-backend
+    runtime: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      # Firebase Configuration
+      - key: FIREBASE_PROJECT_ID
+        value: somalux-eb820
+      
+      # Supabase Configuration
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      
+      # Google Books API
+      - key: GOOGLE_BOOKS_API_KEY
+        sync: false
+      
+      # Agora Video Calling
+      - key: AGORA_APP_ID
+        sync: false
+      - key: AGORA_APP_CERTIFICATE
+        sync: false
+      
+      # Email Configuration
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_FROM
+        value: "Paltech Support Team <campuslives254@gmail.com>"
+      - key: ADMIN_EMAILS
+        value: campuslives254@gmail.com
+      
+      # M-Pesa Configuration
+      - key: MPESA_MODE
+        value: demo
+      - key: MPESA_CONSUMER_KEY
+        sync: false
+      - key: MPESA_CONSUMER_SECRET
+        sync: false
+      - key: MPESA_BUSINESS_SHORTCODE
+        sync: false
+      - key: MPESA_PASSKEY
+        sync: false
+      - key: MPESA_INITIATOR_NAME
+        sync: false
+      - key: MPESA_INITIATOR_PASSWORD
+        sync: false
+      - key: MPESA_ENVIRONMENT
+        value: sandbox

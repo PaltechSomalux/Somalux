@@ -5,15 +5,13 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getMessaging } from "firebase/messaging";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA5vqja_7lqcT3w3P_WWxWSTixBlNdJ69g",
-  authDomain: "paltechproject.firebaseapp.com",
-  // Keep databaseURL only if you actually use Realtime Database; otherwise it can be omitted
-  // databaseURL: "https://paltechproject-default-rtdb.firebaseio.com",
-  projectId: "paltechproject",
-  storageBucket: "paltechproject.firebasestorage.app",
-  messagingSenderId: "465500897462",
-  appId: "1:465500897462:web:cbc7be0860316e04ee2617",
-  measurementId: "G-ERCCT8H1T1"
+  apiKey: "AIzaSyDn1r0J6m59WkETDRXxw4mFIeoPsZy8n8w",
+  authDomain: "somalux-eb820.firebaseapp.com",
+  projectId: "somalux-eb820",
+  storageBucket: "somalux-eb820.firebasestorage.app",
+  messagingSenderId: "1087160446048",
+  appId: "1:1087160446048:web:e422cdc9f18ce5d5c3e705",
+  measurementId: "G-VTDGJHPFFW"
 };
 
 // ✅ Initialize Firebase only once
