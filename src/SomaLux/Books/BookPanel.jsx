@@ -471,6 +471,8 @@ export const BookPanel = ({ demoMode = false }) => {
 
       // 🚀 OPTIMIZED NETWORK FETCH (fastest queries)
       console.log(`📡 Fetching page ${page} from network...`);
+      console.log('🔍 Supabase URL:', process.env.REACT_APP_SUPABASE_URL || 'using fallback');
+      console.log('🔑 Supabase Key available:', !!process.env.REACT_APP_SUPABASE_ANON_KEY);
       const result = await fetchBooksOptimized(supabase, page, BOOKS_PER_PAGE);
       
       const { books: rows, categories: cats, totalCount: count } = result;
@@ -526,6 +528,12 @@ export const BookPanel = ({ demoMode = false }) => {
       
     } catch (e) {
       console.error('Failed to fetch books:', e);
+      console.error('❌ RAW ERROR:', {
+        message: e.message,
+        type: e.name,
+        toString: e.toString(),
+        stack: e.stack
+      });
       
       let errorMessage = 'Error loading books:\n\n';
       if (e.message && e.message.includes('Failed to fetch')) {

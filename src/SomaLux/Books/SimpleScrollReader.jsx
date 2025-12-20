@@ -20,16 +20,8 @@ if (typeof window !== 'undefined' && window.PDFJS) {
   window.PDFJS.logLevel = window.PDFJS.VERBOSITY_LEVELS.ERRORS;
 }
 
-// Set the worker source - use correct path for production builds
-try {
-  pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.min.mjs`;
-} catch (e) {
-  // Fallback for development
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-  ).toString();
-}
+// Set the worker source - use CDN for reliability
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   // Debug: Log the PDF source
