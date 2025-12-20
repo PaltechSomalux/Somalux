@@ -4,7 +4,7 @@ import { useAdminUI } from '../AdminUIContext';
 import SubmissionsList from './SubmissionsList';
 import SubmissionDetailModal from './SubmissionDetailModal';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const Submissions = ({ userProfile }) => {
   const [items, setItems] = useState([]);

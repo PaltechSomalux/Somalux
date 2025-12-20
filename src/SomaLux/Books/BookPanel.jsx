@@ -398,7 +398,8 @@ export const BookPanel = ({ demoMode = false }) => {
     const rating = row.rating !== null && row.rating !== undefined ? row.rating : 0;
     const filePath = row.file_url || '';
     const ext = filePath.split('.').pop()?.toLowerCase() || 'pdf';
-    const publicUrl = filePath ? supabase.storage.from('elib-books').getPublicUrl(filePath).data.publicUrl : null;
+    // file_url is already a full public URL from the backend
+    const publicUrl = filePath && /^https?:\/\//.test(filePath) ? filePath : null;
    return {
   id: row.id,
   categoryId: row.category_id ? String(row.category_id) : null,

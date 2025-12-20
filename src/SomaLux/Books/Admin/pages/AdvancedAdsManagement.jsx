@@ -68,7 +68,7 @@ export default function AdvancedAdsManagement() {
     try {
       setLoading(true);
       console.log('🔄 [FETCH_ADS] Fetching ads from backend...');
-      const response = await axios.get('http://localhost:5000/api/admin/ads/all');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/ads/all`);
       console.log('✅ [FETCH_ADS] Response:', response.data);
       console.log('✅ [FETCH_ADS] Ads array:', response.data.data);
       setAds(response.data.data || []);
@@ -289,7 +289,7 @@ export default function AdvancedAdsManagement() {
 
       if (editingId) {
         const response = await axios.put(
-          `http://localhost:5000/api/admin/ads/${editingId}`,
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/ads/${editingId}`,
           payload
         );
         setAds(ads.map(ad => ad.id === editingId ? response.data.data : ad));
@@ -297,7 +297,7 @@ export default function AdvancedAdsManagement() {
       } else {
         console.log('📤 [SAVE_AD] POSTing to backend...');
         const response = await axios.post(
-          'http://localhost:5000/api/admin/ads',
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/ads`,
           payload
         );
         console.log('✅ [SAVE_AD] Response:', response.data);
@@ -320,7 +320,7 @@ export default function AdvancedAdsManagement() {
     if (!window.confirm('Are you sure you want to delete this ad?')) return;
 
     try {
-      await axios.delete(`http://localhost:5000/api/admin/ads/${id}`);
+      await axios.delete(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/ads/${id}`);
       setAds(ads.filter(ad => ad.id !== id));
       setSuccess('Ad deleted successfully!');
       setTimeout(() => setSuccess(null), 3000);

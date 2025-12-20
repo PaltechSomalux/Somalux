@@ -62,7 +62,7 @@ export const SubscriptionModal = ({
 
       console.log('📱 Starting M-Pesa subscription:', { product, planId: currentPlan.id, phoneNumber: phoneNumber.trim() });
 
-      const initRes = await fetch('http://localhost:5000/api/subscriptions/mpesa/init', {
+      const initRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/subscriptions/mpesa/init`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -116,7 +116,7 @@ export const SubscriptionModal = ({
         return;
       }
 
-      const verifyRes = await fetch('http://localhost:5000/api/subscriptions/mpesa/verify', {
+      const verifyRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/subscriptions/mpesa/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

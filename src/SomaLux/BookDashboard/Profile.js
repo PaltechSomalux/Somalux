@@ -21,7 +21,7 @@ export const Profile = ({ user: propUser = null }) => {
   const [showVerificationModal, setShowVerificationModal] = useState(false);
 
   const AutoUploadPanel = React.lazy(() => import('../Books/Admin/pages/AutoUpload'));
-  const API_BASE = 'http://localhost:5000';
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   // Local state
   const [localUser, setLocalUser] = useState(null);

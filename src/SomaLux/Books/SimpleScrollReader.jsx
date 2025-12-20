@@ -20,10 +20,16 @@ if (typeof window !== 'undefined' && window.PDFJS) {
   window.PDFJS.logLevel = window.PDFJS.VERBOSITY_LEVELS.ERRORS;
 }
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
+// Set the worker source - use correct path for production builds
+try {
+  pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.min.mjs`;
+} catch (e) {
+  // Fallback for development
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url
+  ).toString();
+}
 
 const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const [numPages, setNumPages] = useState(null);

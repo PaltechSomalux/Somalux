@@ -125,7 +125,7 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
     try {
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token;
-      await fetch('http://localhost:5000/api/reading/session', {
+      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/reading/session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -117,7 +117,7 @@ export async function uploadBookToSupabase({
       publisher: metadata.publisher || '',
       pages: metadata.pages || 0,
       language: metadata.language || 'en',
-      file_url: pdfStoragePath,
+      file_url: pdfUrl,
       created_at: nowIso,
       updated_at: nowIso
     };

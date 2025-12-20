@@ -15,10 +15,15 @@ import {
 import './FastReader.css';
 
 // Use local pdfjs-dist worker
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
+try {
+  pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.min.mjs`;
+} catch (e) {
+  // Fallback for development
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url
+  ).toString();
+}
 
 const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
   const [numPages, setNumPages] = useState(null);

@@ -53,7 +53,7 @@ export function AdBanner({ placement, limit = 1, className = '', demo = false })
           setLoading(false);
           return;
         }
-        const response = await axios.get(`http://localhost:5000/api/ads/${placement}?limit=${limit}`);
+        const response = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/ads/${placement}?limit=${limit}`);
         console.log('✅ [AdBanner] Ads fetched - Total:', response.data.data.length, 'Data:', response.data);
         if (response.data.success && response.data.data.length > 0) {
           const allAds = response.data.data;
