@@ -1,0 +1,81 @@
+{
+  "upload_1765440598390": {
+    "id": "upload_1765440598390",
+    "status": "completed",
+    "startedAt": "2025-12-11T08:09:59.011Z",
+    "booksDirectory": "D:\\New folder (2)",
+    "uploadedBy": "32792e52-7097-41d0-b259-fb79585b37e0",
+    "startedByEmail": "campuslives254@gmail.com",
+    "startedByName": null,
+    "stopFlag": {
+      "stopped": false
+    },
+    "stats": {
+      "total": 5,
+      "processed": 5,
+      "successful": 0,
+      "failed": 5,
+      "skipped": 0
+    },
+    "completedAt": "2025-12-11T08:10:04.597Z"
+  },
+  "upload_1765441410355": {
+    "id": "upload_1765441410355",
+    "status": "completed",
+    "startedAt": "2025-12-11T08:23:30.872Z",
+    "booksDirectory": "C:\\Users\\Paltech\\Pictures\\Screenshots\\New folder",
+    "uploadedBy": "32792e52-7097-41d0-b259-fb79585b37e0",
+    "startedByEmail": "campuslives254@gmail.com",
+    "startedByName": null,
+    "stopFlag": {
+      "stopped": false
+    },
+    "stats": {
+      "total": 2,
+      "processed": 2,
+      "successful": 0,
+      "failed": 7,
+      "skipped": 0
+    },
+    "completedAt": "2025-12-11T08:23:50.055Z"
+  },
+  "upload_1765452846966": {
+    "id": "upload_1765452846966",
+    "status": "completed",
+    "startedAt": "2025-12-11T11:34:07.659Z",
+    "booksDirectory": "D:\\Books",
+    "uploadedBy": "32792e52-7097-41d0-b259-fb79585b37e0",
+    "startedByEmail": "campuslives254@gmail.com",
+    "startedByName": null,
+    "stopFlag": {
+      "stopped": false
+    },
+    "stats": {
+      "total": 3,
+      "processed": 3,
+      "successful": 0,
+      "failed": 3,
+      "skipped": 0
+    },
+    "completedAt": "2025-12-11T11:34:58.421Z"
+  },
+  "upload_1765731026486": {
+    "id": "upload_1765731026486",
+    "status": "running",
+    "startedAt": "2025-12-14T16:50:27.042Z",
+    "booksDirectory": "C:\\Bryology",
+    "uploadedBy": "7fd9159d-a3db-42a8-a0f2-e5fcf729f902",
+    "startedByEmail": "paltechsomalux@gmail.com",
+    "startedByName": null,
+    "stopFlag": {
+      "stopped": false
+    },
+    "stats": {
+      "total": 7,
+      "processed": 1,
+      "successful": 0,
+      "failed": 4,
+      "skipped": 0
+    }
+  }
+}

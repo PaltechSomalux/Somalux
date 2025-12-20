@@ -1,0 +1,229 @@
+/* ============ BASE STYLES ============ */
+.preferences-container {
+  --primary: #00a884; /* WhatsApp green */
+  --primary-light: #008069; /* Darker WhatsApp green */
+  --primary-hover: #25D366; /* WhatsApp secondary green */
+  --text-primary: #e9edef; /* Light text */
+  --text-secondary: #8696a0; /* Medium gray */
+  --bg-primary: #0b1216; /* Dark background */
+  --bg-secondary: #2a3942; /* Darker background */
+  --border: #2a3942; /* Darker background */
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  --spacing: 1rem;
+  --spacing-sm: 0.5rem;
+  --spacing-lg: 1.5rem;
+  --transition: all 0.3s ease;
+  
+  max-width: 1000px;
+  margin: var(--spacing) auto;
+  padding: 0;
+  border-radius: var(--radius);
+  background: var(--bg-primary);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  transition: var(--transition);
+}
+
+/* ============ DARK THEME ============ */
+/* WhatsApp theme is dark by default */
+.dark-theme .preferences-container {
+  --primary: #00a884;
+  --primary-light: #008069;
+  --primary-hover: #25D366;
+  --text-primary: #e9edef;
+  --text-secondary: #8696a0;
+  --bg-primary: #0b1216;
+  --bg-secondary: #2a3942;
+  --border: #2a3942;
+}
+
+/* ============ COMPACT TABS LAYOUT ============ */
+.preferences-tabs {
+  display: flex;
+  background: var(--bg-secondary);
+  padding: 0 var(--spacing-sm);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  overflow-x: auto;
+}
+
+.tab-button {
+  padding: var(--spacing-sm) var(--spacing);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  margin: 0 var(--spacing-sm);
+  transition: var(--transition);
+}
+
+.tab-button.active {
+  color: var(--primary);
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  box-shadow: 0 -2px 0 var(--primary);
+}
+
+.tab-button:hover:not(.active) {
+  color: var(--text-primary);
+}
+
+/* ============ COMPACT TAB CONTENT ============ */
+.tab-content-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing);
+  padding: var(--spacing);
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  background: var(--bg-primary);
+}
+
+.tab-content {
+  display: none;
+  animation: fadeIn 0.2s ease;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ============ COMPACT SECTION STYLES ============ */
+.preference-section {
+  margin-bottom: var(--spacing);
+  padding: var(--spacing-sm);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.preference-section h3 {
+  margin: 0 0 var(--spacing-sm) 0;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+/* ============ COMPACT FORM ELEMENTS ============ */
+.option-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.radio-option, .checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.radio-option input, .checkbox-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.select-wrapper {
+  max-width: 200px;
+}
+
+select {
+  padding: var(--spacing-sm) var(--spacing);
+  font-size: 0.85rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(0, 168, 132, 0.2);
+}
+
+/* ============ COMPACT BUTTONS ============ */
+.reset-button {
+  padding: var(--spacing-sm) var(--spacing);
+  font-size: 0.85rem;
+  position: absolute;
+  top: var(--spacing);
+  right: var(--spacing);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.reset-button:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* ============ NO SCROLLBAR ============ */
+.tab-content-container::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-content-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ============ RESPONSIVE ADJUSTMENTS ============ */
+@media (max-width: 768px) {
+  .preferences-tabs {
+    overflow-x: auto;
+    padding-bottom: var(--spacing-sm);
+  }
+  
+  .tab-content-container {
+    grid-template-columns: 1fr;
+    padding: var(--spacing-sm);
+  }
+  
+  .option-group {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* WhatsApp-inspired variables */
+:root {
+  /* WhatsApp-inspired Color Scheme */
+  --primary: #00a884; /* WhatsApp green */
+  --primary-dark: #008069; /* Darker WhatsApp green */
+  --secondary: #25D366; /* WhatsApp secondary green */
+  --accent: #34B7F1; /* WhatsApp blue */
+  --dark: #0b1216; /* Dark background */
+  --light: #2a3942; /* Darker background */
+  --gray: #8696a0; /* Medium gray */
+  --text: #e9edef; /* Light text */
+  --text-light: #8696a0; /* Medium gray */
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  --shadow-hover: 0 4px 15px rgba(0, 0, 0, 0.4);
+  --transition: all 0.3s ease;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --spacing: 1rem;
+  --spacing-sm: 0.5rem;
+  --spacing-lg: 1.5rem;
+}

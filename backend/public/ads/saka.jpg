@@ -1,0 +1,587 @@
+{"ast":null,"code":"var _jsxFileName = \"F:\\\\SomaLux\\\\src\\\\SomaLux\\\\Books\\\\EdgeLikeReader.jsx\",\n  _s = $RefreshSig$();\n// EdgeLikeReader.jsx - Microsoft Edge-like PDF Reader with advanced features\nimport React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';\nimport { Document, Page, pdfjs } from 'react-pdf';\nimport { FiX, FiZoomIn, FiZoomOut, FiMaximize2, FiMinimize2, FiChevronLeft, FiChevronRight, FiRotateCw, FiMenu, FiBookmark, FiSearch, FiColumns, FiPlay, FiEdit3, FiLayout } from 'react-icons/fi';\nimport './EdgeLikeReader.css';\nimport { jsxDEV as _jsxDEV, Fragment as _Fragment } from \"react/jsx-dev-runtime\";\npdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();\nconst EdgeLikeReader = ({\n  src,\n  title,\n  author,\n  onClose,\n  userId,\n  bookId,\n  pages = 0\n}) => {\n  _s();\n  const [numPages, setNumPages] = useState(null);\n  const [pageNumber, setPageNumber] = useState(1);\n  const [scale, setScale] = useState(1.0);\n  const [rotation, setRotation] = useState(0);\n  const [isLoading, setIsLoading] = useState(true);\n  const [showSidebar, setShowSidebar] = useState(true);\n  const [sidebarTab, setSidebarTab] = useState('thumbnails'); // 'thumbnails' or 'bookmarks'\n  const [viewMode, setViewMode] = useState('single'); // 'single', 'spread', 'presentation'\n  const [isFullscreen, setIsFullscreen] = useState(false);\n  const [bookmarks, setBookmarks] = useState([]);\n  const [showSearch, setShowSearch] = useState(false);\n  const [highlightMode, setHighlightMode] = useState(false);\n  const [selectedColor, setSelectedColor] = useState('#FFD700');\n  const containerRef = useRef(null);\n  const pageRefsMap = useRef({});\n  const handleDocumentLoad = ({\n    numPages: nextNumPages\n  }) => {\n    setNumPages(nextNumPages || 1);\n    setIsLoading(false);\n    setPageNumber(1);\n  };\n  const zoomIn = useCallback(() => {\n    setScale(s => Math.min(2.5, s + 0.1));\n  }, []);\n  const zoomOut = useCallback(() => {\n    setScale(s => Math.max(0.5, s - 0.1));\n  }, []);\n  const fitToWidth = useCallback(() => {\n    setScale(1.0);\n  }, []);\n  const toggleFullscreen = useCallback(() => {\n    setIsFullscreen(v => !v);\n  }, []);\n  const toggleSidebar = useCallback(() => {\n    setShowSidebar(v => !v);\n  }, []);\n  const toggleBookmark = useCallback(() => {\n    setBookmarks(prev => {\n      const exists = prev.includes(pageNumber);\n      if (exists) {\n        return prev.filter(p => p !== pageNumber);\n      } else {\n        return [...prev, pageNumber].sort((a, b) => a - b);\n      }\n    });\n  }, [pageNumber]);\n  const goToPage = useCallback(page => {\n    setPageNumber(Math.max(1, Math.min(numPages || 1, page)));\n  }, [numPages]);\n  const goNext = useCallback(() => {\n    goToPage(pageNumber + (viewMode === 'spread' ? 2 : 1));\n  }, [pageNumber, viewMode, goToPage]);\n  const goPrev = useCallback(() => {\n    goToPage(pageNumber - (viewMode === 'spread' ? 2 : 1));\n  }, [pageNumber, viewMode, goToPage]);\n  const rotate = useCallback(() => {\n    setRotation(r => (r + 90) % 360);\n  }, []);\n\n  // Keyboard shortcuts\n  useEffect(() => {\n    const handleKeyDown = e => {\n      if (e.key === 'Escape') {\n        if (showSearch) {\n          setShowSearch(false);\n        } else if (highlightMode) {\n          setHighlightMode(false);\n        } else if (isFullscreen) {\n          setIsFullscreen(false);\n        } else {\n          onClose();\n        }\n      }\n      if (e.key === 'ArrowLeft') goPrev();\n      if (e.key === 'ArrowRight') goNext();\n      if ((e.ctrlKey || e.metaKey) && e.key === '+') {\n        e.preventDefault();\n        zoomIn();\n      }\n      if ((e.ctrlKey || e.metaKey) && e.key === '-') {\n        e.preventDefault();\n        zoomOut();\n      }\n      if ((e.ctrlKey || e.metaKey) && e.key === '0') {\n        e.preventDefault();\n        fitToWidth();\n      }\n      if (e.key === 'f' || e.key === 'F') {\n        if (e.ctrlKey || e.metaKey) {\n          e.preventDefault();\n          setShowSearch(true);\n        } else {\n          e.preventDefault();\n          toggleFullscreen();\n        }\n      }\n      if (e.key === 'b' || e.key === 'B') {\n        e.preventDefault();\n        toggleBookmark();\n      }\n      if (e.key === 'h' || e.key === 'H') {\n        if (e.ctrlKey || e.metaKey) {\n          e.preventDefault();\n          setHighlightMode(v => !v);\n        }\n      }\n    };\n    window.addEventListener('keydown', handleKeyDown);\n    return () => window.removeEventListener('keydown', handleKeyDown);\n  }, [pageNumber, numPages, isFullscreen, viewMode, showSearch, highlightMode, goPrev, goNext, zoomIn, zoomOut, fitToWidth, toggleFullscreen, toggleBookmark, onClose]);\n\n  // Render pages based on view mode\n  const pagesToRender = useMemo(() => {\n    if (viewMode === 'spread' && pageNumber % 2 !== 0) {\n      return [pageNumber, pageNumber + 1].filter(p => p <= numPages);\n    } else if (viewMode === 'spread' && pageNumber % 2 === 0) {\n      return [pageNumber, pageNumber + 1].filter(p => p <= numPages);\n    }\n    return [pageNumber];\n  }, [pageNumber, viewMode, numPages]);\n  return /*#__PURE__*/_jsxDEV(\"div\", {\n    className: `elr-overlay ${isFullscreen ? 'fullscreen' : ''}`,\n    onClick: onClose,\n    children: /*#__PURE__*/_jsxDEV(\"div\", {\n      className: `elr-container ${isFullscreen ? 'fullscreen' : ''}`,\n      onClick: e => e.stopPropagation(),\n      children: [/*#__PURE__*/_jsxDEV(\"div\", {\n        className: \"elr-header\",\n        children: [/*#__PURE__*/_jsxDEV(\"div\", {\n          className: \"elr-header-left\",\n          children: [/*#__PURE__*/_jsxDEV(\"button\", {\n            className: \"elr-icon-btn\",\n            onClick: toggleSidebar,\n            title: \"Toggle sidebar (Ctrl+Shift+F)\",\n            children: /*#__PURE__*/_jsxDEV(FiMenu, {\n              size: 20\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 178,\n              columnNumber: 15\n            }, this)\n          }, void 0, false, {\n            fileName: _jsxFileName,\n            lineNumber: 173,\n            columnNumber: 13\n          }, this), /*#__PURE__*/_jsxDEV(\"div\", {\n            className: \"elr-title-section\",\n            children: [/*#__PURE__*/_jsxDEV(\"div\", {\n              className: \"elr-title\",\n              children: title\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 181,\n              columnNumber: 15\n            }, this), author && /*#__PURE__*/_jsxDEV(\"div\", {\n              className: \"elr-author\",\n              children: [\"by \", author]\n            }, void 0, true, {\n              fileName: _jsxFileName,\n              lineNumber: 182,\n              columnNumber: 26\n            }, this)]\n          }, void 0, true, {\n            fileName: _jsxFileName,\n            lineNumber: 180,\n            columnNumber: 13\n          }, this)]\n        }, void 0, true, {\n          fileName: _jsxFileName,\n          lineNumber: 172,\n          columnNumber: 11\n        }, this), /*#__PURE__*/_jsxDEV(\"div\", {\n          className: \"elr-header-center\",\n          children: [/*#__PURE__*/_jsxDEV(\"button\", {\n            className: \"elr-icon-btn\",\n            onClick: goPrev,\n            disabled: pageNumber <= 1,\n            title: \"Previous page (\\u2190)\",\n            children: /*#__PURE__*/_jsxDEV(FiChevronLeft, {\n              size: 20\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 193,\n              columnNumber: 15\n            }, this)\n          }, void 0, false, {\n            fileName: _jsxFileName,\n            lineNumber: 187,\n            columnNumber: 13\n          }, this), /*#__PURE__*/_jsxDEV(\"input\", {\n            type: \"number\",\n            min: \"1\",\n            max: numPages,\n            value: pageNumber,\n            onChange: e => goToPage(parseInt(e.target.value) || 1),\n            className: \"elr-page-input\",\n            title: \"Go to page\"\n          }, void 0, false, {\n            fileName: _jsxFileName,\n            lineNumber: 195,\n            columnNumber: 13\n          }, this), /*#__PURE__*/_jsxDEV(\"span\", {\n            className: \"elr-page-separator\",\n            children: \"/\"\n          }, void 0, false, {\n            fileName: _jsxFileName,\n            lineNumber: 204,\n            columnNumber: 13\n          }, this), /*#__PURE__*/_jsxDEV(\"span\", {\n            className: \"elr-page-total\",\n            children: numPages || 0\n          }, void 0, false, {\n            fileName: _jsxFileName,\n            lineNumber: 205,\n            columnNumber: 13\n          }, this), /*#__PURE__*/_jsxDEV(\"button\", {\n            className: \"elr-icon-btn\",\n            onClick: goNext,\n            disabled: pageNumber >= (numPages || 1),\n            title: \"Next page (\\u2192)\",\n            children: /*#__PURE__*/_jsxDEV(FiChevronRight, {\n              size: 20\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 212,\n              columnNumber: 15\n            }, this)\n          }, void 0, false, {\n            fileName: _jsxFileName,\n            lineNumber: 206,\n            columnNumber: 13\n          }, this)]\n        }, void 0, true, {\n          fileName: _jsxFileName,\n          lineNumber: 186,\n          columnNumber: 11\n        }, this), /*#__PURE__*/_jsxDEV(\"div\", {\n          className: \"elr-header-right\",\n          children: [showSearch && /*#__PURE__*/_jsxDEV(\"div\", {\n            className: \"elr-search-box\",\n            children: [/*#__PURE__*/_jsxDEV(FiSearch, {\n              size: 18\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 220,\n              columnNumber: 17\n            }, this), /*#__PURE__*/_jsxDEV(\"input\", {\n              type: \"text\",\n              placeholder: \"Search in document...\",\n              autoFocus: true,\n              className: \"elr-search-input\"\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 221,\n              columnNumber: 17\n            }, this), /*#__PURE__*/_jsxDEV(\"button\", {\n              className: \"elr-icon-btn-small\",\n              onClick: () => setShowSearch(false),\n              title: \"Close search\",\n              children: /*#__PURE__*/_jsxDEV(FiX, {\n                size: 16\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 232,\n                columnNumber: 19\n              }, this)\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 227,\n              columnNumber: 17\n            }, this)]\n          }, void 0, true, {\n            fileName: _jsxFileName,\n            lineNumber: 219,\n            columnNumber: 15\n          }, this), !showSearch && /*#__PURE__*/_jsxDEV(_Fragment, {\n            children: [/*#__PURE__*/_jsxDEV(\"div\", {\n              className: \"elr-view-mode\",\n              children: [/*#__PURE__*/_jsxDEV(\"button\", {\n                className: `elr-view-btn ${viewMode === 'single' ? 'active' : ''}`,\n                onClick: () => setViewMode('single'),\n                title: \"Single page view\",\n                children: /*#__PURE__*/_jsxDEV(FiLayout, {\n                  size: 18\n                }, void 0, false, {\n                  fileName: _jsxFileName,\n                  lineNumber: 246,\n                  columnNumber: 21\n                }, this)\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 241,\n                columnNumber: 19\n              }, this), /*#__PURE__*/_jsxDEV(\"button\", {\n                className: `elr-view-btn ${viewMode === 'spread' ? 'active' : ''}`,\n                onClick: () => setViewMode('spread'),\n                title: \"Two-page spread view\",\n                children: /*#__PURE__*/_jsxDEV(FiColumns, {\n                  size: 18\n                }, void 0, false, {\n                  fileName: _jsxFileName,\n                  lineNumber: 253,\n                  columnNumber: 21\n                }, this)\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 248,\n                columnNumber: 19\n              }, this), /*#__PURE__*/_jsxDEV(\"button\", {\n                className: `elr-view-btn ${viewMode === 'presentation' ? 'active' : ''}`,\n                onClick: () => setViewMode('presentation'),\n                title: \"Presentation mode\",\n                children: /*#__PURE__*/_jsxDEV(FiPlay, {\n                  size: 18\n                }, void 0, false, {\n                  fileName: _jsxFileName,\n                  lineNumber: 260,\n                  columnNumber: 21\n                }, this)\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 255,\n                columnNumber: 19\n              }, this)]\n            }, void 0, true, {\n              fileName: _jsxFileName,\n              lineNumber: 240,\n              columnNumber: 17\n            }, this), /*#__PURE__*/_jsxDEV(\"div\", {\n              className: \"elr-zoom-controls\",\n              children: [/*#__PURE__*/_jsxDEV(\"button\", {\n                className: \"elr-icon-btn\",\n                onClick: zoomOut,\n                title: \"Zoom out (Ctrl+-)\",\n                children: /*#__PURE__*/_jsxDEV(FiZoomOut, {\n                  size: 18\n                }, void 0, false, {\n                  fileName: _jsxFileName,\n                  lineNumber: 271,\n                  columnNumber: 21\n                }, this)\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 266,\n                columnNumber: 19\n              }, this), /*#__PURE__*/_jsxDEV(\"span\", {\n                className: \"elr-zoom-level\",\n                children: [Math.round(scale * 100), \"%\"]\n              }, void 0, true, {\n                fileName: _jsxFileName,\n                lineNumber: 273,\n                columnNumber: 19\n              }, this), /*#__PURE__*/_jsxDEV(\"button\", {\n                className: \"elr-icon-btn\",\n                onClick: zoomIn,\n                title: \"Zoom in (Ctrl++)\",\n                children: /*#__PURE__*/_jsxDEV(FiZoomIn, {\n                  size: 18\n                }, void 0, false, {\n                  fileName: _jsxFileName,\n                  lineNumber: 279,\n                  columnNumber: 21\n                }, this)\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 274,\n                columnNumber: 19\n              }, this)]\n            }, void 0, true, {\n              fileName: _jsxFileName,\n              lineNumber: 265,\n              columnNumber: 17\n            }, this), /*#__PURE__*/_jsxDEV(\"button\", {\n              className: `elr-icon-btn ${highlightMode ? 'active' : ''}`,\n              onClick: () => setHighlightMode(v => !v),\n              title: \"Highlight text (Ctrl+H)\",\n              style: {\n                color: highlightMode ? selectedColor : 'inherit'\n              },\n              children: /*#__PURE__*/_jsxDEV(FiEdit3, {\n                size: 18\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 290,\n                columnNumber: 19\n              }, this)\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 284,\n              columnNumber: 17\n            }, this), /*#__PURE__*/_jsxDEV(\"button\", {\n              className: \"elr-icon-btn\",\n              onClick: toggleBookmark,\n              title: \"Toggle bookmark (B)\",\n              style: {\n                color: bookmarks.includes(pageNumber) ? '#10b981' : 'inherit'\n              },\n              children: /*#__PURE__*/_jsxDEV(FiBookmark, {\n                size: 18\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 300,\n                columnNumber: 19\n              }, this)\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 294,\n              columnNumber: 17\n            }, this), /*#__PURE__*/_jsxDEV(\"button\", {\n              className: \"elr-icon-btn\",\n              onClick: rotate,\n              title: \"Rotate page\",\n              children: /*#__PURE__*/_jsxDEV(FiRotateCw, {\n                size: 18\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 308,\n                columnNumber: 19\n              }, this)\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 303,\n              columnNumber: 17\n            }, this), /*#__PURE__*/_jsxDEV(\"button\", {\n              className: \"elr-icon-btn\",\n              onClick: () => setShowSearch(true),\n              title: \"Search (Ctrl+F)\",\n              children: /*#__PURE__*/_jsxDEV(FiSearch, {\n                size: 18\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 317,\n                columnNumber: 19\n              }, this)\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 312,\n              columnNumber: 17\n            }, this), /*#__PURE__*/_jsxDEV(\"button\", {\n              className: \"elr-icon-btn\",\n              onClick: toggleFullscreen,\n              title: \"Toggle fullscreen (F)\",\n              children: isFullscreen ? /*#__PURE__*/_jsxDEV(FiMinimize2, {\n                size: 18\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 325,\n                columnNumber: 35\n              }, this) : /*#__PURE__*/_jsxDEV(FiMaximize2, {\n                size: 18\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 325,\n                columnNumber: 63\n              }, this)\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 320,\n              columnNumber: 17\n            }, this), /*#__PURE__*/_jsxDEV(\"button\", {\n              className: \"elr-icon-btn elr-close-btn\",\n              onClick: onClose,\n              title: \"Close reader (Esc)\",\n              children: /*#__PURE__*/_jsxDEV(FiX, {\n                size: 20\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 333,\n                columnNumber: 19\n              }, this)\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 328,\n              columnNumber: 17\n            }, this)]\n          }, void 0, true)]\n        }, void 0, true, {\n          fileName: _jsxFileName,\n          lineNumber: 216,\n          columnNumber: 11\n        }, this)]\n      }, void 0, true, {\n        fileName: _jsxFileName,\n        lineNumber: 171,\n        columnNumber: 9\n      }, this), highlightMode && /*#__PURE__*/_jsxDEV(\"div\", {\n        className: \"elr-color-picker-bar\",\n        children: [/*#__PURE__*/_jsxDEV(\"span\", {\n          className: \"elr-picker-label\",\n          children: \"Highlight color:\"\n        }, void 0, false, {\n          fileName: _jsxFileName,\n          lineNumber: 343,\n          columnNumber: 13\n        }, this), ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'].map(color => /*#__PURE__*/_jsxDEV(\"button\", {\n          className: `elr-color-btn ${selectedColor === color ? 'active' : ''}`,\n          style: {\n            backgroundColor: color\n          },\n          onClick: () => setSelectedColor(color),\n          title: color\n        }, color, false, {\n          fileName: _jsxFileName,\n          lineNumber: 345,\n          columnNumber: 15\n        }, this))]\n      }, void 0, true, {\n        fileName: _jsxFileName,\n        lineNumber: 342,\n        columnNumber: 11\n      }, this), /*#__PURE__*/_jsxDEV(\"div\", {\n        className: \"elr-content-wrapper\",\n        children: [showSidebar && /*#__PURE__*/_jsxDEV(\"aside\", {\n          className: \"elr-sidebar\",\n          children: [/*#__PURE__*/_jsxDEV(\"div\", {\n            className: \"elr-sidebar-tabs\",\n            children: [/*#__PURE__*/_jsxDEV(\"button\", {\n              className: `elr-sidebar-tab ${sidebarTab === 'thumbnails' ? 'active' : ''}`,\n              onClick: () => setSidebarTab('thumbnails'),\n              children: \"Thumbnails\"\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 363,\n              columnNumber: 17\n            }, this), /*#__PURE__*/_jsxDEV(\"button\", {\n              className: `elr-sidebar-tab ${sidebarTab === 'bookmarks' ? 'active' : ''}`,\n              onClick: () => setSidebarTab('bookmarks'),\n              children: [\"Marks (\", bookmarks.length, \")\"]\n            }, void 0, true, {\n              fileName: _jsxFileName,\n              lineNumber: 369,\n              columnNumber: 17\n            }, this)]\n          }, void 0, true, {\n            fileName: _jsxFileName,\n            lineNumber: 362,\n            columnNumber: 15\n          }, this), sidebarTab === 'thumbnails' && /*#__PURE__*/_jsxDEV(\"div\", {\n            className: \"elr-thumbnails\",\n            children: numPages && Array.from({\n              length: numPages\n            }, (_, i) => i + 1).map(page => /*#__PURE__*/_jsxDEV(\"div\", {\n              className: `elr-thumbnail ${pageNumber === page ? 'active' : ''}`,\n              onClick: () => goToPage(page),\n              title: `Page ${page}`,\n              children: [/*#__PURE__*/_jsxDEV(Document, {\n                file: src,\n                loading: null,\n                children: /*#__PURE__*/_jsxDEV(Page, {\n                  pageNumber: page,\n                  scale: 0.15\n                }, void 0, false, {\n                  fileName: _jsxFileName,\n                  lineNumber: 388,\n                  columnNumber: 25\n                }, this)\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 387,\n                columnNumber: 23\n              }, this), /*#__PURE__*/_jsxDEV(\"div\", {\n                className: \"elr-thumb-number\",\n                children: page\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 390,\n                columnNumber: 23\n              }, this)]\n            }, page, true, {\n              fileName: _jsxFileName,\n              lineNumber: 381,\n              columnNumber: 21\n            }, this))\n          }, void 0, false, {\n            fileName: _jsxFileName,\n            lineNumber: 379,\n            columnNumber: 17\n          }, this), sidebarTab === 'bookmarks' && /*#__PURE__*/_jsxDEV(\"div\", {\n            className: \"elr-bookmarks\",\n            children: bookmarks.length === 0 ? /*#__PURE__*/_jsxDEV(\"div\", {\n              className: \"elr-empty-state\",\n              children: [/*#__PURE__*/_jsxDEV(FiBookmark, {\n                size: 32\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 401,\n                columnNumber: 23\n              }, this), /*#__PURE__*/_jsxDEV(\"p\", {\n                children: \"No bookmarks yet\"\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 402,\n                columnNumber: 23\n              }, this), /*#__PURE__*/_jsxDEV(\"span\", {\n                className: \"elr-hint\",\n                children: \"Click the bookmark icon to mark pages\"\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 403,\n                columnNumber: 23\n              }, this)]\n            }, void 0, true, {\n              fileName: _jsxFileName,\n              lineNumber: 400,\n              columnNumber: 21\n            }, this) : /*#__PURE__*/_jsxDEV(\"div\", {\n              className: \"elr-bookmarks-list\",\n              children: bookmarks.map(page => /*#__PURE__*/_jsxDEV(\"button\", {\n                className: `elr-bookmark-item ${pageNumber === page ? 'active' : ''}`,\n                onClick: () => goToPage(page),\n                children: [/*#__PURE__*/_jsxDEV(FiBookmark, {\n                  size: 16\n                }, void 0, false, {\n                  fileName: _jsxFileName,\n                  lineNumber: 413,\n                  columnNumber: 27\n                }, this), /*#__PURE__*/_jsxDEV(\"span\", {\n                  children: [\"Page \", page]\n                }, void 0, true, {\n                  fileName: _jsxFileName,\n                  lineNumber: 414,\n                  columnNumber: 27\n                }, this)]\n              }, page, true, {\n                fileName: _jsxFileName,\n                lineNumber: 408,\n                columnNumber: 25\n              }, this))\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 406,\n              columnNumber: 21\n            }, this)\n          }, void 0, false, {\n            fileName: _jsxFileName,\n            lineNumber: 398,\n            columnNumber: 17\n          }, this)]\n        }, void 0, true, {\n          fileName: _jsxFileName,\n          lineNumber: 360,\n          columnNumber: 13\n        }, this), /*#__PURE__*/_jsxDEV(\"div\", {\n          className: \"elr-viewer\",\n          ref: containerRef,\n          children: [isLoading && /*#__PURE__*/_jsxDEV(\"div\", {\n            className: \"elr-loading\",\n            children: [/*#__PURE__*/_jsxDEV(\"div\", {\n              className: \"elr-spinner\"\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 428,\n              columnNumber: 17\n            }, this), /*#__PURE__*/_jsxDEV(\"p\", {\n              children: \"Loading PDF...\"\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 429,\n              columnNumber: 17\n            }, this)]\n          }, void 0, true, {\n            fileName: _jsxFileName,\n            lineNumber: 427,\n            columnNumber: 15\n          }, this), /*#__PURE__*/_jsxDEV(Document, {\n            file: src,\n            onLoadSuccess: handleDocumentLoad,\n            loading: null,\n            error: /*#__PURE__*/_jsxDEV(\"div\", {\n              className: \"elr-error\",\n              children: /*#__PURE__*/_jsxDEV(\"p\", {\n                children: \"Failed to load PDF. Please check the file and try again.\"\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 439,\n                columnNumber: 19\n              }, this)\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 438,\n              columnNumber: 17\n            }, this),\n            children: /*#__PURE__*/_jsxDEV(\"div\", {\n              className: `elr-pages-container elr-view-${viewMode}`,\n              children: viewMode === 'presentation' ?\n              /*#__PURE__*/\n              // Presentation mode - fullscreen single pages\n              _jsxDEV(\"div\", {\n                className: \"elr-presentation-page\",\n                children: /*#__PURE__*/_jsxDEV(Page, {\n                  pageNumber: pageNumber,\n                  scale: scale,\n                  rotate: rotation,\n                  renderTextLayer: false,\n                  renderAnnotationLayer: false\n                }, void 0, false, {\n                  fileName: _jsxFileName,\n                  lineNumber: 447,\n                  columnNumber: 21\n                }, this)\n              }, void 0, false, {\n                fileName: _jsxFileName,\n                lineNumber: 446,\n                columnNumber: 19\n              }, this) :\n              // Single or Spread mode\n              pagesToRender.map(page => /*#__PURE__*/_jsxDEV(\"div\", {\n                className: \"elr-page-wrapper\",\n                ref: el => pageRefsMap.current[page] = el,\n                children: /*#__PURE__*/_jsxDEV(Page, {\n                  pageNumber: page,\n                  scale: scale,\n                  rotate: rotation,\n                  renderTextLayer: true,\n                  renderAnnotationLayer: false\n                }, void 0, false, {\n                  fileName: _jsxFileName,\n                  lineNumber: 459,\n                  columnNumber: 23\n                }, this)\n              }, page, false, {\n                fileName: _jsxFileName,\n                lineNumber: 458,\n                columnNumber: 21\n              }, this))\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 443,\n              columnNumber: 15\n            }, this)\n          }, void 0, false, {\n            fileName: _jsxFileName,\n            lineNumber: 433,\n            columnNumber: 13\n          }, this)]\n        }, void 0, true, {\n          fileName: _jsxFileName,\n          lineNumber: 425,\n          columnNumber: 11\n        }, this)]\n      }, void 0, true, {\n        fileName: _jsxFileName,\n        lineNumber: 357,\n        columnNumber: 9\n      }, this), /*#__PURE__*/_jsxDEV(\"div\", {\n        className: \"elr-status-bar\",\n        children: [/*#__PURE__*/_jsxDEV(\"div\", {\n          className: \"elr-status-left\",\n          children: numPages && `Page ${pageNumber} of ${numPages}`\n        }, void 0, false, {\n          fileName: _jsxFileName,\n          lineNumber: 476,\n          columnNumber: 11\n        }, this), /*#__PURE__*/_jsxDEV(\"div\", {\n          className: \"elr-status-center\",\n          children: bookmarks.length > 0 && `${bookmarks.length} bookmark${bookmarks.length !== 1 ? 's' : ''}`\n        }, void 0, false, {\n          fileName: _jsxFileName,\n          lineNumber: 479,\n          columnNumber: 11\n        }, this), /*#__PURE__*/_jsxDEV(\"div\", {\n          className: \"elr-status-right\",\n          children: /*#__PURE__*/_jsxDEV(\"button\", {\n            className: \"elr-mini-btn\",\n            onClick: () => window.print(),\n            title: \"Print (Ctrl+P)\",\n            children: /*#__PURE__*/_jsxDEV(FiRotateCw, {\n              size: 16\n            }, void 0, false, {\n              fileName: _jsxFileName,\n              lineNumber: 484,\n              columnNumber: 15\n            }, this)\n          }, void 0, false, {\n            fileName: _jsxFileName,\n            lineNumber: 483,\n            columnNumber: 13\n          }, this)\n        }, void 0, false, {\n          fileName: _jsxFileName,\n          lineNumber: 482,\n          columnNumber: 11\n        }, this)]\n      }, void 0, true, {\n        fileName: _jsxFileName,\n        lineNumber: 475,\n        columnNumber: 9\n      }, this)]\n    }, void 0, true, {\n      fileName: _jsxFileName,\n      lineNumber: 166,\n      columnNumber: 7\n    }, this)\n  }, void 0, false, {\n    fileName: _jsxFileName,\n    lineNumber: 162,\n    columnNumber: 5\n  }, this);\n};\n_s(EdgeLikeReader, \"Ra/1MI0bUJj2KrYTx1mnxIB0nns=\");\n_c = EdgeLikeReader;\nexport default EdgeLikeReader;\nvar _c;\n$RefreshReg$(_c, \"EdgeLikeReader\");","map":{"version":3,"names":["React","useState","useEffect","useRef","useCallback","useMemo","Document","Page","pdfjs","FiX","FiZoomIn","FiZoomOut","FiMaximize2","FiMinimize2","FiChevronLeft","FiChevronRight","FiRotateCw","FiMenu","FiBookmark","FiSearch","FiColumns","FiPlay","FiEdit3","FiLayout","jsxDEV","_jsxDEV","Fragment","_Fragment","GlobalWorkerOptions","workerSrc","URL","import","meta","url","toString","EdgeLikeReader","src","title","author","onClose","userId","bookId","pages","_s","numPages","setNumPages","pageNumber","setPageNumber","scale","setScale","rotation","setRotation","isLoading","setIsLoading","showSidebar","setShowSidebar","sidebarTab","setSidebarTab","viewMode","setViewMode","isFullscreen","setIsFullscreen","bookmarks","setBookmarks","showSearch","setShowSearch","highlightMode","setHighlightMode","selectedColor","setSelectedColor","containerRef","pageRefsMap","handleDocumentLoad","nextNumPages","zoomIn","s","Math","min","zoomOut","max","fitToWidth","toggleFullscreen","v","toggleSidebar","toggleBookmark","prev","exists","includes","filter","p","sort","a","b","goToPage","page","goNext","goPrev","rotate","r","handleKeyDown","e","key","ctrlKey","metaKey","preventDefault","window","addEventListener","removeEventListener","pagesToRender","className","onClick","children","stopPropagation","size","fileName","_jsxFileName","lineNumber","columnNumber","disabled","type","value","onChange","parseInt","target","placeholder","autoFocus","round","style","color","map","backgroundColor","length","Array","from","_","i","file","loading","ref","onLoadSuccess","error","renderTextLayer","renderAnnotationLayer","el","current","print","_c","$RefreshReg$"],"sources":["F:/SomaLux/src/SomaLux/Books/EdgeLikeReader.jsx"],"sourcesContent":["// EdgeLikeReader.jsx - Microsoft Edge-like PDF Reader with advanced features\r\nimport React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';\r\nimport { Document, Page, pdfjs } from 'react-pdf';\r\nimport {\r\n  FiX,\r\n  FiZoomIn,\r\n  FiZoomOut,\r\n  FiMaximize2,\r\n  FiMinimize2,\r\n  FiChevronLeft,\r\n  FiChevronRight,\r\n  FiRotateCw,\r\n  FiMenu,\r\n  FiBookmark,\r\n  FiSearch,\r\n  FiColumns,\r\n  FiPlay,\r\n  FiEdit3,\r\n  FiLayout,\r\n} from 'react-icons/fi';\r\nimport './EdgeLikeReader.css';\r\n\r\npdfjs.GlobalWorkerOptions.workerSrc = new URL(\r\n  'pdfjs-dist/build/pdf.worker.min.mjs',\r\n  import.meta.url\r\n).toString();\r\n\r\nconst EdgeLikeReader = ({ src, title, author, onClose, userId, bookId, pages = 0 }) => {\r\n  const [numPages, setNumPages] = useState(null);\r\n  const [pageNumber, setPageNumber] = useState(1);\r\n  const [scale, setScale] = useState(1.0);\r\n  const [rotation, setRotation] = useState(0);\r\n  const [isLoading, setIsLoading] = useState(true);\r\n  const [showSidebar, setShowSidebar] = useState(true);\r\n  const [sidebarTab, setSidebarTab] = useState('thumbnails'); // 'thumbnails' or 'bookmarks'\r\n  const [viewMode, setViewMode] = useState('single'); // 'single', 'spread', 'presentation'\r\n  const [isFullscreen, setIsFullscreen] = useState(false);\r\n  const [bookmarks, setBookmarks] = useState([]);\r\n  const [showSearch, setShowSearch] = useState(false);\r\n  const [highlightMode, setHighlightMode] = useState(false);\r\n  const [selectedColor, setSelectedColor] = useState('#FFD700');\r\n  const containerRef = useRef(null);\r\n  const pageRefsMap = useRef({});\r\n\r\n  const handleDocumentLoad = ({ numPages: nextNumPages }) => {\r\n    setNumPages(nextNumPages || 1);\r\n    setIsLoading(false);\r\n    setPageNumber(1);\r\n  };\r\n\r\n  const zoomIn = useCallback(() => {\r\n    setScale(s => Math.min(2.5, s + 0.1));\r\n  }, []);\r\n\r\n  const zoomOut = useCallback(() => {\r\n    setScale(s => Math.max(0.5, s - 0.1));\r\n  }, []);\r\n\r\n  const fitToWidth = useCallback(() => {\r\n    setScale(1.0);\r\n  }, []);\r\n\r\n  const toggleFullscreen = useCallback(() => {\r\n    setIsFullscreen(v => !v);\r\n  }, []);\r\n\r\n  const toggleSidebar = useCallback(() => {\r\n    setShowSidebar(v => !v);\r\n  }, []);\r\n\r\n  const toggleBookmark = useCallback(() => {\r\n    setBookmarks(prev => {\r\n      const exists = prev.includes(pageNumber);\r\n      if (exists) {\r\n        return prev.filter(p => p !== pageNumber);\r\n      } else {\r\n        return [...prev, pageNumber].sort((a, b) => a - b);\r\n      }\r\n    });\r\n  }, [pageNumber]);\r\n\r\n  const goToPage = useCallback((page) => {\r\n    setPageNumber(Math.max(1, Math.min(numPages || 1, page)));\r\n  }, [numPages]);\r\n\r\n  const goNext = useCallback(() => {\r\n    goToPage(pageNumber + (viewMode === 'spread' ? 2 : 1));\r\n  }, [pageNumber, viewMode, goToPage]);\r\n\r\n  const goPrev = useCallback(() => {\r\n    goToPage(pageNumber - (viewMode === 'spread' ? 2 : 1));\r\n  }, [pageNumber, viewMode, goToPage]);\r\n\r\n  const rotate = useCallback(() => {\r\n    setRotation(r => (r + 90) % 360);\r\n  }, []);\r\n\r\n  // Keyboard shortcuts\r\n  useEffect(() => {\r\n    const handleKeyDown = (e) => {\r\n      if (e.key === 'Escape') {\r\n        if (showSearch) {\r\n          setShowSearch(false);\r\n        } else if (highlightMode) {\r\n          setHighlightMode(false);\r\n        } else if (isFullscreen) {\r\n          setIsFullscreen(false);\r\n        } else {\r\n          onClose();\r\n        }\r\n      }\r\n      if (e.key === 'ArrowLeft') goPrev();\r\n      if (e.key === 'ArrowRight') goNext();\r\n      if ((e.ctrlKey || e.metaKey) && e.key === '+') {\r\n        e.preventDefault();\r\n        zoomIn();\r\n      }\r\n      if ((e.ctrlKey || e.metaKey) && e.key === '-') {\r\n        e.preventDefault();\r\n        zoomOut();\r\n      }\r\n      if ((e.ctrlKey || e.metaKey) && e.key === '0') {\r\n        e.preventDefault();\r\n        fitToWidth();\r\n      }\r\n      if (e.key === 'f' || e.key === 'F') {\r\n        if (e.ctrlKey || e.metaKey) {\r\n          e.preventDefault();\r\n          setShowSearch(true);\r\n        } else {\r\n          e.preventDefault();\r\n          toggleFullscreen();\r\n        }\r\n      }\r\n      if (e.key === 'b' || e.key === 'B') {\r\n        e.preventDefault();\r\n        toggleBookmark();\r\n      }\r\n      if (e.key === 'h' || e.key === 'H') {\r\n        if (e.ctrlKey || e.metaKey) {\r\n          e.preventDefault();\r\n          setHighlightMode(v => !v);\r\n        }\r\n      }\r\n    };\r\n\r\n    window.addEventListener('keydown', handleKeyDown);\r\n    return () => window.removeEventListener('keydown', handleKeyDown);\r\n  }, [pageNumber, numPages, isFullscreen, viewMode, showSearch, highlightMode, goPrev, goNext, zoomIn, zoomOut, fitToWidth, toggleFullscreen, toggleBookmark, onClose]);\r\n\r\n  // Render pages based on view mode\r\n  const pagesToRender = useMemo(() => {\r\n    if (viewMode === 'spread' && pageNumber % 2 !== 0) {\r\n      return [pageNumber, pageNumber + 1].filter(p => p <= numPages);\r\n    } else if (viewMode === 'spread' && pageNumber % 2 === 0) {\r\n      return [pageNumber, pageNumber + 1].filter(p => p <= numPages);\r\n    }\r\n    return [pageNumber];\r\n  }, [pageNumber, viewMode, numPages]);\r\n\r\n  return (\r\n    <div\r\n      className={`elr-overlay ${isFullscreen ? 'fullscreen' : ''}`}\r\n      onClick={onClose}\r\n    >\r\n      <div\r\n        className={`elr-container ${isFullscreen ? 'fullscreen' : ''}`}\r\n        onClick={(e) => e.stopPropagation()}\r\n      >\r\n        {/* Header Toolbar */}\r\n        <div className=\"elr-header\">\r\n          <div className=\"elr-header-left\">\r\n            <button\r\n              className=\"elr-icon-btn\"\r\n              onClick={toggleSidebar}\r\n              title=\"Toggle sidebar (Ctrl+Shift+F)\"\r\n            >\r\n              <FiMenu size={20} />\r\n            </button>\r\n            <div className=\"elr-title-section\">\r\n              <div className=\"elr-title\">{title}</div>\r\n              {author && <div className=\"elr-author\">by {author}</div>}\r\n            </div>\r\n          </div>\r\n\r\n          <div className=\"elr-header-center\">\r\n            <button\r\n              className=\"elr-icon-btn\"\r\n              onClick={goPrev}\r\n              disabled={pageNumber <= 1}\r\n              title=\"Previous page (â†)\"\r\n            >\r\n              <FiChevronLeft size={20} />\r\n            </button>\r\n            <input\r\n              type=\"number\"\r\n              min=\"1\"\r\n              max={numPages}\r\n              value={pageNumber}\r\n              onChange={(e) => goToPage(parseInt(e.target.value) || 1)}\r\n              className=\"elr-page-input\"\r\n              title=\"Go to page\"\r\n            />\r\n            <span className=\"elr-page-separator\">/</span>\r\n            <span className=\"elr-page-total\">{numPages || 0}</span>\r\n            <button\r\n              className=\"elr-icon-btn\"\r\n              onClick={goNext}\r\n              disabled={pageNumber >= (numPages || 1)}\r\n              title=\"Next page (â†’)\"\r\n            >\r\n              <FiChevronRight size={20} />\r\n            </button>\r\n          </div>\r\n\r\n          <div className=\"elr-header-right\">\r\n            {/* Search Box */}\r\n            {showSearch && (\r\n              <div className=\"elr-search-box\">\r\n                <FiSearch size={18} />\r\n                <input\r\n                  type=\"text\"\r\n                  placeholder=\"Search in document...\"\r\n                  autoFocus\r\n                  className=\"elr-search-input\"\r\n                />\r\n                <button\r\n                  className=\"elr-icon-btn-small\"\r\n                  onClick={() => setShowSearch(false)}\r\n                  title=\"Close search\"\r\n                >\r\n                  <FiX size={16} />\r\n                </button>\r\n              </div>\r\n            )}\r\n\r\n            {!showSearch && (\r\n              <>\r\n                {/* View Mode Selector */}\r\n                <div className=\"elr-view-mode\">\r\n                  <button\r\n                    className={`elr-view-btn ${viewMode === 'single' ? 'active' : ''}`}\r\n                    onClick={() => setViewMode('single')}\r\n                    title=\"Single page view\"\r\n                  >\r\n                    <FiLayout size={18} />\r\n                  </button>\r\n                  <button\r\n                    className={`elr-view-btn ${viewMode === 'spread' ? 'active' : ''}`}\r\n                    onClick={() => setViewMode('spread')}\r\n                    title=\"Two-page spread view\"\r\n                  >\r\n                    <FiColumns size={18} />\r\n                  </button>\r\n                  <button\r\n                    className={`elr-view-btn ${viewMode === 'presentation' ? 'active' : ''}`}\r\n                    onClick={() => setViewMode('presentation')}\r\n                    title=\"Presentation mode\"\r\n                  >\r\n                    <FiPlay size={18} />\r\n                  </button>\r\n                </div>\r\n\r\n                {/* Zoom Controls */}\r\n                <div className=\"elr-zoom-controls\">\r\n                  <button\r\n                    className=\"elr-icon-btn\"\r\n                    onClick={zoomOut}\r\n                    title=\"Zoom out (Ctrl+-)\"\r\n                  >\r\n                    <FiZoomOut size={18} />\r\n                  </button>\r\n                  <span className=\"elr-zoom-level\">{Math.round(scale * 100)}%</span>\r\n                  <button\r\n                    className=\"elr-icon-btn\"\r\n                    onClick={zoomIn}\r\n                    title=\"Zoom in (Ctrl++)\"\r\n                  >\r\n                    <FiZoomIn size={18} />\r\n                  </button>\r\n                </div>\r\n\r\n                {/* Annotation Tools */}\r\n                <button\r\n                  className={`elr-icon-btn ${highlightMode ? 'active' : ''}`}\r\n                  onClick={() => setHighlightMode(v => !v)}\r\n                  title=\"Highlight text (Ctrl+H)\"\r\n                  style={{ color: highlightMode ? selectedColor : 'inherit' }}\r\n                >\r\n                  <FiEdit3 size={18} />\r\n                </button>\r\n\r\n                {/* More Actions */}\r\n                <button\r\n                  className=\"elr-icon-btn\"\r\n                  onClick={toggleBookmark}\r\n                  title=\"Toggle bookmark (B)\"\r\n                  style={{ color: bookmarks.includes(pageNumber) ? '#10b981' : 'inherit' }}\r\n                >\r\n                  <FiBookmark size={18} />\r\n                </button>\r\n\r\n                <button\r\n                  className=\"elr-icon-btn\"\r\n                  onClick={rotate}\r\n                  title=\"Rotate page\"\r\n                >\r\n                  <FiRotateCw size={18} />\r\n                </button>\r\n\r\n                {/* Search */}\r\n                <button\r\n                  className=\"elr-icon-btn\"\r\n                  onClick={() => setShowSearch(true)}\r\n                  title=\"Search (Ctrl+F)\"\r\n                >\r\n                  <FiSearch size={18} />\r\n                </button>\r\n\r\n                <button\r\n                  className=\"elr-icon-btn\"\r\n                  onClick={toggleFullscreen}\r\n                  title=\"Toggle fullscreen (F)\"\r\n                >\r\n                  {isFullscreen ? <FiMinimize2 size={18} /> : <FiMaximize2 size={18} />}\r\n                </button>\r\n\r\n                <button\r\n                  className=\"elr-icon-btn elr-close-btn\"\r\n                  onClick={onClose}\r\n                  title=\"Close reader (Esc)\"\r\n                >\r\n                  <FiX size={20} />\r\n                </button>\r\n              </>\r\n            )}\r\n          </div>\r\n        </div>\r\n\r\n        {/* Highlight Color Picker */}\r\n        {highlightMode && (\r\n          <div className=\"elr-color-picker-bar\">\r\n            <span className=\"elr-picker-label\">Highlight color:</span>\r\n            {['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'].map(color => (\r\n              <button\r\n                key={color}\r\n                className={`elr-color-btn ${selectedColor === color ? 'active' : ''}`}\r\n                style={{ backgroundColor: color }}\r\n                onClick={() => setSelectedColor(color)}\r\n                title={color}\r\n              />\r\n            ))}\r\n          </div>\r\n        )}\r\n\r\n        {/* Main Content Area */}\r\n        <div className=\"elr-content-wrapper\">\r\n          {/* Sidebar */}\r\n          {showSidebar && (\r\n            <aside className=\"elr-sidebar\">\r\n              {/* Sidebar Tabs */}\r\n              <div className=\"elr-sidebar-tabs\">\r\n                <button\r\n                  className={`elr-sidebar-tab ${sidebarTab === 'thumbnails' ? 'active' : ''}`}\r\n                  onClick={() => setSidebarTab('thumbnails')}\r\n                >\r\n                  Thumbnails\r\n                </button>\r\n                <button\r\n                  className={`elr-sidebar-tab ${sidebarTab === 'bookmarks' ? 'active' : ''}`}\r\n                  onClick={() => setSidebarTab('bookmarks')}\r\n                >\r\n                  Marks ({bookmarks.length})\r\n                </button>\r\n              </div>\r\n\r\n              {/* Thumbnails Tab */}\r\n              {sidebarTab === 'thumbnails' && (\r\n                <div className=\"elr-thumbnails\">\r\n                  {numPages && Array.from({ length: numPages }, (_, i) => i + 1).map(page => (\r\n                    <div\r\n                      key={page}\r\n                      className={`elr-thumbnail ${pageNumber === page ? 'active' : ''}`}\r\n                      onClick={() => goToPage(page)}\r\n                      title={`Page ${page}`}\r\n                    >\r\n                      <Document file={src} loading={null}>\r\n                        <Page pageNumber={page} scale={0.15} />\r\n                      </Document>\r\n                      <div className=\"elr-thumb-number\">{page}</div>\r\n                    </div>\r\n                  ))}\r\n                </div>\r\n              )}\r\n\r\n              {/* Bookmarks Tab */}\r\n              {sidebarTab === 'bookmarks' && (\r\n                <div className=\"elr-bookmarks\">\r\n                  {bookmarks.length === 0 ? (\r\n                    <div className=\"elr-empty-state\">\r\n                      <FiBookmark size={32} />\r\n                      <p>No bookmarks yet</p>\r\n                      <span className=\"elr-hint\">Click the bookmark icon to mark pages</span>\r\n                    </div>\r\n                  ) : (\r\n                    <div className=\"elr-bookmarks-list\">\r\n                      {bookmarks.map(page => (\r\n                        <button\r\n                          key={page}\r\n                          className={`elr-bookmark-item ${pageNumber === page ? 'active' : ''}`}\r\n                          onClick={() => goToPage(page)}\r\n                        >\r\n                          <FiBookmark size={16} />\r\n                          <span>Page {page}</span>\r\n                        </button>\r\n                      ))}\r\n                    </div>\r\n                  )}\r\n                </div>\r\n              )}\r\n            </aside>\r\n          )}\r\n\r\n          {/* PDF Viewer */}\r\n          <div className=\"elr-viewer\" ref={containerRef}>\r\n            {isLoading && (\r\n              <div className=\"elr-loading\">\r\n                <div className=\"elr-spinner\"></div>\r\n                <p>Loading PDF...</p>\r\n              </div>\r\n            )}\r\n\r\n            <Document\r\n              file={src}\r\n              onLoadSuccess={handleDocumentLoad}\r\n              loading={null}\r\n              error={\r\n                <div className=\"elr-error\">\r\n                  <p>Failed to load PDF. Please check the file and try again.</p>\r\n                </div>\r\n              }\r\n            >\r\n              <div className={`elr-pages-container elr-view-${viewMode}`}>\r\n                {viewMode === 'presentation' ? (\r\n                  // Presentation mode - fullscreen single pages\r\n                  <div className=\"elr-presentation-page\">\r\n                    <Page\r\n                      pageNumber={pageNumber}\r\n                      scale={scale}\r\n                      rotate={rotation}\r\n                      renderTextLayer={false}\r\n                      renderAnnotationLayer={false}\r\n                    />\r\n                  </div>\r\n                ) : (\r\n                  // Single or Spread mode\r\n                  pagesToRender.map(page => (\r\n                    <div key={page} className=\"elr-page-wrapper\" ref={el => pageRefsMap.current[page] = el}>\r\n                      <Page\r\n                        pageNumber={page}\r\n                        scale={scale}\r\n                        rotate={rotation}\r\n                        renderTextLayer={true}\r\n                        renderAnnotationLayer={false}\r\n                      />\r\n                    </div>\r\n                  ))\r\n                )}\r\n              </div>\r\n            </Document>\r\n          </div>\r\n        </div>\r\n\r\n        {/* Status Bar */}\r\n        <div className=\"elr-status-bar\">\r\n          <div className=\"elr-status-left\">\r\n            {numPages && `Page ${pageNumber} of ${numPages}`}\r\n          </div>\r\n          <div className=\"elr-status-center\">\r\n            {bookmarks.length > 0 && `${bookmarks.length} bookmark${bookmarks.length !== 1 ? 's' : ''}`}\r\n          </div>\r\n          <div className=\"elr-status-right\">\r\n            <button className=\"elr-mini-btn\" onClick={() => window.print()} title=\"Print (Ctrl+P)\">\r\n              <FiRotateCw size={16} />\r\n            </button>\r\n          </div>\r\n        </div>\r\n      </div>\r\n    </div>\r\n  );\r\n};\r\n\r\nexport default EdgeLikeReader;\r\n"],"mappings":"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","ignoreList":[]},"metadata":{},"sourceType":"module","externalDependencies":[]}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {sidebarTab === 'bookmarks' && (\r\n                <div className=\"elr-bookmarks\">\r\n                  {bookmarks.length === 0 ? (\r\n                    <div className=\"elr-empty-state\">\r\n                      <FiBookmark size={32} />\r\n                      <p>No bookmarks yet</p>\r\n                      <span className=\"elr-hint\">Click the bookmark icon to mark pages</span>\r\n                    </div>\r\n                  ) : (\r\n                    <div className=\"elr-bookmarks-list\">\r\n                      {bookmarks.map(page => (\r\n                        <button\r\n                          key={page}\r\n                          className={`elr-bookmark-item ${pageNumber === page ? 'active' : ''}`}\r\n                          onClick={() => goToPage(page)}\r\n                        >\r\n                          <FiBookmark size={16} />\r\n                          <span>Page {page}</span>\r\n                        </button>\r\n                      ))}\r\n                    </div>\r\n                  )}\r\n                </div>\r\n              )}\r\n            </aside>\r\n          )}\r\n\r\n          {/* PDF Viewer */}\r\n          <div className=\"elr-viewer\" ref={containerRef}>\r\n            {isLoading && (\r\n              <div className=\"elr-loading\">\r\n                <div className=\"elr-spinner\"></div>\r\n                <p>Loading PDF...</p>\r\n              </div>\r\n            )}\r\n\r\n            <Document\r\n              file={src}\r\n              onLoadSuccess={handleDocumentLoad}\r\n              loading={null}\r\n              error={\r\n                <div className=\"elr-error\">\r\n                  <p>Failed to load PDF. Please check the file and try again.</p>\r\n                </div>\r\n              }\r\n            >\r\n              <div className={`elr-pages-container elr-view-${viewMode}`}>\r\n                {viewMode === 'presentation' ? (\r\n                  // Presentation mode - fullscreen single pages\r\n                  <div className=\"elr-presentation-page\">\r\n                    <Page\r\n                      pageNumber={pageNumber}\r\n                      scale={scale}\r\n                      rotate={rotation}\r\n                      renderTextLayer={false}\r\n                      renderAnnotationLayer={false}\r\n                    />\r\n                  </div>\r\n                ) : (\r\n                  // Single or Spread mode\r\n                  pagesToRender.map(page => (\r\n                    <div key={page} className=\"elr-page-wrapper\" ref={el => pageRefsMap.current[page] = el}>\r\n                      <Page\r\n                        pageNumber={page}\r\n                        scale={scale}\r\n                        rotate={rotation}\r\n                        renderTextLayer={true}\r\n                        renderAnnotationLayer={false}\r\n                      />\r\n                    </div>\r\n                  ))\r\n                )}\r\n              </div>\r\n            </Document>\r\n          </div>\r\n        </div>\r\n\r\n        {/* Status Bar */}\r\n        <div className=\"elr-status-bar\">\r\n          <div className=\"elr-status-left\">\r\n            {numPages && `Page ${pageNumber} of ${numPages}`}\r\n          </div>\r\n          <div className=\"elr-status-center\">\r\n            {bookmarks.length > 0 && `${bookmarks.length} bookmark${bookmarks.length !== 1 ? 's' : ''}`}\r\n          </div>\r\n          <div className=\"elr-status-right\">\r\n            <button className=\"elr-mini-btn\" onClick={() => window.print()} title=\"Print (Ctrl+P)\">\r\n              <FiRotateCw size={16} />\r\n            </button>\r\n          </div>\r\n        </div>\r\n      </div>\r\n    </div>\r\n  );\r\n};\r\n\r\nexport default EdgeLikeReader;\r\n","__webpack_require__.h = () => (\"5e961618177b03095136\")"],"names":[],"ignoreList":[],"sourceRoot":""}õö‡related‰sourceMapô‹developmentì§main.5e961618177b03095136.hot-update.js«main.5e961618177b03095136.hot-update.js.map]£  "use strict";
+globalThis["webpackHotUpdatecampuslife"]("main",{
+
+/***/ "./src/SomaLux/Books/EdgeLikeReader.jsx":
+/*!**********************************************!*\
+  !*** ./src/SomaLux/Books/EdgeLikeReader.jsx ***!
+  \**********************************************/
+/***/ ((module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var react_pdf__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-pdf */ "./node_modules/pdfjs-dist/build/pdf.mjs");
+/* harmony import */ var react_pdf__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react-pdf */ "./node_modules/react-pdf/dist/Document.js");
+/* harmony import */ var react_pdf__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! react-pdf */ "./node_modules/react-pdf/dist/Page.js");
+/* harmony import */ var react_icons_fi__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! react-icons/fi */ "./node_modules/react-icons/fi/index.mjs");
+/* harmony import */ var _EdgeLikeReader_css__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./EdgeLikeReader.css */ "./src/SomaLux/Books/EdgeLikeReader.css");
+/* harmony import */ var react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! react/jsx-dev-runtime */ "./node_modules/react/jsx-dev-runtime.js");
+/* provided dependency */ var __react_refresh_utils__ = __webpack_require__(/*! ./node_modules/@pmmmwh/react-refresh-webpack-plugin/lib/runtime/RefreshUtils.js */ "./node_modules/@pmmmwh/react-refresh-webpack-plugin/lib/runtime/RefreshUtils.js");
+__webpack_require__.$Refresh$.runtime = __webpack_require__(/*! ./node_modules/react-refresh/runtime.js */ "./node_modules/react-refresh/runtime.js");
+
+var _jsxFileName = "F:\\SomaLux\\src\\SomaLux\\Books\\EdgeLikeReader.jsx",
+  _s = __webpack_require__.$Refresh$.signature();
+// EdgeLikeReader.jsx - Ultra-fast Microsoft Edge-like PDF Reader
+
+
+
+
+
+// Configure pdfjs worker
+
+if (typeof window !== 'undefined' && 'Worker' in window) {
+  react_pdf__WEBPACK_IMPORTED_MODULE_1__.GlobalWorkerOptions.workerSrc = new URL(/* asset import */ __webpack_require__(/*! pdfjs-dist/build/pdf.worker.min.mjs */ "./node_modules/pdfjs-dist/build/pdf.worker.min.mjs"), __webpack_require__.b).toString();
+}
+const EdgeLikeReader = ({
+  src,
+  title,
+  author,
+  onClose,
+  userId,
+  bookId,
+  pages = 0
+}) => {
+  _s();
+  const [numPages, setNumPages] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null);
+  const [pageNumber, setPageNumber] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(1);
+  const [scale, setScale] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(1.2);
+  const [rotation, setRotation] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(0);
+  const [isLoading, setIsLoading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(true);
+  const [showSidebar, setShowSidebar] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(window.innerWidth > 768);
+  const [sidebarTab, setSidebarTab] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('thumbnails');
+  const [viewMode, setViewMode] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('single');
+  const [isFullscreen, setIsFullscreen] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
+  const [bookmarks, setBookmarks] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
+  const [showSearch, setShowSearch] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
+  const [searchText, setSearchText] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
+  const [highlightMode, setHighlightMode] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
+  const [selectedColor, setSelectedColor] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('#FFD700');
+  const [visiblePages, setVisiblePages] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(new Set([1]));
+  const [loadError, setLoadError] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null);
+  const containerRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
+  const viewerRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
+  const pageRefsMap = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)({});
+  const handleDocumentLoad = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(({
+    numPages: nextNumPages
+  }) => {
+    setNumPages(nextNumPages || 1);
+    setIsLoading(false);
+    setLoadError(null);
+    setPageNumber(1);
+  }, []);
+  const handleLoadError = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(error => {
+    console.error('PDF load error:', error);
+    setLoadError('Failed to load PDF. Please check the file.');
+    setIsLoading(false);
+  }, []);
+  const zoomIn = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(() => {
+    setScale(s => Math.min(2.5, s + 0.15));
+  }, []);
+  const zoomOut = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(() => {
+    setScale(s => Math.max(0.6, s - 0.15));
+  }, []);
+  const toggleFullscreen = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(() => {
+    setIsFullscreen(v => !v);
+  }, []);
+  const toggleSidebar = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(() => {
+    setShowSidebar(v => !v);
+  }, []);
+  const toggleBookmark = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(() => {
+    setBookmarks(prev => {
+      const exists = prev.includes(pageNumber);
+      if (exists) {
+        return prev.filter(p => p !== pageNumber);
+      } else {
+        return [...prev, pageNumber].sort((a, b) => a - b);
+      }
+    });
+  }, [pageNumber]);
+  const goToPage = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(page => {
+    const newPage = Math.max(1, Math.min(numPages || 1, page));
+    setPageNumber(newPage);
+  }, [numPages]);
+  const goNext = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(() => {
+    goToPage(pageNumber + (viewMode === 'spread' ? 2 : 1));
+  }, [pageNumber, viewMode, goToPage]);
+  const goPrev = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(() => {
+    goToPage(pageNumber - (viewMode === 'spread' ? 2 : 1));
+  }, [pageNumber, viewMode, goToPage]);
+  const rotate = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(() => {
+    setRotation(r => (r + 90) % 360);
+  }, []);
+
+  // Keyboard shortcuts
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    const handleKeyDown = e => {
+      if (e.key === 'Escape') {
+        if (showSearch) {
+          setShowSearch(false);
+        } else if (highlightMode) {
+          setHighlightMode(false);
+        } else if (isFullscreen) {
+          setIsFullscreen(false);
+        } else {
+          onClose();
+        }
+      }
+      if (e.key === 'ArrowLeft') goPrev();
+      if (e.key === 'ArrowRight') goNext();
+      if ((e.ctrlKey || e.metaKey) && e.key === '+') {
+        e.preventDefault();
+        zoomIn();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        zoomOut();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault();
+        fitToWidth();
+      }
+      if (e.key === 'f' || e.key === 'F') {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          setShowSearch(true);
+        } else {
+          e.preventDefault();
+          toggleFullscreen();
+        }
+      }
+      if (e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        toggleBookmark();
+      }
+      if (e.key === 'h' || e.key === 'H') {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          setHighlightMode(v => !v);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pageNumber, numPages, isFullscreen, viewMode, showSearch, highlightMode, goPrev, goNext, zoomIn, zoomOut, fitToWidth, toggleFullscreen, toggleBookmark, onClose]);
+
+  // Render pages based on view mode
+  const pagesToRender = (0,react__WEBPACK_IMPORTED_MODULE_0__.useMemo)(() => {
+    if (viewMode === 'spread' && pageNumber % 2 !== 0) {
+      return [pageNumber, pageNumber + 1].filter(p => p <= numPages);
+    } else if (viewMode === 'spread' && pageNumber % 2 === 0) {
+      return [pageNumber, pageNumber + 1].filter(p => p <= numPages);
+    }
+    return [pageNumber];
+  }, [pageNumber, viewMode, numPages]);
+  return /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+    className: `elr-overlay ${isFullscreen ? 'fullscreen' : ''}`,
+    onClick: onClose,
+    children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+      className: `elr-container ${isFullscreen ? 'fullscreen' : ''}`,
+      onClick: e => e.stopPropagation(),
+      children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+        className: "elr-header",
+        children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+          className: "elr-header-left",
+          children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+            className: "elr-icon-btn",
+            onClick: toggleSidebar,
+            title: "Toggle sidebar (Ctrl+Shift+F)",
+            children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiMenu, {
+              size: 20
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 190,
+              columnNumber: 15
+            }, undefined)
+          }, void 0, false, {
+            fileName: _jsxFileName,
+            lineNumber: 185,
+            columnNumber: 13
+          }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+            className: "elr-title-section",
+            children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+              className: "elr-title",
+              children: title
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 193,
+              columnNumber: 15
+            }, undefined), author && /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+              className: "elr-author",
+              children: ["by ", author]
+            }, void 0, true, {
+              fileName: _jsxFileName,
+              lineNumber: 194,
+              columnNumber: 26
+            }, undefined)]
+          }, void 0, true, {
+            fileName: _jsxFileName,
+            lineNumber: 192,
+            columnNumber: 13
+          }, undefined)]
+        }, void 0, true, {
+          fileName: _jsxFileName,
+          lineNumber: 184,
+          columnNumber: 11
+        }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+          className: "elr-header-center",
+          children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+            className: "elr-icon-btn",
+            onClick: goPrev,
+            disabled: pageNumber <= 1,
+            title: "Previous page (\u2190)",
+            children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiChevronLeft, {
+              size: 20
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 205,
+              columnNumber: 15
+            }, undefined)
+          }, void 0, false, {
+            fileName: _jsxFileName,
+            lineNumber: 199,
+            columnNumber: 13
+          }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("input", {
+            type: "number",
+            min: "1",
+            max: numPages,
+            value: pageNumber,
+            onChange: e => goToPage(parseInt(e.target.value) || 1),
+            className: "elr-page-input",
+            title: "Go to page"
+          }, void 0, false, {
+            fileName: _jsxFileName,
+            lineNumber: 207,
+            columnNumber: 13
+          }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("span", {
+            className: "elr-page-separator",
+            children: "/"
+          }, void 0, false, {
+            fileName: _jsxFileName,
+            lineNumber: 216,
+            columnNumber: 13
+          }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("span", {
+            className: "elr-page-total",
+            children: numPages || 0
+          }, void 0, false, {
+            fileName: _jsxFileName,
+            lineNumber: 217,
+            columnNumber: 13
+          }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+            className: "elr-icon-btn",
+            onClick: goNext,
+            disabled: pageNumber >= (numPages || 1),
+            title: "Next page (\u2192)",
+            children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiChevronRight, {
+              size: 20
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 224,
+              columnNumber: 15
+            }, undefined)
+          }, void 0, false, {
+            fileName: _jsxFileName,
+            lineNumber: 218,
+            columnNumber: 13
+          }, undefined)]
+        }, void 0, true, {
+          fileName: _jsxFileName,
+          lineNumber: 198,
+          columnNumber: 11
+        }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+          className: "elr-header-right",
+          children: [showSearch && /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+            className: "elr-search-box",
+            children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiSearch, {
+              size: 18
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 232,
+              columnNumber: 17
+            }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("input", {
+              type: "text",
+              placeholder: "Search in document...",
+              autoFocus: true,
+              className: "elr-search-input"
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 233,
+              columnNumber: 17
+            }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+              className: "elr-icon-btn-small",
+              onClick: () => setShowSearch(false),
+              title: "Close search",
+              children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiX, {
+                size: 16
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 244,
+                columnNumber: 19
+              }, undefined)
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 239,
+              columnNumber: 17
+            }, undefined)]
+          }, void 0, true, {
+            fileName: _jsxFileName,
+            lineNumber: 231,
+            columnNumber: 15
+          }, undefined), !showSearch && /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.Fragment, {
+            children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+              className: "elr-view-mode",
+              children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+                className: `elr-view-btn ${viewMode === 'single' ? 'active' : ''}`,
+                onClick: () => setViewMode('single'),
+                title: "Single page view",
+                children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiLayout, {
+                  size: 18
+                }, void 0, false, {
+                  fileName: _jsxFileName,
+                  lineNumber: 258,
+                  columnNumber: 21
+                }, undefined)
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 253,
+                columnNumber: 19
+              }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+                className: `elr-view-btn ${viewMode === 'spread' ? 'active' : ''}`,
+                onClick: () => setViewMode('spread'),
+                title: "Two-page spread view",
+                children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiColumns, {
+                  size: 18
+                }, void 0, false, {
+                  fileName: _jsxFileName,
+                  lineNumber: 265,
+                  columnNumber: 21
+                }, undefined)
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 260,
+                columnNumber: 19
+              }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+                className: `elr-view-btn ${viewMode === 'presentation' ? 'active' : ''}`,
+                onClick: () => setViewMode('presentation'),
+                title: "Presentation mode",
+                children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiPlay, {
+                  size: 18
+                }, void 0, false, {
+                  fileName: _jsxFileName,
+                  lineNumber: 272,
+                  columnNumber: 21
+                }, undefined)
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 267,
+                columnNumber: 19
+              }, undefined)]
+            }, void 0, true, {
+              fileName: _jsxFileName,
+              lineNumber: 252,
+              columnNumber: 17
+            }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+              className: "elr-zoom-controls",
+              children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+                className: "elr-icon-btn",
+                onClick: zoomOut,
+                title: "Zoom out (Ctrl+-)",
+                children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiZoomOut, {
+                  size: 18
+                }, void 0, false, {
+                  fileName: _jsxFileName,
+                  lineNumber: 283,
+                  columnNumber: 21
+                }, undefined)
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 278,
+                columnNumber: 19
+              }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("span", {
+                className: "elr-zoom-level",
+                children: [Math.round(scale * 100), "%"]
+              }, void 0, true, {
+                fileName: _jsxFileName,
+                lineNumber: 285,
+                columnNumber: 19
+              }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+                className: "elr-icon-btn",
+                onClick: zoomIn,
+                title: "Zoom in (Ctrl++)",
+                children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiZoomIn, {
+                  size: 18
+                }, void 0, false, {
+                  fileName: _jsxFileName,
+                  lineNumber: 291,
+                  columnNumber: 21
+                }, undefined)
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 286,
+                columnNumber: 19
+              }, undefined)]
+            }, void 0, true, {
+              fileName: _jsxFileName,
+              lineNumber: 277,
+              columnNumber: 17
+            }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+              className: `elr-icon-btn ${highlightMode ? 'active' : ''}`,
+              onClick: () => setHighlightMode(v => !v),
+              title: "Highlight text (Ctrl+H)",
+              style: {
+                color: highlightMode ? selectedColor : 'inherit'
+              },
+              children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiEdit3, {
+                size: 18
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 302,
+                columnNumber: 19
+              }, undefined)
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 296,
+              columnNumber: 17
+            }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+              className: "elr-icon-btn",
+              onClick: toggleBookmark,
+              title: "Toggle bookmark (B)",
+              style: {
+                color: bookmarks.includes(pageNumber) ? '#10b981' : 'inherit'
+              },
+              children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiBookmark, {
+                size: 18
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 312,
+                columnNumber: 19
+              }, undefined)
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 306,
+              columnNumber: 17
+            }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+              className: "elr-icon-btn",
+              onClick: rotate,
+              title: "Rotate page",
+              children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiRotateCw, {
+                size: 18
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 320,
+                columnNumber: 19
+              }, undefined)
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 315,
+              columnNumber: 17
+            }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+              className: "elr-icon-btn",
+              onClick: () => setShowSearch(true),
+              title: "Search (Ctrl+F)",
+              children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiSearch, {
+                size: 18
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 329,
+                columnNumber: 19
+              }, undefined)
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 324,
+              columnNumber: 17
+            }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+              className: "elr-icon-btn",
+              onClick: toggleFullscreen,
+              title: "Toggle fullscreen (F)",
+              children: isFullscreen ? /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiMinimize2, {
+                size: 18
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 337,
+                columnNumber: 35
+              }, undefined) : /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiMaximize2, {
+                size: 18
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 337,
+                columnNumber: 63
+              }, undefined)
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 332,
+              columnNumber: 17
+            }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+              className: "elr-icon-btn elr-close-btn",
+              onClick: onClose,
+              title: "Close reader (Esc)",
+              children: /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)(react_icons_fi__WEBPACK_IMPORTED_MODULE_4__.FiX, {
+                size: 20
+              }, void 0, false, {
+                fileName: _jsxFileName,
+                lineNumber: 345,
+                columnNumber: 19
+              }, undefined)
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 340,
+              columnNumber: 17
+            }, undefined)]
+          }, void 0, true)]
+        }, void 0, true, {
+          fileName: _jsxFileName,
+          lineNumber: 228,
+          columnNumber: 11
+        }, undefined)]
+      }, void 0, true, {
+        fileName: _jsxFileName,
+        lineNumber: 183,
+        columnNumber: 9
+      }, undefined), highlightMode && /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+        className: "elr-color-picker-bar",
+        children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("span", {
+          className: "elr-picker-label",
+          children: "Highlight color:"
+        }, void 0, false, {
+          fileName: _jsxFileName,
+          lineNumber: 355,
+          columnNumber: 13
+        }, undefined), ['#FFD700', '#FF6B6B', '#4ECDC4', '#95E1D3', '#F38181'].map(color => /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+          className: `elr-color-btn ${selectedColor === color ? 'active' : ''}`,
+          style: {
+            backgroundColor: color
+          },
+          onClick: () => setSelectedColor(color),
+          title: color
+        }, color, false, {
+          fileName: _jsxFileName,
+          lineNumber: 357,
+          columnNumber: 15
+        }, undefined))]
+      }, void 0, true, {
+        fileName: _jsxFileName,
+        lineNumber: 354,
+        columnNumber: 11
+      }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+        className: "elr-content-wrapper",
+        children: [showSidebar && /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("aside", {
+          className: "elr-sidebar",
+          children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("div", {
+            className: "elr-sidebar-tabs",
+            children: [/*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+              className: `elr-sidebar-tab ${sidebarTab === 'thumbnails' ? 'active' : ''}`,
+              onClick: () => setSidebarTab('thumbnails'),
+              children: "Thumbnails"
+            }, void 0, false, {
+              fileName: _jsxFileName,
+              lineNumber: 375,
+              columnNumber: 17
+            }, undefined), /*#__PURE__*/(0,react_jsx_dev_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxDEV)("button", {
+              className: `elr-sidebar-tab ${sidebarTab === 'bookmarks' ? 'active' : ''}`,
+              onClick: () => setSidebarTab('bookmarks'),
+              children: ["Marks (", bookmarks.length, ")"]
+            }, void 0, true, {
+              fileName: _jsxFileName,
+              line

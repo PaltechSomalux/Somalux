@@ -1,0 +1,21 @@
+{
+  "completed": [],
+  "failed": [
+    {
+      "path": "D:\\Books\\Resin Transfer Moulding for Aerospace Structures_.pdf",
+      "reason": "PDF upload failed: PDF upload failed: signature verification failed"
+    },
+    {
+      "path": "D:\\Books\\Robust and Adaptive Control_.pdf",
+      "reason": "PDF upload failed: PDF upload failed: signature verification failed"
+    },
+    {
+      "path": "D:\\Books\\Supply Chain Integration Challenges in Commercial Aerospace_.pdf",
+      "reason": "PDF upload failed: PDF upload failed: signature verification failed"
+    }
+  ],
+  "skipped": [],
+  "successful": 0,
+  "startedAt": "2025-12-11T11:34:07.663Z",
+  "lastSavedAt": "2025-12-11T11:34:58.413Z"
+}

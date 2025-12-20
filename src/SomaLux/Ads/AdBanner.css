@@ -1,0 +1,284 @@
+.ad-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.9);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ad-banner.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+}
+
+.ad-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ad-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ad-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  cursor: pointer;
+}
+
+.ad-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px;
+  gap: 8px;
+}
+
+.ad-label {
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 4px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+/* Countdown Timer */
+.ad-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+}
+
+.countdown-text {
+  color: white;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Close Button */
+.ad-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  transition: all 0.2s ease;
+  padding: 0;
+  z-index: 10001;
+}
+
+.ad-close-btn:hover {
+  background: rgba(255, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+.ad-close-btn:active {
+  transform: scale(0.95);
+}
+
+.ad-close-btn svg {
+  stroke-width: 3;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .ad-close-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    top: 15px;
+    right: 15px;
+  }
+
+  .ad-countdown {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+  }
+
+  .countdown-text {
+    font-size: 16px;
+  }
+
+  .ad-overlay {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ad-overlay {
+    padding: 12px;
+  }
+
+  .ad-label {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+
+  .ad-countdown {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+  }
+
+  .countdown-text {
+    font-size: 12px;
+  }
+
+  .ad-close-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 14px;
+    top: 8px;
+    right: 8px;
+  }
+}
+
+/* Grid Placement Styling */
+.ad-grid-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0b1216;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+@media (min-width: 640px) {
+  .ad-grid-card {
+    min-height: 200px;
+  }
+}
+
+@media (min-width: 768px) {
+  .ad-grid-card {
+    min-height: 180px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .ad-grid-card {
+    min-height: 220px;
+  }
+}
+
+.ad-grid-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 8px;
+  pointer-events: none;
+}
+
+.ad-grid-overlay .ad-label {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  z-index: 2;
+}
+
+.ad-grid-overlay .ad-countdown {
+  position: absolute;
+  top: 8px;
+  right: 40px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  z-index: 2;
+}
+
+.ad-grid-overlay .ad-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 2;
+  font-size: 14px;
+  pointer-events: auto;
+  transition: background-color 0.2s ease;
+}
+
+.ad-grid-overlay .ad-close-btn:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
