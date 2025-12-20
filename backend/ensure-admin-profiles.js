@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wuwlnawtuhjoubfkdtgc.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wuwlnawtuhjoubfkdtgc.supabase.co'; // Using correct Supabase project
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 if (!SUPABASE_SERVICE_ROLE_KEY) {

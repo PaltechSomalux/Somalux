@@ -1979,7 +1979,7 @@ app.post('/api/elib/submissions/:id/approve', async (req, res) => {
     let finalFileUrl = fileUrl;
     if (type === 'past_papers' && fileUrl && !fileUrl.includes('https://')) {
       // Convert filename to full Supabase public URL
-      const projectUrl = process.env.SUPABASE_URL || 'https://wuwlnawtuhjoubfkdtgc.supabase.co';
+      const projectUrl = process.env.SUPABASE_URL || 'https://wuwlnawtuhjoubfkdtgc.supabase.co'; // Correct Supabase project
       finalFileUrl = `${projectUrl}/storage/v1/object/public/past-papers/${fileUrl}`;
     }
 

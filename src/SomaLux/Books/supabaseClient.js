@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const fallbackUrl = 'https://hoegjepmtegvgnnaohdr.supabase.co';
-const fallbackKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvZWdqZXBtdGVndmdubmFvaGRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0MTY3NzEsImV4cCI6MjA3Nzk5Mjc3MX0.uCh8GEV2rplB6QUXEWCNoiPRY9-heNxldNAOJJzQdF8';
+const fallbackUrl = 'https://wuwlnawtuhjoubfkdtgc.supabase.co';
+const fallbackKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1d2xuYXd0dWhqb3ViZmtkdGdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0MTM5NzAsImV4cCI6MjA4MDk4OTk3MH0.fYzq5xT7ym02Ck1_WyoOHtt-QsRArj1CYqPBYLQula4';
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || fallbackUrl;
 const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || fallbackKey;

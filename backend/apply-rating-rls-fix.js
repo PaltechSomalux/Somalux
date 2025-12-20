@@ -12,7 +12,7 @@ import pg from 'pg';
 // Load environment variables
 dotenv.config();
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://wuwlnawtuhjoubfkdtgc.supabase.co';
+const supabaseUrl = process.env.SUPABASE_URL || 'https://wuwlnawtuhjoubfkdtgc.supabase.co'; // Correct URL with wuwlnawtuhjoubfkdtgc
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
