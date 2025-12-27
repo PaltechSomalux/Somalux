@@ -3656,17 +3656,20 @@ app.use((err, req, res, next) => {
 });
 
 // Serve React frontend
-const buildPath = path.join(path.dirname(new URL(import.meta.url).pathname), '../build');
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
+const buildPath = path.join(__dirname, '..', 'build');
+console.log(`🔍 Looking for build folder at: ${buildPath}`);
+console.log(`📁 Build folder exists: ${existsSync(buildPath)}`);
+
 if (existsSync(buildPath)) {
+  console.log(`✅ Serving React frontend from ${buildPath}`);
   app.use(express.static(buildPath));
   // Catch-all route - serve index.html for client-side routing
   app.get('*', (req, res) => {
     res.sendFile(path.join(buildPath, 'index.html'));
   });
-}
-
-// 404 handler (no routes matched) - only if build folder doesn't exist
-if (!existsSync(buildPath)) {
+} else {
+  // 404 handler - only if build folder doesn't exist
   app.use((req, res) => {
     console.warn(`⚠️ [NOT FOUND] ${req.method} ${req.path}`);
     res.status(404).json({
