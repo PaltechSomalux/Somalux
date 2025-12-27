@@ -3655,24 +3655,47 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Health check endpoint
-app.get('/', (req, res) => {
-  res.json({ 
-    ok: true, 
-    message: 'Somalux Backend is running',
-    timestamp: new Date().toISOString()
-  });
-});
+// Serve React frontend from build folder
+const buildPath = path.join(process.cwd(), '..', 'build');
+console.log(`📁 Build path: ${buildPath}`);
+console.log(`✅ Build exists: ${existsSync(buildPath)}`);
 
-// 404 handler (no routes matched)
-app.use((req, res) => {
-  console.warn(`⚠️ [NOT FOUND] ${req.method} ${req.path}`);
-  res.status(404).json({
-    ok: false,
-    error: 'Not found',
-    message: `${req.method} ${req.path} does not exist`
+if (existsSync(buildPath)) {
+  // Serve static files from build folder
+  app.use(express.static(buildPath));
+  
+  // Catch-all route for client-side routing - serve index.html
+  app.get('*', (req, res) => {
+    // Don't catch API routes - they're handled above
+    if (req.path.startsWith('/api') || req.path.startsWith('/subscribe-topic')) {
+      return res.status(404).json({
+        ok: false,
+        error: 'Not found',
+        message: `${req.method} ${req.path} does not exist`
+      });
+    }
+    res.sendFile(path.join(buildPath, 'index.html'));
   });
-});
+} else {
+  // Fallback if build folder doesn't exist
+  app.get('/', (req, res) => {
+    res.json({ 
+      ok: true, 
+      message: 'Somalux Backend is running',
+      note: 'Build folder not found - frontend not served',
+      timestamp: new Date().toISOString()
+    });
+  });
+  
+  // 404 handler
+  app.use((req, res) => {
+    res.status(404).json({
+      ok: false,
+      error: 'Not found',
+      message: `${req.method} ${req.path} does not exist`
+    });
+  });
+}
 
 server = app.listen(PORT, () => {
   console.log(`✅ Backend + WebSocket server running on http://localhost:${PORT}`);
