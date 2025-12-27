@@ -3655,15 +3655,27 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler (no routes matched)
-app.use((req, res) => {
-  console.warn(`⚠️ [NOT FOUND] ${req.method} ${req.path}`);
-  res.status(404).json({
-    ok: false,
-    error: 'Not found',
-    message: `${req.method} ${req.path} does not exist`
+// Serve React frontend
+const buildPath = path.join(path.dirname(new URL(import.meta.url).pathname), '../build');
+if (existsSync(buildPath)) {
+  app.use(express.static(buildPath));
+  // Catch-all route - serve index.html for client-side routing
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(buildPath, 'index.html'));
   });
-});
+}
+
+// 404 handler (no routes matched) - only if build folder doesn't exist
+if (!existsSync(buildPath)) {
+  app.use((req, res) => {
+    console.warn(`⚠️ [NOT FOUND] ${req.method} ${req.path}`);
+    res.status(404).json({
+      ok: false,
+      error: 'Not found',
+      message: `${req.method} ${req.path} does not exist`
+    });
+  });
+}
 
 server = app.listen(PORT, () => {
   console.log(`✅ Backend + WebSocket server running on http://localhost:${PORT}`);

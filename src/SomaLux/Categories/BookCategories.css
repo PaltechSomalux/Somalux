@@ -16,7 +16,7 @@
 .containercat {
   max-width: 100%;
   margin-top: -40px;
-  padding: 0.75rem 0.5rem;
+  padding: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: #0b1216;
 }
@@ -32,7 +32,7 @@
 
 .titlecat {
   font-size: 1.25rem;
-  color: #e9edef;
+  color: #b3bcc5;
   margin-bottom: 0.15rem;
   font-weight: 700;
   line-height: 1.2;

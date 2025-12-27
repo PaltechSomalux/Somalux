@@ -275,7 +275,7 @@ export const Profile = ({ user: propUser = null }) => {
   const liveWishlist = wishlistCount ?? localUser?.wishlist ?? 0;
   const notifications = notificationsCount || localUser?.notifications || 0;
 
-  const totalBadgeCount = (liveWishlist || 0) + (favorites || 0) + (notifications || 0);
+  const totalBadgeCount = (favorites || 0) + (notifications || 0);
 
   return (
     <div className="chrome-profile" ref={dropdownRef}>

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { FiDownload } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
+import { downloadOptimizer } from '../../utils/DownloadOptimizer';
 
 const IconDownloadButton = styled(motion.button)`
   background: transparent; /* Keep background transparent */
@@ -26,21 +27,27 @@ const IconDownloadButton = styled(motion.button)`
 `;
 
 const FullDownloadButton = styled(motion.button)`
-  padding: 8px 16px;
-  background: transparent; /* Keep background transparent */
-  border: none; /* Removed border */
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #2a3942;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
+  color: #e5e7eb;
+  cursor: pointer;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
   font-size: 0.9rem;
-  color: #d3d3d3; /* Changed text/icon color to lightgrey */
-  transition: all 0.2s ease;
-  margin-left: 0; /* Aligns to the left corner */
+  font-weight: 500;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 
   &:hover {
-    color: #b0b0b0; /* Slightly darker lightgrey for hover effect */
+    transform: translateY(-1px);
+    border-color: #6366f1;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
   }
 
   &:disabled {
@@ -48,6 +55,79 @@ const FullDownloadButton = styled(motion.button)`
     cursor: not-allowed;
   }
 `;
+
+// High-speed download utility with streaming and caching
+const highSpeedDownload = async (url, filename) => {
+  try {
+    // Use DownloadOptimizer for maximum performance
+    const response = await fetch(url, {
+      method: 'GET',
+      cache: 'force-cache', // Use browser cache aggressively
+      headers: {
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Priority': 'high',
+      },
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const chunks = [];
+
+    // Stream response for memory efficiency
+    const reader = response.body.getReader();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+
+    // Create blob from chunks
+    const blob = new Blob(chunks, { type: response.headers.get('content-type') || 'application/octet-stream' });
+
+    // Trigger download immediately
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    }, 50);
+
+    // Store in IndexedDB for offline access
+    if (typeof window !== 'undefined' && window.indexedDB) {
+      try {
+        const db = await new Promise((resolve, reject) => {
+          const req = indexedDB.open('SomaLuxDownloads', 1);
+          req.onupgradeneeded = (e) => {
+            const objStore = e.target.result.createObjectStore('files', { keyPath: 'filename' });
+            objStore.createIndex('timestamp', 'timestamp', { unique: false });
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+
+        const transaction = db.transaction('files', 'readwrite');
+        transaction.objectStore('files').put({
+          filename,
+          blob,
+          timestamp: Date.now(),
+          size: blob.size,
+        });
+      } catch (e) {
+        console.warn('IndexedDB storage failed:', e);
+      }
+    }
+  } catch (error) {
+    console.error('High-speed download failed:', error);
+    throw error;
+  }
+};
 
 export const Download = ({
   book,
@@ -59,6 +139,7 @@ export const Download = ({
   downloadingText = 'Downloading...',
 }) => {
   const [downloading, setDownloading] = useState(false);
+  const abortControllerRef = useRef(null);
 
   // Handle case where neither book nor file is provided
   if (!book && !file) {
@@ -77,17 +158,18 @@ export const Download = ({
     }
 
     setDownloading(true);
+    abortControllerRef.current = new AbortController();
 
     try {
       // If a direct file URL is provided
       if (file) {
-        await downloadFile(file.url, file.filename || file.url.split('/').pop());
+        await highSpeedDownload(file.url, file.filename || file.url.split('/').pop());
       }
       // If a book object is provided (legacy support)
       else if (book) {
         if (book.downloadUrl) {
           // If book has a direct download URL
-          await downloadFile(
+          await highSpeedDownload(
             book.downloadUrl,
             book.downloadFilename || `${book.title.replace(/\s+/g, '_')}.${book.fileFormat || 'txt'}`
           );
@@ -106,48 +188,21 @@ export const Download = ({
     }
   };
 
-  const downloadFile = async (url, filename) => {
-    // For same-origin URLs or data URLs, we can use the fetch API
-    if (url.startsWith('data:') || url.startsWith(window.location.origin)) {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      triggerDownload(blob, filename);
-    }
-    // For external URLs, create a hidden anchor tag
-    else {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.target = '_blank'; // For cases where download attribute isn't supported
-      document.body.appendChild(a);
-      a.click();
-
-      // Clean up
-      setTimeout(() => {
-        document.body.removeChild(a);
-      }, 100);
-    }
-  };
-
   const generateSampleDownload = (book) => {
     const sampleContent = `${book.title} - Sample\nby ${book.author}\n\n${book.sampleText || 'No sample content available'}`;
     const blob = new Blob([sampleContent], { type: 'text/plain' });
-    triggerDownload(blob, `${book.title.replace(/\s+/g, '_')}_Sample.txt`);
-  };
-
-  const triggerDownload = (blob, filename) => {
-    const url = URL.createObjectURL(blob);
+    const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
+    a.href = blobUrl;
+    a.download = `${book.title.replace(/\s+/g, '_')}_Sample.txt`;
     document.body.appendChild(a);
     a.click();
 
     // Clean up
     setTimeout(() => {
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
+      URL.revokeObjectURL(blobUrl);
+    }, 50);
   };
 
   if (variant === 'full') {

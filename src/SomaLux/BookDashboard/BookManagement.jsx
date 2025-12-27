@@ -88,7 +88,7 @@ export const BookManagement = () => {
       {/* Header */}
       <div className="book-management-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h2 className="header-title">SomaLux</h2>
+          <h2 className="header-title">Somalux</h2>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

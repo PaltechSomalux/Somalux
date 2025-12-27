@@ -341,7 +341,6 @@ export const BookCategories = () => {
       <div className="containercat">
         <header className="headercat">
           <h1 className="titlecat">Categories</h1>
-          <p className="subtitlecat">Fly ✈️ ~ take a friend</p>
         </header>
         
         <div className="controlscat">
@@ -377,7 +376,6 @@ export const BookCategories = () => {
       
       <header className="headercat">
         <h1 className="titlecat">Categories</h1>
-        <p className="subtitlecat">Just fly ✈️ ~ take a friend</p>
       </header>
 
       <div className="controlscat">

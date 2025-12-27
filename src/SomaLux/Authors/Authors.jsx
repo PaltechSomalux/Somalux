@@ -863,7 +863,6 @@ export const Authors = () => {
       <header className="headerBKP">
         <div>
           <h2 className="titleBKP">Authors</h2>
-          <p className="subtitleBKP">Discover great authors and their works</p>
         </div>
       </header>
 

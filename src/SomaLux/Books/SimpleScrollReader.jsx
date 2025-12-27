@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import { FiX, FiZoomIn, FiZoomOut, FiList, FiDownload, FiBarChart2, FiSettings, FiEdit3 } from 'react-icons/fi';
+import { FiX, FiZoomIn, FiZoomOut, FiList, FiDownload, FiBarChart2, FiSettings, FiEdit3, FiBookmark } from 'react-icons/fi';
 import { PDFDocument } from 'pdf-lib';
 import saveAs from 'file-saver';
 import SummaryModal from './SummaryModal';
@@ -55,6 +55,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const [statisticsModalOpen, setStatisticsModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [bookmarksPageOpen, setBookmarksPageOpen] = useState(false);
   const [notes, setNotes] = useState(new Map());
   const [readingStartTime, setReadingStartTime] = useState(new Date());
   const [totalReadingTime, setTotalReadingTime] = useState(0);
@@ -568,17 +569,26 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
             )}
 
             {/* Icon buttons only - no containers */}
-            <button onClick={() => setShowTOC(!showTOC)} className="ssr-icon-btn" title="Toggle table of contents">
+            <button onClick={() => setShowTOC(!showTOC)} className="ssr-icon-btn ssr-toc-toggle" title="Toggle table of contents">
               <FiList size={18} />
             </button>
 
-            {/* Bookmark current page button */}
+            {/* Bookmark current page button - toggles bookmark */}
             <button 
-              onClick={() => toggleBookmark(currentPage)} 
-              className={`ssr-icon-btn ${bookmarks.has(currentPage) ? 'active' : ''}`}
+              onClick={() => toggleBookmark(currentPage)}
+              className={`ssr-icon-btn ssr-bookmark-btn-desktop ${bookmarks.has(currentPage) ? 'active' : ''}`}
               title={bookmarks.has(currentPage) ? 'Remove bookmark' : 'Add bookmark'}
             >
               ⭐
+            </button>
+
+            {/* Mobile bookmark button with icon */}
+            <button 
+              onClick={() => toggleBookmark(currentPage)}
+              className={`ssr-icon-btn ssr-bookmark-btn-mobile ${bookmarks.has(currentPage) ? 'active' : ''}`}
+              title={bookmarks.has(currentPage) ? 'Remove bookmark' : 'Add bookmark'}
+            >
+              <FiBookmark size={18} fill={bookmarks.has(currentPage) ? 'currentColor' : 'none'} />
             </button>
 
             {/* Add Note button */}
@@ -651,10 +661,10 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
               </div>
             )}
             
-            <button onClick={zoomOut} className="ssr-icon-btn" title="Zoom out (Ctrl + -)">
+            <button onClick={zoomOut} className="ssr-icon-btn ssr-zoom-btn" title="Zoom out (Ctrl + -)">
               <FiZoomOut size={18} />
             </button>
-            <button onClick={zoomIn} className="ssr-icon-btn" title="Zoom in (Ctrl + +)">
+            <button onClick={zoomIn} className="ssr-icon-btn ssr-zoom-btn" title="Zoom in (Ctrl + +)">
               <FiZoomIn size={18} />
             </button>
             <button onClick={onClose} className="ssr-icon-btn" title="Close (Esc)">
@@ -674,7 +684,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
 
               {/* Bookmarks section */}
               {getBookmarkedPages().length > 0 && (
-                <div className="ssr-bookmarks-section">
+                <div className="ssr-bookmarks-section ssr-bookmarks-mobile">
                   <div className="ssr-bookmarks-title">
                     <span>⭐ Bookmarks</span>
                     <button 
@@ -796,6 +806,18 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
           </div>
         </div>
 
+        {/* Floating View Bookmarks Button - Mobile Only, Shows only when bookmarks exist */}
+        {getBookmarkedPages().length > 0 && (
+          <button
+            onClick={() => setBookmarksPageOpen(true)}
+            className="ssr-floating-bookmarks-btn"
+            title="View all bookmarks"
+          >
+            <FiBookmark size={24} />
+            <span className="ssr-bookmarks-badge">{getBookmarkedPages().length}</span>
+          </button>
+        )}
+
         {/* Summary Modal */}
         <SummaryModal
           isOpen={summaryModalOpen}
@@ -839,6 +861,112 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
           onAddNote={addNote}
           onClose={() => setNoteModalOpen(false)}
         />
+
+        {/* Bookmarks Page/Modal for Mobile */}
+        {bookmarksPageOpen && (
+          <div className="ssr-bookmarks-page-overlay">
+            <div className="ssr-bookmarks-page">
+              <div className="ssr-bookmarks-page-header">
+                <div className="ssr-bookmarks-page-header-content">
+                  <h2>⭐ My Bookmarks</h2>
+                  <span className="ssr-bookmarks-page-count">{getBookmarkedPages().length} marked page{getBookmarkedPages().length !== 1 ? 's' : ''}</span>
+                </div>
+                <button
+                  onClick={() => setBookmarksPageOpen(false)}
+                  className="ssr-bookmarks-page-close"
+                  title="Close bookmarks"
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
+
+              <div className="ssr-bookmarks-page-content">
+                {getBookmarkedPages().length > 0 ? (
+                  <div className="ssr-bookmarks-page-list">
+                    {getBookmarkedPages().map((page, index) => (
+                      <div
+                        key={`bookmark-page-${page}`}
+                        className={`ssr-bookmarks-page-item ${currentPage === page ? 'active' : ''}`}
+                        style={{ animationDelay: `${index * 0.05}s` }}
+                      >
+                        <div 
+                          className="ssr-bookmarks-page-item-left"
+                          onClick={() => {
+                            jumpToPage(page);
+                            setBookmarksPageOpen(false);
+                          }}
+                        >
+                          <div className="ssr-bookmarks-page-item-number-box">
+                            <span className="ssr-bookmarks-page-item-number">{page}</span>
+                          </div>
+                          <div className="ssr-bookmarks-page-item-details">
+                            <div className="ssr-bookmarks-page-item-title">Page {page}</div>
+                            {notes.get(page) && (
+                              <div className="ssr-bookmarks-page-item-note-preview">
+                                {notes.get(page).substring(0, 35)}
+                              </div>
+                            )}
+                          </div>
+                          {currentPage === page && <span className="ssr-bookmarks-page-item-reading">Reading</span>}
+                        </div>
+                        <div className="ssr-bookmarks-page-item-actions">
+                          <button
+                            className="ssr-bookmarks-page-action-btn ssr-bookmarks-page-note-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNoteModalOpen(true);
+                            }}
+                            title={notes.get(page) ? 'Edit note' : 'Add note'}
+                          >
+                            📝
+                          </button>
+                          <button
+                            className="ssr-bookmarks-page-action-btn ssr-bookmarks-page-summary-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openSummary(page);
+                            }}
+                            title="View summary"
+                          >
+                            📋
+                          </button>
+                          <button
+                            className="ssr-bookmarks-page-action-btn ssr-bookmarks-page-remove-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleBookmark(page);
+                            }}
+                            title="Remove bookmark"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="ssr-bookmarks-page-empty">
+                    <div className="ssr-bookmarks-page-empty-icon">⭐</div>
+                    <p>No bookmarks yet</p>
+                    <small>Mark pages while reading to keep track</small>
+                  </div>
+                )}
+              </div>
+
+              {getBookmarkedPages().length > 0 && (
+                <div className="ssr-bookmarks-page-footer">
+                  <button
+                    onClick={openDownloadModal}
+                    className="ssr-bookmarks-page-download-btn"
+                    title="Download bookmarked pages"
+                  >
+                    <FiDownload size={16} /> Download All ({getBookmarkedPages().length})
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

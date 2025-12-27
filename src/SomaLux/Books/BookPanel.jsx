@@ -61,7 +61,7 @@ const ReactionButtonsBKP = ({
       }}
       title="Love this book"
     >
-      {isLoved ? <FaHeart color="red" size={14} /> : <FaRegHeart size={14} />}
+      {isLoved ? <FaHeart color="red" size={10} /> : <FaRegHeart size={10} />}
       <span className="countBKP">{loves || 0}</span>
     </button>
   );
@@ -2030,7 +2030,6 @@ export const BookPanel = ({ demoMode = false }) => {
       <div className="containerBKP">
         <header className="headerBKP">
           <h2 className="titleBKP">Books</h2>
-          <p className="subtitleBKP">Life happens here ~ Books, find your taste</p>
         </header>
 
         <div className="controlsBKP">
@@ -2129,6 +2128,8 @@ export const BookPanel = ({ demoMode = false }) => {
       {/* Inline overrides: compact horizontal padding for small screens */}
       <style>{`
         .containerBKP{padding-left:12px;padding-right:12px}
+        .headerBKP{margin-bottom:0}
+        .controlsBKP{margin-bottom:0.5rem;margin-top:-0.5rem}
         @media (max-width: 768px){
           .containerBKP{padding-left:8px;padding-right:8px}
           .controlsBKP{padding-left:0;padding-right:0}
@@ -2199,85 +2200,6 @@ export const BookPanel = ({ demoMode = false }) => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <div>
             <h2 className="titleBKP">Books</h2>
-            <p className="subtitleBKP" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              Life happens here ~ Books, find your taste
-              {user ? (
-                <span 
-                  title="You are signed in - Full access to all features!"
-                  style={{ 
-                    cursor: 'help', 
-                    display: 'inline-flex', 
-                    alignItems: 'center',
-                    color: '#3b82f6',
-                    animation: 'pulse 2s infinite'
-                  }}
-                >
-                  <FiStar size={16} fill="#3b82f6" />
-                  {(() => {
-                    const rawTier = userRanking?.tier || null;
-                    const isLegend = rawTier === 'legend';
-                    const isActive = rawTier === 'active_reader';
-                    if (!isLegend && !isActive) return null;
-
-                    const label = isLegend ? 'Legend' : 'Active';
-                    const scoreLabel = typeof userRanking?.score === 'number' ? Math.round(userRanking.score) : null;
-
-                    return (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          marginLeft: 6,
-                          gap: 6,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: isLegend ? '#111' : '#e0f2f1',
-                          padding: '3px 8px',
-                          borderRadius: 999,
-                          background: isLegend
-                            ? 'linear-gradient(135deg, #ffd700, #ff6f00)'
-                            : 'rgba(16, 185, 129, 0.16)',
-                          border: isLegend
-                            ? 'none'
-                            : '1px solid rgba(16, 185, 129, 0.45)'
-                        }}
-                        title={label}
-                      >
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            width: 6,
-                            height: 6,
-                            borderRadius: '999px',
-                            backgroundColor: isLegend ? '#f97316' : '#22c55e'
-                          }}
-                        />
-                        <span>
-                          {label}
-                        </span>
-                      </span>
-                    );
-                  })()}
-                </span>
-              ) : (
-                <span 
-                  title="Sign in to unlock all features: likes, comments, ratings & reading stats"
-                  style={{ 
-                    cursor: 'help', 
-                    display: 'inline-flex', 
-                    alignItems: 'center',
-                    color: '#94a3b8',
-                    borderStyle: 'dotted',
-                    borderWidth: '1px',
-                    borderColor: '#94a3b8',
-                    borderRadius: '50%',
-                    padding: '2px'
-                  }}
-                >
-                  <FiStar size={14} />
-                </span>
-              )}
-            </p>
             {categoryFilterId && (
               <div style={{ marginTop: 8 }}>
                 <button
@@ -2471,8 +2393,8 @@ export const BookPanel = ({ demoMode = false }) => {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
             <div>
-              <div style={{ fontSize: 13, color: '#cbd5f5', fontWeight: 600 }}>Recently reading</div>
-              <div style={{ fontSize: 12, color: '#64748b' }}>Books you’ve started, most recent first</div>
+        
+              <div style={{ fontSize: 12, color: '#64748b' }}>Reading</div>
             </div>
             <div style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
               <FiClock size={14} />
@@ -2553,21 +2475,24 @@ export const BookPanel = ({ demoMode = false }) => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           title="Recommendations for you"
+          style={{ bottom: wishlist.length > 0 ? '70px' : '16px' }}
         >
           <FiThumbsUp size={24} color="#00a884" />
           <span className="rec-countBKP">{recommendations.length}</span>
         </motion.button>
       )}
 
-      <motion.button
-        className="wishlist-toggleBKP"
-        onClick={() => setShowWishlist(!showWishlist)}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <FiBookmark size={24} />
-        <span className="wishlist-countBKP">{wishlist.length}</span>
-      </motion.button>
+      {wishlist.length > 0 && (
+        <motion.button
+          className="wishlist-toggleBKP"
+          onClick={() => setShowWishlist(!showWishlist)}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <FiBookmark size={24} />
+          <span className="wishlist-countBKP">{wishlist.length}</span>
+        </motion.button>
+      )}
 
       {/* Recommendations Panel */}
       <AnimatePresence initial={false}>
@@ -2869,10 +2794,10 @@ export const BookPanel = ({ demoMode = false }) => {
                           isLoved={bookReactions[book.id]?.loved}
                         />
                         <span className="view-countBKP">
-                          <FiEye size={14} color="#64748b" /> <span className="countBKP">{book.views.toLocaleString()}</span>
+                          <FiEye size={10} color="#64748b" /> <span className="countBKP">{book.views.toLocaleString()}</span>
                         </span>
                         <span className="downloads-countBKP">
-                          <FiDownload size={14} color="#64748b" /> <span className="countBKP">{book.downloads.toLocaleString()}</span>
+                          <FiDownload size={10} color="#64748b" /> <span className="countBKP">{book.downloads.toLocaleString()}</span>
                         </span>
                         <button
                           onClick={(e) => {
@@ -2882,7 +2807,7 @@ export const BookPanel = ({ demoMode = false }) => {
                           className={`wishlist-buttonBKP ${wishlist.includes(book.id) ? 'activeBKP' : ''}`}
                         >
                           <FiBookmark
-                            size={14}
+                            size={10}
                             fill={wishlist.includes(book.id) ? '#6366f1' : 'none'}
                             color={wishlist.includes(book.id) ? '#6366f1' : '#64748b'}
                           />
@@ -3100,15 +3025,6 @@ export const BookPanel = ({ demoMode = false }) => {
                   onDownloadStart={async () => {
                     if (!requireAuth('download')) return false;
 
-                    const isActive =
-                      subscription && subscription.end_at && new Date(subscription.end_at) > new Date();
-
-                    if (!isActive) {
-                      setPendingAction({ type: 'read' });
-                      setShowSubscriptionModal(true);
-                      return false;
-                    }
-
                     // Increment download count (per-book aggregate)
                     try {
                       await supabase
@@ -3130,8 +3046,7 @@ export const BookPanel = ({ demoMode = false }) => {
                       console.error('Failed to log book download:', error);
                     }
 
-                    alert('Offline downloads are disabled for this book. Please use the Read button to view it online.');
-                    return false;
+                    return true;
                   }}
                 />
                   <button
@@ -3142,9 +3057,15 @@ export const BookPanel = ({ demoMode = false }) => {
                     <FiBook size={16} /> Read
                   </button>
                   <button
+                    className="btn-readBKP btn-action-primaryBKP btn-mark-hiddenBKP"
+                    onClick={() => toggleWishlist(selectedBook.id)}
+                    title={wishlist.find(w => w.id === selectedBook.id) ? "Remove from marked" : "Mark for later"}
+                  >
+                    <FiBookmark size={16} fill={wishlist.find(w => w.id === selectedBook.id) ? "currentColor" : "none"} /> {wishlist.find(w => w.id === selectedBook.id) ? "Marked" : "Mark"}
+                  </button>
+                  <button
                     className="btn-readBKP btn-action-primaryBKP"
                     onClick={() => setShowRatingModal(true)}
-                    style={{ backgroundColor: '#fbbf24', color: '#0b1216' }}
                     title="Rate this book"
                   >
                     <FiStar size={16} /> {userRating ? `${userRating}★` : 'Rate'}

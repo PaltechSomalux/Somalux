@@ -31,14 +31,28 @@
 
 .headerBKP {
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.25rem;
   padding-top: 0;
   margin-top: -0.75rem;
 }
 
+@media (min-width: 768px) {
+  .headerBKP {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+  
+  .headerBKP > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
 .titleBKP {
   font-size: 0.95rem;
-  color: var(--text-dark);
+  color: #b3bcc5;
   margin-bottom: 0.375rem;
   font-weight: 700;
 }
@@ -100,7 +114,7 @@
 .controlsBKP {
   display: flex;
   gap: 0.75rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.5rem;
   position: relative;
   align-items: center;
   width: 100%;
@@ -288,26 +302,26 @@
 
 .gridBKP {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 0.75rem;
   margin-bottom: 1.5rem;
-  margin-left: -0.5rem;
-  margin-right: -0.5rem;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 0;
+  padding-right: 0;
 }
 
-/* Small phones -> 2 columns with slightly larger cards */
+/* Small phones -> 3 columns with slightly larger cards */
 @media (min-width: 420px) {
   .gridBKP {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
 /* Tablets */
 @media (min-width: 768px) {
   .gridBKP {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 1.2rem;
     margin-left: 0;
     margin-right: 0;
@@ -319,13 +333,13 @@
 /* Desktop wide */
 @media (min-width: 1024px) {
   .gridBKP {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   }
 }
 
 @media (min-width: 1280px) {
   .gridBKP {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 }
 
@@ -467,15 +481,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
-  padding: 4px 6px;
-  font-size: 0.6rem;
+  gap: 1px;
+  padding: 1px 1px;
+  font-size: 0.45rem;
   color: var(--text-light);
   min-width: 0;
-  height: 20px;
-  border-radius: 4px;
+  height: 14px;
+  border-radius: 2px;
   transition: all 0.2s ease;
-  flex: 1;
+  flex: 0 0 auto;
+}
+
+.view-countBKP svg,
+.view-countBKP i {
+  font-size: 0.38rem;
+  color: var(--text-light);
+  flex-shrink: 0;
 }
 
 .view-countBKP:hover {
@@ -496,15 +517,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
-  padding: 4px 6px;
-  font-size: 0.6rem;
+  gap: 1px;
+  padding: 1px 1px;
+  font-size: 0.45rem;
   color: var(--text-light);
   min-width: 0;
-  height: 20px;
-  border-radius: 4px;
+  height: 14px;
+  border-radius: 2px;
   transition: all 0.2s ease;
-  flex: 1;
+  flex: 0 0 auto;
+}
+
+.downloads-countBKP svg,
+.downloads-countBKP i {
+  font-size: 0.38rem;
+  color: var(--text-light);
+  flex-shrink: 0;
 }
 
 .downloads-countBKP:hover {
@@ -522,8 +550,8 @@
 }
 
 .countBKP {
-  font-size: 0.6rem;
-  display: none;
+  font-size: 0.45rem;
+  display: inline;
 }
 
 @media (min-width: 768px) {
@@ -553,19 +581,21 @@
 
 .action-buttonsBKP {
   display: flex;
-  justify-content: flex-start;
+  flex-wrap: nowrap;
+  justify-content: space-between;
   align-items: center;
   border-top: none;
-  padding: 6px 2px;
-  gap: 8px;
-  height: auto;
+  padding: 2px 2px;
+  gap: 2px;
   margin-top: auto;
-  flex-wrap: nowrap;
+  height: auto;
+  overflow: hidden;
 }
 
 @media (min-width: 420px) {
   .action-buttonsBKP {
-    justify-content: flex-start;
+    padding: 2px 2px;
+    gap: 2px;
   }
 }
 
@@ -575,7 +605,6 @@
     gap: 0.6rem;
     height: 30px;
     border-top: 1px solid var(--border-color);
-    justify-content: space-between;
   }
 }
 
@@ -583,23 +612,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
-  padding: 4px 6px;
+  gap: 1px;
+  padding: 1px 1px;
   background: transparent;
   border: none;
-  border-radius: 4px;
-  font-size: 0.6rem;
+  border-radius: 2px;
+  font-size: 0.45rem;
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--text-dark);
   min-width: 0;
-  height: 20px;
-  flex: none;
+  height: 14px;
+  flex: 0 0 auto;
 }
 
 .love-buttonBKP svg,
 .love-buttonBKP i {
-  font-size: 0.65rem;
+  font-size: 0.38rem;
   color: var(--text-light);
   flex-shrink: 0;
 }
@@ -636,18 +665,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
-  padding: 4px 6px;
+  gap: 1px;
+  padding: 1px 1px;
   background: transparent;
   border: none;
-  border-radius: 4px;
-  font-size: 0.6rem;
+  border-radius: 2px;
+  font-size: 0.45rem;
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--text-light);
   min-width: 0;
-  height: 20px;
-  margin-left: auto;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.wishlist-buttonBKP svg,
+.wishlist-buttonBKP i {
+  font-size: 0.38rem;
+  color: var(--text-light);
+  flex-shrink: 0;
 }
 
 .wishlist-buttonBKP.activeBKP {
@@ -1144,44 +1180,43 @@
 .wishlist-toggleBKP {
   position: fixed;
   bottom: 16px;
-  right: 10px;
-  width: 32px;
-  height: 32px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: rgba(11,18,22,0.85);
+  background: transparent;
   color: var(--text-dark);
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  box-shadow: none;
   z-index: 999;
   font-size: 1.2rem;
 }
 
 .wishlist-toggleBKP svg {
-  width: 18px !important;
-  height: 18px !important;
-  min-width: 18px;
-  min-height: 18px;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px;
+  min-height: 20px;
   flex-shrink: 0;
   color: #6366f1 !important;
 }
 
 .wishlist-countBKP {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  background: var(--error);
-  color: var(--text-dark);
+  top: 0;
+  right: 0;
+  background: transparent;
+  color: #ef4444;
   border-radius: 50%;
-  width: 16px;
-  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 900;
 }
 
 .wishlist-booksBKP {
@@ -1402,19 +1437,19 @@
 /* Recommendations Toggle Button */
 .recommendations-toggleBKP {
   position: fixed;
-  bottom: 16px;
-  right: 66px;
-  width: 32px;
-  height: 32px;
+  bottom: 70px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: rgba(11,18,22,0.85);
+  background: transparent;
   color: #00a884;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  box-shadow: none;
   z-index: 999;
   font-size: 1.2rem;
 }
@@ -1424,27 +1459,26 @@
 }
 
 .recommendations-toggleBKP svg {
-  width: 18px !important;
-  height: 18px !important;
-  min-width: 18px;
-  min-height: 18px;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px;
+  min-height: 20px;
   flex-shrink: 0;
   color: #00a884 !important;
 }
 
 .rec-countBKP {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  background: var(--error);
-  color: var(--text-dark);
+  top: 0;
+  right: 0;
+  background: transparent;
+  color: #ef4444;
   border-radius: 50%;
-  width: 16px;
-  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 900;
 }
 
 /* Recommendations Panel */
@@ -1480,24 +1514,27 @@
   }
 
   .recommendations-toggleBKP {
-    right: 86px;
+    right: 16px;
+    bottom: 70px;
   }
 
   .wishlist-toggleBKP {
     right: 16px;
+    bottom: 16px;
   }
 }
 
 /* Adjust secondary toggles on very narrow screens to avoid overlap */
 @media (max-width: 420px) {
   .recommendations-toggleBKP {
-    right: 74px;
+    right: 16px;
+    bottom: 70px;
     width: 32px;
     height: 32px;
     font-size: 1rem;
   }
   .recommendations-toggleBKP svg { width: 16px !important; height: 16px !important; }
-  .wishlist-toggleBKP { right: 10px; width: 32px; height: 32px; }
+  .wishlist-toggleBKP { right: 16px; bottom: 16px; width: 32px; height: 32px; }
   .wishlist-toggleBKP svg { width: 16px !important; height: 16px !important; }
 }
 
@@ -1970,6 +2007,22 @@
   .btn-readBKP svg {
     width: 12px;
     height: 12px;
+  }
+}
+
+/* Hide Mark button on mobile */
+@media (max-width: 768px) {
+  .btn-mark-hiddenBKP {
+    display: none;
+  }
+
+  .actions-primary-rowBKP {
+    gap: 8px;
+  }
+
+  .btn-action-primaryBKP {
+    flex: 1;
+    min-width: 0;
   }
 }
 

@@ -13,9 +13,9 @@
 
 .download-modal-content {
   background: #111b21;
-  border: 1px solid #2a3942;
+  border: none;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(12, 109, 88, 0.1);
   border-radius: 8px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
   max-width: 500px;
@@ -30,7 +30,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid #2a3942;
+  border-bottom: none;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04);
   flex-shrink: 0;
 }
 
@@ -63,20 +64,21 @@
 /* Info */
 .download-modal-info {
   padding: 12px 16px;
-  background: rgba(12, 109, 88, 0.1);
-  border-bottom: 1px solid #2a3942;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: none;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04);
   flex-shrink: 0;
 }
 
 .download-modal-info p {
   margin: 0;
   font-size: 13px;
-  color: #d1d5db;
+  color: rgba(233, 237, 239, 0.85);
   line-height: 1.5;
 }
 
 .download-modal-info strong {
-  color: #0c6d58;
+  color: rgba(255, 255, 255, 0.9);
   font-weight: 600;
 }
 
@@ -95,15 +97,16 @@
   flex-direction: column;
   gap: 12px;
   padding: 14px;
-  background: #1a2530;
-  border: 1px solid #2a3942;
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
   border-radius: 6px;
   transition: all 0.2s ease;
 }
 
 .download-option:hover {
-  background: #202a33;
-  border-color: #3a4a52;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .option-header {
@@ -124,11 +127,11 @@
 }
 
 .option-icon.pdf {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(59, 130, 246, 0.1);
 }
 
 .option-icon.docx {
-  background: rgba(34, 197, 94, 0.15);
+  background: rgba(34, 197, 94, 0.1);
 }
 
 .option-title {
@@ -157,11 +160,11 @@
 
 .option-format {
   font-size: 11px;
-  color: #8696a0;
+  color: rgba(134, 150, 160, 0.7);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: rgba(134, 150, 160, 0.1);
+  background: rgba(255, 255, 255, 0.02);
   padding: 4px 8px;
   border-radius: 3px;
 }
@@ -181,25 +184,25 @@
 }
 
 .download-btn.pdf {
-  background: #3b82f6;
+  background: rgba(59, 130, 246, 0.7);
   color: #fff;
 }
 
 .download-btn.pdf:hover:not(:disabled) {
-  background: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.8);
+  transform: scale(0.96);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
 }
 
 .download-btn.docx {
-  background: #22c55e;
+  background: rgba(34, 197, 94, 0.7);
   color: #fff;
 }
 
 .download-btn.docx:hover:not(:disabled) {
-  background: #16a34a;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.8);
+  transform: scale(0.96);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
 }
 
 .download-btn:disabled {
@@ -210,7 +213,8 @@
 /* Footer */
 .download-modal-footer {
   padding: 12px 16px;
-  border-top: 1px solid #2a3942;
+  border-top: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
@@ -218,8 +222,8 @@
 }
 
 .cancel-btn {
-  background: #374151;
-  color: #fff;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.8);
   border: none;
   padding: 8px 14px;
   border-radius: 4px;
@@ -227,10 +231,13 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .cancel-btn:hover {
-  background: #4b5563;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 /* Scrollbar */

@@ -1220,12 +1220,10 @@ export const PaperPanel = ({ demoMode = false }) => {
       {!universityFilter ? (
         <header className="headerpast">
           <h1 className="titlepast">Past Papers</h1>
-          <p className="subtitlepast">Browse papers from your university</p>
         </header>
       ) : (
         <header className="headerpast">
           <h1 className="titlepast">{universityFilter} Past Papers</h1>
-          <p className="subtitlepast">Access exam papers from {universityFilter}</p>
         </header>
       )}
 
@@ -1345,39 +1343,48 @@ export const PaperPanel = ({ demoMode = false }) => {
               </div>
 
               <div className="modal-actionspast">
-                <button
-                  className="wishlist-button-largepast"
-                  onClick={() => openReader(selectedPaper)}
-                >
-                  <FiFileText size={18} />
-                  Read
-                </button>
-                {hasActiveSubscription ? (
-                  <Download paper={selectedPaper} />
-                ) : (
+                <div className="actions-primary-rowpast">
+                  <Download paper={selectedPaper} variant="full" />
                   <button
-                    className="wishlist-button-largepast"
+                    className="btn-readpast btn-action-primarypast"
+                    onClick={() => openReader(selectedPaper)}
+                  >
+                    <FiBook size={16} /> Read
+                  </button>
+                  <button
+                    className="btn-readpast btn-action-primarypast"
                     onClick={() => {
-                      setShowSubscriptionModal(true);
+                      // Add to bookmarks/wishlist
                     }}
                   >
-                    <FiDownload size={18} />
-                    Download
+                    <FiBookmark size={16} fill={paperBookmarks.includes(selectedPaper.id) ? "currentColor" : "none"} /> {paperBookmarks.includes(selectedPaper.id) ? "Marked" : "Mark"}
                   </button>
-                )}
-                <div className="stat-itempast">
-                  <FiEye size={18} />
-                  <span>{selectedPaper.views || 0}</span>
                 </div>
-                <div className="stat-itempast">
-                  <FiDownload size={18} />
-                  <span>{selectedPaper.downloads_count || 0}</span>
+
+                <div className="actions-stats-rowpast">
+                  <div className="stat-badge-itemspast">
+                    <span className="stat-label-itempast">
+                      <FiEye size={14} />
+                      Views
+                    </span>
+                    <span className="stat-count-itempast">{selectedPaper.views || 0}</span>
+                  </div>
+                  <div className="stat-badge-itemspast">
+                    <span className="stat-label-itempast">
+                      <FiDownload size={14} />
+                      Downloads
+                    </span>
+                    <span className="stat-count-itempast">{selectedPaper.downloads_count || 0}</span>
+                  </div>
+                  <div className="stat-badge-itemspast">
+                    <span className="stat-label-itempast">
+                      <BiCommentDetail size={14} />
+                      Comments
+                    </span>
+                    <span className="stat-count-itempast">{(mediaComments[selectedPaper.id] || []).length}</span>
+                  </div>
+                  <ShareButton paper={selectedPaper} variant="minimal" />
                 </div>
-                <div className="stat-itempast">
-                  <BiCommentDetail size={18} />
-                  <span>{(mediaComments[selectedPaper.id] || []).length}</span>
-                </div>
-                <ShareButton paper={selectedPaper} variant="minimal" />
               </div>
 
               <div className="modal-comments-sectionpast">

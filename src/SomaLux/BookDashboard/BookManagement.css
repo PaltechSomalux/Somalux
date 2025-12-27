@@ -35,7 +35,7 @@
   z-index: 100;
   background: rgba(12, 19, 23, 0.85);
   backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: none;
   padding: 14px 20px;
 
   display: flex;
@@ -53,10 +53,7 @@
   margin: 0;
   font-size: 26px;
   font-weight: 800;
-  background: linear-gradient(90deg, var(--primary), var(--accent));
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
+  color: #b3bcc5;
   letter-spacing: -0.6px;
 }
 
@@ -68,7 +65,7 @@
   z-index: 90;
   background: rgba(12, 19, 23, 0.85);
   backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: none;
   padding: 8px 0;
 }
 
@@ -78,24 +75,25 @@
   padding: 0 16px;
   overflow-x: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--bg-soft) transparent;
+  scrollbar-color: transparent transparent;
 }
 
 .tool-group-convert::-webkit-scrollbar {
   height: 6px;
 }
 .tool-group-convert::-webkit-scrollbar-thumb {
-  background: var(--bg-soft);
+  background: transparent;
   border-radius: 10px;
 }
 
 /* Buttons */
 .tool-button-convert {
   padding: 10px 18px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
   color: var(--text-muted);
-  border-radius: var(--radius);
+  border-radius: 0;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -103,20 +101,21 @@
 
   display: flex;
   align-items: center;
-  transition: var(--transition);
+  justify-content: center;
+  transition: color 0.3s ease, border-color 0.3s ease, background 0.3s ease, font-weight 0.3s ease;
 }
 
 .tool-button-convert:hover {
-  background: var(--bg-soft);
+  background: rgba(0, 168, 132, 0.08);
   color: var(--text-main);
 }
 
 .tool-button-convert.active-convert {
-  background: linear-gradient(90deg, var(--primary), var(--accent));
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 3px 12px rgba(0, 168, 132, 0.25);
-  font-weight: 600;
+  background: transparent;
+  color: var(--primary);
+  border-bottom: 2px solid var(--primary);
+  font-weight: 700;
+  box-shadow: none;
 }
 
 /* ================= MAIN CONTENT ================= */
@@ -124,6 +123,18 @@
 .file-converter-content-convert {
   padding: 24px 20px;
   min-height: calc(100vh - 150px);
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ================= RESPONSIVE ================= */
@@ -143,6 +154,10 @@
 
   .file-converter-content-convert {
     padding: 18px;
+  }
+
+  .tool-button-convert.active-convert {
+    border-bottom: none;
   }
 }
 
