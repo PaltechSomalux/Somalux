@@ -3664,8 +3664,8 @@ if (existsSync(buildPath)) {
   console.log(`🚀 Serving React frontend from build folder`);
   app.use(express.static(buildPath));
   
-  // Catch-all for client-side routing - MUST be AFTER all API routes
-  app.get('*', (req, res) => {
+  // Catch-all for client-side routing - use middleware syntax
+  app.use((req, res) => {
     res.sendFile(path.join(buildPath, 'index.html'), (err) => {
       if (err) {
         res.status(500).json({ error: 'Failed to serve frontend' });
