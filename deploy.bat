@@ -27,7 +27,7 @@ echo 📝 Staging files...
 git add .
 
 echo 📦 Creating commit...
-git commit -m "Deploy SomaLux full-stack: Firebase frontend + Render backend + Supabase DB"
+git commit -m "Deploy SomaLux: Render backend with Supabase DB"
 
 echo 🔄 Ready to push to GitHub!
 echo.

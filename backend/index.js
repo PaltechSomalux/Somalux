@@ -5,7 +5,6 @@ import crypto from 'crypto';
 import cors from "cors";
 import { sendEmail, buildBrandedEmailHtml } from './utils/email.js';
 import { getAdminEmails } from './routes/adminNotifications.js';
-import admin from "firebase-admin";
 import { WebSocketServer } from "ws";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import path from "path";
@@ -13,6 +12,7 @@ import pkg from 'agora-token';
 const { RtcTokenBuilder, RtcRole } = pkg;
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
+
 import {
   getReadingStats,
   getReadingActivity,
@@ -28,19 +28,6 @@ import { sendSignOutReasonEmail } from './routes/adminNotifications.js';
 import adsApiV2 from './routes/adsApiV2.js';
 import { createRankingRoutes } from './routes/rankings.js';
 
-// Initialize Firebase Admin SDK
-const serviceAccount = JSON.parse(
-  readFileSync(
-    new URL("./paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json", import.meta.url)
-  )
-);
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
-
-
 // Express Setup MUST be before any app.use/app.post calls
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
@@ -48,13 +35,12 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public')); // Serve static files from public folder (for ads, etc)
 
-// FCM topic management
 app.post('/subscribe-topic', async (req, res) => {
   const { topic, token } = req.body || {};
   if (!topic || !token) return res.status(400).send('Missing topic or token');
   try {
-    await admin.messaging().subscribeToTopic(token, topic);
-    res.json({ success: true });
+    console.log(`📢 Topic subscription requested: ${topic}`);
+    res.json({ success: false, message: 'Cloud messaging disabled' });
   } catch (e) {
     console.error('subscribe-topic error', e);
     res.status(500).send(e.message || 'subscribe error');
@@ -112,8 +98,8 @@ app.post('/unsubscribe-topic', async (req, res) => {
   const { topic, token } = req.body || {};
   if (!topic || !token) return res.status(400).send('Missing topic or token');
   try {
-    await admin.messaging().unsubscribeFromTopic(token, topic);
-    res.json({ success: true });
+    console.log(`📢 Topic unsubscribe requested: ${topic}`);
+    res.json({ success: false, message: 'Cloud messaging disabled' });
   } catch (e) {
     console.error('unsubscribe-topic error', e);
     res.status(500).send(e.message || 'unsubscribe error');
@@ -401,7 +387,7 @@ app.post('/api/agora/token', async (req, res) => {
     const { channel, uid } = req.body || {};
     if (!channel) return res.status(400).json({ error: 'channel required' });
 
-    // Require a Firebase ID token unless explicitly allowed for development
+    // Require a valid ID token unless explicitly allowed for development
     const allowPublic = String(process.env.ALLOW_PUBLIC_AGORA_TOKEN || '').toLowerCase() === 'true';
     let decoded = null;
     if (!allowPublic) {
@@ -411,7 +397,7 @@ app.post('/api/agora/token', async (req, res) => {
       try {
         decoded = await admin.auth().verifyIdToken(idToken);
       } catch (ve) {
-        console.error('Firebase token verification failed', ve);
+        console.error('Token verification failed', ve);
         return res.status(401).json({ error: 'invalid idToken' });
       }
     }
@@ -439,8 +425,6 @@ app.post('/api/agora/token', async (req, res) => {
     return res.status(500).json({ error: 'token generation failed' });
   }
 });
-
-const db = admin.firestore();
 
 // --- Supabase (service role) for secure writes + audit logs ---
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -1240,11 +1224,9 @@ app.post("/send", async (req, res) => {
           };
 
           try {
-            const response = await admin.messaging().send(messagePayload);
-            console.log('✅ FCM sent WITH FULL CHAT STATE FLAGS:', response);
-            console.log('🔥 FOREGROUND PAYLOAD:', foregroundData);
+            console.log('📢 Cloud messaging send skipped');
           } catch (fcmError) {
-            console.warn('⚠️ FCM send failed, continuing without push:', fcmError?.message || fcmError);
+            console.warn('⚠️ Cloud messaging disabled');
             // Do not throw; message is saved and WS will still notify active clients
           }
         } else {
@@ -1508,26 +1490,8 @@ app.post("/send-group-message", async (req, res) => {
         isGroup: true,
       };
 
-      await admin.messaging().send({
-        topic: `group_${groupId}`,
-        notification: {
-          title: `${senderDisplay} in ${groupName || 'Group'}`,
-          body: text.length > 50 ? text.substring(0, 50) + '...' : text,
-          image: senderPhotoURL,
-        },
-        data: {
-          foreground: JSON.stringify(foregroundData),
-          isGroup: 'true',
-          chatId: groupId,
-          sender: sender,
-          senderName: senderDisplay,
-          senderPhotoURL: senderPhotoURL || '',
-          message: text,
-          messageId: messageRef.id,
-          type: 'new_group_message',
-        },
-      });
-      console.log(`✅ Group topic notification sent to group_${groupId}`);
+      // Cloud messaging disabled - use Supabase instead
+      console.log(`📢 Group notification skipped for group_${groupId}`);
     } catch (notificationError) {
       console.error('❌ Error sending group topic notification:', notificationError);
     }

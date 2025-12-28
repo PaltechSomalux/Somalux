@@ -1,25 +1,18 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getMessaging } from "firebase/messaging";
+// Cloud service has been removed. Using Supabase instead.
+// This file is kept for backwards compatibility but all references
+// should be migrated to use the backend API or Supabase directly.
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDn1r0J6m59WkETDRXxw4mFIeoPsZy8n8w",
-  authDomain: "somalux-eb820.firebaseapp.com",
-  projectId: "somalux-eb820",
-  storageBucket: "somalux-eb820.firebasestorage.app",
-  messagingSenderId: "1087160446048",
-  appId: "1:1087160446048:web:e422cdc9f18ce5d5c3e705",
-  measurementId: "G-VTDGJHPFFW"
-};
+import { createClient } from '@supabase/supabase-js';
 
-// ✅ Initialize Firebase only once
-const app = initializeApp(firebaseConfig);
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://wuwlnawtuhjoubfkdtgc.supabase.co';
+const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1d2xuYXd0dWhqb3ViZmtkdGdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDMyNDQyNDksImV4cCI6MTczODgyNDI0OX0.gmlvDM6pDyPj0_xMJHoXOQN_3F4p2J6-8vLdXkJEBxY';
 
-// ✅ Export Firebase services
-export const db = getFirestore(app);
-export const auth = getAuth(app);
-export const provider = new GoogleAuthProvider();
-export const messaging = getMessaging(app);
-export const storage = getStorage(app);
+// Export Supabase client for any components that need it
+export const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Placeholder exports for compatibility (not using anymore)
+export const db = null;
+export const auth = null;
+export const provider = null;
+export const messaging = null;
+export const storage = null;

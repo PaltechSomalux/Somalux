@@ -7,7 +7,7 @@
 cd d:\Magic\SomaLux
 git init
 git add .
-git commit -m "SomaLux: Firebase frontend + Render backend + Supabase DB"
+git commit -m "SomaLux: Render backend + Supabase DB"
 git remote add origin https://github.com/YOUR_USERNAME/SomaLux.git
 git branch -M main
 git push -u origin main
@@ -75,16 +75,11 @@ Click "Create Web Service" in Render and wait for deployment
 ### Step 5: Get Your Backend URL
 After deployment, Render will show you: `https://somalux-backend.onrender.com`
 
-### Step 6: Update Frontend (Optional)
-Create `.env` in root folder:
-```
-REACT_APP_API_URL=https://somalux-backend.onrender.com
-```
-
-Then:
+### Step 6: Update Frontend (Optional - if rebuilding)
+Update frontend build with new API URL:
 ```bash
 npm run build
-firebase deploy --only hosting
+# Frontend is served from backend
 ```
 
 ---

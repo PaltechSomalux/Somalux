@@ -6,10 +6,6 @@ services:
     buildCommand: cd backend && npm install
     startCommand: cd backend && npm start
     envVars:
-      # Firebase Configuration
-      - key: FIREBASE_PROJECT_ID
-        value: somalux-eb820
-      
       # Supabase Configuration
       - key: SUPABASE_URL
         sync: false
