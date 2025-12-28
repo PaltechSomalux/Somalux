@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FiArrowLeft } from 'react-icons/fi';
+import { FiChevronLeft } from 'react-icons/fi';
 import { AdminUIProvider } from '../../Books/Admin/AdminUIContext';
 import './UserUploadPage.css';
 
@@ -80,10 +80,11 @@ const UserUploadPage = () => {
       {/* Header */}
       <div className="upload-page-header">
         <button
-          onClick={() => navigate(-1)}
-          className="upload-page-header-btn"
+          onClick={() => navigate('/BookManagement')}
+          className="upload-page-header-btn back-link"
         >
-          <FiArrowLeft size={20} />
+          <FiChevronLeft size={20} />
+          <span>Back to books</span>
         </button>
         <h1 className="upload-page-header-title">
           Upload Content
