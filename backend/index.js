@@ -104,8 +104,9 @@ app.post('/unsubscribe-topic', async (req, res) => {
   const { topic, token } = req.body || {};
   if (!topic || !token) return res.status(400).send('Missing topic or token');
   try {
-    await admin.messaging().unsubscribeFromTopic(token, topic);
-    res.json({ success: true });
+    // Firebase Cloud Messaging disabled - use Supabase instead
+    console.log(`📢 Topic unsubscribe requested: ${topic} (FCM disabled)`);
+    res.json({ success: false, message: 'FCM disabled - Firebase removed' });
   } catch (e) {
     console.error('unsubscribe-topic error', e);
     res.status(500).send(e.message || 'unsubscribe error');
@@ -1064,11 +1065,10 @@ app.post("/send", async (req, res) => {
           };
 
           try {
-            const response = await admin.messaging().send(messagePayload);
-            console.log('✅ FCM sent WITH FULL CHAT STATE FLAGS:', response);
-            console.log('🔥 FOREGROUND PAYLOAD:', foregroundData);
+            // Firebase Cloud Messaging disabled - use Supabase instead
+            console.log('📢 FCM send skipped (Firebase removed)');
           } catch (fcmError) {
-            console.warn('⚠️ FCM send failed, continuing without push:', fcmError?.message || fcmError);
+            console.warn('⚠️ Firebase removed - skipping FCM');
             // Do not throw; message is saved and WS will still notify active clients
           }
         } else {
@@ -1332,26 +1332,8 @@ app.post("/send-group-message", async (req, res) => {
         isGroup: true,
       };
 
-      await admin.messaging().send({
-        topic: `group_${groupId}`,
-        notification: {
-          title: `${senderDisplay} in ${groupName || 'Group'}`,
-          body: text.length > 50 ? text.substring(0, 50) + '...' : text,
-          image: senderPhotoURL,
-        },
-        data: {
-          foreground: JSON.stringify(foregroundData),
-          isGroup: 'true',
-          chatId: groupId,
-          sender: sender,
-          senderName: senderDisplay,
-          senderPhotoURL: senderPhotoURL || '',
-          message: text,
-          messageId: messageRef.id,
-          type: 'new_group_message',
-        },
-      });
-      console.log(`✅ Group topic notification sent to group_${groupId}`);
+      // Firebase Cloud Messaging disabled - use Supabase instead
+      console.log(`📢 Group notification skipped (Firebase removed) for group_${groupId}`);
     } catch (notificationError) {
       console.error('❌ Error sending group topic notification:', notificationError);
     }
