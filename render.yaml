@@ -55,11 +55,17 @@ services:
         sync: false
       - key: MPESA_ENVIRONMENT
         value: sandbox
-  - type: static
+
+  - type: web
     name: somalux-frontend
+    runtime: static
     plan: free
     buildCommand: npm run build
     staticPublishPath: ./build
+    headers:
+      - path: /
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
     envVars:
       - key: REACT_APP_SUPABASE_URL
         sync: false
