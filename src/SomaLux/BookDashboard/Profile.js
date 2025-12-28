@@ -369,36 +369,7 @@ export const Profile = ({ user: propUser = null }) => {
             <div style={{
               padding: '8px',
             }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
-                {/* Stats */}
-                <button
-                  onClick={() => navigate('/books/reading-dashboard')}
-                  style={{
-                    padding: '6px',
-                    fontSize: '11px',
-                    fontWeight: '500',
-                    color: '#fff',
-                    backgroundColor: '#1f2c33',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '2px',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#212d35';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1f2c33';
-                  }}
-                >
-                  <FiTrendingUp size={14} />
-                  Stats
-                </button>
-
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '5px' }}>
                 {/* Upload */}
                 <button
                   onClick={() => {
