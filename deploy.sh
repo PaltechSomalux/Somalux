@@ -27,7 +27,7 @@ git add .
 
 # Create commit
 echo "📦 Creating commit..."
-git commit -m "Deploy SomaLux full-stack: Firebase frontend + Render backend + Supabase DB"
+git commit -m "Deploy SomaLux: Render backend with Supabase DB"
 
 # Push to GitHub
 echo "🔄 Pushing to GitHub..."
