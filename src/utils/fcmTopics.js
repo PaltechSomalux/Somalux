@@ -1,30 +1,15 @@
 // src/utils/fcmTopics.js
-import { messaging } from '../firebase';
-import { getToken } from 'firebase/messaging';
+// Firebase Cloud Messaging has been removed - use backend API instead
 
-// Format group ID into a valid FCM topic
+// Format group ID into a valid topic
 export const getGroupTopic = (groupId) => `group_${groupId.replace(/[^a-zA-Z0-9-]/g, '_')}`;
 
-// Subscribe to group notifications
+// Subscribe to group notifications (via backend)
 export const subscribeToGroupTopic = async (groupId) => {
   try {
-    const token = await getToken(messaging);
-    if (!token) {
-      console.log('❌ No FCM token available for group subscription');
-      return;
-    }
-
     const topic = getGroupTopic(groupId);
-    const response = await fetch('/subscribe-topic', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token, topic }),
-    });
-
-    if (!response.ok) throw new Error('Failed to subscribe to group topic');
-    console.log(`✅ Subscribed to group topic: ${topic}`);
+    // TODO: Implement via backend/Supabase instead of FCM
+    console.log(`📢 Group topic subscription: ${topic} (not yet implemented)`);
   } catch (error) {
     console.error('❌ Error subscribing to group topic:', error);
   }
