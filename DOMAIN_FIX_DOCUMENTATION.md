@@ -153,8 +153,6 @@ if (existsSync(buildPath)) {
 │  │  - Supabase Auth                     │  │
 │  └──────────────────────────────────────┘  │
 └─────────────────────────────────────────────┘
-         (Alternative: Firebase Hosting)
-         https://somalux-eb820.web.app
 ```
 
 ### Service URLs

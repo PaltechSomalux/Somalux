@@ -388,7 +388,7 @@ app.post('/api/agora/token', async (req, res) => {
     const { channel, uid } = req.body || {};
     if (!channel) return res.status(400).json({ error: 'channel required' });
 
-    // Require a Firebase ID token unless explicitly allowed for development
+    // Require a valid ID token unless explicitly allowed for development
     const allowPublic = String(process.env.ALLOW_PUBLIC_AGORA_TOKEN || '').toLowerCase() === 'true';
     let decoded = null;
     if (!allowPublic) {

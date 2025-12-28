@@ -1,5 +1,5 @@
-// Firebase has been removed. Using Supabase instead.
-// This file is kept for backwards compatibility but all Firebase references
+// Cloud service has been removed. Using Supabase instead.
+// This file is kept for backwards compatibility but all references
 // should be migrated to use the backend API or Supabase directly.
 
 import { createClient } from '@supabase/supabase-js';
