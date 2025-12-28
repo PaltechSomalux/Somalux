@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import cors from "cors";
 import { sendEmail, buildBrandedEmailHtml } from './utils/email.js';
 import { getAdminEmails } from './routes/adminNotifications.js';
-import admin from "firebase-admin";
+// Firebase Admin SDK removed - using Supabase instead
 import { WebSocketServer } from "ws";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import path from "path";
@@ -28,16 +28,7 @@ import { sendSignOutReasonEmail } from './routes/adminNotifications.js';
 import adsApiV2 from './routes/adsApiV2.js';
 import { createRankingRoutes } from './routes/rankings.js';
 
-// Initialize Firebase Admin SDK
-const serviceAccount = JSON.parse(
-  readFileSync(
-    new URL("./paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json", import.meta.url)
-  )
-);
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+// Firebase Admin SDK removed - consolidating to Supabase
 
 
 
@@ -48,13 +39,14 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public')); // Serve static files from public folder (for ads, etc)
 
-// FCM topic management
+// FCM topic management (Firebase removed - disabled)
 app.post('/subscribe-topic', async (req, res) => {
   const { topic, token } = req.body || {};
   if (!topic || !token) return res.status(400).send('Missing topic or token');
   try {
-    await admin.messaging().subscribeToTopic(token, topic);
-    res.json({ success: true });
+    // Firebase Cloud Messaging disabled - use Supabase instead
+    console.log(`📢 Topic subscription requested: ${topic} (FCM disabled)`);
+    res.json({ success: false, message: 'FCM disabled - Firebase removed' });
   } catch (e) {
     console.error('subscribe-topic error', e);
     res.status(500).send(e.message || 'subscribe error');
