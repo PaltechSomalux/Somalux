@@ -1,5 +1,3 @@
-// src/utils/fcmTopics.js
-// Firebase Cloud Messaging has been removed - use backend API instead
 
 // Format group ID into a valid topic
 export const getGroupTopic = (groupId) => `group_${groupId.replace(/[^a-zA-Z0-9-]/g, '_')}`;
@@ -16,25 +14,11 @@ export const subscribeToGroupTopic = async (groupId) => {
 };
 
 // Unsubscribe from group notifications
+// Firebase Cloud Messaging removed - endpoint disabled
 export const unsubscribeFromGroupTopic = async (groupId) => {
   try {
-    const token = await getToken(messaging);
-    if (!token) {
-      console.log('❌ No FCM token available for group unsubscription');
-      return;
-    }
-
     const topic = getGroupTopic(groupId);
-    const response = await fetch('/unsubscribe-topic', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token, topic }),
-    });
-
-    if (!response.ok) throw new Error('Failed to unsubscribe from group topic');
-    console.log(`✅ Unsubscribed from group topic: ${topic}`);
+    console.log(`📢 Unsubscribe from group topic: ${topic} (Firebase removed)`);
   } catch (error) {
     console.error('❌ Error unsubscribing from group topic:', error);
   }
