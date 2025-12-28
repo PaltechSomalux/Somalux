@@ -1,20 +1,21 @@
 # SomaLux Full Stack Deployment Guide
 
 ## Project Overview
-- **Frontend**: React app hosted on Firebase Hosting
-- **Backend**: Node.js/Express server hosted on Render
+- **Frontend**: React app served from Render backend
+- **Backend**: Node.js/Express server hosted on Render  
 - **Database**: Supabase (PostgreSQL)
-- **Authentication**: Firebase Auth
+- **Authentication**: Supabase Auth
+- **Domain**: somalux.co.ke
 
 ---
 
 ## ✅ COMPLETED SETUP
 
-### 1. Frontend (Firebase Hosting) ✅
+### 1. Frontend ✅
 - **Status**: Live and deployed
-- **URL**: https://somalux-eb820.web.app
-- **Firebase Config**: Updated in `src/firebase.js` and `src/FirebaseConfig.js`
-- **Project ID**: somalux-eb820
+- **URL**: https://somalux.co.ke
+- **Hosted**: Render backend serving static files
+- **Build**: Production build in `/build` folder
 
 ### 2. Database (Supabase) ✅
 - **Status**: Already configured in backend
@@ -35,7 +36,7 @@ git init
 git add .
 
 # Commit
-git commit -m "Deploy SomaLux backend and frontend"
+git commit -m "Deploy SomaLux backend with Supabase"
 
 # Add your GitHub repo as remote (replace with your repo)
 git remote add origin https://github.com/YOUR_USERNAME/SomaLux.git
@@ -63,9 +64,6 @@ git push -u origin main
 In Render dashboard, go to Environment:
 
 ```
-# Firebase (for admin SDK - if using Firestore)
-GOOGLE_APPLICATION_CREDENTIALS=./paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json
-
 # Supabase
 SUPABASE_URL=https://wuwlnawtuhjoubfkdtgc.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -166,10 +164,10 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 const response = await fetch(`${API_URL}/api/your-endpoint`);
 ```
 
-### 3. Rebuild and redeploy frontend:
+### 3. Rebuild frontend:
 ```bash
 npm run build
-firebase deploy --only hosting
+# Frontend is now served from Render backend at somalux.co.ke
 ```
 
 ---
@@ -201,13 +199,10 @@ Your backend is already configured to use Supabase. Verify:
 
 ## 🔐 SECURITY CHECKLIST
 
-- [ ] Remove sensitive files from version control
 - [ ] Use environment variables for all secrets
 - [ ] Enable CORS correctly on backend
-- [ ] Set up HTTPS (automatic on Firebase & Render)
+- [ ] Use HTTPS (automatically managed by Render)
 - [ ] Configure Supabase RLS policies
-- [ ] Set up Firebase security rules
-- [ ] Use Firebase Admin SDK securely (only on backend)
 
 ---
 
@@ -251,7 +246,6 @@ See `backend/.env.example` for full list. Key variables:
 
 ## 📚 USEFUL LINKS
 
-- **Firebase Console**: https://console.firebase.google.com/project/somalux-eb820
 - **Render Dashboard**: https://dashboard.render.com
 - **Supabase Dashboard**: https://app.supabase.com/
 - **GitHub Repository**: [Your repo URL]
@@ -262,10 +256,8 @@ See `backend/.env.example` for full list. Key variables:
 
 1. Push code to GitHub
 2. Deploy backend to Render
-3. Update frontend API endpoints
-4. Redeploy frontend to Firebase
-5. Test end-to-end connectivity
-6. Monitor logs in Render dashboard
+3. Test end-to-end connectivity
+4. Monitor logs in Render dashboard
 
 ---
 
