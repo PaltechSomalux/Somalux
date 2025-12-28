@@ -458,7 +458,7 @@ app.post('/api/agora/token', async (req, res) => {
   }
 });
 
-const db = admin.firestore();
+const db = serviceAccount ? admin.firestore() : null;
 
 // --- Supabase (service role) for secure writes + audit logs ---
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -936,6 +936,7 @@ const getChatId = (sender, receiver) => {
 
 // /users unchanged
 app.get("/users", async (req, res) => {
+  if (!db) return res.status(503).json({ error: "Firebase not configured" });
   try {
     const snapshot = await db.collection("users").get();
     const users = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -948,6 +949,7 @@ app.get("/users", async (req, res) => {
 
 // /send FIXED: Update status to "delivered" before WS, full broadcast, better touch
 app.post("/send", async (req, res) => {
+  if (!db) return res.status(503).json({ error: "Firebase not configured" });
   const { sender, receiver, text, replyingTo } = req.body;
 
   console.log('🔍 Backend /send called:', { sender, receiver, text: text.substring(0, 50) });
@@ -1193,6 +1195,7 @@ app.post("/send", async (req, res) => {
 
 // /messages/delivered unchanged
 app.post("/messages/delivered", async (req, res) => {
+  if (!db) return res.status(503).json({ error: "Firebase not configured" });
   const { chatId, messageIds, receiver } = req.body;
   if (!chatId || !messageIds || !Array.isArray(messageIds) || !receiver) {
     return res.status(400).json({ error: "Missing or invalid fields" });
@@ -1214,6 +1217,7 @@ app.post("/messages/delivered", async (req, res) => {
 
 // /messages/read unchanged (already broadcasts WS)
 app.post("/messages/read", async (req, res) => {
+  if (!db) return res.status(503).json({ error: "Firebase not configured" });
   const { chatId, messageIds, receiver } = req.body;
   if (!chatId || !messageIds || !Array.isArray(messageIds) || !receiver) {
     return res.status(400).json({ error: "Missing or invalid fields" });
@@ -1262,6 +1266,7 @@ app.post("/messages/read", async (req, res) => {
 
 // /chat/:chatId/messages FIXED: Remove 'since' where clause for full initial load (use limit for perf)
 app.get("/chat/:chatId/messages", async (req, res) => {
+  if (!db) return res.status(503).json({ error: "Firebase not configured" });
   const { chatId } = req.params;
   // const sinceStr = req.query.since;  // FIXED: Ignore since for full load
 
@@ -1293,6 +1298,7 @@ app.get("/chat/:chatId/messages", async (req, res) => {
 
 // /send-group-message - Send message to a group
 app.post("/send-group-message", async (req, res) => {
+  if (!db) return res.status(503).json({ error: "Firebase not configured" });
   const { groupId, sender, senderName, text, replyingTo } = req.body;
 
   console.log('🔍 Backend /send-group-message called:', { groupId, sender, senderName, text: text?.substring(0, 50) });
@@ -1447,6 +1453,7 @@ app.post("/send-group-message", async (req, res) => {
 
 // /group/:groupId/messages - Get group messages
 app.get("/group/:groupId/messages", async (req, res) => {
+  if (!db) return res.status(503).json({ error: "Firebase not configured" });
   const { groupId } = req.params;
 
   if (!groupId) {
@@ -1474,6 +1481,7 @@ app.get("/group/:groupId/messages", async (req, res) => {
 
 // /group-messages/read - Mark group messages as read
 app.post("/group-messages/read", async (req, res) => {
+  if (!db) return res.status(503).json({ error: "Firebase not configured" });
   const { groupId, messageIds, userId } = req.body;
 
   if (!groupId || !messageIds || !Array.isArray(messageIds) || !userId) {
