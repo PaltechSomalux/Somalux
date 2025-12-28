@@ -32,17 +32,19 @@ import { createRankingRoutes } from './routes/rankings.js';
 let serviceAccount;
 if (process.env.FIREBASE_CREDENTIALS) {
   // Use environment variable if available (for Render deployment)
-  serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
+  } catch (e) {
+    console.warn('Failed to parse FIREBASE_CREDENTIALS environment variable:', e.message);
+    serviceAccount = null;
+  }
 } else {
   // Try to read from file if it exists (for local development)
   try {
-    serviceAccount = JSON.parse(
-      readFileSync(
-        new URL("./paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json", import.meta.url)
-      )
-    );
+    const credPath = path.resolve(path.dirname(import.meta.url.replace('file://', '')), 'paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json');
+    serviceAccount = JSON.parse(readFileSync(credPath, 'utf8'));
   } catch (e) {
-    console.warn('Firebase credentials file not found, firebase-admin will not be initialized');
+    console.warn('Firebase credentials file not found:', e.message);
     serviceAccount = null;
   }
 }
@@ -52,7 +54,7 @@ if (serviceAccount) {
     credential: admin.credential.cert(serviceAccount),
   });
 } else {
-  console.warn('Firebase Admin SDK not initialized - no credentials available');
+  console.warn('⚠️  Firebase Admin SDK not initialized - set FIREBASE_CREDENTIALS environment variable or add credentials file');
 }
 
 
