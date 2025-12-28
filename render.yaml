@@ -3,8 +3,8 @@ services:
     name: somalux-backend
     runtime: node
     plan: free
-    buildCommand: npm run build && cd backend && npm install
-    startCommand: cd backend && npm start
+    buildCommand: cd backend && npm install && cd ..
+    startCommand: node backend/index.js
     envVars:
       # Supabase Configuration
       - key: SUPABASE_URL
