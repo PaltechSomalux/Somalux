@@ -56,3 +56,15 @@ services:
       - key: MPESA_ENVIRONMENT
         value: sandbox
 
+  - type: web
+    name: somalux-frontend
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://somalux-q2bw.onrender.com
+      - key: REACT_APP_SUPABASE_URL
+        sync: false
+      - key: REACT_APP_SUPABASE_ANON_KEY
+        sync: false
