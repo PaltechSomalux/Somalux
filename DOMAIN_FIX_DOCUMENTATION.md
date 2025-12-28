@@ -17,7 +17,7 @@
 
 | Issue | Cause |
 |-------|-------|
-| **Redirect Loop** | Conflicting DNS records - Firebase A record (199.36.158.100) still pointing to old Firebase Hosting |
+| **Redirect Loop** | Conflicting DNS records - Old A record (199.36.158.100) still pointing to legacy hosting |
 | **SSL Error** | Custom domain not added to Render's SSL certificate provisioning |
 | **Missing Root** | Backend had no route handler for the root path |
 
@@ -28,12 +28,12 @@
 ### Step 1: Fix DNS Configuration (TrueHost Kenya)
 
 **Problem**: Two conflicting DNS records for somalux.co.ke
-- **Old A Record**: `199.36.158.100` (Firebase Hosting)
+- **Old A Record**: `199.36.158.100` (Legacy hosting)
 - **Attempted CNAME**: `somalux-q2bw.onrender.com` (Render)
 - **Result**: DNS conflict → redirect loop
 
 **Solution**:
-1. Deleted the old A record pointing to Firebase
+1. Deleted the old A record pointing to legacy hosting
 2. Added new A record pointing to Render's IP: `216.24.57.1`
 3. Added CNAME for www subdomain: `somalux-q2bw.onrender.com`
 
@@ -163,7 +163,6 @@ if (existsSync(buildPath)) {
 |---------|-----|---------|
 | **Frontend** | `https://somalux.co.ke` | Main SomaLux app (React) |
 | **Backend (Alt)** | `https://somalux-q2bw.onrender.com` | API endpoint (fallback) |
-| **Firebase Backup** | `https://somalux-eb820.web.app` | Static frontend backup |
 | **Backend API** | `https://somalux.co.ke/api/*` | All API routes |
 | **Health Check** | `https://somalux.co.ke` | Returns health status |
 

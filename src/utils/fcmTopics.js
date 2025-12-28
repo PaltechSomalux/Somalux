@@ -14,11 +14,11 @@ export const subscribeToGroupTopic = async (groupId) => {
 };
 
 // Unsubscribe from group notifications
-// Firebase Cloud Messaging removed - endpoint disabled
+// Cloud Messaging removed - endpoint disabled
 export const unsubscribeFromGroupTopic = async (groupId) => {
   try {
     const topic = getGroupTopic(groupId);
-    console.log(`📢 Unsubscribe from group topic: ${topic} (Firebase removed)`);
+    console.log(`📢 Unsubscribe from group topic: ${topic}`);
   } catch (error) {
     console.error('❌ Error unsubscribing from group topic:', error);
   }

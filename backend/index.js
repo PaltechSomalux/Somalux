@@ -5,7 +5,6 @@ import crypto from 'crypto';
 import cors from "cors";
 import { sendEmail, buildBrandedEmailHtml } from './utils/email.js';
 import { getAdminEmails } from './routes/adminNotifications.js';
-// Firebase Admin SDK removed - using Supabase instead
 import { WebSocketServer } from "ws";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import path from "path";
@@ -28,8 +27,6 @@ import { sendSignOutReasonEmail } from './routes/adminNotifications.js';
 import adsApiV2 from './routes/adsApiV2.js';
 import { createRankingRoutes } from './routes/rankings.js';
 
-// Firebase Admin SDK removed - consolidating to Supabase
-
 
 
 // Express Setup MUST be before any app.use/app.post calls
@@ -39,14 +36,12 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public')); // Serve static files from public folder (for ads, etc)
 
-// FCM topic management (Firebase removed - disabled)
 app.post('/subscribe-topic', async (req, res) => {
   const { topic, token } = req.body || {};
   if (!topic || !token) return res.status(400).send('Missing topic or token');
   try {
-    // Firebase Cloud Messaging disabled - use Supabase instead
-    console.log(`📢 Topic subscription requested: ${topic} (FCM disabled)`);
-    res.json({ success: false, message: 'FCM disabled - Firebase removed' });
+    console.log(`📢 Topic subscription requested: ${topic}`);
+    res.json({ success: false, message: 'Cloud messaging disabled' });
   } catch (e) {
     console.error('subscribe-topic error', e);
     res.status(500).send(e.message || 'subscribe error');
@@ -104,9 +99,8 @@ app.post('/unsubscribe-topic', async (req, res) => {
   const { topic, token } = req.body || {};
   if (!topic || !token) return res.status(400).send('Missing topic or token');
   try {
-    // Firebase Cloud Messaging disabled - use Supabase instead
-    console.log(`📢 Topic unsubscribe requested: ${topic} (FCM disabled)`);
-    res.json({ success: false, message: 'FCM disabled - Firebase removed' });
+    console.log(`📢 Topic unsubscribe requested: ${topic}`);
+    res.json({ success: false, message: 'Cloud messaging disabled' });
   } catch (e) {
     console.error('unsubscribe-topic error', e);
     res.status(500).send(e.message || 'unsubscribe error');
@@ -404,7 +398,7 @@ app.post('/api/agora/token', async (req, res) => {
       try {
         decoded = await admin.auth().verifyIdToken(idToken);
       } catch (ve) {
-        console.error('Firebase token verification failed', ve);
+        console.error('Token verification failed', ve);
         return res.status(401).json({ error: 'invalid idToken' });
       }
     }
@@ -1065,10 +1059,9 @@ app.post("/send", async (req, res) => {
           };
 
           try {
-            // Firebase Cloud Messaging disabled - use Supabase instead
-            console.log('📢 FCM send skipped (Firebase removed)');
+            console.log('📢 Cloud messaging send skipped');
           } catch (fcmError) {
-            console.warn('⚠️ Firebase removed - skipping FCM');
+            console.warn('⚠️ Cloud messaging disabled');
             // Do not throw; message is saved and WS will still notify active clients
           }
         } else {
@@ -1332,8 +1325,8 @@ app.post("/send-group-message", async (req, res) => {
         isGroup: true,
       };
 
-      // Firebase Cloud Messaging disabled - use Supabase instead
-      console.log(`📢 Group notification skipped (Firebase removed) for group_${groupId}`);
+      // Cloud messaging disabled - use Supabase instead
+      console.log(`📢 Group notification skipped for group_${groupId}`);
     } catch (notificationError) {
       console.error('❌ Error sending group topic notification:', notificationError);
     }

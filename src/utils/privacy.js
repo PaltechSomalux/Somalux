@@ -1,4 +1,4 @@
-// Firebase Firestore removed - privacy settings disabled
+// Firestore removed - privacy settings disabled
 // TODO: Migrate to Supabase when needed
 
 export const PRIVACY_FIELDS = [
@@ -35,13 +35,13 @@ function emitPrivacyUpdated(detail) {
 }
 
 export async function loadMyPrivacy({ preferCache = true } = {}) {
-  // Firebase Firestore removed
+  // Firestore removed
   const cached = readCache();
   return cached || null;
 }
 
 export async function savePrivacySetting(key, value) {
-  // Firebase Firestore removed - local cache only
+  // Firestore removed - local cache only
   if (!PRIVACY_FIELDS.includes(key)) throw new Error('Invalid privacy field');
   const cached = readCache() || {};
   const next = { ...cached, [key]: value };
@@ -50,7 +50,7 @@ export async function savePrivacySetting(key, value) {
 }
 
 export async function resetPrivacyToDefaults() {
-  // Firebase Firestore removed - local cache only
+  // Firestore removed - local cache only
   const defaults = {
     lastSeen: 'everyone',
     profilePhotoVisibility: 'everyone',
@@ -63,9 +63,9 @@ export async function resetPrivacyToDefaults() {
   emitPrivacyUpdated({ reset: true, all: defaults });
 }
 
-// Firebase Firestore removed - live sync not available
+// Firestore removed - live sync not available
 let liveUnsub = null;
 export function ensurePrivacyLiveSync() {
-  // Firestore live sync disabled
+  // Live sync disabled
   return null;
 }
