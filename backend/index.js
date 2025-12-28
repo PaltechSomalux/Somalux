@@ -12,6 +12,7 @@ import pkg from 'agora-token';
 const { RtcTokenBuilder, RtcRole } = pkg;
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
+import admin from 'firebase-admin';
 import {
   getReadingStats,
   getReadingActivity,
@@ -27,7 +28,22 @@ import { sendSignOutReasonEmail } from './routes/adminNotifications.js';
 import adsApiV2 from './routes/adsApiV2.js';
 import { createRankingRoutes } from './routes/rankings.js';
 
-
+// Initialize Firebase Admin
+try {
+  const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json';
+  if (existsSync(serviceAccountPath)) {
+    const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://paltechproject.firebaseio.com'
+    });
+    console.log('✅ Firebase Admin SDK initialized');
+  } else {
+    console.warn('⚠️ Firebase service account file not found at', serviceAccountPath);
+  }
+} catch (error) {
+  console.error('❌ Error initializing Firebase Admin:', error);
+}
 
 // Express Setup MUST be before any app.use/app.post calls
 const app = express();
