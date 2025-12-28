@@ -3,23 +3,17 @@
 
 ## 🌐 FRONTEND CONFIGURATION
 
-### Firebase Hosting
-- Project: somalux-eb820
-- URL: https://somalux-eb820.web.app
+### Frontend Hosting
+- Platform: Render (served via backend)
+- Custom Domain: https://somalux.co.ke
 - Config Files:
-  - src/firebase.js ✅ Updated
-  - src/FirebaseConfig.js ✅ Updated
+- src/supabase.js ✅ (Supabase config)
 
 ### Environment Variables (.env in root)
 ```
 REACT_APP_API_URL=https://somalux-backend.onrender.com
-REACT_APP_FIREBASE_API_KEY=AIzaSyDn1r0J6m59WkETDRXxw4mFIeoPsZy8n8w
-REACT_APP_FIREBASE_AUTH_DOMAIN=somalux-eb820.firebaseapp.com
-REACT_APP_FIREBASE_PROJECT_ID=somalux-eb820
-REACT_APP_FIREBASE_STORAGE_BUCKET=somalux-eb820.firebasestorage.app
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=1087160446048
-REACT_APP_FIREBASE_APP_ID=1:1087160446048:web:e422cdc9f18ce5d5c3e705
-REACT_APP_FIREBASE_MEASUREMENT_ID=G-VTDGJHPFFW
+REACT_APP_SUPABASE_URL=https://wuwlnawtuhjoubfkdtgc.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 ---
@@ -106,10 +100,10 @@ All tables should have appropriate RLS policies:
 ## 🚀 DEPLOYMENT CHECKLIST
 
 ### ✅ Frontend (Completed)
-- [x] Firebase credentials configured
+- [x] Supabase credentials configured
 - [x] Project built (npm run build)
-- [x] Deployed to Firebase Hosting
-- [x] Live at https://somalux-eb820.web.app
+- [x] Deployed to Render
+- [x] Live at https://somalux.co.ke
 
 ### ⏳ Backend (In Progress)
 - [x] PORT environment variable updated
@@ -140,7 +134,7 @@ All tables should have appropriate RLS policies:
 ## 🔗 CONNECTION FLOW
 
 ```
-User → Firebase Hosting (Frontend)
+User → Render Backend (Frontend Served)
         ↓
         → Render Backend (API Server)
            ↓
@@ -153,18 +147,13 @@ User → Firebase Hosting (Frontend)
 3. Backend queries Supabase for data
 
 ### Authentication
-- Firebase Auth on frontend
+- Supabase Auth on frontend
 - JWT tokens passed in headers
 - Backend verifies tokens with Supabase
 
 ---
 
 ## 📊 SERVICE CREDENTIALS
-
-### Firebase Admin SDK
-- Location: `backend/paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json`
-- Usage: Server-side Firebase operations
-- Security: Keep in backend/, add to .gitignore
 
 ### Supabase Service Role
 - Used for: Admin operations, scheduled jobs
@@ -203,13 +192,12 @@ npm start
 3. **Rotate keys periodically** - Update in all services
 4. **Monitor access logs** - Check Supabase audit logs
 5. **Enable CORS properly** - Only allow trusted origins
-6. **Use HTTPS** - Both Firebase and Render use HTTPS
+6. **Use HTTPS** - Render manages SSL certificates automatically
 
 ---
 
 ## 📞 SUPPORT & LINKS
 
-- Firebase Console: https://console.firebase.google.com/
 - Render Dashboard: https://dashboard.render.com/
 - Supabase Dashboard: https://app.supabase.com/
 - Supabase Docs: https://supabase.com/docs

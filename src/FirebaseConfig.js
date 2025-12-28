@@ -2,6 +2,6 @@
 // Cloud services have been removed from the project
 // Use Supabase for database, storage, and authentication instead
 //
-// See src/firebase.js for Supabase configuration
+// See src/supabase.js for Supabase configuration
 
 export default {};

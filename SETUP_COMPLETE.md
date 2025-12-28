@@ -4,11 +4,10 @@
 
 ### 1. Frontend ✅ LIVE
 - **Status**: Deployed and running
-- **URL**: https://somalux-eb820.web.app
-- **Platform**: Firebase Hosting
+- **URL**: https://somalux.co.ke
+- **Platform**: Render Backend (served as static)
 - **Files Updated**:
-  - ✅ `src/firebase.js`
-  - ✅ `src/FirebaseConfig.js`
+  - ✅ `src/supabase.js`
 - **Build**: Production-ready in `/build` folder
 
 ### 2. Backend ✅ READY FOR DEPLOYMENT
@@ -44,7 +43,7 @@
 ```bash
 git init
 git add .
-git commit -m "Deploy SomaLux: Firebase frontend + Render backend + Supabase DB"
+git commit -m "Deploy SomaLux: Render backend with Supabase DB"
 git remote add origin https://github.com/YOUR_USERNAME/SomaLux.git
 git push -u origin main
 ```
@@ -124,23 +123,23 @@ MPESA_ENVIRONMENT=sandbox
 │         Users/Browsers                   │
 └──────────────┬───────────────────────────┘
                │
-    ┌──────────┴──────────┐
-    │                     │
-    ▼                     ▼
-┌─────────────┐     ┌──────────────────┐
-│   Firebase  │     │   Render Backend │
-│  Hosting    │     │   API Server     │
-│             │     │                  │
-│ Frontend    │◄───►│ Node.js/Express  │
-│ React App   │     │                  │
-└─────────────┘     └────────┬─────────┘
-                             │
-                             ▼
-                        ┌─────────────┐
-                        │  Supabase   │
-                        │  Database   │
-                        │ PostgreSQL  │
-                        └─────────────┘
+               ▼
+┌──────────────────────┐     
+│   Render Backend     │     
+│   API Server         │     
+│                      │     
+│ Frontend (React)     │     
+│ + API Routes         │     
+│                      │     
+│ Node.js/Express      │     
+└────────────┬─────────┘     
+             │
+             ▼
+        ┌─────────────┐
+        │  Supabase   │
+        │  Database   │
+        │ PostgreSQL  │
+        └─────────────┘
 ```
 
 ---
@@ -165,9 +164,6 @@ MPESA_ENVIRONMENT=sandbox
 
 ### After Deployment
 - [ ] Backend URL obtained from Render
-- [ ] Frontend API endpoint updated
-- [ ] Frontend rebuilt with new API URL
-- [ ] Frontend redeployed to Firebase
 - [ ] Test API endpoints
 - [ ] Monitor Render logs for errors
 - [ ] Test end-to-end workflow
@@ -230,16 +226,14 @@ fetch(`${API_BASE_URL}/api/test/check-dir?dirPath=/tmp`)
 
 | Component | URL | Status |
 |-----------|-----|--------|
-| Frontend | https://somalux-eb820.web.app | ✅ Live |
+| Frontend | https://somalux.co.ke | ✅ Live |
 | Backend | https://somalux-backend.onrender.com | ⏳ Pending |
 | Database | wuwlnawtuhjoubfkdtgc.supabase.co | ✅ Ready |
-| Admin Panel | somalux-eb820.firebaseapp.com/admin | ✅ Live |
 
 ---
 
 ## 📞 SUPPORT & DOCUMENTATION
 
-- **Firebase Docs**: https://firebase.google.com/docs
 - **Render Docs**: https://render.com/docs
 - **Supabase Docs**: https://supabase.com/docs
 - **Express Docs**: https://expressjs.com/
@@ -248,7 +242,7 @@ fetch(`${API_BASE_URL}/api/test/check-dir?dirPath=/tmp`)
 
 ## 🎯 KEY FILES
 
-- `src/firebase.js` - Frontend Firebase configuration
+- `src/supabase.js` - Frontend Supabase configuration
 - `backend/index.js` - Backend server entry point
 - `backend/.env` - Backend environment variables
 - `render.yaml` - Render deployment configuration
