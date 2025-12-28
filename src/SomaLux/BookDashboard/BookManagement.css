@@ -67,6 +67,7 @@
   backdrop-filter: blur(14px);
   border-bottom: none;
   padding: 8px 0;
+  overflow: hidden;
 }
 
 .tool-group-convert {
@@ -76,6 +77,8 @@
   overflow-x: auto;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
+  /* Enable smooth scrolling on tap */
+  -webkit-overflow-scrolling: touch;
 }
 
 .tool-group-convert::-webkit-scrollbar {
@@ -91,31 +94,31 @@
   padding: 10px 18px;
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
   color: var(--text-muted);
   border-radius: 0;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+  /* Prevent text selection during swipe */
+  user-select: none;
+  -webkit-user-select: none;
+  /* Optimize touch responsiveness */
+  -webkit-touch-callout: none;
 
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.3s ease, border-color 0.3s ease, background 0.3s ease, font-weight 0.3s ease;
+  transition: color 0.3s ease;
 }
 
 .tool-button-convert:hover {
-  background: rgba(0, 168, 132, 0.08);
   color: var(--text-main);
 }
 
 .tool-button-convert.active-convert {
-  background: transparent;
   color: var(--primary);
-  border-bottom: 2px solid var(--primary);
   font-weight: 700;
-  box-shadow: none;
 }
 
 /* ================= MAIN CONTENT ================= */
@@ -124,6 +127,13 @@
   padding: 24px 20px;
   min-height: calc(100vh - 150px);
   animation: fadeIn 0.4s ease-in-out;
+  /* Enable touch scrolling */
+  -webkit-overflow-scrolling: touch;
+  /* Prevent unwanted text selection during swipe */
+  user-select: none;
+  -webkit-user-select: none;
+  /* Smooth transitions for tab changes */
+  transition: opacity 0.3s ease;
 }
 
 @keyframes fadeIn {
@@ -156,15 +166,51 @@
     padding: 18px;
   }
 
-  .tool-button-convert.active-convert {
-    border-bottom: none;
+  /* Mobile-specific swipe optimizations */
+  .tool-group-convert {
+    /* Ensure smooth momentum scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tool-button-convert {
+    /* Increase touch target size for mobile */
+    min-width: 70px;
+    padding: 12px 16px;
+  }
+
+  .file-converter-content-convert {
+    /* Ensure touch events work properly */
+    touch-action: pan-y;
   }
 }
 
+/* Further optimization for small phones */
 @media (max-width: 480px) {
   .tool-button-convert {
     padding: 9px 14px;
     font-size: 13px;
     border-radius: 10px;
+    min-width: 60px;
+  }
+
+  .tools-scroll-container-convert {
+    /* Tighter spacing on very small screens */
+    padding: 6px 0;
+  }
+
+  .tool-group-convert {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .file-converter-content-convert {
+    padding: 16px;
+  }
+
+  /* Ensure swipe is the primary interaction method */
+  .file-converter-content-convert {
+    touch-action: pan-y;
+    /* Prevent bounce effect on iOS */
+    overscroll-behavior: contain;
   }
 }

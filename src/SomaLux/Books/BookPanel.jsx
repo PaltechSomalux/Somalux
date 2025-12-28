@@ -3025,25 +3025,88 @@ export const BookPanel = ({ demoMode = false }) => {
                   onDownloadStart={async () => {
                     if (!requireAuth('download')) return false;
 
-                    // Increment download count (per-book aggregate)
-                    try {
-                      await supabase
-                        .from('books')
-                        .update({ downloads_count: (selectedBook.downloads_count || 0) + 1 })
-                        .eq('id', selectedBook.id);
-                    } catch (error) {
-                      console.error('Failed to increment downloads:', error);
-                    }
-
-                    // Log per-user download (analytics)
+                    // Log per-user download (analytics) - with better error handling
                     try {
                       if (user && selectedBook && selectedBook.id) {
-                        await supabase
+                        const downloadRecord = {
+                          user_id: user.id,
+                          book_id: selectedBook.id,
+                          downloaded_at: new Date().toISOString(),
+                          user_agent: navigator.userAgent || 'unknown'
+                        };
+
+                        const { data, error } = await supabase
                           .from('book_downloads')
-                          .insert({ user_id: user.id, book_id: selectedBook.id });
+                          .insert([downloadRecord])
+                          .select();
+
+                        if (error) {
+                          console.error('❌ Failed to log book download:', {
+                            error: error.message,
+                            code: error.code,
+                            details: error.details,
+                            hint: error.hint,
+                            context: { userId: user.id, bookId: selectedBook.id }
+                          });
+                        } else {
+                          console.log('✅ Download logged successfully:', data);
+                          
+                          // Increment count using the SQL function (bypasses RLS)
+                          try {
+                            const { data: result, error: rpcError } = await supabase
+                              .rpc('increment_book_downloads', { p_book_id: selectedBook.id });
+                            
+                            if (rpcError) {
+                              console.error('❌ RPC increment failed, trying direct update:', {
+                                message: rpcError.message,
+                                code: rpcError.code,
+                                details: rpcError.details
+                              });
+                              
+                              // Fallback: direct update
+                              const { data: bookData } = await supabase
+                                .from('books')
+                                .select('downloads_count')
+                                .eq('id', selectedBook.id)
+                                .single();
+                              
+                              const currentCount = bookData?.downloads_count || 0;
+                              const newCount = currentCount + 1;
+                              
+                              const { error: updateError } = await supabase
+                                .from('books')
+                                .update({ downloads_count: newCount })
+                                .eq('id', selectedBook.id);
+                              
+                              if (updateError) {
+                                console.error('❌ Count UPDATE FAILED:', {
+                                  message: updateError.message,
+                                  code: updateError.code,
+                                  details: updateError.details,
+                                  status: updateError.status
+                                });
+                              } else {
+                                console.log(`✅ Count incremented (fallback): ${currentCount} → ${newCount}`);
+                                setSelectedBook(prev => ({
+                                  ...prev,
+                                  downloads_count: newCount
+                                }));
+                              }
+                            } else {
+                              const newCount = result || (selectedBook.downloads_count || 0) + 1;
+                              console.log(`✅ Count incremented (RPC): ${selectedBook.downloads_count || 0} → ${newCount}`);
+                              setSelectedBook(prev => ({
+                                ...prev,
+                                downloads_count: newCount
+                              }));
+                            }
+                          } catch (countError) {
+                            console.error('⚠️ Count increment exception:', countError);
+                          }
+                        }
                       }
                     } catch (error) {
-                      console.error('Failed to log book download:', error);
+                      console.error('Exception while logging book download:', error);
                     }
 
                     return true;

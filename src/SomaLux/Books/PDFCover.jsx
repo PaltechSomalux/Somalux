@@ -4,10 +4,16 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
+// Verify worker is configured (set in pdfConfig.js at startup)
+if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+  console.error('❌ PDF worker not configured! Attempting fallback...');
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url
+  ).toString();
+} else {
+  console.log('✅ PDFCover: Worker ready:', pdfjs.GlobalWorkerOptions.workerSrc);
+}
 
 const PDFCover = ({ src, alt, className, style, onClick, loading = 'lazy' }) => {
   const [error, setError] = useState(false);

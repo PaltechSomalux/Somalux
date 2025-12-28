@@ -1,15 +1,12 @@
 // index.js
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+
+// 🔧 CRITICAL: Initialize PDF worker FIRST before any other imports
+import './pdfConfig.js';
+
 import { SomaLux } from './SomaLux';
 import SpeedTracker from './SpeedTracker';
-
-// 🔧 Configure PDF.js worker BEFORE any PDF loading happens
-import * as pdfjsLib from 'pdfjs-dist';
-if (typeof pdfjsLib !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
-  // Use local worker file hosted in public folder
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-}
 
 // Register Service Worker for high-speed downloads and offline caching
 if ('serviceWorker' in navigator) {

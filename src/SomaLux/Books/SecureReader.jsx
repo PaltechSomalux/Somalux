@@ -22,11 +22,16 @@ import {
 } from 'react-icons/fi';
 import './SecureReader.css'; // Import CSS file
 
-// Use local pdfjs-dist worker; ensure pdfjs-dist version matches react-pdf's pdfjs.version
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
+// Verify worker is configured (set in pdfConfig.js at startup)
+if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+  console.error('❌ PDF worker not configured! Attempting fallback...');
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url
+  ).toString();
+} else {
+  console.log('✅ SecureReader: Worker ready:', pdfjs.GlobalWorkerOptions.workerSrc);
+}
 
 const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sessionId: sessionIdProp, openedAt: openedAtProp }) => {
   const [numPages, setNumPages] = useState(null);

@@ -14,15 +14,16 @@ import {
 } from 'react-icons/fi';
 import './FastReader.css';
 
-// Use local pdfjs-dist worker
-try {
-  pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.min.mjs`;
-} catch (e) {
-  // Fallback for development
+// Verify worker is configured (set in pdfConfig.js at startup)
+if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+  console.error('❌ PDF worker not configured! Attempting fallback...');
   pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
     import.meta.url
   ).toString();
+} else {
+  console.log('✅ FastReader: Worker ready:', pdfjs.GlobalWorkerOptions.workerSrc);
+}
 }
 
 const FastReader = ({ src, title, author, onClose, userId, bookId }) => {

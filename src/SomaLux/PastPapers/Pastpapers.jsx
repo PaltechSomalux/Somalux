@@ -1699,18 +1699,23 @@ export const PaperPanel = ({ demoMode = false }) => {
         )}
       </AnimatePresence>
 
-      {/* Bookmarks Toggle Button - Only show when university is selected */}
+      {/* Bookmarks Toggle Button - Only show when bookmarks exist */}
       {user && universityFilter && (() => {
         // Count bookmarks only for papers in the current university
         const currentUniversityBookmarkCount = paperBookmarks.filter(
           bookmarkId => displayedPapers.some(paper => paper.id === bookmarkId)
         ).length;
         
+        // Only render button if there are bookmarked papers
+        if (currentUniversityBookmarkCount === 0) {
+          return null;
+        }
+        
         return (
           <motion.button
             onClick={() => setShowBookmarksPanel(!showBookmarksPanel)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
             style={{
               position: 'fixed',
               bottom: '24px',
@@ -1722,21 +1727,19 @@ export const PaperPanel = ({ demoMode = false }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px',
+              gap: '4px',
               transition: 'all 0.2s'
             }}
-            title="Bookmarked Papers"
+            title="View Bookmarked Papers"
           >
-            <FiBookmark size={24} color="#6366f1" />
-            {currentUniversityBookmarkCount > 0 && (
-              <span style={{
-                color: '#ef4444',
-                fontSize: '14px',
-                fontWeight: 'bold'
-              }}>
-                {currentUniversityBookmarkCount}
-              </span>
-            )}
+            <FiBookmark size={16} color="#00a884" />
+            <span style={{
+              color: '#00a884',
+              fontSize: '11px',
+              fontWeight: '600'
+            }}>
+              {currentUniversityBookmarkCount}
+            </span>
           </motion.button>
         );
       })()}

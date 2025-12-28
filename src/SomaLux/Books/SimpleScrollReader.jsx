@@ -14,14 +14,16 @@ import NoteModal from './NoteModal';
 import { generateSummaryDocument } from './utils/generateWordDoc';
 import './SimpleScrollReader.css';
 
-// Suppress pdfjs worker warnings for corrupted PDFs
-if (typeof window !== 'undefined' && window.PDFJS) {
-  window.PDFJS.disableWorker = false;
-  window.PDFJS.logLevel = window.PDFJS.VERBOSITY_LEVELS.ERRORS;
+// Verify worker is configured (set in pdfConfig.js at startup)
+if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+  console.error('❌ PDF worker not configured! Attempting fallback...');
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url
+  ).toString();
+} else {
+  console.log('✅ SimpleScrollReader: Worker ready:', pdfjs.GlobalWorkerOptions.workerSrc);
 }
-
-// Set the worker source - use CDN for reliability
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   // Debug: Log the PDF source

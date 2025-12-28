@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { BookCategories } from "../Categories/BookCategories";
 import { BookPanel } from "../Books/BookPanel";
@@ -8,12 +8,24 @@ import {Profile} from './Profile';   // ← imported here
 import VerificationBadge from "../Books/Admin/components/VerificationBadge";
 import VerificationTierModal from "../Books/VerificationTierModal";
 import { supabase } from "../Books/supabaseClient";
+import { useSwipeTabs } from './useSwipeTabs';
 import './BookManagement.css';
 
 export const BookManagement = () => {
   const [activeTab, setActiveTab] = useState('books');
   const [isScrolled, setIsScrolled] = useState(false);
   const [currentUserTier, setCurrentUserTier] = useState('basic');
+  const contentRef = useRef(null);
+
+  // Initialize swipe gesture handler
+  const tabs = [
+    { id: 'books',      label: 'Books',       component: <BookPanel /> },
+    { id: 'categories', label: 'Categories',  component: <BookCategories /> },
+    { id: 'authors',    label: 'Authors',     component: <Authors /> },
+    { id: 'pastpapers', label: 'Past Papers', component: <PaperPanel /> },
+  ];
+
+  const swipeHandlers = useSwipeTabs(tabs, activeTab, setActiveTab, contentRef);
 
   // Scroll effect for header shadow
   useEffect(() => {
@@ -76,12 +88,9 @@ export const BookManagement = () => {
     }
   }, [location.search]);
 
-  const tabs = [
-    { id: 'books',      label: 'Books',       component: <BookPanel /> },
-    { id: 'categories', label: 'Categories',  component: <BookCategories /> },
-    { id: 'authors',    label: 'Authors',     component: <Authors /> },
-    { id: 'pastpapers', label: 'Past Papers', component: <PaperPanel /> },
-  ];
+  const renderActiveTab = () => {
+    return tabs.find(t => t.id === activeTab)?.component;
+  };
 
   return (
     <div className={`book-management ${isScrolled ? 'scrolled' : ''}`}>
@@ -104,6 +113,7 @@ export const BookManagement = () => {
           {tabs.map(tab => (
             <button
               key={tab.id}
+              data-tab-id={tab.id}
               className={`tool-button-convert ${activeTab === tab.id ? 'active-convert' : ''}`}
               onClick={() => setActiveTab(tab.id)}
             >
@@ -114,8 +124,12 @@ export const BookManagement = () => {
       </div>
 
       {/* Main Content */}
-      <div className="file-converter-content-convert">
-        {tabs.find(t => t.id === activeTab)?.component}
+      <div
+        className="file-converter-content-convert"
+        ref={contentRef}
+        {...swipeHandlers}
+      >
+        {renderActiveTab()}
       </div>
     </div>
   );
