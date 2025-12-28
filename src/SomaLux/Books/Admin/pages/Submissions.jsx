@@ -105,6 +105,18 @@ const Submissions = ({ userProfile }) => {
     if (!ok) return;
 
     setBusy((prev) => ({ ...prev, [id]: true }));
+    
+    // Optimistic update: remove item immediately and decrement count
+    setItems((prev) => prev.filter((x) => x.id !== id));
+    setSelected(null);
+    setSummary((prev) => {
+      const updated = { ...prev };
+      if (type === 'books') updated.booksPending = Math.max(0, updated.booksPending - 1);
+      else if (type === 'universities') updated.universitiesPending = Math.max(0, updated.universitiesPending - 1);
+      else if (type === 'past_papers') updated.pastPapersPending = Math.max(0, updated.pastPapersPending - 1);
+      return updated;
+    });
+    
     try {
       let res;
       if (type === 'universities') {
@@ -120,13 +132,13 @@ const Submissions = ({ userProfile }) => {
       }
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Approve failed');
-      setItems((prev) => prev.filter((x) => x.id !== id));
-      fetchSummary();
-      setSelected(null);
       showToast({ type: 'success', message: `${type === 'books' ? 'Book' : type === 'universities' ? 'University' : 'Past paper'} approved successfully.` });
     } catch (e) {
       console.error('Approve submission failed:', e);
       showToast({ type: 'error', message: e.message || 'Approve failed.' });
+      // Restore item and count on error
+      fetchData();
+      fetchSummary();
     } finally {
       setBusy((prev) => ({ ...prev, [id]: false }));
     }
@@ -172,6 +184,18 @@ const Submissions = ({ userProfile }) => {
     if (reason === null) return;
 
     setBusy((prev) => ({ ...prev, [id]: true }));
+    
+    // Optimistic update: remove item immediately and decrement count
+    setItems((prev) => prev.filter((x) => x.id !== id));
+    setSelected(null);
+    setSummary((prev) => {
+      const updated = { ...prev };
+      if (type === 'books') updated.booksPending = Math.max(0, updated.booksPending - 1);
+      else if (type === 'universities') updated.universitiesPending = Math.max(0, updated.universitiesPending - 1);
+      else if (type === 'past_papers') updated.pastPapersPending = Math.max(0, updated.pastPapersPending - 1);
+      return updated;
+    });
+    
     try {
       let res;
       if (type === 'universities') {
@@ -191,13 +215,13 @@ const Submissions = ({ userProfile }) => {
       }
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Reject failed');
-      setItems((prev) => prev.filter((x) => x.id !== id));
-      fetchSummary();
-      setSelected(null);
       showToast({ type: 'success', message: `${type === 'books' ? 'Book' : type === 'universities' ? 'University' : 'Past paper'} rejected.` });
     } catch (e) {
       console.error('Reject submission failed:', e);
       showToast({ type: 'error', message: e.message || 'Reject failed.' });
+      // Restore item and count on error
+      fetchData();
+      fetchSummary();
     } finally {
       setBusy((prev) => ({ ...prev, [id]: false }));
     }

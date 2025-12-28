@@ -122,6 +122,45 @@ button {
   box-shadow: 0 4px 12px rgba(0, 168, 132, 0.3);
 }
 
+.upload-btn {
+  background-color: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.upload-btn:hover {
+  background-color: #2a9dd1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(42, 157, 209, 0.3);
+}
+
+.signout-btn {
+  background-color: var(--error);
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.signout-btn:hover {
+  background-color: #d4424b;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(241, 94, 108, 0.3);
+}
+
+.profile-action-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .save-btn {
   background-color: var(--primary);
   color: #fff;

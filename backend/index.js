@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import cors from "cors";
 import { sendEmail, buildBrandedEmailHtml } from './utils/email.js';
 import { getAdminEmails } from './routes/adminNotifications.js';
+import admin from "firebase-admin";
 import { WebSocketServer } from "ws";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import path from "path";
@@ -12,7 +13,6 @@ import pkg from 'agora-token';
 const { RtcTokenBuilder, RtcRole } = pkg;
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
-
 import {
   getReadingStats,
   getReadingActivity,
@@ -28,6 +28,19 @@ import { sendSignOutReasonEmail } from './routes/adminNotifications.js';
 import adsApiV2 from './routes/adsApiV2.js';
 import { createRankingRoutes } from './routes/rankings.js';
 
+// Initialize Firebase Admin SDK
+const serviceAccount = JSON.parse(
+  readFileSync(
+    new URL("./paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json", import.meta.url)
+  )
+);
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+
+
 // Express Setup MUST be before any app.use/app.post calls
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
@@ -35,12 +48,13 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public')); // Serve static files from public folder (for ads, etc)
 
+// FCM topic management
 app.post('/subscribe-topic', async (req, res) => {
   const { topic, token } = req.body || {};
   if (!topic || !token) return res.status(400).send('Missing topic or token');
   try {
-    console.log(`📢 Topic subscription requested: ${topic}`);
-    res.json({ success: false, message: 'Cloud messaging disabled' });
+    await admin.messaging().subscribeToTopic(token, topic);
+    res.json({ success: true });
   } catch (e) {
     console.error('subscribe-topic error', e);
     res.status(500).send(e.message || 'subscribe error');
@@ -98,8 +112,8 @@ app.post('/unsubscribe-topic', async (req, res) => {
   const { topic, token } = req.body || {};
   if (!topic || !token) return res.status(400).send('Missing topic or token');
   try {
-    console.log(`📢 Topic unsubscribe requested: ${topic}`);
-    res.json({ success: false, message: 'Cloud messaging disabled' });
+    await admin.messaging().unsubscribeFromTopic(token, topic);
+    res.json({ success: true });
   } catch (e) {
     console.error('unsubscribe-topic error', e);
     res.status(500).send(e.message || 'unsubscribe error');
@@ -387,7 +401,7 @@ app.post('/api/agora/token', async (req, res) => {
     const { channel, uid } = req.body || {};
     if (!channel) return res.status(400).json({ error: 'channel required' });
 
-    // Require a valid ID token unless explicitly allowed for development
+    // Require a Firebase ID token unless explicitly allowed for development
     const allowPublic = String(process.env.ALLOW_PUBLIC_AGORA_TOKEN || '').toLowerCase() === 'true';
     let decoded = null;
     if (!allowPublic) {
@@ -397,7 +411,7 @@ app.post('/api/agora/token', async (req, res) => {
       try {
         decoded = await admin.auth().verifyIdToken(idToken);
       } catch (ve) {
-        console.error('Token verification failed', ve);
+        console.error('Firebase token verification failed', ve);
         return res.status(401).json({ error: 'invalid idToken' });
       }
     }
@@ -425,6 +439,8 @@ app.post('/api/agora/token', async (req, res) => {
     return res.status(500).json({ error: 'token generation failed' });
   }
 });
+
+const db = admin.firestore();
 
 // --- Supabase (service role) for secure writes + audit logs ---
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -538,174 +554,6 @@ app.delete('/api/elib/universities/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message || 'delete failed' });
-  }
-});
-
-// Universities Submissions: approve or reject
-app.patch('/api/elib/universities/:id', async (req, res) => {
-  if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
-  try {
-    const { id } = req.params;
-    const { status, rejection_reason } = req.body;
-    const actor = req.headers['x-actor-email'] || 'admin';
-    const actorId = req.headers['x-actor-id'] || null;
-    const nowIso = new Date().toISOString();
-
-    // Validate status
-    if (!['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status. Must be approved or rejected.' });
-    }
-
-    // 1. Get the submission
-    const { data: submission, error: fetchErr } = await supabaseAdmin
-      .from('universities_submissions')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (fetchErr || !submission) {
-      return res.status(404).json({ error: 'University submission not found' });
-    }
-
-    // 2. If approving, create the published university
-    let publishedUniversityId = null;
-    if (status === 'approved') {
-      const universityPayload = {
-        name: submission.name,
-        description: submission.description,
-        location: submission.location,
-        website_url: submission.website_url,
-        established: submission.established,
-        student_count: submission.student_count,
-        cover_image_url: submission.cover_image_url,
-        uploaded_by: submission.uploaded_by,
-        status: 'approved',
-        created_at: nowIso,
-        updated_at: nowIso,
-      };
-
-      const { data: published, error: publishErr } = await supabaseAdmin
-        .from('universities')
-        .insert(universityPayload)
-        .select('id')
-        .single();
-
-      if (publishErr) {
-        console.error('Failed to publish university:', publishErr);
-        return res.status(500).json({ error: 'Failed to publish university to catalog' });
-      }
-
-      publishedUniversityId = published.id;
-    }
-
-    // 3. Update the submission record
-    const updatePayload = {
-      status,
-      updated_at: nowIso,
-      approved_at: status === 'approved' ? nowIso : null,
-      approved_by: status === 'approved' ? actorId : null,
-      rejection_reason: status === 'rejected' ? (rejection_reason || null) : null,
-      published_university_id: publishedUniversityId,
-    };
-
-    const { data: updatedSubmission, error: updateErr } = await supabaseAdmin
-      .from('universities_submissions')
-      .update(updatePayload)
-      .eq('id', id)
-      .select('*')
-      .single();
-
-    if (updateErr) throw updateErr;
-
-    // 4. Audit log
-    await logAudit({
-      actor,
-      action: status === 'approved' ? 'approve_university_submission' : 'reject_university_submission',
-      entity: 'universities_submissions',
-      record_id: id,
-      details: { status, published_id: publishedUniversityId, reason: rejection_reason },
-      ip: req.ip,
-    });
-
-    // 5. Send email notification
-    if (submission.uploaded_by) {
-      const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('email, full_name')
-        .eq('id', submission.uploaded_by)
-        .single();
-
-      if (profile?.email) {
-        const firstName = profile.full_name?.split(' ')[0] || 'Contributor';
-        const universityName = submission.name || 'Your University';
-
-        if (status === 'approved') {
-          const subject = `Great News – "${universityName}" Has Been Approved!`;
-          const htmlBody = buildBrandedEmailHtml({
-            title: 'Your University Submission Was Approved!',
-            body: `
-              <p>Dear ${firstName},</p>
-
-              <p>We're thrilled to let you know that your university submission has been <strong>approved and is now live</strong> on our platform!</p>
-
-              <p><strong>University:</strong> ${universityName}</p>
-
-              <p>Students will now be able to discover and learn about your institution. Thank you for contributing!</p>
-
-              <p>With gratitude,<br>
-              The Editorial Team<br>
-              eLib Publishing</p>
-            `.trim()
-          });
-
-          try {
-            await sendEmail({
-              to: profile.email,
-              subject,
-              html: htmlBody,
-              text: `Congratulations! Your university "${universityName}" has been approved and is now live!`,
-            });
-          } catch (emailErr) {
-            console.warn(`Approval email failed for ${profile.email}:`, emailErr);
-          }
-        } else if (status === 'rejected') {
-          const subject = `Your University Submission Needs Revision`;
-          const reason = rejection_reason || 'Please review and resubmit.';
-          const htmlBody = buildBrandedEmailHtml({
-            title: 'University Submission Needs Revision',
-            body: `
-              <p>Dear ${firstName},</p>
-
-              <p>Thank you for submitting "${universityName}" to our platform. After review, we need you to make some revisions:</p>
-
-              <p><strong>Reason:</strong> ${reason}</p>
-
-              <p>Please address the feedback and resubmit. We appreciate your effort and look forward to featuring your university soon!</p>
-
-              <p>Best regards,<br>
-              The Editorial Team<br>
-              eLib Publishing</p>
-            `.trim()
-          });
-
-          try {
-            await sendEmail({
-              to: profile.email,
-              subject,
-              html: htmlBody,
-              text: `Your university submission "${universityName}" needs revision. Reason: ${reason}`,
-            });
-          } catch (emailErr) {
-            console.warn(`Rejection email failed for ${profile.email}:`, emailErr);
-          }
-        }
-      }
-    }
-
-    res.json({ ok: true, message: `University submission ${status}`, submission: updatedSubmission, publishedId: publishedUniversityId });
-  } catch (e) {
-    console.error('University submission update error:', e);
-    res.status(500).json({ error: e.message || 'Failed to update university submission' });
   }
 });
 
@@ -1224,9 +1072,11 @@ app.post("/send", async (req, res) => {
           };
 
           try {
-            console.log('📢 Cloud messaging send skipped');
+            const response = await admin.messaging().send(messagePayload);
+            console.log('✅ FCM sent WITH FULL CHAT STATE FLAGS:', response);
+            console.log('🔥 FOREGROUND PAYLOAD:', foregroundData);
           } catch (fcmError) {
-            console.warn('⚠️ Cloud messaging disabled');
+            console.warn('⚠️ FCM send failed, continuing without push:', fcmError?.message || fcmError);
             // Do not throw; message is saved and WS will still notify active clients
           }
         } else {
@@ -1490,8 +1340,26 @@ app.post("/send-group-message", async (req, res) => {
         isGroup: true,
       };
 
-      // Cloud messaging disabled - use Supabase instead
-      console.log(`📢 Group notification skipped for group_${groupId}`);
+      await admin.messaging().send({
+        topic: `group_${groupId}`,
+        notification: {
+          title: `${senderDisplay} in ${groupName || 'Group'}`,
+          body: text.length > 50 ? text.substring(0, 50) + '...' : text,
+          image: senderPhotoURL,
+        },
+        data: {
+          foreground: JSON.stringify(foregroundData),
+          isGroup: 'true',
+          chatId: groupId,
+          sender: sender,
+          senderName: senderDisplay,
+          senderPhotoURL: senderPhotoURL || '',
+          message: text,
+          messageId: messageRef.id,
+          type: 'new_group_message',
+        },
+      });
+      console.log(`✅ Group topic notification sent to group_${groupId}`);
     } catch (notificationError) {
       console.error('❌ Error sending group topic notification:', notificationError);
     }
@@ -1886,7 +1754,7 @@ app.get('/api/elib/bulk-upload/processes', async (req, res) => {
 });
 
 
-// === Submissions Endpoints (Books + Past Papers + Universities) ===
+// === Submissions Endpoints (Books + Past Papers) ===
 app.get('/api/elib/submissions', async (req, res) => {
   try {
     if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
@@ -1894,28 +1762,12 @@ app.get('/api/elib/submissions', async (req, res) => {
     const userId = req.query.userId || null;
     const type = (req.query.type || 'books').toString();
 
-    let table;
-    if (type === 'past_papers') {
-      table = 'past_paper_submissions';
-    } else if (type === 'universities') {
-      table = 'universities_submissions';
-    } else {
-      table = 'book_submissions';
-    }
-    
-    console.log(`[/api/elib/submissions] Fetching ${type} from ${table} with status=${status}`);
-    
+    const table = type === 'past_papers' ? 'past_paper_submissions' : 'book_submissions';
     let q = supabaseAdmin.from(table).select('*').order('created_at', { ascending: false });
     if (status !== 'all') q = q.eq('status', status);
     if (userId) q = q.eq('uploaded_by', userId);
     const { data, error } = await q;
-    
-    if (error) {
-      console.error(`[/api/elib/submissions] Error querying ${table}:`, error);
-      throw error;
-    }
-
-    console.log(`[/api/elib/submissions] Found ${data?.length || 0} ${type} submissions`);
+    if (error) throw error;
 
     // Attach uploader email/name from profiles for admin display
     const submissions = data || [];
@@ -1947,7 +1799,6 @@ app.get('/api/elib/submissions', async (req, res) => {
 
     res.json({ ok: true, type, submissions: enriched });
   } catch (e) {
-    console.error('[/api/elib/submissions] Error:', e);
     res.status(500).json({ error: e.message || 'Failed to load submissions' });
   }
 });
@@ -1957,22 +1808,19 @@ app.get('/api/elib/submissions/summary', async (req, res) => {
   try {
     if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
 
-    const [booksPending, pastPending, universitiesPending] = await Promise.all([
+    const [booksPending, pastPending] = await Promise.all([
       supabaseAdmin.from('book_submissions').select('id', { head: true, count: 'exact' }).eq('status', 'pending'),
       supabaseAdmin.from('past_paper_submissions').select('id', { head: true, count: 'exact' }).eq('status', 'pending'),
-      supabaseAdmin.from('universities_submissions').select('id', { head: true, count: 'exact' }).eq('status', 'pending'),
     ]);
 
     if (booksPending.error) throw booksPending.error;
     if (pastPending.error) throw pastPending.error;
-    if (universitiesPending.error) throw universitiesPending.error;
 
     res.json({
       ok: true,
       booksPending: booksPending.count || 0,
       pastPapersPending: pastPending.count || 0,
-      universitiesPending: universitiesPending.count || 0,
-      totalPending: (booksPending.count || 0) + (pastPending.count || 0) + (universitiesPending.count || 0),
+      totalPending: (booksPending.count || 0) + (pastPending.count || 0),
     });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Failed to load submissions summary' });
@@ -2608,6 +2456,155 @@ app.post('/api/elib/books/upload-cover', async (req, res) => {
   } catch (e) {
     console.error('Failed to upload book cover:', e);
     res.status(500).json({ error: e.message || 'Failed to upload cover' });
+  }
+});
+
+// Upload author profile image (admin endpoint - bypasses RLS with service role)
+app.post('/api/authors/upload-profile-image', async (req, res) => {
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Supabase admin client not configured' });
+  }
+
+  try {
+    const { fileBase64, fileName, authorName } = req.body;
+    if (!fileBase64 || !fileName || !authorName) {
+      return res.status(400).json({ error: 'Missing required fields: fileBase64, fileName, authorName' });
+    }
+
+    // Convert base64 to buffer
+    const fileBuffer = Buffer.from(fileBase64, 'base64');
+    const ext = fileName.split('.').pop();
+    const sanitizedAuthorName = (authorName || 'unknown')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .substring(0, 30);
+    const storagePath = `${sanitizedAuthorName}/${crypto.randomUUID()}.${ext}`;
+
+    // Upload file using admin client (bypasses RLS)
+    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+      .from('author-profiles')
+      .upload(storagePath, fileBuffer, { 
+        cacheControl: '3600', 
+        upsert: false, 
+        contentType: 'image/' + (ext === 'jpg' ? 'jpeg' : ext) 
+      });
+
+    if (uploadError) {
+      console.error('Author profile image upload error:', uploadError);
+      return res.status(500).json({ error: `Failed to upload author profile image: ${uploadError.message}` });
+    }
+
+    const publicUrl = supabaseAdmin.storage.from('author-profiles').getPublicUrl(uploadData.path).data.publicUrl;
+    console.log(`✅ Author profile image uploaded for ${authorName}: ${storagePath}`);
+    res.json({ ok: true, path: uploadData.path, publicUrl });
+  } catch (e) {
+    console.error('Failed to upload author profile image:', e);
+    res.status(500).json({ error: e.message || 'Failed to upload author profile image' });
+  }
+});
+
+// Fetch author profile image from Wikipedia or Google Books and store it
+app.post('/api/authors/fetch-profile-image', async (req, res) => {
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Supabase admin client not configured' });
+  }
+
+  try {
+    const { authorName } = req.body;
+    if (!authorName) {
+      return res.status(400).json({ error: 'Missing required field: authorName' });
+    }
+
+    let imageBuffer = null;
+    let imageUrl = null;
+
+    // Try Wikipedia first (most reliable)
+    try {
+      const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&list=search&srsearch=${encodeURIComponent(authorName)}&srlimit=1`;
+      const sres = await axios.get(searchUrl, { timeout: 10000 });
+      
+      if (sres.data?.query?.search?.[0]) {
+        const hit = sres.data.query.search[0];
+        const pageUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&pageids=${hit.pageid}&prop=pageimages&piprop=thumbnail&pithumbsize=400`;
+        const pres = await axios.get(pageUrl, { timeout: 10000 });
+        
+        if (pres.data?.query?.pages?.[hit.pageid]?.thumbnail?.source) {
+          imageUrl = pres.data.query.pages[hit.pageid].thumbnail.source;
+          console.log(`📸 Found Wikipedia image for ${authorName}: ${imageUrl}`);
+        }
+      }
+    } catch (e) {
+      console.warn(`⚠️ Wikipedia search failed for ${authorName}:`, e.message);
+    }
+
+    // Fallback to Google Books if Wikipedia fails
+    if (!imageUrl) {
+      try {
+        const q = `inauthor:"${authorName}"`;
+        const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=1`;
+        const gbres = await axios.get(url, { timeout: 10000 });
+        
+        if (gbres.data?.items?.[0]) {
+          const vi = gbres.data.items[0].volumeInfo || {};
+          imageUrl = vi.imageLinks?.medium || vi.imageLinks?.small || vi.imageLinks?.thumbnail;
+          if (imageUrl) {
+            console.log(`📕 Found Google Books image for ${authorName}: ${imageUrl}`);
+          }
+        }
+      } catch (e) {
+        console.warn(`⚠️ Google Books search failed for ${authorName}:`, e.message);
+      }
+    }
+
+    // Download the image if found
+    if (imageUrl) {
+      try {
+        const imgRes = await axios.get(imageUrl, {
+          responseType: 'arraybuffer',
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+        imageBuffer = Buffer.from(imgRes.data);
+        console.log(`✅ Downloaded author image (${imageBuffer.length} bytes)`);
+      } catch (e) {
+        console.warn(`⚠️ Failed to download author image from ${imageUrl}:`, e.message);
+        imageBuffer = null;
+      }
+    }
+
+    // If image was successfully downloaded, upload to Supabase
+    if (imageBuffer) {
+      const sanitizedAuthorName = (authorName || 'unknown')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .substring(0, 30);
+      const storagePath = `${sanitizedAuthorName}/${crypto.randomUUID()}.jpg`;
+
+      const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+        .from('author-profiles')
+        .upload(storagePath, imageBuffer, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: 'image/jpeg'
+        });
+
+      if (uploadError) {
+        console.error('Failed to upload author profile image to storage:', uploadError);
+        return res.status(500).json({ error: `Failed to upload image: ${uploadError.message}` });
+      }
+
+      const publicUrl = supabaseAdmin.storage.from('author-profiles').getPublicUrl(uploadData.path).data.publicUrl;
+      console.log(`✅ Author profile image stored: ${storagePath}`);
+      return res.json({ ok: true, path: uploadData.path, publicUrl, source: imageUrl });
+    }
+
+    // No image found
+    res.json({ ok: false, message: 'No author profile image found', publicUrl: null });
+  } catch (e) {
+    console.error('Failed to fetch author profile image:', e);
+    res.status(500).json({ error: e.message || 'Failed to fetch author profile image' });
   }
 });
 

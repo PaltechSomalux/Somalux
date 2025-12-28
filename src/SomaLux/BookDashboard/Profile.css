@@ -49,7 +49,7 @@
   right: 0;
   width: 300px;
   background: #111b21;
-  border: 1px solid #2a3942;
+  border: none;
   border-radius: 12px;
   padding: 10px;
   z-index: 9999;
@@ -87,24 +87,24 @@
   height: 60px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid #2a3942;
+  border: none;
 }
 
 .upload-btn {
   position: absolute;
   bottom: -2px;
   right: -4px;
-  background: #131c23;
+  background: transparent;
   color: white;
   border: none;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: none;
 }
 
 .upload-btn:hover { background: #00d4a24b; }

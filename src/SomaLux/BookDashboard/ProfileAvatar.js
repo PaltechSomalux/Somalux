@@ -12,7 +12,6 @@ export const ProfileAvatar = ({
 }) => {
   const fileInputRef = useRef(null);
   const [isSavingImage, setIsSavingImage] = useState(false);
-  const [imageSaveMessage, setImageSaveMessage] = useState('');
 
   const handleUpload = async (e) => {
     console.log('handleUpload triggered');
@@ -57,7 +56,6 @@ export const ProfileAvatar = ({
     }
 
     setIsSavingImage(true);
-    setImageSaveMessage('Saving...');
 
     try {
       const ext = file.name.split('.').pop();
@@ -81,7 +79,6 @@ export const ProfileAvatar = ({
         const errMsg = uploadError.message || JSON.stringify(uploadError);
         toast.error('Avatar upload failed: ' + errMsg, { autoClose: 6000 });
         setIsSavingImage(false);
-        setImageSaveMessage('');
         return;
       }
 
@@ -118,8 +115,6 @@ export const ProfileAvatar = ({
       
       // Update UI
       setProfileImage(publicUrl);
-      setImageSaveMessage('Saved');
-      toast.success('Profile photo saved successfully!');
       console.log('UI updated with new avatar');
 
       // Delete previous avatar if exists
@@ -139,10 +134,7 @@ export const ProfileAvatar = ({
       console.error('handleUpload error', err);
       toast.error('Unexpected error saving avatar');
     } finally {
-      setTimeout(() => {
-        setIsSavingImage(false);
-        setImageSaveMessage('');
-      }, 700);
+      setIsSavingImage(false);
     }
   };
 
@@ -153,39 +145,30 @@ export const ProfileAvatar = ({
           src={profileImage}
           className={size > 40 ? "profile-large" : "profile-avatar"}
           alt="Profile"
+          onClick={showUploadButton ? () => fileInputRef.current?.click() : undefined}
+          style={showUploadButton ? { cursor: 'pointer' } : {}}
           onError={() => {
             console.warn('Profile image failed to load');
             setProfileImage(null);
           }}
         />
       ) : (
-        <UserCircle size={size} weight="duotone" color="#8696a0" />
+        <div 
+          onClick={showUploadButton ? () => fileInputRef.current?.click() : undefined}
+          style={showUploadButton ? { cursor: 'pointer' } : {}}
+        >
+          <UserCircle size={size} weight="duotone" color="#8696a0" />
+        </div>
       )}
       
       {showUploadButton && (
-        <>
-          <span 
-            className="upload-btn" 
-            onClick={() => fileInputRef.current?.click()} 
-            aria-label="Upload profile photo"
-          >
-            <Camera size={18} weight="fill" />
-          </span>
-          <input 
-            ref={fileInputRef} 
-            type="file" 
-            accept="image/*" 
-            onChange={handleUpload} 
-            style={{ display: "none" }} 
-          />
-        </>
-      )}
-
-      {isSavingImage && (
-        <div className="avatar-saving">
-          <div className="saving-spinner" aria-hidden="true"></div>
-          <div className="saving-text">{imageSaveMessage || 'Saving...'}</div>
-        </div>
+        <input 
+          ref={fileInputRef} 
+          type="file" 
+          accept="image/*" 
+          onChange={handleUpload} 
+          style={{ display: "none" }} 
+        />
       )}
     </div>
   );

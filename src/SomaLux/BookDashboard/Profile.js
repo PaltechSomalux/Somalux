@@ -308,7 +308,7 @@ export const Profile = ({ user: propUser = null }) => {
               {/* Avatar & Info */}
               <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', flex: 1 }}>
                 {/* Avatar */}
-                <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                <div style={{ flexShrink: 0, marginTop: '-18px', marginLeft: '-18px' }}>
                   <ProfileAvatar
                     profileImage={profileImage}
                     setProfileImage={setProfileImage}
@@ -329,8 +329,18 @@ export const Profile = ({ user: propUser = null }) => {
                   )}
                 </div>
               </div>
+            </div>
 
-              {/* Upgrade Button (Right Corner) */}
+            {/* Actions & Auth Section - Right below profile */}
+            <div style={{
+              padding: '0',
+              marginTop: '8px',
+              display: 'flex',
+              gap: '24px',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+            }}>
+              {/* Upgrade Button */}
               {currentUserTier === 'basic' && (
                 <button
                   onClick={() => {
@@ -338,8 +348,8 @@ export const Profile = ({ user: propUser = null }) => {
                     setIsOpen(false);
                   }}
                   style={{
-                    padding: '5px 8px',
-                    fontSize: '9px',
+                    padding: '4px 6px',
+                    fontSize: '11px',
                     fontWeight: '600',
                     color: '#fff',
                     backgroundColor: '#00a884',
@@ -348,8 +358,6 @@ export const Profile = ({ user: propUser = null }) => {
                     cursor: 'pointer',
                     transition: 'background-color 0.2s',
                     whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    marginTop: '2px',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#008069';
@@ -361,103 +369,96 @@ export const Profile = ({ user: propUser = null }) => {
                   Upgrade
                 </button>
               )}
-            </div>
-          </div>
 
-          {/* Actions Section */}
-          {authUser && (
-            <div style={{
-              padding: '8px',
-            }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '5px' }}>
-                {/* Upload */}
+              {/* Upload Button */}
+              {authUser && (
                 <button
                   onClick={() => {
                     setIsOpen(false);
                     navigate('/user/upload');
                   }}
                   style={{
-                    padding: '6px',
+                    padding: '4px 6px',
                     fontSize: '11px',
-                    fontWeight: '500',
-                    color: '#fff',
-                    backgroundColor: '#1f2c33',
+                    fontWeight: '600',
+                    color: '#34B7F1',
+                    backgroundColor: 'transparent',
                     border: 'none',
-                    borderRadius: '4px',
+                    borderRadius: '3px',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
-                    gap: '2px',
+                    gap: '3px',
+                    whiteSpace: 'nowrap',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#212d35';
+                    e.currentTarget.style.backgroundColor = 'rgba(52, 183, 241, 0.1)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1f2c33';
+                    e.currentTarget.style.backgroundColor = 'transparent';
                   }}
                 >
-                  <FiUpload size={14} />
+                  <FiUpload size={12} />
                   Upload
                 </button>
-              </div>
-            </div>
-          )}
+              )}
 
-          {/* Auth Section */}
-          <div style={{ padding: '8px', display: 'flex', justifyContent: 'flex-end' }}>
-            {!authUser && (
-              <button
-                onClick={() => setShowAuthModal(true)}
-                style={{
-                  padding: '8px 10px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#fff',
-                  backgroundColor: '#00a884',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                  width: 'fit-content',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#008069';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#00a884';
-                }}
-              >
-                Sign In
-              </button>
-            )}
-            {authUser && (
-              <button
-                onClick={() => setShowSignOutModal(true)}
-                style={{
-                  padding: '8px 10px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#ff6b6b',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  width: 'fit-content',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 107, 107, 0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                Sign Out
-              </button>
-            )}
+              {/* Auth Button */}
+              {!authUser && (
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  style={{
+                    padding: '4px 6px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: '#fff',
+                    backgroundColor: '#00a884',
+                    border: 'none',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#008069';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#00a884';
+                  }}
+                >
+                  Sign In
+                </button>
+              )}
+              {authUser && (
+                <button
+                  onClick={() => setShowSignOutModal(true)}
+                  style={{
+                    padding: '4px 6px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: '#ff6b6b',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 107, 107, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  Sign Out
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Main Content Area */}
         </div>
       )}
 
