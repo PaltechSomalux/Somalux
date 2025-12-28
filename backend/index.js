@@ -29,15 +29,31 @@ import adsApiV2 from './routes/adsApiV2.js';
 import { createRankingRoutes } from './routes/rankings.js';
 
 // Initialize Firebase Admin SDK
-const serviceAccount = JSON.parse(
-  readFileSync(
-    new URL("./paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json", import.meta.url)
-  )
-);
+let serviceAccount;
+if (process.env.FIREBASE_CREDENTIALS) {
+  // Use environment variable if available (for Render deployment)
+  serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
+} else {
+  // Try to read from file if it exists (for local development)
+  try {
+    serviceAccount = JSON.parse(
+      readFileSync(
+        new URL("./paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json", import.meta.url)
+      )
+    );
+  } catch (e) {
+    console.warn('Firebase credentials file not found, firebase-admin will not be initialized');
+    serviceAccount = null;
+  }
+}
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+if (serviceAccount) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+} else {
+  console.warn('Firebase Admin SDK not initialized - no credentials available');
+}
 
 
 
