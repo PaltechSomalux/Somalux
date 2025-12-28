@@ -3656,7 +3656,13 @@ app.use((err, req, res, next) => {
 });
 
 // Serve React frontend from build folder
-const buildPath = path.resolve(process.cwd(), '..', 'build');
+// Build folder is at project root: ../build (when running from backend/)
+// Fallback to absolute path if running from root
+const buildPath = process.env.BUILD_PATH 
+  || path.resolve(process.cwd(), '..', 'build')
+  || path.resolve(process.cwd(), 'build');
+
+console.log(`📁 Current working directory: ${process.cwd()}`);
 console.log(`📁 Checking build folder at: ${buildPath}`);
 console.log(`✅ Build exists: ${existsSync(buildPath)}`);
 
