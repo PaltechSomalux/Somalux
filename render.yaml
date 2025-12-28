@@ -61,8 +61,6 @@ services:
     runtime: static
     buildCommand: npm install && npm run build
     staticPublishPath: build
-    domains:
-      - somalux.co.ke
     envVars:
       - key: REACT_APP_API_URL
         value: https://somalux-q2bw.onrender.com
