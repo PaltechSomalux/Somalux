@@ -29,11 +29,15 @@ const SubmissionsList = ({ items, loading, type, busy, onSelect, onApprove, onRe
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ color: '#e9edef', fontWeight: 600, fontSize: 12 }}>
-                {sub.title || 'Untitled'}
+                {type === 'universities' ? (sub.name || 'Untitled') : (sub.title || 'Untitled')}
               </div>
               {type === 'books' ? (
                 <div style={{ color: '#8696a0', fontSize: 11 }}>
                   {sub.author || 'Unknown'} {sub.isbn ? `• ISBN: ${sub.isbn}` : ''}
+                </div>
+              ) : type === 'universities' ? (
+                <div style={{ color: '#8696a0', fontSize: 11 }}>
+                  {sub.location || 'Unknown location'} {sub.website_url ? `• Has website` : ''}
                 </div>
               ) : (
                 <div style={{ color: '#8696a0', fontSize: 11 }}>

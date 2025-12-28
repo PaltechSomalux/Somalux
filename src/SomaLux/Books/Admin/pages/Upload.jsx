@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createBook, fetchCategories } from '../api';
-import { createUniversity } from '../campusApi';
-import { createPastPaper, getUniversitiesForDropdown } from '../pastPapersApi';
+import { createBookSubmission, fetchCategories } from '../api';
+import { createUniversitySubmission } from '../campusApi';
+import { createPastPaperSubmission, getUniversitiesForDropdown } from '../pastPapersApi';
 import { 
   autoFillUniversityData, 
   searchUniversityNames,
@@ -82,7 +82,7 @@ const dropzoneStyles = `
   }
 `;
 
-const Upload = ({ userProfile }) => {
+const Upload = ({ userProfile, initialTab = 'books' }) => {
   // Add style tag to document
   useEffect(() => {
     const styleTag = document.createElement('style');
@@ -91,9 +91,14 @@ const Upload = ({ userProfile }) => {
     return () => styleTag.remove();
   }, []);
 
-  const [activeTab, setActiveTab] = useState('books'); // 'books', 'campus', 'pastpapers'
+  const [activeTab, setActiveTab] = useState(initialTab); // 'books', 'campus', 'pastpapers'
   const navigate = useNavigate();
   const { showToast } = useAdminUI();
+
+  // Update active tab when initialTab prop changes
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
   
   // Books state
   const [pdf, setPdf] = useState(null);
@@ -261,9 +266,13 @@ const Upload = ({ userProfile }) => {
         publisher: bookForm.publisher || '',
         uploaded_by: userProfile?.id || null
       };
-      await createBook({ metadata, pdfFile: pdf, coverFile: cover });
-      showToast({ type: 'success', message: 'Book uploaded successfully.' });
-      navigate('/books/admin/books');
+      await createBookSubmission({ metadata, pdfFile: pdf, coverFile: cover });
+      showToast({ type: 'success', message: 'Book submitted for approval. Admin will review it shortly.' });
+      // Reset form
+      setPdf(null);
+      setCover(null);
+      setBookForm({ title: '', author: '', description: '', category_id: '', year: '', language: '', isbn: '', pages: '', publisher: '' });
+      navigate('/user/upload');
     } catch (e) {
       console.error('Book upload failed:', e);
       showToast({ type: 'error', message: e?.message || 'Upload failed.' });
@@ -280,30 +289,22 @@ const Upload = ({ userProfile }) => {
         website_url: campusForm.website_url || '',
         location: campusForm.location || '',
         established: campusForm.established ? Number(campusForm.established) : null,
-        student_count: campusForm.student_count ? Number(campusForm.student_count) : 0,
-        uploaded_by: userProfile?.id || null
+        student_count: campusForm.student_count ? Number(campusForm.student_count) : 0
       };
       
-      // Create university (use first image as cover)
+      // Create university submission (use first image as cover)
       const primaryImage = campusImages[0] || null;
-      const result = await createUniversity({ metadata, coverFile: primaryImage });
+      const result = await createUniversitySubmission({ metadata, coverFile: primaryImage });
       const universityId = result.id;
       
-      // Upload additional images if any
-      if (campusImages.length > 1 && universityId) {
-        const additionalImages = campusImages.slice(1);
-        const uploadedUrls = await uploadUniversityImages(universityId, additionalImages);
-        
-        // Add them to the database
-        for (let i = 0; i < uploadedUrls.length; i++) {
-          await addUniversityImage(universityId, uploadedUrls[i].url, null, false, i + 1);
-        }
-      }
+      // Note: Additional images would be uploaded after approval
+      // For now, only primary image is saved with submission
       
-      showToast({ type: 'success', message: `University added successfully with ${campusImages.length} image(s)!` });
+      showToast({ type: 'success', message: `University submitted for approval with ${campusImages.length} image(s)!` });
       // Reset form
       setCampusForm({ name: '', description: '', website_url: '', location: '', established: '', student_count: '' });
       setCampusImages([]);
+      navigate('/user/upload');
     } catch (e) {
       console.error('University upload failed:', e);
       showToast({ type: 'error', message: e?.message || 'Upload failed.' });
@@ -329,11 +330,12 @@ const Upload = ({ userProfile }) => {
         exam_type: paperForm.exam_type || 'Main',
         uploaded_by: userProfile?.id || null
       };
-      await createPastPaper({ metadata, pdfFile: paperPdf });
-      showToast({ type: 'success', message: 'Past paper uploaded successfully.' });
+      await createPastPaperSubmission({ metadata, pdfFile: paperPdf });
+      showToast({ type: 'success', message: 'Past paper submitted for approval. Admin will review it shortly.' });
       // Reset form
       setPaperForm({ university_id: '', faculty: '', unit_code: '', unit_name: '', year: '', semester: '', exam_type: '' });
       setPaperPdf(null);
+      navigate('/user/upload');
     } catch (e) {
       console.error('Past paper upload failed:', e);
       showToast({ type: 'error', message: e?.message || 'Upload failed.' });

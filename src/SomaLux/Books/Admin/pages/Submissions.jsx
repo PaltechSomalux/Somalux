@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { FiRefreshCw, FiBook, FiFileText } from 'react-icons/fi';
+import { FiRefreshCw, FiBook, FiFileText, FiMapPin } from 'react-icons/fi';
 import { useAdminUI } from '../AdminUIContext';
 import SubmissionsList from './SubmissionsList';
 import SubmissionDetailModal from './SubmissionDetailModal';
@@ -13,8 +13,8 @@ const Submissions = ({ userProfile }) => {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('pending');
   const [busy, setBusy] = useState({});
-  const [type, setType] = useState('books'); // 'books' | 'past_papers'
-  const [summary, setSummary] = useState({ booksPending: 0, pastPapersPending: 0 });
+  const [type, setType] = useState('books'); // 'books' | 'past_papers' | 'universities'
+  const [summary, setSummary] = useState({ booksPending: 0, pastPapersPending: 0, universitiesPending: 0 });
   const [selected, setSelected] = useState(null);
 
   const { confirm, prompt, showToast } = useAdminUI();
@@ -29,13 +29,23 @@ const Submissions = ({ userProfile }) => {
     setLoading(true);
     setError(null);
     try {
+      // Use submissions endpoint for all types (books, past_papers, universities)
+      // This endpoint queries the appropriate table and filters by status
       const url = `${API_BASE}/api/elib/submissions?status=${encodeURIComponent(filter)}&type=${encodeURIComponent(type)}`;
+      console.log(`[Submissions] Fetching ${type} with status=${filter}: ${url}`);
+      
       const res = await fetch(url);
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Failed to load submissions');
-      setItems(Array.isArray(json.submissions) ? json.submissions : []);
+      console.log(`[Submissions] Response for ${type}:`, { status: res.status, count: json.submissions?.length, items: json.submissions });
+      
+      if (!res.ok) throw new Error(json?.error || `Failed to load ${type} submissions`);
+      
+      const items = Array.isArray(json.submissions) ? json.submissions : [];
+      console.log(`[Submissions] Loaded ${items.length} ${type} submissions with status=${filter}`);
+      setItems(items);
     } catch (e) {
-      setError(e.message || 'Failed to load submissions');
+      console.error(`[Submissions] Error fetching ${type}:`, e);
+      setError(e.message || `Failed to load ${type} submissions`);
     } finally {
       setLoading(false);
     }
@@ -46,9 +56,11 @@ const Submissions = ({ userProfile }) => {
       const res = await fetch(`${API_BASE}/api/elib/submissions/summary`);
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Failed to load summary');
+      
       setSummary({
         booksPending: json.booksPending || 0,
         pastPapersPending: json.pastPapersPending || 0,
+        universitiesPending: json.universitiesPending || 0,
       });
     } catch (_) {
       // ignore summary errors in UI
@@ -66,6 +78,8 @@ const Submissions = ({ userProfile }) => {
     
     const label = type === 'books'
       ? (item?.title || 'this book')
+      : type === 'universities'
+      ? (item?.name || 'this university')
       : (item?.unit_code || item?.unit_name || 'this past paper');
 
     // Validate that id is a UUID, not an email
@@ -82,7 +96,7 @@ const Submissions = ({ userProfile }) => {
     }
 
     const ok = await confirm({
-      title: `Approve ${type === 'books' ? 'Book' : 'Past Paper'}?`,
+      title: `Approve ${type === 'books' ? 'Book' : type === 'universities' ? 'University' : 'Past Paper'}?`,
       message: `Are you sure you want to approve ${label}? It will become visible to users and count towards the uploader's contributions.`,
       confirmLabel: 'Approve',
       cancelLabel: 'Cancel',
@@ -92,13 +106,24 @@ const Submissions = ({ userProfile }) => {
 
     setBusy((prev) => ({ ...prev, [id]: true }));
     try {
-      const res = await fetch(`${API_BASE}/api/elib/submissions/${id}/approve?type=${encodeURIComponent(type)}`, { method: 'POST', headers });
+      let res;
+      if (type === 'universities') {
+        // For universities, just update the status
+        res = await fetch(`${API_BASE}/api/elib/universities/${id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ status: 'approved' }),
+        });
+      } else {
+        // For books/past_papers, use submissions endpoint
+        res = await fetch(`${API_BASE}/api/elib/submissions/${id}/approve?type=${encodeURIComponent(type)}`, { method: 'POST', headers });
+      }
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Approve failed');
       setItems((prev) => prev.filter((x) => x.id !== id));
       fetchSummary();
       setSelected(null);
-      showToast({ type: 'success', message: `${type === 'books' ? 'Book' : 'Past paper'} approved successfully.` });
+      showToast({ type: 'success', message: `${type === 'books' ? 'Book' : type === 'universities' ? 'University' : 'Past paper'} approved successfully.` });
     } catch (e) {
       console.error('Approve submission failed:', e);
       showToast({ type: 'error', message: e.message || 'Approve failed.' });
@@ -116,6 +141,8 @@ const Submissions = ({ userProfile }) => {
     
     const label = type === 'books'
       ? (item?.title || 'this book')
+      : type === 'universities'
+      ? (item?.name || 'this university')
       : (item?.unit_code || item?.unit_name || 'this past paper');
 
     // Validate that id is a UUID, not an email
@@ -132,7 +159,7 @@ const Submissions = ({ userProfile }) => {
     }
 
     const reason = await prompt({
-      title: `Reject ${type === 'books' ? 'Book' : 'Past Paper'}?`,
+      title: `Reject ${type === 'books' ? 'Book' : type === 'universities' ? 'University' : 'Past Paper'}?`,
       message: `Optionally provide a reason for rejecting ${label}. This may be shared with the uploader.`,
       label: 'Rejection reason',
       defaultValue: '',
@@ -146,17 +173,28 @@ const Submissions = ({ userProfile }) => {
 
     setBusy((prev) => ({ ...prev, [id]: true }));
     try {
-      const res = await fetch(`${API_BASE}/api/elib/submissions/${id}/reject?type=${encodeURIComponent(type)}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ reason: reason || '' }),
-      });
+      let res;
+      if (type === 'universities') {
+        // For universities, update status and add rejection reason
+        res = await fetch(`${API_BASE}/api/elib/universities/${id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ status: 'rejected', rejection_reason: reason || '' }),
+        });
+      } else {
+        // For books/past_papers, use submissions endpoint
+        res = await fetch(`${API_BASE}/api/elib/submissions/${id}/reject?type=${encodeURIComponent(type)}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ reason: reason || '' }),
+        });
+      }
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Reject failed');
       setItems((prev) => prev.filter((x) => x.id !== id));
       fetchSummary();
       setSelected(null);
-      showToast({ type: 'success', message: `${type === 'books' ? 'Book' : 'Past paper'} rejected.` });
+      showToast({ type: 'success', message: `${type === 'books' ? 'Book' : type === 'universities' ? 'University' : 'Past paper'} rejected.` });
     } catch (e) {
       console.error('Reject submission failed:', e);
       showToast({ type: 'error', message: e.message || 'Reject failed.' });
@@ -169,11 +207,11 @@ const Submissions = ({ userProfile }) => {
     <div className="panel">
       <div className="panel-title">Submissions</div>
       <div style={{ color: '#8696a0', fontSize: 12, marginBottom: 8 }}>
-        Review and approve or reject user-contributed books and past papers.
+        Review and approve or reject user-contributed books, universities, and past papers.
       </div>
 
       <div className="panel" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           <button
             className="btn"
             style={{
@@ -188,6 +226,23 @@ const Submissions = ({ userProfile }) => {
             {summary.booksPending > 0 && (
               <span className="notification-badge" style={{ marginLeft: 4 }}>
                 {summary.booksPending > 99 ? '99+' : summary.booksPending}
+              </span>
+            )}
+          </button>
+          <button
+            className="btn"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: type === 'universities' ? '#00a884' : 'transparent',
+              color: type === 'universities' ? '#fff' : '#e9edef',
+              borderColor: type === 'universities' ? '#00a884' : '#374151',
+            }}
+            onClick={() => setType('universities')}
+          >
+            <FiMapPin /> Universities
+            {summary.universitiesPending > 0 && (
+              <span className="notification-badge" style={{ marginLeft: 4 }}>
+                {summary.universitiesPending > 99 ? '99+' : summary.universitiesPending}
               </span>
             )}
           </button>

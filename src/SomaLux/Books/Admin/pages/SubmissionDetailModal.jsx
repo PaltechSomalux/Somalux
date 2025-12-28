@@ -24,7 +24,7 @@ const SubmissionDetailModal = ({ submission, type, busy, onClose, onApprove, onR
       >
         <div className="profile-signout-header" style={{ borderBottom: '1px solid #1f2c33', padding: '8px 12px' }}>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '13px', margin: 0 }}>
-            <FiBell /> Review {type === 'books' ? 'Book' : 'Past Paper'} Submission
+            <FiBell /> Review {type === 'books' ? 'Book' : type === 'universities' ? 'University' : 'Past Paper'} Submission
           </h2>
           <button className="profile-signout-close" onClick={onClose}>×</button>
         </div>
@@ -143,6 +143,75 @@ const SubmissionDetailModal = ({ submission, type, busy, onClose, onApprove, onR
                 </div>
               </div>
             </>
+          ) : type === 'universities' ? (
+            <>
+              {submission.cover_image_url && (
+                <div style={{ flex: '0 0 150px', alignSelf: 'center' }}>
+                  <img
+                    src={submission.cover_image_url}
+                    alt={submission.name || 'Cover'}
+                    style={{ width: '100%', borderRadius: 4, objectFit: 'cover', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}
+                  />
+                </div>
+              )}
+              <div>
+                <h3 style={{ color: '#e9edef', marginBottom: 4, fontSize: 16, fontWeight: 600 }}>
+                  {submission.name || 'Untitled'}
+                </h3>
+                <div style={{ color: '#8696a0', marginBottom: 12, fontSize: 13 }}>
+                  <strong>{submission.location || 'Unknown location'}</strong>
+                </div>
+
+                {submission.description && (
+                  <div style={{ color: '#cbd5f5', fontSize: 11, marginBottom: 8, lineHeight: 1.4, padding: '6px 0', borderTop: '1px solid #1f2c33', borderBottom: '1px solid #1f2c33' }}>
+                    <strong style={{ color: '#e9edef' }}>Description:</strong><br />
+                    {submission.description}
+                  </div>
+                )}
+
+                {/* Details Grid for Universities */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 6, marginBottom: 8 }}>
+                  {submission.location && (
+                    <div style={{ padding: 6, background: '#0b141a', borderRadius: 4, border: '1px solid #1f2c33' }}>
+                      <div style={{ color: '#8696a0', fontSize: 10 }}>LOCATION</div>
+                      <div style={{ color: '#e9edef', fontSize: 11, fontWeight: 500 }}>{submission.location}</div>
+                    </div>
+                  )}
+                  {submission.established && (
+                    <div style={{ padding: 6, background: '#0b141a', borderRadius: 4, border: '1px solid #1f2c33' }}>
+                      <div style={{ color: '#8696a0', fontSize: 10 }}>ESTABLISHED</div>
+                      <div style={{ color: '#e9edef', fontSize: 11, fontWeight: 500 }}>{submission.established}</div>
+                    </div>
+                  )}
+                  {submission.website_url && (
+                    <div style={{ padding: 6, background: '#0b141a', borderRadius: 4, border: '1px solid #1f2c33' }}>
+                      <div style={{ color: '#8696a0', fontSize: 10 }}>WEBSITE</div>
+                      <a href={submission.website_url} target="_blank" rel="noopener noreferrer" style={{ color: '#00a884', fontSize: 11, fontWeight: 500, wordBreak: 'break-all' }}>
+                        Visit
+                      </a>
+                    </div>
+                  )}
+                  {submission.student_count && (
+                    <div style={{ padding: 6, background: '#0b141a', borderRadius: 4, border: '1px solid #1f2c33' }}>
+                      <div style={{ color: '#8696a0', fontSize: 10 }}>STUDENT COUNT</div>
+                      <div style={{ color: '#e9edef', fontSize: 11, fontWeight: 500 }}>{submission.student_count.toLocaleString()}</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Submission Info */}
+                <div style={{ marginTop: 12, padding: 10, background: '#0b141a', borderRadius: 6, border: '1px solid #1f2c33' }}>
+                  <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>SUBMISSION INFO</div>
+                  <div style={{ color: '#e9edef', fontSize: 12 }}>
+                    <div>Submitted: {fmt(submission.created_at)}</div>
+                    <div>Status: <span style={{ color: submission.status === 'pending' ? '#fbbf24' : submission.status === 'approved' ? '#00a884' : '#ea4335', fontWeight: 600 }}>{submission.status.toUpperCase()}</span></div>
+                    {submission.rejection_reason && (
+                      <div style={{ color: '#ea4335', marginTop: 4 }}>Rejection Reason: {submission.rejection_reason}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
           ) : (
             <>
               <div>
@@ -179,7 +248,7 @@ const SubmissionDetailModal = ({ submission, type, busy, onClose, onApprove, onR
                   {submission.semester && (
                     <div style={{ padding: 6, background: '#0b141a', borderRadius: 4, border: '1px solid #1f2c33' }}>
                       <div style={{ color: '#8696a0', fontSize: 10 }}>SEMESTER</div>
-                      <div style={{ color: '#e9edef', fontSize: 11, fontWeight: 500 }}>Sem {submission.semester}</div>
+                      <div style={{ color: '#e9edef', fontSize: 11, fontWeight: 500 }}>{submission.semester}</div>
                     </div>
                   )}
                   {submission.exam_type && (
@@ -191,13 +260,13 @@ const SubmissionDetailModal = ({ submission, type, busy, onClose, onApprove, onR
                 </div>
 
                 {/* Submission Info */}
-                <div style={{ marginTop: 6, padding: 6, background: '#0b141a', borderRadius: 4, border: '1px solid #1f2c33' }}>
-                  <div style={{ color: '#8696a0', fontSize: 10, marginBottom: 2 }}>SUBMISSION INFO</div>
-                  <div style={{ color: '#e9edef', fontSize: 11 }}>
+                <div style={{ marginTop: 12, padding: 10, background: '#0b141a', borderRadius: 6, border: '1px solid #1f2c33' }}>
+                  <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>SUBMISSION INFO</div>
+                  <div style={{ color: '#e9edef', fontSize: 12 }}>
                     <div>Uploaded: {fmt(submission.created_at)}</div>
                     <div>Status: <span style={{ color: submission.status === 'pending' ? '#fbbf24' : submission.status === 'approved' ? '#00a884' : '#ea4335', fontWeight: 600 }}>{submission.status.toUpperCase()}</span></div>
                     {submission.rejection_reason && (
-                      <div style={{ color: '#ea4335', marginTop: 2 }}>Rejection Reason: {submission.rejection_reason}</div>
+                      <div style={{ color: '#ea4335', marginTop: 4 }}>Rejection Reason: {submission.rejection_reason}</div>
                     )}
                   </div>
                 </div>

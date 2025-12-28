@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-d
 
 import { Registration } from "./SomaLux/User/Registration/Registration";
 import { MyProfile } from "./SomaLux/User/UserProfile/MyProfile";
+import UserUploadPage from "./SomaLux/User/UserProfile/UserUploadPage";
 import { SettingsPanel } from "./SomaLux/Settings/SettingsPanel";
 import { BookManagement } from "./SomaLux/BookDashboard/BookManagement";
 import { Onboarding } from "./SomaLux/Onboarding/Onboarding";
@@ -39,6 +40,8 @@ export function SomaLux() {
 
                     {/* User */}
                     <Route path="/MyProfile" element={<MyProfile />} />
+                    <Route path="/user/upload" element={<UserUploadPage />} />
+                    <Route path="/user/upload/:tabType" element={<UserUploadPage />} />
                     <Route path="/SettingsPanel" element={<SettingsPanel />} />
 
                     {/* Books */}

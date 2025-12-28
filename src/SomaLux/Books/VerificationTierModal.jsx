@@ -56,7 +56,7 @@ const VerificationTierModal = ({
     {
       id: 'premium',
       name: 'Premium',
-      price: '$4.99',
+      price: 'KSH 500',
       priceFreq: '/month',
       icon: <FiCheck />,
       color: '#2196F3',
@@ -78,7 +78,7 @@ const VerificationTierModal = ({
     {
       id: 'premium_pro',
       name: 'Premium Pro',
-      price: '$9.99',
+      price: 'KSH 1,000',
       priceFreq: '/month',
       icon: <FiAward />,
       color: '#FFD700',

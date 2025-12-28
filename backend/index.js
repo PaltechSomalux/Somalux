@@ -557,6 +557,174 @@ app.delete('/api/elib/universities/:id', async (req, res) => {
   }
 });
 
+// Universities Submissions: approve or reject
+app.patch('/api/elib/universities/:id', async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
+  try {
+    const { id } = req.params;
+    const { status, rejection_reason } = req.body;
+    const actor = req.headers['x-actor-email'] || 'admin';
+    const actorId = req.headers['x-actor-id'] || null;
+    const nowIso = new Date().toISOString();
+
+    // Validate status
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Must be approved or rejected.' });
+    }
+
+    // 1. Get the submission
+    const { data: submission, error: fetchErr } = await supabaseAdmin
+      .from('universities_submissions')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchErr || !submission) {
+      return res.status(404).json({ error: 'University submission not found' });
+    }
+
+    // 2. If approving, create the published university
+    let publishedUniversityId = null;
+    if (status === 'approved') {
+      const universityPayload = {
+        name: submission.name,
+        description: submission.description,
+        location: submission.location,
+        website_url: submission.website_url,
+        established: submission.established,
+        student_count: submission.student_count,
+        cover_image_url: submission.cover_image_url,
+        uploaded_by: submission.uploaded_by,
+        status: 'approved',
+        created_at: nowIso,
+        updated_at: nowIso,
+      };
+
+      const { data: published, error: publishErr } = await supabaseAdmin
+        .from('universities')
+        .insert(universityPayload)
+        .select('id')
+        .single();
+
+      if (publishErr) {
+        console.error('Failed to publish university:', publishErr);
+        return res.status(500).json({ error: 'Failed to publish university to catalog' });
+      }
+
+      publishedUniversityId = published.id;
+    }
+
+    // 3. Update the submission record
+    const updatePayload = {
+      status,
+      updated_at: nowIso,
+      approved_at: status === 'approved' ? nowIso : null,
+      approved_by: status === 'approved' ? actorId : null,
+      rejection_reason: status === 'rejected' ? (rejection_reason || null) : null,
+      published_university_id: publishedUniversityId,
+    };
+
+    const { data: updatedSubmission, error: updateErr } = await supabaseAdmin
+      .from('universities_submissions')
+      .update(updatePayload)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (updateErr) throw updateErr;
+
+    // 4. Audit log
+    await logAudit({
+      actor,
+      action: status === 'approved' ? 'approve_university_submission' : 'reject_university_submission',
+      entity: 'universities_submissions',
+      record_id: id,
+      details: { status, published_id: publishedUniversityId, reason: rejection_reason },
+      ip: req.ip,
+    });
+
+    // 5. Send email notification
+    if (submission.uploaded_by) {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', submission.uploaded_by)
+        .single();
+
+      if (profile?.email) {
+        const firstName = profile.full_name?.split(' ')[0] || 'Contributor';
+        const universityName = submission.name || 'Your University';
+
+        if (status === 'approved') {
+          const subject = `Great News – "${universityName}" Has Been Approved!`;
+          const htmlBody = buildBrandedEmailHtml({
+            title: 'Your University Submission Was Approved!',
+            body: `
+              <p>Dear ${firstName},</p>
+
+              <p>We're thrilled to let you know that your university submission has been <strong>approved and is now live</strong> on our platform!</p>
+
+              <p><strong>University:</strong> ${universityName}</p>
+
+              <p>Students will now be able to discover and learn about your institution. Thank you for contributing!</p>
+
+              <p>With gratitude,<br>
+              The Editorial Team<br>
+              eLib Publishing</p>
+            `.trim()
+          });
+
+          try {
+            await sendEmail({
+              to: profile.email,
+              subject,
+              html: htmlBody,
+              text: `Congratulations! Your university "${universityName}" has been approved and is now live!`,
+            });
+          } catch (emailErr) {
+            console.warn(`Approval email failed for ${profile.email}:`, emailErr);
+          }
+        } else if (status === 'rejected') {
+          const subject = `Your University Submission Needs Revision`;
+          const reason = rejection_reason || 'Please review and resubmit.';
+          const htmlBody = buildBrandedEmailHtml({
+            title: 'University Submission Needs Revision',
+            body: `
+              <p>Dear ${firstName},</p>
+
+              <p>Thank you for submitting "${universityName}" to our platform. After review, we need you to make some revisions:</p>
+
+              <p><strong>Reason:</strong> ${reason}</p>
+
+              <p>Please address the feedback and resubmit. We appreciate your effort and look forward to featuring your university soon!</p>
+
+              <p>Best regards,<br>
+              The Editorial Team<br>
+              eLib Publishing</p>
+            `.trim()
+          });
+
+          try {
+            await sendEmail({
+              to: profile.email,
+              subject,
+              html: htmlBody,
+              text: `Your university submission "${universityName}" needs revision. Reason: ${reason}`,
+            });
+          } catch (emailErr) {
+            console.warn(`Rejection email failed for ${profile.email}:`, emailErr);
+          }
+        }
+      }
+    }
+
+    res.json({ ok: true, message: `University submission ${status}`, submission: updatedSubmission, publishedId: publishedUniversityId });
+  } catch (e) {
+    console.error('University submission update error:', e);
+    res.status(500).json({ error: e.message || 'Failed to update university submission' });
+  }
+});
+
 // Categories: create/update/delete
 app.post('/api/elib/categories', async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
@@ -1754,7 +1922,7 @@ app.get('/api/elib/bulk-upload/processes', async (req, res) => {
 });
 
 
-// === Submissions Endpoints (Books + Past Papers) ===
+// === Submissions Endpoints (Books + Past Papers + Universities) ===
 app.get('/api/elib/submissions', async (req, res) => {
   try {
     if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
@@ -1762,12 +1930,28 @@ app.get('/api/elib/submissions', async (req, res) => {
     const userId = req.query.userId || null;
     const type = (req.query.type || 'books').toString();
 
-    const table = type === 'past_papers' ? 'past_paper_submissions' : 'book_submissions';
+    let table;
+    if (type === 'past_papers') {
+      table = 'past_paper_submissions';
+    } else if (type === 'universities') {
+      table = 'universities_submissions';
+    } else {
+      table = 'book_submissions';
+    }
+    
+    console.log(`[/api/elib/submissions] Fetching ${type} from ${table} with status=${status}`);
+    
     let q = supabaseAdmin.from(table).select('*').order('created_at', { ascending: false });
     if (status !== 'all') q = q.eq('status', status);
     if (userId) q = q.eq('uploaded_by', userId);
     const { data, error } = await q;
-    if (error) throw error;
+    
+    if (error) {
+      console.error(`[/api/elib/submissions] Error querying ${table}:`, error);
+      throw error;
+    }
+
+    console.log(`[/api/elib/submissions] Found ${data?.length || 0} ${type} submissions`);
 
     // Attach uploader email/name from profiles for admin display
     const submissions = data || [];
@@ -1799,6 +1983,7 @@ app.get('/api/elib/submissions', async (req, res) => {
 
     res.json({ ok: true, type, submissions: enriched });
   } catch (e) {
+    console.error('[/api/elib/submissions] Error:', e);
     res.status(500).json({ error: e.message || 'Failed to load submissions' });
   }
 });
@@ -1808,19 +1993,22 @@ app.get('/api/elib/submissions/summary', async (req, res) => {
   try {
     if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
 
-    const [booksPending, pastPending] = await Promise.all([
+    const [booksPending, pastPending, universitiesPending] = await Promise.all([
       supabaseAdmin.from('book_submissions').select('id', { head: true, count: 'exact' }).eq('status', 'pending'),
       supabaseAdmin.from('past_paper_submissions').select('id', { head: true, count: 'exact' }).eq('status', 'pending'),
+      supabaseAdmin.from('universities_submissions').select('id', { head: true, count: 'exact' }).eq('status', 'pending'),
     ]);
 
     if (booksPending.error) throw booksPending.error;
     if (pastPending.error) throw pastPending.error;
+    if (universitiesPending.error) throw universitiesPending.error;
 
     res.json({
       ok: true,
       booksPending: booksPending.count || 0,
       pastPapersPending: pastPending.count || 0,
-      totalPending: (booksPending.count || 0) + (pastPending.count || 0),
+      universitiesPending: universitiesPending.count || 0,
+      totalPending: (booksPending.count || 0) + (pastPending.count || 0) + (universitiesPending.count || 0),
     });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Failed to load submissions summary' });

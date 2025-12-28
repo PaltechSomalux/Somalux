@@ -43,6 +43,7 @@ export async function fetchUniversities({ page = 1, pageSize = 10, search = '', 
     let query = supabase
       .from('universities')
       .select('id, name, description, website_url, cover_image_url, location, established, student_count, views, likes_count, created_at, uploaded_by', { count: 'exact' })
+      .eq('status', 'approved')
       .order(dbSortCol, { ascending: (sort.dir || 'desc') === 'asc' })
       .range(from, to);
 
@@ -125,6 +126,52 @@ export async function createUniversity({ metadata, coverFile }) {
     .single();
   
   if (error) throw error;
+  try { clearUniversitiesCache(); } catch (e) {}
+  return data;
+}
+
+export async function createUniversitySubmission({ metadata, coverFile }) {
+  // Validate required fields
+  if (!metadata.name || metadata.name.trim() === '') {
+    throw new Error('University name is required');
+  }
+
+  let cover_image_url = null;
+  
+  if (coverFile) {
+    const uploaded = await uploadUniversityCover(coverFile);
+    cover_image_url = uploaded.publicUrl;
+  }
+  
+  // Prepare payload for universities_submissions table
+  // This table accepts pending submissions without unique constraint conflicts
+  const { name, description, website_url, location, established, student_count } = metadata;
+  const payload = {
+    name: name.trim(),
+    description: description || '',
+    website_url: website_url || '',
+    location: location || '',
+    established: established || null,
+    student_count: student_count || 0,
+    cover_image_url,
+    status: 'pending' // CRITICAL: All submissions start as pending
+  };
+  
+  const { data, error } = await supabase
+    .from('universities_submissions')
+    .insert(payload)
+    .select('*')
+    .single();
+  
+  if (error) {
+    console.error('University submission error:', error);
+    throw new Error(error.message || 'Failed to submit university for approval');
+  }
+  
+  console.log('University submitted for approval:', data);
+  try { clearUniversitiesCache(); } catch (e) {}
+  return data;
+  
   try { clearUniversitiesCache(); } catch (e) {}
   return data;
 }

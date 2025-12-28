@@ -325,6 +325,37 @@ export async function createBook({ metadata, pdfFile, coverFile }) {
   return data;
 }
 
+export async function createBookSubmission({ metadata, pdfFile, coverFile }) {
+  let file_path = null;
+  let cover_image_url = null;
+  if (pdfFile) {
+    const uploaded = await uploadFile(pdfFile);
+    file_path = uploaded.path;
+  }
+  if (coverFile) {
+    const uploaded = await uploadCover(coverFile);
+    cover_image_url = uploaded.publicUrl;
+  }
+  
+  // Map metadata to database column names for submissions table
+  const payload = {
+    title: metadata.title || '',
+    author: metadata.author || '',
+    description: metadata.description || '',
+    category_id: metadata.category_id || null,
+    file_path,
+    cover_image_url,
+    pages: metadata.pages ? parseInt(metadata.pages) : null,
+    uploaded_by: metadata.uploaded_by || null,
+    file_size: pdfFile?.size || null,
+    status: 'pending'
+  };
+  
+  const { data, error } = await supabase.from('book_submissions').insert(payload).select('*').single();
+  if (error) throw error;
+  return data;
+}
+
 export async function updateBook(id, { updates, newPdfFile, newCoverFile, oldFilePath }) {
   const patch = { ...updates };
   // Convert empty strings to null for integer/numeric fields

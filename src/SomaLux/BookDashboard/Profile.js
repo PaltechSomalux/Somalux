@@ -14,13 +14,11 @@ export const Profile = ({ user: propUser = null }) => {
   const [profileImage, setProfileImage] = useState(null);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
-  const [showUploadModal, setShowUploadModal] = useState(false);
   const [pendingUploads, setPendingUploads] = useState(0);
   const [authUser, setAuthUser] = useState(null);
   const [currentUserTier, setCurrentUserTier] = useState('basic');
   const [showVerificationModal, setShowVerificationModal] = useState(false);
 
-  const AutoUploadPanel = React.lazy(() => import('../Books/Admin/pages/AutoUpload'));
   const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   // Local state
@@ -403,7 +401,10 @@ export const Profile = ({ user: propUser = null }) => {
 
                 {/* Upload */}
                 <button
-                  onClick={() => setShowUploadModal(true)}
+                  onClick={() => {
+                    setIsOpen(false);
+                    navigate('/user/upload');
+                  }}
                   style={{
                     padding: '6px',
                     fontSize: '11px',
@@ -485,42 +486,6 @@ export const Profile = ({ user: propUser = null }) => {
                 Sign Out
               </button>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="profile-signout-overlay" onClick={() => setShowUploadModal(false)}>
-          <div
-            className="profile-signout-modal"
-            style={{
-              maxWidth: 980,
-              width: '96%',
-              maxHeight: '90vh',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="profile-signout-header">
-              <h2>Upload Books</h2>
-              <button className="profile-signout-close" onClick={() => { setShowUploadModal(false); refreshPending(authUser?.id); }}>
-                ×
-              </button>
-            </div>
-            <div
-              className="profile-signout-body"
-              style={{
-                padding: 0,
-                flex: 1,
-                overflowY: 'auto',
-              }}
-            >
-              <React.Suspense fallback={<div style={{ padding: 20, color: '#8696a0' }}>Loading uploader...</div>}>
-                <AutoUploadPanel userProfile={authUser ? { id: authUser.id, email: authUser.email } : null} asSubmission={true} />
-              </React.Suspense>
-            </div>
           </div>
         </div>
       )}
