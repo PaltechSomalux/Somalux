@@ -102,11 +102,11 @@ After Render deployment, update your frontend to use the Render backend URL.
 In `src/api.js` or your API configuration:
 
 ```javascript
-// Before deployment to Firebase
+// After Render deployment
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-// After getting Render URL
-// Update to: https://somalux-backend.onrender.com
+// Update to your Render URL
+// Example: https://somalux-backend.onrender.com
 ```
 
 Update in your frontend code:
@@ -124,25 +124,22 @@ const response = await fetch(`${API_BASE_URL}/api/elib/search-events`, {
 ## 📊 ARCHITECTURE DIAGRAM
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Client Browser                           │
-└────────────────┬────────────────────────────────────────────┘
-                 │
-        ┌────────┴────────┐
-        │                 │
-┌───────▼──────┐   ┌──────▼────────┐
-│   Firebase   │   │     Render     │
-│   Hosting    │   │   Backend      │
-│ (Frontend)   │   │  (API Server)  │
-│ somalux-    │   │ somalux-       │
-│ eb820.web.app│   │ backend.render│
-└──────────────┘   └──────┬────────┘
-                          │
-                   ┌──────▼──────┐
-                   │  Supabase   │
-                   │  Database   │
-                   │ PostgreSQL  │
-                   └─────────────┘
+┌─────────────────────────────────────────────────┐
+│         Client Browser (somalux.co.ke)          │
+└──────────────────────┬──────────────────────────┘
+                       │
+              ┌────────▼────────┐
+              │ Render Backend  │
+              │ - Frontend App  │
+              │ - API Server    │
+              │ - Node.js/Expr  │
+              └────────┬────────┘
+                       │
+              ┌────────▼────────┐
+              │ Supabase        │
+              │ - Database      │
+              │ - PostgreSQL    │
+              └─────────────────┘
 ```
 
 ---
@@ -237,10 +234,10 @@ See `backend/.env.example` for full list. Key variables:
 1. Update CORS in backend: `app.use(cors({ origin: true }))`
 2. Check frontend API URL matches Render deployment
 
-### Firebase Admin SDK issues
-1. Ensure service account JSON file is in `backend/` folder
-2. Check GOOGLE_APPLICATION_CREDENTIALS path
-3. Verify Firebase project permissions
+### Supabase Connection Issues
+1. Verify SUPABASE_URL and keys are correct
+2. Check environment variables are set in Render dashboard
+3. Verify Supabase project is active
 
 ---
 
