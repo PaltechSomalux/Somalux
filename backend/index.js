@@ -5,7 +5,6 @@ import crypto from 'crypto';
 import cors from "cors";
 import { sendEmail, buildBrandedEmailHtml } from './utils/email.js';
 import { getAdminEmails } from './routes/adminNotifications.js';
-import admin from "firebase-admin";
 import { WebSocketServer } from "ws";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import path from "path";
@@ -28,36 +27,6 @@ import { sendSignOutReasonEmail } from './routes/adminNotifications.js';
 import adsApiV2 from './routes/adsApiV2.js';
 import { createRankingRoutes } from './routes/rankings.js';
 
-// Initialize Firebase Admin SDK
-let serviceAccount;
-if (process.env.FIREBASE_CREDENTIALS) {
-  // Use environment variable if available (for Render deployment)
-  try {
-    serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
-  } catch (e) {
-    console.warn('Failed to parse FIREBASE_CREDENTIALS environment variable:', e.message);
-    serviceAccount = null;
-  }
-} else {
-  // Try to read from file if it exists (for local development)
-  try {
-    const credPath = path.resolve(path.dirname(import.meta.url.replace('file://', '')), 'paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json');
-    serviceAccount = JSON.parse(readFileSync(credPath, 'utf8'));
-  } catch (e) {
-    console.warn('Firebase credentials file not found:', e.message);
-    serviceAccount = null;
-  }
-}
-
-if (serviceAccount) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-} else {
-  console.warn('⚠️  Firebase Admin SDK not initialized - set FIREBASE_CREDENTIALS environment variable or add credentials file');
-}
-
-
 
 // Express Setup MUST be before any app.use/app.post calls
 const app = express();
@@ -66,17 +35,9 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public')); // Serve static files from public folder (for ads, etc)
 
-// FCM topic management
+// FCM topic management - DISABLED (Firebase not used)
 app.post('/subscribe-topic', async (req, res) => {
-  const { topic, token } = req.body || {};
-  if (!topic || !token) return res.status(400).send('Missing topic or token');
-  try {
-    await admin.messaging().subscribeToTopic(token, topic);
-    res.json({ success: true });
-  } catch (e) {
-    console.error('subscribe-topic error', e);
-    res.status(500).send(e.message || 'subscribe error');
-  }
+  return res.status(503).json({ error: "FCM not available" });
 });
 
 // Log search events from frontend (books, categories, authors, past_papers)
@@ -127,15 +88,7 @@ app.post('/api/elib/search-events', async (req, res) => {
 });
 
 app.post('/unsubscribe-topic', async (req, res) => {
-  const { topic, token } = req.body || {};
-  if (!topic || !token) return res.status(400).send('Missing topic or token');
-  try {
-    await admin.messaging().unsubscribeFromTopic(token, topic);
-    res.json({ success: true });
-  } catch (e) {
-    console.error('unsubscribe-topic error', e);
-    res.status(500).send(e.message || 'unsubscribe error');
-  }
+  return res.status(503).json({ error: "FCM not available" });
 });
 
 // Manual test email endpoint (Gmail / SMTP via utils/email.js)
@@ -419,18 +372,22 @@ app.post('/api/agora/token', async (req, res) => {
     const { channel, uid } = req.body || {};
     if (!channel) return res.status(400).json({ error: 'channel required' });
 
-    // Require a Firebase ID token unless explicitly allowed for development
+    // Require a Supabase auth token unless explicitly allowed for development
     const allowPublic = String(process.env.ALLOW_PUBLIC_AGORA_TOKEN || '').toLowerCase() === 'true';
     let decoded = null;
     if (!allowPublic) {
       const authHeader = req.headers.authorization || '';
-      const idToken = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : (req.body.idToken || null);
-      if (!idToken) return res.status(401).json({ error: 'idToken required in Authorization header or body' });
+      const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : (req.body.token || null);
+      if (!token) return res.status(401).json({ error: 'token required in Authorization header or body' });
       try {
-        decoded = await admin.auth().verifyIdToken(idToken);
+        const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+        if (userError || !userData?.user) {
+          return res.status(401).json({ error: 'invalid token' });
+        }
+        decoded = { uid: userData.user.id };
       } catch (ve) {
-        console.error('Firebase token verification failed', ve);
-        return res.status(401).json({ error: 'invalid idToken' });
+        console.error('Supabase token verification failed', ve);
+        return res.status(401).json({ error: 'invalid token' });
       }
     }
 
@@ -457,8 +414,6 @@ app.post('/api/agora/token', async (req, res) => {
     return res.status(500).json({ error: 'token generation failed' });
   }
 });
-
-const db = serviceAccount ? admin.firestore() : null;
 
 // --- Supabase (service role) for secure writes + audit logs ---
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -894,7 +849,7 @@ function setupWebSocket() {
 async function fetchRecentMessages(chatId, ws, since = 0, isGroup = false) {
   try {
     // FIXED: Use Timestamp.fromDate for since
-    const sinceTimestamp = admin.firestore.Timestamp.fromDate(new Date(since));
+
 
     // For groups, use "groups" collection, for 1-on-1 use "chats" collection
     const collection = isGroup ? "groups" : "chats";
@@ -934,38 +889,17 @@ const getChatId = (sender, receiver) => {
   return chatId;
 };
 
-// /users unchanged
+// /users - DISABLED (Firebase not used)
 app.get("/users", async (req, res) => {
-  if (!db) return res.status(503).json({ error: "Firebase not configured" });
-  try {
-    const snapshot = await db.collection("users").get();
-    const users = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    res.json(users);
-  } catch (error) {
-    console.error("Error fetching users:", error);
-    res.status(500).json({ error: "Failed to fetch users" });
-  }
+  return res.status(503).json({ error: "Chat system not available" });
 });
 
 // /send FIXED: Update status to "delivered" before WS, full broadcast, better touch
 app.post("/send", async (req, res) => {
-  if (!db) return res.status(503).json({ error: "Firebase not configured" });
-  const { sender, receiver, text, replyingTo } = req.body;
+  return res.status(503).json({ error: "Chat system not available" });
+});
 
-  console.log('🔍 Backend /send called:', { sender, receiver, text: text.substring(0, 50) });
 
-  if (!sender || !receiver || !text) {
-    console.error('❌ Missing required fields:', { sender, receiver, text: !!text });
-    return res.status(400).json({ error: "Missing required fields: sender, receiver, text" });
-  }
-
-  const chatId = getChatId(sender, receiver);
-  if (!chatId) {
-    console.error('❌ Invalid chatId:', { sender, receiver });
-    return res.status(400).json({ error: "Invalid sender or receiver IDs" });
-  }
-
-  try {
     const messageRef = await db.collection("chats").doc(chatId).collection("messages").add({
       sender,
       receiver,
