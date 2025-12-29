@@ -27,8 +27,12 @@ const AwardPoints = ({ userId }) => {
       });
 
       if (error) {
-        console.error('RPC Error:', error);
-        setMessage(`Error: ${error.message}`);
+        if (error.code === 'PGRST116' || error.status === 404) {
+          setMessage('RPC function not available. Please contact support.');
+        } else {
+          console.error('RPC Error:', error);
+          setMessage(`Error: ${error.message}`);
+        }
       } else {
         console.log('RPC Data:', data);
         setMessage(`Successfully awarded ${points} points!`);

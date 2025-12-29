@@ -150,13 +150,33 @@ export const BookPanel = ({ demoMode = false }) => {
 
     (async () => {
       try {
-        // Daily login reward (no-op if already claimed today)
-        await supabase.rpc('daily_login_reward');
-      } catch (e) {
-        // RPC function may not exist - ignore silently
-        if (!e.message?.includes('404')) {
-          console.warn('daily_login_reward failed', e);
+        // Daily login reward via backend endpoint
+        const { data: session } = await supabase.auth.getSession();
+        const token = session?.session?.access_token;
+        
+        let origin = '';
+        if (typeof window !== 'undefined') {
+          origin = window.__API_ORIGIN__ || '';
+          if (!origin) {
+            const { protocol, hostname } = window.location || {};
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+              origin = `${protocol}//${hostname}:5000`;
+            }
+          }
         }
+        if (!origin) origin = API_URL;
+
+        await fetch(`${origin}/api/rpc/daily_login_reward`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ user_id: user.id })
+        });
+      } catch (e) {
+        // Daily rewards endpoint may not be available - ignore silently
+        console.debug('daily_login_reward request failed:', e?.message);
       }
 
       try {
@@ -167,6 +187,14 @@ export const BookPanel = ({ demoMode = false }) => {
           .single();
         if (!error && data) {
           setPointsStats(data);
+        } else if (error?.status === 406 || error?.code === 'PGRST116') {
+          // Table doesn't exist yet - silently skip
+          console.log('user_points_stats table not yet available');
+        } else if (error?.code === 'PGRST100') {
+          // Row not found - table exists but no stats yet
+          setPointsStats({ user_id: user.id, total_points: 0, daily_logins: 0 });
+        } else if (error) {
+          console.warn('load user_points_stats error:', error);
         }
       } catch (e) {
         console.warn('load user_points_stats failed', e);
@@ -1743,9 +1771,15 @@ export const BookPanel = ({ demoMode = false }) => {
         });
         if (!rewardError && rewardData) {
           setPointsStats(prev => ({ ...(prev || {}), points: rewardData.points, streak_days: rewardData.streak }));
+        } else if (rewardError?.code === 'PGRST116' || rewardError?.status === 404) {
+          // RPC function doesn't exist yet - ignore silently
+          console.debug('award_reading_points RPC not available');
+        } else if (rewardError) {
+          console.warn('award_reading_points error:', rewardError);
         }
       } catch (err) {
-        console.warn('award_reading_points failed', err);
+        // Network error or other failure - ignore silently
+        console.debug('award_reading_points request failed:', err?.message);
       }
     } catch (e) {
       console.warn('start read session failed', e);

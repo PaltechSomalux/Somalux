@@ -1,3 +1,14 @@
+-- Create user_points_stats table
+CREATE TABLE IF NOT EXISTS public.user_points_stats (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  total_points INT NOT NULL DEFAULT 0,
+  daily_logins INT NOT NULL DEFAULT 0,
+  achievements_unlocked INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
 -- Create daily_rewards table
 CREATE TABLE IF NOT EXISTS public.daily_rewards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -8,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.daily_rewards (
 );
 
 -- Create unique index for one reward per user per day
-CREATE UNIQUE INDEX idx_daily_rewards_user_day 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_rewards_user_day 
 ON public.daily_rewards(user_id, date_claimed);
 
 -- Create RPC function for daily login reward
@@ -68,16 +79,28 @@ BEGIN
 END;
 $$;
 
+-- Enable RLS on user_points_stats table
+ALTER TABLE public.user_points_stats ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy: Users can only see their own stats
+DROP POLICY IF EXISTS "Users can view own points stats" ON public.user_points_stats;
+CREATE POLICY "Users can view own points stats"
+  ON public.user_points_stats
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
 -- Enable RLS on daily_rewards table
 ALTER TABLE public.daily_rewards ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policy: Users can only see their own rewards
+DROP POLICY IF EXISTS "Users can view own daily rewards" ON public.daily_rewards;
 CREATE POLICY "Users can view own daily rewards"
   ON public.daily_rewards
   FOR SELECT
   USING (auth.uid() = user_id);
 
 -- RLS Policy: Users can only insert their own rewards (via RPC)
+DROP POLICY IF EXISTS "Users can insert own daily rewards" ON public.daily_rewards;
 CREATE POLICY "Users can insert own daily rewards"
   ON public.daily_rewards
   FOR INSERT

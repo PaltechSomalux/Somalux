@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { UserCircle, SignOut, Bookmark, IdentificationCard } from "@phosphor-icons/react";
 import { useNavigate } from 'react-router-dom';
-import { FiTrendingUp, FiUpload } from 'react-icons/fi';
+import { FiTrendingUp, FiUpload, FiBarChart2 } from 'react-icons/fi';
 import { statsCache, userCache } from "../Books/utils/cacheManager";
 import { supabase } from "../Books/supabaseClient";
 import { ProfileAvatar } from "./ProfileAvatar";
@@ -367,6 +367,41 @@ export const Profile = ({ user: propUser = null }) => {
                   }}
                 >
                   Upgrade
+                </button>
+              )}
+
+              {/* Stats Button */}
+              {authUser && (
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    navigate('/books/reading-dashboard');
+                  }}
+                  style={{
+                    padding: '4px 6px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: '#00a884',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 168, 132, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                  title="View reading statistics and achievements"
+                >
+                  <FiBarChart2 size={12} />
+                  Stats
                 </button>
               )}
 
