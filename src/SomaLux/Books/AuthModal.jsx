@@ -65,11 +65,17 @@ export const AuthModal = ({ isOpen, onClose, onSuccess, action = 'action' }) => 
               <FiX size={24} />
             </button>
 
-            <div className="auth-modal-header">
-              <h3>Sign in Required</h3>
-            </div>
+            <div className="auth-container">
+              <h3>Sign in to:</h3>
+              <ul className="auth-features">
+                <li>Download and read books</li>
+                <li>Comment and interact with others</li>
+                <li>Save your favorites and reading history</li>
+                <li>Get personalized recommendations</li>
+              </ul>
 
-            <div className="auth-modal-body">
+              {error && <div className="auth-error">{error}</div>}
+
               <button
                 className="google-sign-in-btn"
                 onClick={handleGoogleSignIn}
@@ -78,18 +84,6 @@ export const AuthModal = ({ isOpen, onClose, onSuccess, action = 'action' }) => 
                 <FcGoogle size={24} />
                 <span>{loading ? 'Signing in...' : 'Continue with Google'}</span>
               </button>
-
-              {error && <div className="auth-error">{error}</div>}
- 
-              <div className="auth-benefits">
-                <h3>Sign in to:</h3>
-                <ul>
-                  <li>Download and read books</li>
-                  <li>Comment and interact with others</li>
-                  <li>Save your favorites and reading history</li>
-                  <li>Get personalized recommendations</li>
-                </ul>
-              </div>
             </div>
           </motion.div>
         </motion.div>
