@@ -1,7 +1,7 @@
 {
-  "name": "Campuslife",
-  "short_name": "Campuslife",
-  "description": "Authentic Campus Connections - Your college social network",
+  "name": "Somalux",
+  "short_name": "Somalux",
+  "description": "Somalux - Your ultimate campus social network",
   "start_url": "/?utm_source=pwa",
   "display": "standalone",
   "background_color": "#111b21",
