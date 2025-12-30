@@ -41,6 +41,32 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Handle video files (splash videos, etc.) - Cache-first strategy for quick loading
+  if (request.method === 'GET' && (url.pathname.match(/\.mp4$/i) || url.pathname.includes('/Vids/'))) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        
+        return fetch(request, { cache: 'force-cache' }).then((response) => {
+          // Only cache successful full responses (200)
+          if (response.ok && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(DOWNLOAD_CACHE).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        }).catch(() => {
+          // Return cached version if offline
+          return caches.match(request);
+        });
+      })
+    );
+    return;
+  }
+
   // Handle document requests
   if (request.mode === 'navigate') {
     event.respondWith(

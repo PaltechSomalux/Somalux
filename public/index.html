@@ -389,12 +389,16 @@
     <div id="root"></div>
     
     <script>
-      // Splash Screen Handling
-      document.addEventListener('DOMContentLoaded', function() {
+      // Enhanced Splash Screen & Video Loading Handler
+      (function() {
         const splash = document.getElementById('splash');
+        const splashVideo = document.getElementById('splashVideo');
+        let videoLoaded = false;
+        let appLoaded = false;
         
+        // Function to hide splash screen
         function hideSplash() {
-          if (splash) {
+          if (splash && !splash.classList.contains('hidden')) {
             splash.style.opacity = '0';
             setTimeout(function() {
               splash.classList.add('hidden');
@@ -402,39 +406,75 @@
           }
         }
         
-        window.addEventListener('load', hideSplash);
-        // Fallback in case load event doesn't fire
-        setTimeout(hideSplash, 3000);
-      });
+        // Wait for both video and app to be ready
+        function checkReady() {
+          if (videoLoaded && appLoaded) {
+            hideSplash();
+          }
+        }
+        
+        // Video ready handler - triggers when video starts playing or canplay
+        splashVideo.addEventListener('loadedmetadata', function() {
+          videoLoaded = true;
+          console.log('✅ Splash video loaded and ready to play');
+          checkReady();
+        }, { once: true });
+        
+        // Fallback: accept canplay event (for cached videos)
+        splashVideo.addEventListener('canplay', function() {
+          videoLoaded = true;
+          console.log('✅ Splash video can play');
+          checkReady();
+        }, { once: true });
+        
+        // App load handler
+        window.addEventListener('load', function() {
+          appLoaded = true;
+          console.log('✅ App loaded');
+          checkReady();
+        });
+        
+        // Absolute fallback - hide splash after max time
+        setTimeout(function() {
+          console.log('⏱️ Splash screen timeout - hiding regardless');
+          videoLoaded = true;
+          appLoaded = true;
+          hideSplash();
+        }, 4000);
+      })();
       
       // PWA Installation Handling
-      let deferredPrompt;
-      const installPrompt = document.getElementById('installPrompt');
-      const installBtn = document.getElementById('installBtn');
-      const closePrompt = document.getElementById('closePrompt');
+      (function() {
+        let deferredPrompt;
+        const installPrompt = document.getElementById('installPrompt');
+        const installBtn = document.getElementById('installBtn');
+        const closePrompt = document.getElementById('closePrompt');
+        
+        if (installPrompt && installBtn && closePrompt) {
+          window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            setTimeout(() => {
+              installPrompt.classList.remove('hidden');
+            }, 3000);
+          });
+          
+          installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response: ${outcome}`);
+            deferredPrompt = null;
+            installPrompt.classList.add('hidden');
+          });
+          
+          closePrompt.addEventListener('click', () => {
+            installPrompt.classList.add('hidden');
+          });
+        }
+      })();
       
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        setTimeout(() => {
-          installPrompt.classList.remove('hidden');
-        }, 3000);
-      });
-      
-      installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`User response: ${outcome}`);
-        deferredPrompt = null;
-        installPrompt.classList.add('hidden');
-      });
-      
-      closePrompt.addEventListener('click', () => {
-        installPrompt.classList.add('hidden');
-      });
-      
-      // Random video selection - runs immediately
+      // Random video selection - runs immediately before React mounts
       (function() {
         const videos = [];
         for (let i = 1; i <= 12; i++) {
@@ -444,8 +484,32 @@
         const sourceElement = document.querySelector('#splashVideo source[type="video/mp4"]');
         if (sourceElement) {
           sourceElement.src = randomVideo;
+          console.log(`🎬 Loading random splash video: ${randomVideo}`);
+          // Trigger load on the video element
+          const splashVideo = document.getElementById('splashVideo');
+          if (splashVideo) {
+            splashVideo.load();
+          }
         }
       })();
+      
+      // Service Worker pre-caching for videos on first visit
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then((registration) => {
+          console.log('📹 Pre-caching splash videos for offline support');
+          // This helps cache the videos for offline support
+          const videos = [];
+          for (let i = 1; i <= 12; i++) {
+            videos.push(`Vids/${i}.mp4`);
+          }
+          // Pre-warm the cache with video URLs
+          videos.forEach(video => {
+            fetch(video, { cache: 'force-cache' }).catch(() => {
+              // Silent fail - video will load on-demand
+            });
+          });
+        });
+      }
     </script>
 </body>
 </html>    
