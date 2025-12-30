@@ -228,8 +228,8 @@ export const Authors = () => {
                 // Fetch books by this author without filter to avoid encoding issues
                 const { data: allBooks } = await supabase
                   .from('books')
-                  .select('cover_url')
-                  .not('cover_url', 'is', null)
+                  .select('cover_url, author')
+                  .neq('cover_url', null)
                   .limit(50);
                 
                 // Find book by matching author name case-insensitively
@@ -755,8 +755,8 @@ export const Authors = () => {
       // Fetch books without author filter to avoid encoding issues
       const { data: allBooks } = await supabase
         .from('books')
-        .select('cover_url')
-        .not('cover_url', 'is', null)
+        .select('cover_url, author')
+        .neq('cover_url', null)
         .limit(50);
       
       // Find book by matching author name case-insensitively
@@ -804,7 +804,7 @@ export const Authors = () => {
         // Fetch books without author filter to avoid encoding issues with special characters
         const { data: allBooksData, error } = await supabase
           .from('books')
-          .select('id,title,cover_url')
+          .select('id,title,author,cover_url')
           .order('created_at', { ascending: false })
           .limit(500);
         

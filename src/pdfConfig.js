@@ -20,40 +20,44 @@ export function initializePDFWorker() {
   const pdfjsVersion = pdfjs.version;
   console.log('🔄 Initializing PDF worker for version:', pdfjsVersion);
 
-  // Strategy 1: Try to use the worker from pdfjs-dist package
-  try {
-    const workerPath = new URL(
-      'pdfjs-dist/build/pdf.worker.min.mjs',
-      import.meta.url
-    ).toString();
-    pdfjs.GlobalWorkerOptions.workerSrc = workerPath;
-    console.log('✅ PDF worker configured from package:', workerPath);
-    return;
-  } catch (e1) {
-    console.warn('⚠️ Failed to load worker from package');
-  }
-
-  // Strategy 2: Try local public folder (production/build)
+  // Strategy 1: Try local public folder (production/build) - FASTEST & MOST RELIABLE
   try {
     const localPath = '/pdf.worker.min.mjs';
-    // Pre-emptively set it and let the browser validate
     pdfjs.GlobalWorkerOptions.workerSrc = localPath;
     console.log('✅ PDF worker set to local path:', localPath);
     return;
-  } catch (e2) {
+  } catch (e1) {
     console.warn('⚠️ Failed to set local path');
   }
 
-  // Strategy 3: CDN fallback
+  // Strategy 2: CDN fallback for when local file is not available
   try {
     const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.js`;
     pdfjs.GlobalWorkerOptions.workerSrc = cdnPath;
     console.log('✅ PDF worker configured from CDN:', cdnPath);
     return;
-  } catch (e3) {
-    console.error('❌ All strategies failed');
-    throw new Error('Could not initialize PDF worker');
+  } catch (e2) {
+    console.warn('⚠️ Failed to set CDN path');
   }
+
+  // Fallback: Try to use the worker from pdfjs-dist package (dev mode only)
+  try {
+    const workerPath = new URL(
+      'pdfjs-dist/build/pdf.worker.min.mjs',
+      import.meta.url
+    ).toString();
+    // Only use if it's not a file:// URL (which doesn't work in production)
+    if (!workerPath.startsWith('file://')) {
+      pdfjs.GlobalWorkerOptions.workerSrc = workerPath;
+      console.log('✅ PDF worker configured from package:', workerPath);
+      return;
+    }
+  } catch (e3) {
+    console.warn('⚠️ Failed to load worker from package');
+  }
+
+  console.error('❌ All strategies failed');
+  throw new Error('Could not initialize PDF worker');
 }
 
 // Initialize immediately

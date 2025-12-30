@@ -46,7 +46,8 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(request).then((response) => {
         return response || fetch(request).then((fetchResponse) => {
-          if (fetchResponse.ok) {
+          // Only cache full responses (200), not partial ones (206)
+          if (fetchResponse.ok && fetchResponse.status === 200) {
             const responseClone = fetchResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(request, responseClone);
@@ -76,8 +77,8 @@ self.addEventListener('fetch', (event) => {
             ...request.headers
           }
         }).then((response) => {
-          // Cache successful downloads
-          if (response.ok) {
+          // Cache successful downloads - skip partial responses (206)
+          if (response.ok && response.status === 200) {
             const responseClone = response.clone();
             caches.open(DOWNLOAD_CACHE).then((cache) => {
               cache.put(request, responseClone);
@@ -97,8 +98,8 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Cache successful responses
-        if (response.ok && request.method === 'GET') {
+        // Cache successful responses - skip partial responses (206)
+        if (response.ok && response.status === 200 && request.method === 'GET') {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(request, responseClone);
@@ -107,8 +108,10 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // Fall back to cache if offline
-        return caches.match(request);
+        // Fall back to cache if offline, or return offline page
+        return caches.match(request).then((cachedResponse) => {
+          return cachedResponse || caches.match('/index.html');
+        });
       })
   );
 });
@@ -129,7 +132,8 @@ async function syncPendingDownloads() {
     for (const download of pendingDownloads) {
       try {
         const response = await fetch(download.url);
-        if (response.ok) {
+        // Only cache full responses (200), not partial ones (206)
+        if (response.ok && response.status === 200) {
           const cache = await caches.open(DOWNLOAD_CACHE);
           await cache.put(download.url, response.clone());
           await db.delete('pending', download.id);
