@@ -112,7 +112,7 @@ const PastPapersManagement = ({ userProfile }) => {
         <div className="grid-2" style={{ marginBottom: 6 }}>
           <div className="panel">
             <label className="label">Search</label>
-            <input className="input" value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} placeholder="Search by unit code or name..." />
+            <input className="input" value={search} onChange={(e) => { setPage(1); setSearch(e.target.value.trim()); }} placeholder="e.g., MENT 130 or Introduction to..." />
           </div>
           <div className="panel">
             <label className="label">Faculty</label>

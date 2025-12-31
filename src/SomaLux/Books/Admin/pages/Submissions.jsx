@@ -131,7 +131,7 @@ const Submissions = ({ userProfile }) => {
         res = await fetch(`${API_BASE}/api/elib/submissions/${id}/approve?type=${encodeURIComponent(type)}`, { method: 'POST', headers });
       }
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Approve failed');
+      if (!res.ok) throw new Error(json?.details || json?.error || 'Approve failed');
       showToast({ type: 'success', message: `${type === 'books' ? 'Book' : type === 'universities' ? 'University' : 'Past paper'} approved successfully.` });
     } catch (e) {
       console.error('Approve submission failed:', e);

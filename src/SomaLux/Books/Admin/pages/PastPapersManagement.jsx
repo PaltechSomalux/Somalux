@@ -2,6 +2,26 @@
 import { fetchPastPapers, deletePastPaper, updatePastPaper, getFaculties } from '../pastPapersApi';
 import { useAdminUI } from '../AdminUIContext';
 
+// Format timestamp to local time with timezone handling
+const formatTimestamp = (isoString) => {
+  if (!isoString) return '—';
+  try {
+    const date = new Date(isoString);
+    return date.toLocaleString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit',
+      hour12: true,
+      timeZoneName: 'short'
+    });
+  } catch (e) {
+    return isoString;
+  }
+};
+
 const PastPapersManagement = ({ userProfile }) => {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
@@ -131,7 +151,7 @@ const PastPapersManagement = ({ userProfile }) => {
         <div className="grid-2" style={{ marginBottom: 6 }}>
           <div className="panel">
             <label className="label">Search</label>
-            <input className="input" value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} placeholder="Search by unit code or name..." />
+            <input className="input" value={search} onChange={(e) => { setPage(1); setSearch(e.target.value.trim()); }} placeholder="e.g., MENT 130 or Introduction to..." />
           </div>
           <div className="panel">
             <label className="label">Faculty</label>
@@ -148,32 +168,36 @@ const PastPapersManagement = ({ userProfile }) => {
           <table className="table" style={{ minWidth: '1200px' }}>
             <thead>
               <tr>
-                <th style={{ width: '150px', cursor: 'pointer' }} onClick={() => toggleSort('unit_code')}>Unit Code {sort.col === 'unit_code' ? (sort.dir === 'asc' ? '▲' : '▼') : ''}</th>
                 <th style={{ width: '250px' }}>Unit Name</th>
+                <th style={{ width: '150px', cursor: 'pointer' }} onClick={() => toggleSort('unit_code')}>Unit Code {sort.col === 'unit_code' ? (sort.dir === 'asc' ? '▲' : '▼') : ''}</th>
                 <th style={{ width: '150px' }}>Faculty</th>
                 <th style={{ width: '100px', cursor: 'pointer' }} onClick={() => toggleSort('year')}>Year {sort.col === 'year' ? (sort.dir === 'asc' ? '▲' : '▼') : ''}</th>
                 <th style={{ width: '100px' }}>Semester</th>
                 <th style={{ width: '120px' }}>Exam Type</th>
                 <th style={{ width: '80px', cursor: 'pointer', background: 'rgba(52, 183, 241, 0.1)', borderBottom: '2px solid #34B7F1' }} onClick={() => toggleSort('views_count')}>Views {sort.col === 'views_count' ? (sort.dir === 'asc' ? '▲' : '▼') : ''}</th>
                 <th style={{ width: '100px', cursor: 'pointer' }} onClick={() => toggleSort('downloads_count')}>Downloads {sort.col === 'downloads_count' ? (sort.dir === 'asc' ? '▲' : '▼') : ''}</th>
+                <th style={{ width: '180px', cursor: 'pointer' }} onClick={() => toggleSort('created_at')}>Uploaded {sort.col === 'created_at' ? (sort.dir === 'asc' ? '▲' : '▼') : ''}</th>
+                <th style={{ width: '150px' }}>Uploaded By</th>
                 <th style={{ width: '200px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} style={{ textAlign: 'center', color: '#8696a0' }}>Loading...</td></tr>
+                <tr><td colSpan={12} style={{ textAlign: 'center', color: '#8696a0' }}>Loading...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={10} style={{ textAlign: 'center', color: '#8696a0' }}>No data</td></tr>
+                <tr><td colSpan={12} style={{ textAlign: 'center', color: '#8696a0' }}>No data</td></tr>
               ) : rows.map(row => (
                 <tr key={row.id}>
-                  <td>{editingId === row.id ? <input className="input" value={editDraft.unit_code} onChange={(e) => setEditDraft({ ...editDraft, unit_code: e.target.value })} /> : row.unit_code}</td>
-                  <td>{editingId === row.id ? <input className="input" value={editDraft.unit_name} onChange={(e) => setEditDraft({ ...editDraft, unit_name: e.target.value })} /> : row.unit_name}</td>
-                  <td>{editingId === row.id ? <input className="input" value={editDraft.faculty} onChange={(e) => setEditDraft({ ...editDraft, faculty: e.target.value })} /> : row.faculty}</td>
-                  <td>{editingId === row.id ? <input className="input" type="number" value={editDraft.year} onChange={(e) => setEditDraft({ ...editDraft, year: e.target.value })} /> : (row.year || '—')}</td>
+                  <td style={{ color: row.unit_name ? '#e9edef' : '#8696a0' }}>{editingId === row.id ? <input className="input" value={editDraft.unit_name} onChange={(e) => setEditDraft({ ...editDraft, unit_name: e.target.value })} /> : (row.unit_name || '—')}</td>
+                  <td style={{ color: row.unit_code ? '#e9edef' : '#8696a0' }}>{editingId === row.id ? <input className="input" value={editDraft.unit_code} onChange={(e) => setEditDraft({ ...editDraft, unit_code: e.target.value })} /> : (row.unit_code || '—')}</td>
+                  <td style={{ color: row.faculty ? '#e9edef' : '#8696a0' }}>{editingId === row.id ? <input className="input" value={editDraft.faculty} onChange={(e) => setEditDraft({ ...editDraft, faculty: e.target.value })} /> : (row.faculty || '—')}</td>
+                  <td style={{ color: row.year ? '#e9edef' : '#8696a0' }}>{editingId === row.id ? <input className="input" type="number" value={editDraft.year} onChange={(e) => setEditDraft({ ...editDraft, year: e.target.value })} /> : (row.year || '—')}</td>
                   <td>{editingId === row.id ? <select className="select" value={editDraft.semester} onChange={(e) => setEditDraft({ ...editDraft, semester: e.target.value })}><option value="">—</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select> : (row.semester || '—')}</td>
                   <td>{editingId === row.id ? <select className="select" value={editDraft.exam_type} onChange={(e) => setEditDraft({ ...editDraft, exam_type: e.target.value })}><option value="Main">Main</option><option value="Supplementary">Supplementary</option><option value="CAT">CAT</option><option value="Mock">Mock</option></select> : (row.exam_type || 'Main')}</td>
                   <td style={{ fontWeight: '500', color: '#34B7F1' }}>{row.views_count || 0}</td>
                   <td>{row.downloads_count || 0}</td>
+                  <td style={{ color: '#8696a0', fontSize: '12px' }}>{formatTimestamp(row.created_at)}</td>
+                  <td style={{ color: row.profiles?.full_name ? '#e9edef' : '#8696a0', fontSize: '13px' }}>{row.profiles?.full_name || row.profiles?.email || '—'}</td>
                   <td>
                     {editingId === row.id ? (
                       <div style={{ display: 'flex', gap: '4px', flexDirection: 'column' }}>

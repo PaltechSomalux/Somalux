@@ -73,6 +73,9 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const pausedPageRef = useRef(null);
   const pausedSentenceIndexRef = useRef(0);
 
+  // Check if PDF source is available
+  const hasPdfSource = !!src;
+
   const handleDocumentLoad = ({ numPages: nextNumPages }) => {
     setNumPages(nextNumPages);
     setIsLoading(false);
@@ -750,7 +753,21 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
 
           {/* Scroll area - continuous pages */}
           <div className="ssr-scroll-area" ref={scrollAreaRef}>
-            {isLoading && sampleText ? (
+            {!hasPdfSource ? (
+              <div className="ssr-error" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '600px', gap: '20px', textAlign: 'center', padding: '20px' }}>
+                <div style={{ fontSize: '48px' }}>📄</div>
+                <h2 style={{ margin: '0 0 10px 0', fontSize: '20px' }}>PDF File Not Available</h2>
+                <p style={{ margin: '0', color: '#9ca3af' }}>The PDF file could not be loaded. Please try another book or contact support.</p>
+                {sampleText && (
+                  <div style={{ marginTop: '20px', maxHeight: '400px', overflowY: 'auto', width: '100%', textAlign: 'left' }}>
+                    <p style={{ color: '#9ca3af', fontSize: '12px' }}>Preview from book description:</p>
+                    {sampleText.split('\n').slice(0, 100).map((line, idx) => (
+                      <p key={idx} style={{ margin: '4px 0', color: '#d1d5db', lineHeight: 1.4, fontSize: '13px' }}>{line}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : isLoading && sampleText ? (
               <div className="ssr-sample-text">
                 {sampleText.split('\n').slice(0, 200).map((line, idx) => (
                   <p key={idx} style={{ margin: '6px 0', color: '#d1d5db', lineHeight: 1.5 }}>{line}</p>
@@ -764,47 +781,49 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
               </div>
             ) : null}
 
-            <Document
-              file={src}
-              onLoadSuccess={handleDocumentLoad}
-              loading={<div className="ssr-loading"><div className="ssr-spinner"></div></div>}
-              error={<div className="ssr-error">Failed to load PDF</div>}
-            >
-              {numPages && Array.from({ length: numPages }, (_, idx) => {
-                const pageNum = idx + 1;
-                // Only render visible pages + buffer
-                if (!visiblePages.has(pageNum)) {
+            {hasPdfSource && (
+              <Document
+                file={src}
+                onLoadSuccess={handleDocumentLoad}
+                loading={<div className="ssr-loading"><div className="ssr-spinner"></div></div>}
+                error={<div className="ssr-error">Failed to load PDF. The file may be corrupted or inaccessible.</div>}
+              >
+                {numPages && Array.from({ length: numPages }, (_, idx) => {
+                  const pageNum = idx + 1;
+                  // Only render visible pages + buffer
+                  if (!visiblePages.has(pageNum)) {
+                    return (
+                      <div 
+                        key={pageNum} 
+                        className="ssr-page-placeholder"
+                        ref={(el) => {
+                          if (el) pageRefsMap.current[pageNum] = el;
+                        }}
+                        style={{ height: '800px' }}
+                      />
+                    );
+                  }
+                  
                   return (
                     <div 
                       key={pageNum} 
-                      className="ssr-page-placeholder"
+                      className="ssr-page"
                       ref={(el) => {
                         if (el) pageRefsMap.current[pageNum] = el;
                       }}
-                      style={{ height: '800px' }}
-                    />
+                    >
+                      <Page
+                        pageNumber={pageNum}
+                        scale={scale}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                        loading=""
+                      />
+                    </div>
                   );
-                }
-                
-                return (
-                  <div 
-                    key={pageNum} 
-                    className="ssr-page"
-                    ref={(el) => {
-                      if (el) pageRefsMap.current[pageNum] = el;
-                    }}
-                  >
-                    <Page
-                      pageNumber={pageNum}
-                      scale={scale}
-                      renderTextLayer={false}
-                      renderAnnotationLayer={false}
-                      loading=""
-                    />
-                  </div>
-                );
-              })}
-            </Document>
+                })}
+              </Document>
+            )}
           </div>
         </div>
 

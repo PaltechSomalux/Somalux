@@ -73,13 +73,44 @@ export async function fetchPastPapers({
         uploaded_by,
         title,
         university_id,
-        universities:university_id(id, name)
+        universities:university_id(id, name),
+        profiles:uploaded_by(id, full_name, email)
       `, { count: 'exact' })
       .order(dbSortCol, { ascending: (sort.dir || 'desc') === 'asc' })
       .range(from, to);
 
     if (search) {
-      query = query.or(`unit_code.ilike.%${search}%,unit_name.ilike.%${search}%,title.ilike.%${search}%`);
+      // Trim search input and handle spaces
+      const trimmedSearch = search.trim();
+      console.log('🔍 Searching for:', trimmedSearch);
+      
+      // Split search into individual terms and search for each
+      const searchTerms = trimmedSearch.split(/\s+/).filter(t => t.length > 0);
+      console.log('🔍 Search terms:', searchTerms);
+      
+      if (searchTerms.length > 0) {
+        // Build OR conditions for full text search on all fields
+        // Also add conditions that match each individual term
+        let searchConditions = [];
+        
+        // Add full string match
+        searchConditions.push(`unit_code.ilike.%${trimmedSearch}%`);
+        searchConditions.push(`unit_name.ilike.%${trimmedSearch}%`);
+        searchConditions.push(`title.ilike.%${trimmedSearch}%`);
+        
+        // Add individual term matches
+        searchTerms.forEach(term => {
+          searchConditions.push(`unit_code.ilike.%${term}%`);
+          searchConditions.push(`unit_name.ilike.%${term}%`);
+          searchConditions.push(`title.ilike.%${term}%`);
+        });
+        
+        // Remove duplicates
+        searchConditions = [...new Set(searchConditions)];
+        
+        console.log('🔍 Final search conditions:', searchConditions.join(' OR '));
+        query = query.or(searchConditions.join(','));
+      }
     }
 
     if (universityId) {
@@ -94,6 +125,20 @@ export async function fetchPastPapers({
     if (error) {
       console.error('Supabase error fetching past papers:', error);
       throw new Error(`Failed to fetch past papers: ${error.message}`);
+    }
+
+    if (search) {
+      console.log(`🔍 Search results: Found ${count} papers`);
+      if (count === 0 && data.length === 0) {
+        console.log('⚠️ No results found. Showing sample data from database:');
+        const { data: sampleData } = await supabase
+          .from('past_papers')
+          .select('id, unit_code, unit_name, title')
+          .limit(3);
+        console.log('Sample database records:', sampleData);
+      } else {
+        console.log('Found papers:', data.map(p => ({ unit_code: p.unit_code, unit_name: p.unit_name, title: p.title })));
+      }
     }
 
     // Ensure file_url is properly generated from file_path for each paper
@@ -222,13 +267,15 @@ export async function createPastPaper({ metadata, pdfFile }) {
       year: metadata.year ? Number(metadata.year) : null,
       semester: metadata.semester || '',
       exam_type: metadata.exam_type || 'Main',
+      university_id: metadata.university_id || null,
       uploaded_by: user.id,
       downloads_count: 0,
       views_count: 0,
-      views: 0,
       created_at: nowIso,
       updated_at: nowIso
     };
+
+    console.log('📝 Creating past paper with data:', JSON.stringify(pastPaperRecord, null, 2));
 
     const { data: pastPaper, error } = await supabase
       .from('past_papers')

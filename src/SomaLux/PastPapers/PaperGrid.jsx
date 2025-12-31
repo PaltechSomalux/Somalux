@@ -188,7 +188,7 @@ export const PaperGrid = ({
                     {/* Card Content */}
                     <div className="card-contentpast">
                       <h3 style={{ margin: 0, fontSize: '0.65rem', color: '#e9edef', fontWeight: '600', lineHeight: '1.2', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 1, overflow: 'hidden' }}>
-                        {paper.courseCode ? `${paper.courseCode}: ${paper.title}` : paper.title}
+                        {paper.course ? `${paper.course}${paper.courseCode ? ` ${paper.courseCode}` : ''}` : paper.courseCode || paper.title}
                       </h3>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.6em', color: '#8696a0', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -225,18 +225,7 @@ export const PaperGrid = ({
                               onToggleLike?.(paper.id);
                             }}
                             title={paperLikes[paper.id] ? "Unlike" : "Like"}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '2px',
-                              color: paperLikes[paper.id] ? '#FF1493' : '#8696a0',
-                              padding: '2px 2px',
-                              fontSize: '0.55rem',
-                              transition: 'all 0.2s'
-                            }}
+                           
                           >
                             {paperLikes[paper.id] ? <AiFillHeart size={10} /> : <AiOutlineHeart size={10} />}
                             <span>{paperLikesCounts[paper.id] || 0}</span>
@@ -296,7 +285,7 @@ export const PaperGrid = ({
                       {/* Card Content */}
                       <div className="card-contentpast">
                         <h3 style={{ margin: 0, fontSize: '0.65rem', color: '#e9edef', fontWeight: '600', lineHeight: '1.2', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 1, overflow: 'hidden' }}>
-                          {paper.courseCode ? `${paper.courseCode}: ${paper.title}` : paper.title}
+                          {paper.course ? `${paper.course}${paper.courseCode ? ` ${paper.courseCode}` : ''}` : paper.courseCode || paper.title}
                         </h3>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.6em', color: '#8696a0', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

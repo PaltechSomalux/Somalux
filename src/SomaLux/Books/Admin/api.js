@@ -307,15 +307,19 @@ export async function createBook({ metadata, pdfFile, coverFile }) {
     cover_image_url = uploaded.publicUrl;
   }
   
-  // Map metadata to database column names
+  // Map metadata to database column names for books table
   const payload = {
     title: metadata.title || '',
     author: metadata.author || '',
     description: metadata.description || '',
     category_id: metadata.category_id || null,
+    isbn: metadata.isbn || '',
+    year: metadata.year ? parseInt(metadata.year) : null,
+    language: metadata.language || '',
+    pages: metadata.pages ? parseInt(metadata.pages) : null,
+    publisher: metadata.publisher || '',
     file_url,
     cover_image_url,
-    pages: metadata.pages ? parseInt(metadata.pages) : null,
     uploaded_by: metadata.uploaded_by || null,
     file_size: pdfFile?.size || null
   };
@@ -326,15 +330,15 @@ export async function createBook({ metadata, pdfFile, coverFile }) {
 }
 
 export async function createBookSubmission({ metadata, pdfFile, coverFile }) {
-  let file_path = null;
-  let cover_image_url = null;
+  let file_url = null;
+  let cover_url = null;
   if (pdfFile) {
     const uploaded = await uploadFile(pdfFile);
-    file_path = uploaded.path;
+    file_url = uploaded.path;
   }
   if (coverFile) {
     const uploaded = await uploadCover(coverFile);
-    cover_image_url = uploaded.publicUrl;
+    cover_url = uploaded.publicUrl;
   }
   
   // Map metadata to database column names for submissions table
@@ -343,9 +347,13 @@ export async function createBookSubmission({ metadata, pdfFile, coverFile }) {
     author: metadata.author || '',
     description: metadata.description || '',
     category_id: metadata.category_id || null,
-    file_path,
-    cover_image_url,
+    isbn: metadata.isbn || '',
+    year: metadata.year ? parseInt(metadata.year) : null,
+    language: metadata.language || '',
     pages: metadata.pages ? parseInt(metadata.pages) : null,
+    publisher: metadata.publisher || '',
+    file_url,
+    cover_url,
     uploaded_by: metadata.uploaded_by || null,
     file_size: pdfFile?.size || null,
     status: 'pending'

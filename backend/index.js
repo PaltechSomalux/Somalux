@@ -64,20 +64,26 @@ app.post('/api/elib/search-events', async (req, res) => {
     }
 
     const payload = {
-      scope,
-      query_text: queryText.trim(),
-      user_id: userId || null,
-      category_id: categoryId || null,
-      book_id: bookId || null,
-      author_name: authorName || null,
-      past_paper_id: pastPaperId || null,
+      search_query: queryText.trim(),
+      search_type: scope,
       results_count: typeof resultsCount === 'number' ? resultsCount : null,
     };
+
+    if (userId) {
+      payload.user_id = userId;
+    }
 
     const { error } = await supabaseAdmin.from('search_events').insert(payload);
     if (error) {
       console.warn('search_events insert error:', error);
-      return res.status(500).json({ error: error.message || 'Failed to log search event' });
+      // Don't fail the request if search_events table doesn't exist (graceful degradation)
+      // Just log a warning and return success
+      if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
+        console.warn('search_events table may not exist, but continuing...');
+        return res.json({ ok: true, warning: 'search_events table not available' });
+      }
+      // For other errors, still return success but log the issue
+      return res.json({ ok: true, warning: error.message });
     }
 
     res.json({ ok: true });
@@ -989,14 +995,28 @@ app.post('/api/elib/bulk-upload/start', async (req, res) => {
 
     // Validate directory exists before launching background task
     try {
-      if (!fs.existsSync(booksDirectory) || !fs.statSync(booksDirectory).isDirectory()) {
-        console.error(`❌ [BULK-UPLOAD-START] Directory not found: ${booksDirectory}`);
-        return res.status(400).json({ error: 'Directory not found. Please check the path and try again.' });
+      // Normalize path (handle both Unix and Windows paths)
+      const normalizedPath = booksDirectory.trim();
+      
+      if (!fs.existsSync(normalizedPath) || !fs.statSync(normalizedPath).isDirectory()) {
+        console.error(`❌ [BULK-UPLOAD-START] Directory not found: ${normalizedPath}`);
+        
+        // Provide helpful error message based on deployment context
+        let helpMessage = 'Directory not found. Please check the path and try again.';
+        if (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true') {
+          helpMessage = `Directory not found: "${normalizedPath}". Note: If using Render or cloud deployment, use the server-side path, not your local machine path.`;
+        }
+        
+        return res.status(400).json({ error: helpMessage });
       }
       console.log(`✅ [BULK-UPLOAD-START] Directory exists and is accessible`);
     } catch (e) {
       console.error(`❌ [BULK-UPLOAD-START] Directory access error:`, e.message);
-      return res.status(400).json({ error: 'Directory not accessible. Please check permissions/path.' });
+      let helpMessage = 'Directory not accessible. Please check permissions and path.';
+      if (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true') {
+        helpMessage = `Directory access error: "${e.message}". If using Render or cloud deployment, ensure the path is accessible on the server, not your local machine.`;
+      }
+      return res.status(400).json({ error: helpMessage });
     }
 
     // Generate unique process ID
@@ -1386,7 +1406,39 @@ app.post('/api/elib/submissions/:id/approve', async (req, res) => {
       return res.json({ ok: true, message: 'Already approved', item: sub });
     }
 
-    // Validate that submission has required file data
+    // Validate that submission has required fields for past papers
+    if (type === 'past_papers') {
+      if (!sub.unit_name) {
+        return res.status(400).json({ 
+          error: 'Cannot approve: submission missing unit name',
+          submissionId: id,
+          type: type
+        });
+      }
+      if (!sub.unit_code) {
+        return res.status(400).json({ 
+          error: 'Cannot approve: submission missing unit code',
+          submissionId: id,
+          type: type
+        });
+      }
+      if (!sub.faculty) {
+        return res.status(400).json({ 
+          error: 'Cannot approve: submission missing faculty',
+          submissionId: id,
+          type: type
+        });
+      }
+      if (!sub.year) {
+        return res.status(400).json({ 
+          error: 'Cannot approve: submission missing year',
+          submissionId: id,
+          type: type
+        });
+      }
+    }
+
+    // Convert file_path to full public URL if needed
     const fileUrl = type === 'past_papers' 
       ? (sub.file_path || sub.file_url)
       : sub.file_url;
@@ -1399,7 +1451,6 @@ app.post('/api/elib/submissions/:id/approve', async (req, res) => {
       });
     }
 
-    // Convert file_path to full public URL if needed
     let finalFileUrl = fileUrl;
     if (type === 'past_papers' && fileUrl && !fileUrl.includes('https://')) {
       // Convert filename to full Supabase public URL
@@ -1414,20 +1465,18 @@ app.post('/api/elib/submissions/:id/approve', async (req, res) => {
         id: sub.id,
         title: sub.title || `${sub.unit_code} - ${sub.unit_name}`,
         university_id: sub.university_id,
-        subject: sub.faculty || sub.subject || '',
-        course_code: sub.unit_code || '',
-        exam_year: sub.year || null,
+        faculty: sub.faculty || sub.subject || 'General',
+        unit_code: sub.unit_code || 'UNKNOWN',
+        unit_name: sub.unit_name || 'Untitled',
+        year: sub.year || new Date().getFullYear(),
         semester: sub.semester || '',
-        level: sub.level || null,
+        exam_type: sub.exam_type || 'Main',
         file_url: finalFileUrl, // Use the converted URL with full path
-        file_size: null,
+        file_path: sub.file_path || null,
         uploaded_by: null, // Don't reference auth.users here, past_papers refs profiles(id)
-        is_featured: false,
         is_active: true,
         downloads_count: 0,
         views_count: 0,
-        rating: 0,
-        rating_count: 0,
         created_at: nowIso,
         updated_at: nowIso,
       };
@@ -1465,11 +1514,14 @@ app.post('/api/elib/submissions/:id/approve', async (req, res) => {
       .single();
 
     if (insertErr) {
-      console.error('Insert failed:', insertErr);
+      console.error('Insert failed for table:', targetTable);
+      console.error('Insert error details:', JSON.stringify(insertErr, null, 2));
       console.error('Insert payload was:', JSON.stringify(insertPayload, null, 2));
       return res.status(500).json({ 
         error: 'Failed to publish item',
-        details: insertErr.message 
+        details: insertErr.message,
+        table: targetTable,
+        payloadKeys: Object.keys(insertPayload)
       });
     }
 

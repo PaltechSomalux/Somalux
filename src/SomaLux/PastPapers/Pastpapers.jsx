@@ -204,6 +204,28 @@ export const PaperPanel = ({ demoMode = false }) => {
     }
   }, []);
 
+  // Real-time subscription for past papers - start FIRST before loading
+  useEffect(() => {
+    if (!subscribeToPastPapers) return;
+    
+    console.log('Setting up real-time subscription for past papers');
+    const subscription = subscribeToPastPapers((payload) => {
+      console.log('Past paper change detected:', payload);
+      // Reload papers instantly on any change
+      loadPastPapers();
+    });
+
+    // Also set up polling as fallback every 10 seconds
+    const pollInterval = setInterval(() => {
+      loadPastPapers();
+    }, 10000);
+
+    return () => {
+      subscription?.unsubscribe();
+      clearInterval(pollInterval);
+    };
+  }, []);
+
   // Handle university filter from navigation
   useEffect(() => {
     if (location.state?.universityFilter) {
@@ -379,49 +401,34 @@ export const PaperPanel = ({ demoMode = false }) => {
   };
 
   const loadPastPapers = async () => {
-    setLoading(true);
     try {
       const { data } = await fetchPastPapers({ page: 1, pageSize: 100 });
-      console.log('Raw fetched papers:', data);
       
-      // Transform data to match expected format
-      const transformedData = data.map(paper => {
-        // file_url now contains the properly generated public URL from the API
-        const downloadUrl = paper.file_url || null;
-        
-        // Handle university name from nested object or field
-        const universityName = paper.universities?.name || paper.university || 'Unknown';
-        
-        if (!downloadUrl) {
-          console.warn('⚠️ Missing file_url for paper:', paper.id, paper.title);
-        } else {
-          console.log('✓ Paper URL generated:', downloadUrl);
-        }
-
-        return {
-          id: paper.id,
-          title: paper.title || `${paper.unit_code || ''} - ${paper.unit_name || ''}`,
-          course: paper.unit_name,
-          courseCode: paper.unit_code,
-          faculty: paper.faculty || 'Unknown',
-          university: universityName,
-          year: paper.year,
-          semester: paper.semester,
-          examType: paper.exam_type,
-          downloads: paper.downloads_count || 0,
-          downloads_count: paper.downloads_count || 0,
-          views: paper.views_count || 0,
-          views_count: paper.views_count || 0,
-          file_url: paper.file_url,
-          downloadUrl: downloadUrl,
-          created_at: paper.created_at
-        };
-      });
-      console.log('Transformed papers:', transformedData);
+      // Transform and display papers instantly
+      const transformedData = (data || []).map(paper => ({
+        id: paper.id,
+        title: paper.title || `${paper.unit_code || ''} - ${paper.unit_name || ''}`,
+        course: paper.unit_name || paper.title, // Fallback to title if unit_name missing
+        courseCode: paper.unit_code || '', // Empty string if missing
+        faculty: paper.faculty || 'Unknown',
+        university: paper.universities?.name || paper.university || 'Unknown',
+        year: paper.year,
+        semester: paper.semester,
+        examType: paper.exam_type,
+        downloads: paper.downloads_count || 0,
+        downloads_count: paper.downloads_count || 0,
+        views: paper.views_count || 0,
+        views_count: paper.views_count || 0,
+        file_url: paper.file_url,
+        downloadUrl: paper.file_url || null,
+        created_at: paper.created_at
+      }));
+      
+      // Set papers immediately without waiting
       setPapers(transformedData);
+      setLoading(false);
     } catch (error) {
       console.error('Error loading past papers:', error);
-    } finally {
       setLoading(false);
     }
   };
@@ -429,24 +436,29 @@ export const PaperPanel = ({ demoMode = false }) => {
   const loadUniversities = async () => {
     try {
       const { data } = await fetchUniversities({ page: 1, pageSize: 50 });
+      // Display universities instantly
       setUniversities(data || []);
 
-      // Load rating stats for these universities
-      const stats = {};
-      for (const uni of data || []) {
+      // Load stats in background without blocking
+      Promise.all((data || []).map(async (uni) => {
         const stat = await getUniversityRatingStats(uni.id);
-        stats[uni.id] = stat;
-      }
-      setRatingStats(stats);
+        return { id: uni.id, stat };
+      })).then((results) => {
+        const stats = {};
+        results.forEach(({ id, stat }) => stats[id] = stat);
+        setRatingStats(stats);
+      }).catch(err => console.error('Error loading rating stats:', err));
 
-      // Load current user ratings if logged in
+      // Load user ratings in background if logged in
       if (user) {
-        const userRatingsMap = {};
-        for (const uni of data || []) {
+        Promise.all((data || []).map(async (uni) => {
           const rating = await getUserUniversityRating(uni.id);
-          if (rating) userRatingsMap[uni.id] = rating;
-        }
-        setUserRatings(userRatingsMap);
+          return { id: uni.id, rating };
+        })).then((results) => {
+          const userRatingsMap = {};
+          results.forEach(({ id, rating }) => { if (rating) userRatingsMap[id] = rating; });
+          setUserRatings(userRatingsMap);
+        }).catch(err => console.error('Error loading user ratings:', err));
       }
     } catch (error) {
       console.error('Error loading universities:', error);
@@ -461,18 +473,6 @@ export const PaperPanel = ({ demoMode = false }) => {
       console.error('Error loading faculties:', error);
     }
   };
-
-  // Real-time subscription for past papers
-  useEffect(() => {
-    const subscription = subscribeToPastPapers((payload) => {
-      console.log('Past paper change detected:', payload);
-      loadPastPapers();
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, []);
 
   // Load persisted comments & replies for the selected paper
   useEffect(() => {
@@ -821,13 +821,17 @@ export const PaperPanel = ({ demoMode = false }) => {
         const code = (paper.courseCode || '').toLowerCase();
         const yearStr = String(paper.year || '');
         const semesterStr = String(paper.semester || '').toLowerCase();
+        
+        // Create a combined searchable field that includes both unit name and code
+        const combinedCourseField = `${course} ${code}`.toLowerCase();
 
         const textMatch =
           title.includes(raw) ||
           course.includes(raw) ||
+          code.includes(raw) ||
+          combinedCourseField.includes(raw) ||
           uni.includes(raw) ||
           faculty.includes(raw) ||
-          code.includes(raw) ||
           yearStr.includes(raw);
 
         const semesterMatch = semesterNumber

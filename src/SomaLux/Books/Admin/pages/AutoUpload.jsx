@@ -1,949 +1,481 @@
-import React, { useState, useEffect } from 'react';
-import { FiUpload, FiFolderPlus, FiPlay, FiRefreshCw, FiCheck, FiX, FiClock, FiAlertCircle, FiTrash2 } from 'react-icons/fi';
-import { API_URL } from '../../../../config';
-
-const API_BASE = API_URL;
+import React, { useState, useRef, useEffect } from 'react';
+import { FiUpload, FiFolder, FiRefreshCw, FiCheck, FiX, FiAlertCircle, FiFile } from 'react-icons/fi';
+import { createBook, createBookSubmission, fetchCategories } from '../api';
+import * as pdfjsLib from 'pdfjs-dist';
+import { useAdminUI } from '../AdminUIContext';
 
 const AutoUpload = ({ userProfile, asSubmission = false }) => {
-  const [booksDirectory, setBooksDirectory] = useState('');
-  const [skipDuplicates, setSkipDuplicates] = useState(true);
-  const [currentProcess, setCurrentProcess] = useState(null);
-  const [processes, setProcesses] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [showStopConfirm, setShowStopConfirm] = useState(false);
-  const [showResumeConfirm, setShowResumeConfirm] = useState(false);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [incompleteProcess, setIncompleteProcess] = useState(null);
-  const [toast, setToast] = useState(null); // { message, type }
-  const [historyPage, setHistoryPage] = useState(1);
-  const [isClearing, setIsClearing] = useState(false);
-  const HISTORY_PAGE_SIZE = 12;
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [uploadedCount, setUploadedCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
+  const [skippedCount, setSkippedCount] = useState(0);
+  const [toast, setToast] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const folderInputRef = useRef(null);
+  const { showToast: uiShowToast } = useAdminUI();
 
-  const showToast = (message, type = 'error') => {
+  useEffect(() => {
+    // Configure PDF.js worker
+    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    }
+    // Fetch categories
+    fetchCategories().then(cats => setCategories(cats || []));
+  }, []);
+
+  const showToast = (message, type = 'info') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Surface any error set into a toast automatically
-  useEffect(() => {
-    if (error) showToast(error, 'error');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [error]);
-
-  const isOwnedByCurrentUser = (process) => {
-    if (!userProfile) return !asSubmission; // in admin mode, show all; in submission mode without user, show none
-
-    const currentId = userProfile?.id || userProfile?.uid || userProfile?.user_id || null;
-    const currentEmail = (userProfile?.email || userProfile?.email_address || '').toLowerCase();
-
-    const ownerId =
-      process.uploadedBy ||
-      process.uploaded_by ||
-      process.userId ||
-      process.user_id ||
-      null;
-
-    const ownerEmail = (
-      process.startedByEmail ||
-      process.actorEmail ||
-      process.startedByEmail ||
-      process.started_by_email ||
-      process.user_email ||
-      process.email ||
-      ''
-    ).toLowerCase();
-
-    if (currentId && ownerId && String(currentId) === String(ownerId)) return true;
-    if (currentEmail && ownerEmail && currentEmail === ownerEmail) return true;
-    return false;
-  };
-
-  // Poll for process status
-  useEffect(() => {
-    if (!currentProcess) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`${API_BASE}/api/elib/bulk-upload/status/${currentProcess.id}`);
+  const extractCoverFromPDF = async (pdfFile) => {
+    try {
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      if (pdfDoc.numPages > 0) {
+        const page = await pdfDoc.getPage(1);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
         
-        // Check if response is HTML (error page) instead of JSON
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          if (text.includes('<!DOCTYPE') || text.includes('<html')) {
-            clearInterval(interval);
-            showToast('Lost connection to server. Backend may have restarted.', 'error');
-            return;
-          }
-        }
+        const context = canvas.getContext('2d');
+        await page.render({ canvasContext: context, viewport }).promise;
         
-        const data = await response.json();
-
-        if (response.ok && data.ok && data.process) {
-          // Ensure stats object exists
-          const safeProcess = {
-            ...data.process,
-            stats: {
-              total: data.process?.stats?.total ?? 0,
-              processed: data.process?.stats?.processed ?? 0,
-              successful: data.process?.stats?.successful ?? 0,
-              failed: data.process?.stats?.failed ?? 0,
-              skipped: data.process?.stats?.skipped ?? 0,
+        return new Promise((resolve) => {
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const coverFile = new File([blob], `${pdfFile.name.replace('.pdf', '')}_cover.png`, { type: 'image/png' });
+              resolve(coverFile);
+            } else {
+              resolve(null);
             }
-          };
-          setCurrentProcess(safeProcess);
-
-          // Stop polling if completed or failed
-          if (safeProcess.status === 'completed' || safeProcess.status === 'failed') {
-            clearInterval(interval);
-            fetchProcesses();  // Refresh process list
-          }
-        } else if (!response.ok) {
-          clearInterval(interval);
-          showToast(data?.error || 'Failed to get upload status', 'error');
-          // Do not crash UI; keep the last known process state
-        }
-      } catch (err) {
-        console.error('Failed to poll status:', err);
-      }
-    }, 2000);  // Poll every 2 seconds
-
-    return () => clearInterval(interval);
-  }, [currentProcess?.id]);
-
-  // Fetch all processes on mount and check for incomplete uploads
-  useEffect(() => {
-    fetchProcesses();
-    checkIncompleteUploads();
-  }, []);
-
-  const checkIncompleteUploads = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/api/elib/bulk-upload/processes`);
-      
-      // Check if response is HTML (error page) instead of JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        if (text.includes('<!DOCTYPE') || text.includes('<html')) {
-          console.error('Server returned HTML instead of JSON - backend may not be running');
-          return;
-        }
-      }
-      
-      const data = await response.json();
-
-      if (response.ok && data.ok) {
-        // Find any process that was running but not completed
-        const processes = (data.processes || []).map(p => ({
-          ...p,
-          stats: {
-            total: p?.stats?.total ?? 0,
-            processed: p?.stats?.processed ?? 0,
-            successful: p?.stats?.successful ?? 0,
-            failed: p?.stats?.failed ?? 0,
-            skipped: p?.stats?.skipped ?? 0,
-          }
-        }));
-
-        const scoped = asSubmission
-          ? processes.filter((p) => isOwnedByCurrentUser(p))
-          : processes;
-
-        const incomplete = scoped.find(p =>
-          p.status === 'running' &&
-          p.stats.processed < p.stats.total
-        );
-
-        if (incomplete) {
-          setIncompleteProcess(incomplete);
-        }
-      } else if (!response.ok) {
-        showToast(data?.error || 'Failed to list processes', 'error');
-      }
-    } catch (err) {
-      console.error('Failed to check incomplete uploads:', err);
-    }
-  };
-
-  const fetchProcesses = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/api/elib/bulk-upload/processes`);
-      
-      // Check if response is HTML (error page) instead of JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        if (text.includes('<!DOCTYPE') || text.includes('<html')) {
-          console.error('Server returned HTML instead of JSON - backend may not be running');
-          return;
-        }
-      }
-      
-      const data = await response.json();
-
-      if (response.ok && data.ok) {
-        const safe = (data.processes || []).map(p => ({
-          ...p,
-          stats: {
-            total: p?.stats?.total ?? 0,
-            processed: p?.stats?.processed ?? 0,
-            successful: p?.stats?.successful ?? 0,
-            failed: p?.stats?.failed ?? 0,
-            skipped: p?.stats?.skipped ?? 0,
-          }
-        }));
-
-        const scoped = asSubmission
-          ? safe.filter((p) => isOwnedByCurrentUser(p))
-          : safe;
-
-        setProcesses(scoped);
-      } else if (!response.ok) {
-        showToast(data?.error || 'Failed to fetch processes', 'error');
-      }
-    } catch (err) {
-      console.error('Failed to fetch processes:', err);
-    }
-  };
-
-  const startUpload = async () => {
-    if (!booksDirectory.trim()) {
-      setError('Please enter a valid books directory path');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const actorEmail = userProfile?.email || userProfile?.email_address || null;
-      const actorName = userProfile?.displayName || userProfile?.name || userProfile?.display_name || null;
-      const response = await fetch(`${API_BASE}/api/elib/bulk-upload/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-actor-email': actorEmail || 'admin',
-          'x-actor-name': actorName || ''
-        },
-        body: JSON.stringify({
-          booksDirectory,
-          skipDuplicates,
-          // Support multiple possible id fields from frontend userProfile
-          uploadedBy: userProfile?.id || userProfile?.uid || userProfile?.user_id || null,
-          asSubmission: !!asSubmission
-        })
-      });
-
-      // Check if response is HTML (error page) instead of JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Server returned non-JSON response:', text.substring(0, 500));
-        if (text.includes('<!DOCTYPE') || text.includes('<html')) {
-          throw new Error('Server error: Unable to connect to upload service. Please ensure the backend is running on ' + API_BASE);
-        }
-        throw new Error('Server returned invalid response. Status: ' + response.status);
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Friendly message for missing directory
-        const msg = data?.error || 'Failed to start upload';
-        showToast(msg.includes('Directory') ? msg : `Failed to start upload: ${msg}`, 'error');
-        throw new Error(msg);
-      }
-
-      if (data.ok) {
-        // Start tracking this process
-        setCurrentProcess({
-          id: data.processId,
-          status: 'running',
-          startedAt: new Date().toISOString(),
-          booksDirectory,
-          stats: { total: 0, processed: 0, successful: 0, failed: 0, skipped: 0 }
+          }, 'image/png', 0.95);
         });
-        setIncompleteProcess(null); // Clear incomplete flag
-        showToast('Bulk upload started', 'success');
       }
-    } catch (err) {
-      setError(err.message || 'Failed to start bulk upload');
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error extracting cover:', error);
     }
+    return null;
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'running':
-        return <FiRefreshCw className="animate-spin" style={{ color: '#00a884' }} />;
-      case 'completed':
-        return <FiCheck style={{ color: '#00a884' }} />;
-      case 'failed':
-        return <FiX style={{ color: '#ea4335' }} />;
-      default:
-        return <FiClock style={{ color: '#8696a0' }} />;
-    }
+  const extractBasicMetadataFromName = (fileName) => {
+    // Try to extract title from filename
+    const name = fileName.replace('.pdf', '').trim();
+    return {
+      title: name.length > 3 ? name : '',
+      author: '',
+      description: '',
+      category_id: null,
+      year: null,
+      language: 'English',
+      isbn: '',
+      pages: 0,
+      publisher: ''
+    };
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'running': return '#00a884';
-      case 'completed': return '#00a884';
-      case 'failed': return '#ea4335';
-      default: return '#8696a0';
-    }
-  };
-
-  const stopUpload = async () => {
-    if (!currentProcess || currentProcess.status !== 'running') return;
-
-    try {
-      const response = await fetch(`${API_BASE}/api/elib/bulk-upload/stop/${currentProcess.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const data = await response.json();
-
-      if (data.ok) {
-        setCurrentProcess({ ...currentProcess, status: 'stopped' });
-        setShowStopConfirm(false);
-        fetchProcesses();
-      }
-    } catch (err) {
-      setError('Failed to stop upload: ' + err.message);
-    }
-  };
-
-  const resumeUpload = () => {
-    if (incompleteProcess) {
-      setBooksDirectory(incompleteProcess.booksDirectory);
-      setShowResumeConfirm(false);
-      startUpload();
-    }
-  };
-
-  const clearHistory = async () => {
-    if (!window.confirm('Are you sure you want to clear all upload history? This cannot be undone.')) {
+  const handleFolderSelect = (event) => {
+    const files = Array.from(event.target.files || []);
+    const pdfFiles = files.filter(f => f.name.toLowerCase().endsWith('.pdf'));
+    
+    if (pdfFiles.length === 0) {
+      showToast('No PDF files found in selected folder', 'error');
       return;
     }
 
-    setIsClearing(true);
-    try {
-      const response = await fetch(`${API_BASE}/api/elib/bulk-upload/clear-history`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
+    setSelectedFiles(pdfFiles);
+    showToast(`Found ${pdfFiles.length} PDF files`, 'success');
+  };
 
-      const data = await response.json();
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(true);
+  };
 
-      if (response.ok && data.ok) {
-        setProcesses([]);
-        setCurrentProcess(null);
-        setShowClearConfirm(false);
-        showToast(`Cleared ${data.clearedCount || 0} upload processes`, 'success');
-      } else {
-        showToast(data?.error || 'Failed to clear history', 'error');
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+
+    // Handle dropped files/folders
+    const items = e.dataTransfer.items;
+    const files = [];
+
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file.name.toLowerCase().endsWith('.pdf')) {
+            files.push(file);
+          }
+        }
       }
-    } catch (err) {
-      showToast('Failed to clear history: ' + err.message, 'error');
-    } finally {
-      setIsClearing(false);
+    }
+
+    if (files.length === 0) {
+      showToast('No PDF files found', 'error');
+      return;
+    }
+
+    setSelectedFiles(files);
+    showToast(`Found ${files.length} PDF files`, 'success');
+  };
+
+  const uploadFiles = async () => {
+    if (selectedFiles.length === 0) {
+      showToast('No files selected', 'error');
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress({ current: 0, total: selectedFiles.length });
+    setUploadedCount(0);
+    setFailedCount(0);
+    setSkippedCount(0);
+
+    let uploaded = 0;
+    let failed = 0;
+    let skipped = 0;
+
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      setUploadProgress({ current: i + 1, total: selectedFiles.length });
+
+      try {
+        // Extract cover
+        const cover = await extractCoverFromPDF(file);
+
+        // Extract basic metadata from filename
+        const metadata = extractBasicMetadataFromName(file.name);
+
+        // Determine if user is admin
+        const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'editor';
+
+        // Upload
+        if (isAdmin) {
+          await createBook({ metadata, pdfFile: file, coverFile: cover });
+        } else {
+          await createBookSubmission({ metadata, pdfFile: file, coverFile: cover });
+        }
+
+        uploaded++;
+        setUploadedCount(uploaded);
+      } catch (error) {
+        console.error(`Failed to upload ${file.name}:`, error);
+        failed++;
+        setFailedCount(failed);
+      }
+    }
+
+    setUploading(false);
+    const message = `Upload complete: ${uploaded} successful, ${failed} failed`;
+    showToast(message, failed === 0 ? 'success' : 'info');
+    
+    // Clear selected files after upload
+    setTimeout(() => {
+      setSelectedFiles([]);
+      setUploadProgress({ current: 0, total: 0 });
+    }, 2000);
+  };
+
+  const clearSelection = () => {
+    setSelectedFiles([]);
+    setUploadProgress({ current: 0, total: 0 });
+    setUploadedCount(0);
+    setFailedCount(0);
+    setSkippedCount(0);
+    if (folderInputRef.current) {
+      folderInputRef.current.value = '';
     }
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
-    return date.toLocaleString();
-  };
+  const progressPercent = uploadProgress.total > 0 ? (uploadProgress.current / uploadProgress.total) * 100 : 0;
+  const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024;
 
   return (
     <div className="panel">
-      <div className="panel-title">Automatic Bulk Upload</div>
-      <div style={{ color: '#8696a0', fontSize: '12px', marginBottom: '8px' }}>
-        Automatically scan folders for PDFs, extract metadata And then Upload    </div>
+      {/* Header */}
+      <div style={{ marginBottom: '20px' }}>
+        <h2 style={{ color: '#e9edef', fontSize: '20px', fontWeight: '600', margin: '0 0 8px 0' }}>
+          Bulk Upload from Folder
+        </h2>
+        <p style={{ color: '#8696a0', fontSize: '13px', margin: '0' }}>
+          Select a folder to upload multiple PDF files at once
+        </p>
+      </div>
 
-      {/* Resume Banner */}
-      {incompleteProcess && !currentProcess && (
+      {asSubmission && (
         <div style={{
-          background: 'rgba(0, 168, 132, 0.1)',
+          marginBottom: '15px',
+          padding: '10px 12px',
+          background: '#1f2c33',
           border: '1px solid #00a884',
-          borderRadius: '4px',
-          padding: '8px',
-          marginBottom: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
+          borderRadius: '6px',
+          color: '#00a884',
+          fontSize: '12px'
         }}>
-          <div>
-            <div style={{ color: '#00a884', fontWeight: '600', marginBottom: '2px' }}>
-              📂 Incomplete Upload Detected
-            </div>
-            <div style={{ color: '#8696a0', fontSize: '13px' }}>
-              {incompleteProcess.stats.processed} of {incompleteProcess.stats.total} files uploaded from {incompleteProcess.booksDirectory}
-            </div>
-          </div>
-          <button
-            className="btn primary"
-            onClick={() => setShowResumeConfirm(true)}
-            style={{ marginLeft: '8px' }}
-          >
-            Resume Upload
-          </button>
+          📋 Your uploads will be reviewed and appear after approval
         </div>
       )}
 
-      {/* Configuration Section */}
-      <div className="panel" style={{ marginBottom: '20px' }}>
-        {asSubmission && (
-          <div style={{
-            marginBottom: '12px',
-            padding: '10px 12px',
-            background: 'rgba(99, 102, 241, 0.12)',
-            border: '1px solid rgba(99, 102, 241, 0.35)',
-            borderRadius: 8,
-            color: '#c7d2fe',
-            fontSize: 13
-          }}>
-            Your uploads will be sent for admin review. They will appear to others after approval.
-          </div>
-        )}
-        <label className="label">Books Directory Path</label>
-        <input
-          className="input"
-          type="text"
-          placeholder="D:\\path\\to\\your\\books\\folder"
-          value={booksDirectory}
-          onChange={(e) => setBooksDirectory(e.target.value)}
-          disabled={loading || (currentProcess && currentProcess.status === 'running')}
+      {/* Main Content */}
+      {selectedFiles.length === 0 ? (
+        // Upload Area
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => folderInputRef.current?.click()}
           style={{
-            backgroundColor: '#1f2c33',
-            color: '#ffffff',
-            border: '1px solid #333',
+            border: `2px dashed ${dragOver ? '#00a884' : '#374151'}`,
             borderRadius: '8px',
-            padding: '10px 12px',
-            width: '100%',
-            outline: 'none',
+            padding: '40px 20px',
+            textAlign: 'center',
+            cursor: 'pointer',
+            background: dragOver ? 'rgba(0, 168, 132, 0.08)' : '#0b141a',
+            transition: 'all 0.2s'
           }}
-        />
-
-        <div style={{ color: '#8696a0', fontSize: '12px', marginTop: '5px' }}>
-          Enter the full path to your folder containing PDF files (can include subfolders)
-        </div>
-
-        <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        >
+          <FiFolder size={40} style={{ color: '#00a884', marginBottom: '12px' }} />
+          <h3 style={{ color: '#e9edef', fontSize: '16px', fontWeight: '500', margin: '0 0 4px 0' }}>
+            Select Folder or Drag & Drop
+          </h3>
+          <p style={{ color: '#8696a0', fontSize: '13px', margin: '0' }}>
+            Choose a folder with PDF files
+          </p>
           <input
-            type="checkbox"
-            id="skip-duplicates"
-            checked={skipDuplicates}
-            onChange={(e) => setSkipDuplicates(e.target.checked)}
-            disabled={loading || (currentProcess && currentProcess.status === 'running')}
-            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            ref={folderInputRef}
+            type="file"
+            webkitdirectory="true"
+            directory=""
+            multiple
+            onChange={handleFolderSelect}
+            style={{ display: 'none' }}
+            accept=".pdf"
           />
-          <label htmlFor="skip-duplicates" style={{ color: '#e9edef', cursor: 'pointer', userSelect: 'none' }}>
-            Skip duplicate books (based on ISBN)
-          </label>
         </div>
-
-        {error && (
-          <div style={{
-            marginTop: '15px',
-            padding: '12px',
-            background: 'rgba(234, 67, 53, 0.1)',
-            border: '1px solid rgba(234, 67, 53, 0.3)',
-            borderRadius: '8px',
-            color: '#ea4335',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-            <FiAlertCircle size={18} />
-            {error}
-          </div>
-        )}
-
-        <div className="actions" style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-          <button
-            className="btn primary"
-            onClick={startUpload}
-            disabled={loading || (currentProcess && currentProcess.status === 'running')}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            {loading ? (
-              <>
-                <FiRefreshCw className="animate-spin" />
-                Starting...
-              </>
-            ) : currentProcess && currentProcess.status === 'running' ? (
-              <>
-                <FiRefreshCw className="animate-spin" />
-                Upload in Progress...
-              </>
-            ) : (
-              <>
-                <FiPlay />
-                Start Bulk Upload
-              </>
-            )}
-          </button>
-          {currentProcess && currentProcess.status === 'running' && (
-            <button
-              className="btn"
-              onClick={() => setShowStopConfirm(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#ea4335', color: 'white' }}
-            >
-              <FiX />
-              Stop Upload
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Current Process Progress */}
-      {currentProcess && (
-        <div className="panel" style={{ marginBottom: '20px' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '15px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {getStatusIcon(currentProcess.status)}
-              <span style={{ color: '#e9edef', fontWeight: '500', fontSize: '16px' }}>
-                Current Upload Progress
-              </span>
-            </div>
-            <span style={{
-              color: getStatusColor(currentProcess.status),
-              fontSize: '14px',
-              fontWeight: '500',
-              textTransform: 'uppercase'
-            }}>
-              {currentProcess.status}
-            </span>
-          </div>
-
+      ) : (
+        <>
+          {/* File List */}
           <div style={{
             background: '#0b141a',
-            padding: '15px',
+            border: '1px solid #1f2c33',
             borderRadius: '8px',
-            marginBottom: '15px'
+            marginBottom: '20px',
+            overflow: 'hidden'
           }}>
-            <div style={{ color: '#8696a0', fontSize: '12px', marginBottom: '8px' }}>
-              {currentProcess.booksDirectory}
+            <div style={{
+              padding: '12px 16px',
+              borderBottom: '1px solid #1f2c33',
+              background: '#0b141a'
+            }}>
+              <div style={{ color: '#e9edef', fontSize: '13px', fontWeight: '500' }}>
+                Files ({selectedFiles.length}) • {totalSize.toFixed(1)} MB
+              </div>
             </div>
 
-            {/* Progress Bar */}
-            {(currentProcess?.stats?.total ?? 0) > 0 && (
-              <div style={{ marginBottom: '15px' }}>
-                <div style={{
-                  width: '100%',
-                  height: '8px',
-                  background: '#1f2c33',
-                  borderRadius: '4px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    width: `${(((currentProcess?.stats?.processed ?? 0) / (currentProcess?.stats?.total || 1)) * 100)}%`,
-                    height: '100%',
-                    background: '#00a884',
-                    transition: 'width 0.3s ease'
-                  }} />
-                </div>
-                <div style={{
-                  color: '#8696a0',
-                  fontSize: '12px',
-                  marginTop: '5px',
-                  textAlign: 'center'
-                }}>
-                  {(currentProcess?.stats?.processed ?? 0)} / {(currentProcess?.stats?.total ?? 0)} files processed
-                </div>
-              </div>
-            )}
-
-            {/* Stats Grid */}
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-              gap: '12px'
+              maxHeight: '250px',
+              overflowY: 'auto'
             }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ color: '#00a884', fontSize: '24px', fontWeight: '600' }}>
-                  {currentProcess?.stats?.successful ?? 0}
+              {selectedFiles.map((file, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 16px',
+                    borderBottom: idx < selectedFiles.length - 1 ? '1px solid #1f2c33' : 'none',
+                    color: '#8696a0',
+                    fontSize: '12px'
+                  }}
+                >
+                  <FiFile size={14} style={{ color: '#00a884', flexShrink: 0 }} />
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {file.name}
+                  </span>
+                  <span style={{ color: '#8696a0', fontSize: '11px', flexShrink: 0 }}>
+                    {(file.size / 1024 / 1024).toFixed(1)} MB
+                  </span>
                 </div>
-                <div style={{ color: '#8696a0', fontSize: '12px' }}>Successful</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ color: '#ea4335', fontSize: '24px', fontWeight: '600' }}>
-                  {currentProcess?.stats?.failed ?? 0}
-                </div>
-                <div style={{ color: '#8696a0', fontSize: '12px' }}>Failed</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ color: '#8696a0', fontSize: '24px', fontWeight: '600' }}>
-                  {currentProcess?.stats?.skipped ?? 0}
-                </div>
-                <div style={{ color: '#8696a0', fontSize: '12px' }}>Skipped</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ color: '#e9edef', fontSize: '24px', fontWeight: '600' }}>
-                  {currentProcess?.stats?.total ?? 0}
-                </div>
-                <div style={{ color: '#8696a0', fontSize: '12px' }}>Total</div>
-              </div>
+              ))}
             </div>
           </div>
 
-          <div style={{ fontSize: '12px', color: '#8696a0' }}>
-            Started: {formatDate(currentProcess.startedAt)}
-            {currentProcess.completedAt && ` • Completed: ${formatDate(currentProcess.completedAt)}`}
+          {/* Progress */}
+          {uploading && (
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginBottom: '8px',
+                color: '#8696a0',
+                fontSize: '12px'
+              }}>
+                <span>Progress: {uploadProgress.current} / {uploadProgress.total}</span>
+                <span>✓ {uploadedCount} | ✗ {failedCount}</span>
+              </div>
+              <div style={{
+                width: '100%',
+                height: '6px',
+                background: '#1f2c33',
+                borderRadius: '3px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${progressPercent}%`,
+                  height: '100%',
+                  background: '#00a884',
+                  transition: 'width 0.3s'
+                }} />
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={uploadFiles}
+              disabled={uploading}
+              style={{
+                flex: 1,
+                padding: '10px 16px',
+                background: uploading ? '#00a88466' : '#00a884',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: uploading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                opacity: uploading ? 0.6 : 1
+              }}
+            >
+              {uploading ? (
+                <>
+                  <FiRefreshCw style={{ animation: 'spin 1s linear infinite' }} />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <FiUpload size={14} />
+                  Upload {selectedFiles.length} File{selectedFiles.length !== 1 ? 's' : ''}
+                </>
+              )}
+            </button>
+            <button
+              onClick={clearSelection}
+              disabled={uploading}
+              style={{
+                padding: '10px 16px',
+                background: '#1f2c33',
+                color: '#8696a0',
+                border: '1px solid #374151',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: uploading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                opacity: uploading ? 0.5 : 1
+              }}
+            >
+              <FiX size={14} />
+              Clear
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Results */}
+      {(uploadedCount > 0 || failedCount > 0) && !uploading && (
+        <div style={{
+          marginTop: '20px',
+          padding: '16px',
+          background: '#0b141a',
+          border: `1px solid ${failedCount === 0 ? '#00a884' : '#f1b233'}`,
+          borderRadius: '8px'
+        }}>
+          <div style={{ color: '#e9edef', fontSize: '13px', fontWeight: '500', marginBottom: '12px' }}>
+            Upload Complete
+          </div>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: '#00a884', fontSize: '20px', fontWeight: '600', marginBottom: '2px' }}>
+                {uploadedCount}
+              </div>
+              <div style={{ color: '#8696a0', fontSize: '11px' }}>Uploaded</div>
+            </div>
+            {failedCount > 0 && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ color: '#ea4335', fontSize: '20px', fontWeight: '600', marginBottom: '2px' }}>
+                  {failedCount}
+                </div>
+                <div style={{ color: '#8696a0', fontSize: '11px' }}>Failed</div>
+              </div>
+            )}
           </div>
         </div>
       )}
-
-      {/* Process History */}
-      <div className="panel">
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '15px'
-        }}>
-          <div className="panel-title" style={{ margin: 0 }}>Upload History</div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <button
-              className="btn"
-              onClick={fetchProcesses}
-              disabled={isClearing}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px' }}
-            >
-              <FiRefreshCw size={14} />
-              Refresh
-            </button>
-            {processes.length > 0 && (
-              <button
-                className="btn"
-                onClick={() => setShowClearConfirm(true)}
-                disabled={isClearing}
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '6px', 
-                  padding: '6px 12px',
-                  backgroundColor: '#ea4335',
-                  color: 'white',
-                  border: 'none',
-                  cursor: isClearing ? 'not-allowed' : 'pointer',
-                  opacity: isClearing ? 0.6 : 1
-                }}
-              >
-                <FiTrash2 size={14} />
-                Clear History
-              </button>
-            )}
-          </div>
-        </div>
-
-        {processes.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '40px',
-            color: '#8696a0'
-          }}>
-            No upload history yet. Start your first bulk upload above.
-          </div>
-        ) : (
-          <>
-            <div className="panel" style={{ padding: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: '12px', minHeight: '700px' }}>
-              <table className="table" style={{ minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: '12%' }}>Process ID</th>
-                    <th style={{ width: '12%' }}>Status</th>
-                    <th style={{ width: '25%' }}>Directory</th>
-                    <th style={{ width: '15%' }}>Uploaded By</th>
-                    <th style={{ width: '10%' }}>Successful</th>
-                    <th style={{ width: '8%' }}>Failed</th>
-                    <th style={{ width: '8%' }}>Skipped</th>
-                    <th style={{ width: '10%' }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {processes
-                    .slice((historyPage - 1) * HISTORY_PAGE_SIZE, (historyPage - 1) * HISTORY_PAGE_SIZE + HISTORY_PAGE_SIZE)
-                    .map((process, idx) => {
-                      const uploaderEmail =
-                        process.actorEmail ||
-                        process.startedByEmail ||
-                        process.started_by_email ||
-                        process.user_email ||
-                        process.email ||
-                        null;
-                      const uploaderName =
-                        process.startedByName ||
-                        process.actorName ||
-                        process.user_name ||
-                        null;
-                      const label = uploaderName || uploaderEmail || 'Unknown uploader';
-                      
-                      return (
-                        <tr key={process.id} style={{ borderBottom: '1px solid #1f2c33' }}>
-                          <td style={{ fontSize: '12px', color: '#8696a0' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              {getStatusIcon(process.status)}
-                              <span>{process.id}</span>
-                            </div>
-                          </td>
-                          <td style={{
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            textTransform: 'uppercase',
-                            color: getStatusColor(process.status)
-                          }}>
-                            {process.status}
-                          </td>
-                          <td style={{ fontSize: '12px', color: '#8696a0', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={process.booksDirectory}>
-                            {process.booksDirectory}
-                          </td>
-                          <td style={{ fontSize: '12px', color: '#8696a0' }}>
-                            <div style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              width: 'fit-content'
-                            }}>
-                              <div style={{
-                                width: '24px',
-                                height: '24px',
-                                borderRadius: '50%',
-                                backgroundColor: '#00a884',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '11px',
-                                fontWeight: 'bold',
-                                color: '#fff'
-                              }}>
-                                {label.charAt(0).toUpperCase()}
-                              </div>
-                              <span style={{ fontSize: '11px' }}>{label}</span>
-                            </div>
-                          </td>
-                          <td style={{ fontSize: '12px', color: '#00a884', fontWeight: '500' }}>
-                            {process?.stats?.successful ?? 0}
-                          </td>
-                          <td style={{ fontSize: '12px', color: '#ea4335', fontWeight: '500' }}>
-                            {process?.stats?.failed ?? 0}
-                          </td>
-                          <td style={{ fontSize: '12px', color: '#f1b233', fontWeight: '500' }}>
-                            {process?.stats?.skipped ?? 0}
-                          </td>
-                          <td style={{ fontSize: '12px', color: '#e9edef' }}>
-                            {process?.stats?.total ?? 0}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-
-            {processes.length > HISTORY_PAGE_SIZE && (
-              <div
-                className="actions"
-                style={{ marginTop: '12px', justifyContent: 'space-between' }}
-              >
-                <button
-                  className="btn"
-                  disabled={historyPage <= 1}
-                  onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
-                >
-                  Prev
-                </button>
-                <span style={{ color: '#cfd8dc', fontSize: 12 }}>
-                  Page {historyPage} of {Math.max(1, Math.ceil(processes.length / HISTORY_PAGE_SIZE))}
-                </span>
-                <button
-                  className="btn"
-                  disabled={historyPage >= Math.ceil(processes.length / HISTORY_PAGE_SIZE)}
-                  onClick={() =>
-                    setHistoryPage((p) =>
-                      Math.min(Math.max(1, Math.ceil(processes.length / HISTORY_PAGE_SIZE)), p + 1)
-                    )
-                  }
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
 
       {/* Toast */}
       {toast && (
         <div style={{
-          position: 'fixed', bottom: '28px', right: '28px',
-          maxWidth: '360px', width: 'calc(100% - 56px)',
-          background: toast.type === 'error' ? '#3b1f20' : '#12321f',
-          color: '#fff', border: '1px solid rgba(255,255,255,0.2)',
-          padding: '12px 16px', borderRadius: '10px', zIndex: 10000,
-          boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
-          display: 'flex', alignItems: 'center', gap: '10px',
-          transform: 'translateY(0)', opacity: 1, transition: 'all .25s ease'
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          maxWidth: '300px',
+          width: 'calc(100% - 40px)',
+          background: toast.type === 'error' ? '#ea4335' : toast.type === 'success' ? '#00a884' : '#374151',
+          color: '#fff',
+          padding: '12px 16px',
+          borderRadius: '6px',
+          zIndex: 10000,
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '13px',
+          animation: 'slideIn 0.3s ease'
         }}>
-          <span style={{
-            display: 'inline-block', width: 10, height: 10,
-            borderRadius: '50%',
-            background: toast.type === 'error' ? '#ef4444' : '#22c55e'
-          }} />
-          <span style={{ lineHeight: 1.4 }}>{toast.message}</span>
+          {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✗' : 'ℹ'} {toast.message}
         </div>
       )}
 
-      {/* Stop Confirmation Modal */}
-      {showStopConfirm && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999
-        }}>
-          <div style={{
-            background: '#1f2c33',
-            borderRadius: '12px',
-            padding: '25px',
-            maxWidth: '400px',
-            width: '90%'
-          }}>
-            <h3 style={{ color: '#e9edef', marginBottom: '15px' }}>Stop Upload?</h3>
-            <p style={{ color: '#8696a0', marginBottom: '20px' }}>
-              Are you sure you want to stop the upload? Progress will be saved and you can resume later.
-            </p>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                className="btn"
-                onClick={() => setShowStopConfirm(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn primary"
-                onClick={stopUpload}
-                style={{ background: '#ea4335' }}
-              >
-                Stop Upload
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Resume Confirmation Modal */}
-      {showResumeConfirm && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999
-        }}>
-          <div style={{
-            background: '#1f2c33',
-            borderRadius: '12px',
-            padding: '25px',
-            maxWidth: '400px',
-            width: '90%'
-          }}>
-            <h3 style={{ color: '#e9edef', marginBottom: '15px' }}>Resume Upload?</h3>
-            <p style={{ color: '#8696a0', marginBottom: '20px' }}>
-              Resume uploading from where you left off? ({incompleteProcess?.stats.processed || 0} of {incompleteProcess?.stats.total || 0} files already uploaded)
-            </p>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                className="btn"
-                onClick={() => setShowResumeConfirm(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn primary"
-                onClick={resumeUpload}
-              >
-                Resume Upload
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Clear History Confirmation Modal */}
-      {showClearConfirm && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999
-        }}>
-          <div style={{
-            background: '#1f2c33',
-            borderRadius: '12px',
-            padding: '25px',
-            maxWidth: '400px',
-            width: '90%'
-          }}>
-            <h3 style={{ color: '#e9edef', marginBottom: '15px' }}>Clear Upload History?</h3>
-            <p style={{ color: '#8696a0', marginBottom: '20px' }}>
-              This will delete all {processes.length} upload processes from the history. This action cannot be undone.
-            </p>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                className="btn"
-                onClick={() => setShowClearConfirm(false)}
-                disabled={isClearing}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn primary"
-                onClick={clearHistory}
-                disabled={isClearing}
-                style={{ 
-                  background: '#ea4335',
-                  cursor: isClearing ? 'not-allowed' : 'pointer',
-                  opacity: isClearing ? 0.6 : 1
-                }}
-              >
-                {isClearing ? 'Clearing...' : 'Clear History'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes slideIn {
+          from {
+            transform: translateY(20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 };

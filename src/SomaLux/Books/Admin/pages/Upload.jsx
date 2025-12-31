@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createBookSubmission, fetchCategories } from '../api';
+import { createBookSubmission, createBook, fetchCategories } from '../api';
 import { createUniversitySubmission } from '../campusApi';
-import { createPastPaperSubmission, getUniversitiesForDropdown } from '../pastPapersApi';
+import { createPastPaper, createPastPaperSubmission, getUniversitiesForDropdown } from '../pastPapersApi';
 import { 
   autoFillUniversityData, 
   searchUniversityNames,
@@ -14,6 +14,7 @@ import {
 } from '../universityPrefillApi';
 import { FiUpload, FiFile, FiImage, FiBook, FiMapPin, FiFileText, FiSearch, FiX, FiLoader } from 'react-icons/fi';
 import { useAdminUI } from '../AdminUIContext';
+import * as pdfjsLib from 'pdfjs-dist';
 
 // Simple debounce hook
 function useDebounce(callback, delay) {
@@ -129,6 +130,7 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
   });
 
   const [busy, setBusy] = useState(false);
+  const [extractingCover, setExtractingCover] = useState(false);
 
   useEffect(() => { 
     (async () => { 
@@ -138,6 +140,52 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
       } catch {} 
     })(); 
   }, []);
+
+  // Auto-extract cover from PDF when PDF is selected
+  useEffect(() => {
+    if (!pdf) return;
+
+    const extractCoverFromPDF = async () => {
+      setExtractingCover(true);
+      try {
+        // Set worker if not already set
+        if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        }
+
+        const arrayBuffer = await pdf.arrayBuffer();
+        const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        
+        if (pdfDoc.numPages > 0) {
+          const page = await pdfDoc.getPage(1);
+          const viewport = page.getViewport({ scale: 2 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          
+          const context = canvas.getContext('2d');
+          await page.render({ canvasContext: context, viewport }).promise;
+          
+          // Convert canvas to blob and create a file
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const coverFile = new File([blob], `${pdf.name.replace('.pdf', '')}_cover.png`, { type: 'image/png' });
+              setCover(coverFile);
+              showToast({ type: 'success', message: 'Cover image extracted from PDF!' });
+            }
+          }, 'image/png', 0.95);
+        }
+      } catch (error) {
+        console.error('Error extracting cover from PDF:', error);
+        // Don't show error toast - this is optional, user can upload manual cover
+        showToast({ type: 'info', message: 'Could not auto-extract cover. You can upload one manually.' });
+      } finally {
+        setExtractingCover(false);
+      }
+    };
+
+    extractCoverFromPDF();
+  }, [pdf, showToast]);
 
   const onBookChange = (k) => (e) => setBookForm((f) => ({ ...f, [k]: e.target.value }));
   const onCampusChange = (k) => (e) => {
@@ -266,8 +314,18 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
         publisher: bookForm.publisher || '',
         uploaded_by: userProfile?.id || null
       };
-      await createBookSubmission({ metadata, pdfFile: pdf, coverFile: cover });
-      showToast({ type: 'success', message: 'Book submitted for approval. Admin will review it shortly.' });
+      
+      // Check if user is admin or editor - if so, directly upload; otherwise submit for approval
+      const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'editor';
+      
+      if (isAdmin) {
+        await createBook({ metadata, pdfFile: pdf, coverFile: cover });
+        showToast({ type: 'success', message: 'Book uploaded successfully!' });
+      } else {
+        await createBookSubmission({ metadata, pdfFile: pdf, coverFile: cover });
+        showToast({ type: 'success', message: 'Book submitted for approval. Admin will review it shortly.' });
+      }
+      
       // Reset form
       setPdf(null);
       setCover(null);
@@ -313,11 +371,19 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
 
   const submitPastPaper = async () => {
     if (!paperPdf) { showToast({ type: 'error', message: 'Please choose a PDF file.' }); return; }
+    if (!paperForm.university_id) { showToast({ type: 'error', message: 'Please select a university.' }); return; }
     if (!paperForm.faculty) { showToast({ type: 'error', message: 'Please enter faculty.' }); return; }
     if (!paperForm.unit_code) { showToast({ type: 'error', message: 'Please enter unit code.' }); return; }
     if (!paperForm.unit_name) { showToast({ type: 'error', message: 'Please enter unit name.' }); return; }
+    if (!paperForm.year) { showToast({ type: 'error', message: 'Please enter year.' }); return; }
     
     setBusy(true);
+    // Show instant success feedback
+    showToast({ type: 'success', message: 'Past paper submitted! Processing...' });
+    // Reset form immediately for instant feedback
+    setPaperForm({ university_id: '', faculty: '', unit_code: '', unit_name: '', year: '', semester: '', exam_type: '' });
+    setPaperPdf(null);
+    
     try {
       const metadata = {
         title: `${paperForm.unit_code} - ${paperForm.unit_name}`,
@@ -330,15 +396,21 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
         exam_type: paperForm.exam_type || 'Main',
         uploaded_by: userProfile?.id || null
       };
-      await createPastPaperSubmission({ metadata, pdfFile: paperPdf });
-      showToast({ type: 'success', message: 'Past paper submitted for approval. Admin will review it shortly.' });
-      // Reset form
-      setPaperForm({ university_id: '', faculty: '', unit_code: '', unit_name: '', year: '', semester: '', exam_type: '' });
-      setPaperPdf(null);
-      navigate('/user/upload');
-    } catch (e) {
-      console.error('Past paper upload failed:', e);
-      showToast({ type: 'error', message: e?.message || 'Upload failed.' });
+      
+      console.log('📤 Submitting past paper with metadata:', JSON.stringify(metadata, null, 2));
+      console.log('📤 Current form state:', JSON.stringify(paperForm, null, 2));
+      
+      // Determine if admin or user - admins get instant display, users get approval workflow
+      const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'editor';
+      const uploadFunction = isAdmin ? createPastPaper : createPastPaperSubmission;
+      
+      // Fire upload in background without waiting
+      uploadFunction({ metadata, pdfFile: paperPdf }).catch((e) => {
+        console.error('Past paper upload failed:', e);
+        showToast({ type: 'error', message: e?.message || 'Upload failed.' });
+      });
+      // Navigate instantly without waiting for upload to complete
+      setTimeout(() => navigate('/user/upload'), 300);
     } finally { setBusy(false); }
   };
 
@@ -433,7 +505,10 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
             <label className="label">PDF File</label>
             {renderDropzone(pdf, setPdf, 'application/pdf', 'pdf', <FiFile size={24} />)}
             
-            <label className="label" style={{ marginTop: 20 }}>Cover Image (optional)</label>
+            <label className="label" style={{ marginTop: 20 }}>
+              Cover Image (optional)
+              {extractingCover && <span style={{ marginLeft: '8px', color: '#00a884', fontSize: '0.9em' }}>(Extracting...)</span>}
+            </label>
             {renderDropzone(cover, setCover, 'image/*', 'cover', <FiImage size={24} />)}
           </div>
           <div className="panel">
@@ -658,7 +733,7 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
             {renderDropzone(paperPdf, setPaperPdf, 'application/pdf', 'paper-pdf', <FiFile size={24} />)}
           </div>
           <div className="panel">
-            <label className="label">University (optional)</label>
+            <label className="label">University *</label>
             <select className="select" value={paperForm.university_id} onChange={onPaperChange('university_id')}>
               <option value="">Select University</option>
               {universities.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -669,18 +744,18 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
 
             <div className="grid-2" style={{ marginTop: 10 }}>
               <div>
-                <label className="label">Unit Code *</label>
-                <input className="input" placeholder="e.g., CS101" value={paperForm.unit_code} onChange={onPaperChange('unit_code')} />
-              </div>
-              <div>
                 <label className="label">Unit Name *</label>
                 <input className="input" placeholder="e.g., Introduction to Programming" value={paperForm.unit_name} onChange={onPaperChange('unit_name')} />
+              </div>
+              <div>
+                <label className="label">Unit Code *</label>
+                <input className="input" placeholder="e.g., CS101" value={paperForm.unit_code} onChange={onPaperChange('unit_code')} />
               </div>
             </div>
 
             <div className="grid-2" style={{ marginTop: 10 }}>
               <div>
-                <label className="label">Year</label>
+                <label className="label">Year *</label>
                 <input className="input" type="number" placeholder="e.g., 2023" value={paperForm.year} onChange={onPaperChange('year')} />
               </div>
               <div>

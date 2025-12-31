@@ -428,7 +428,23 @@ export const BookPanel = ({ demoMode = false }) => {
     const filePath = row.file_url || '';
     const ext = filePath.split('.').pop()?.toLowerCase() || 'pdf';
     // file_url is already a full public URL from the backend
-    const publicUrl = filePath && /^https?:\/\//.test(filePath) ? filePath : null;
+    // Support both full URLs and storage paths
+    let publicUrl = null;
+    if (filePath) {
+      if (/^https?:\/\//.test(filePath)) {
+        // Already a full HTTP URL
+        publicUrl = filePath;
+      } else if (filePath.includes('supabase') || filePath.includes('storage')) {
+        // Supabase storage path - construct full URL
+        publicUrl = filePath.startsWith('/') ? `https://wuwlnawtuhjoubfkdtgc.supabase.co/storage/v1/object/public${filePath}` : `https://wuwlnawtuhjoubfkdtgc.supabase.co/storage/v1/object/public/${filePath}`;
+      } else if (!filePath.startsWith('/')) {
+        // Path without leading slash - assume it's in elib-books bucket
+        publicUrl = `https://wuwlnawtuhjoubfkdtgc.supabase.co/storage/v1/object/public/elib-books/${filePath}`;
+      } else {
+        // Path with leading slash - use as-is with public URL
+        publicUrl = `https://wuwlnawtuhjoubfkdtgc.supabase.co/storage/v1/object/public${filePath}`;
+      }
+    }
    return {
   id: row.id,
   categoryId: row.category_id ? String(row.category_id) : null,
