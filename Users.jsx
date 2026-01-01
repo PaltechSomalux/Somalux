@@ -11,6 +11,7 @@ const Users = ({ isSuperAdmin }) => {
   const [saving, setSaving] = useState({});
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [sortBy, setSortBy] = useState('ranking'); // 'ranking' or 'latest_login'
   const [page, setPage] = useState(1);
   const [pageSize] = useState(15);
   const [showTierModal, setShowTierModal] = useState(false);
@@ -197,14 +198,39 @@ const Users = ({ isSuperAdmin }) => {
   };
 
   const filteredRows = useMemo(() => {
-    return rows.filter(u => {
+    let filtered = rows.filter(u => {
       const matchSearch = !search || 
         (u.email && u.email.toLowerCase().includes(search.toLowerCase())) ||
         (u.display_name && u.display_name.toLowerCase().includes(search.toLowerCase()));
       const matchRole = !roleFilter || u.role === roleFilter;
       return matchSearch && matchRole;
     });
-  }, [rows, search, roleFilter]);
+
+    // Apply sorting
+    if (sortBy === 'latest_login') {
+      filtered.sort((a, b) => {
+        const dateA = a.last_active_at ? new Date(a.last_active_at).getTime() : 0;
+        const dateB = b.last_active_at ? new Date(b.last_active_at).getTime() : 0;
+        return dateB - dateA; // Most recent first
+      });
+    } else {
+      // Default ranking sort
+      filtered.sort((a, b) => {
+        const scoreA = typeof a.rankScore === 'number' ? a.rankScore : -1;
+        const scoreB = typeof b.rankScore === 'number' ? b.rankScore : -1;
+        if (scoreA !== scoreB) return scoreB - scoreA;
+        const roleOrder = { admin: 0, editor: 1, viewer: 2 };
+        const ra = roleOrder[a.role] ?? 3;
+        const rb = roleOrder[b.role] ?? 3;
+        if (ra !== rb) return ra - rb;
+        const nameA = (a.display_name || a.email || '').toLowerCase();
+        const nameB = (b.display_name || b.email || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+    }
+
+    return filtered;
+  }, [rows, search, roleFilter, sortBy]);
 
   const paginatedRows = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -216,7 +242,7 @@ const Users = ({ isSuperAdmin }) => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, roleFilter]);
+  }, [search, roleFilter, sortBy]);
 
   const handleTierClick = (user) => {
     if (!user || !user.id) return;
@@ -248,14 +274,26 @@ const Users = ({ isSuperAdmin }) => {
         </div>
         <select
           className="select"
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          style={{ minWidth: 150, width: 'auto' }}
+          value={roleFilter ? `role:${roleFilter}` : `sort:${sortBy}`}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value.startsWith('role:')) {
+              setRoleFilter(value.substring(5));
+              setSortBy('ranking');
+            } else if (value.startsWith('sort:')) {
+              setSortBy(value.substring(5));
+              setRoleFilter('');
+            }
+          }}
+          style={{ minWidth: 200, width: 'auto', backgroundColor: 'black', color: 'white' }}
         >
-          <option value="">All Roles</option>
-          <option value="admin">Admin</option>
-          <option value="editor">Editor</option>
-          <option value="viewer">Viewer</option>
+          <option value="role:">All Roles</option>
+          <option value="role:admin">Admin</option>
+          <option value="role:editor">Editor</option>
+          <option value="role:viewer">Viewer</option>
+          <option value="sort:ranking" disabled>─────────────────</option>
+          <option value="sort:ranking">By Ranking</option>
+          <option value="sort:latest_login">Latest to Login</option>
         </select>
       </div>
 

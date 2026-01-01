@@ -15,14 +15,21 @@ import { generateSummaryDocument } from './utils/generateWordDoc';
 import './SimpleScrollReader.css';
 
 // Verify worker is configured (set in pdfConfig.js at startup)
-if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-  console.error('❌ PDF worker not configured! Attempting fallback...');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-  ).toString();
-} else {
+let simpleReaderWorkerReady = false;
+if (pdfjs.GlobalWorkerOptions.workerSrc) {
   console.log('✅ SimpleScrollReader: Worker ready:', pdfjs.GlobalWorkerOptions.workerSrc);
+  simpleReaderWorkerReady = true;
+} else {
+  console.error('❌ PDF worker not configured! Attempting fallback...');
+  try {
+    const fallbackWorker = '/pdf.worker.min.mjs';
+    pdfjs.GlobalWorkerOptions.workerSrc = fallbackWorker;
+    simpleReaderWorkerReady = true;
+    console.log('✅ SimpleScrollReader: Worker set to fallback:', fallbackWorker);
+  } catch (e) {
+    console.error('❌ Failed to set PDF worker fallback in SimpleScrollReader:', e);
+    simpleReaderWorkerReady = false;
+  }
 }
 
 const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
@@ -37,6 +44,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1.0);
   const [isLoading, setIsLoading] = useState(true);
+  const [pdfError, setPdfError] = useState(!simpleReaderWorkerReady);
   const [showTOC, setShowTOC] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [audioCurrentPage, setAudioCurrentPage] = useState(1);
@@ -785,8 +793,18 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
               <Document
                 file={src}
                 onLoadSuccess={handleDocumentLoad}
+                onError={(error) => {
+                  console.error('PDF loading error in SimpleScrollReader:', error?.message || error);
+                  setPdfError(true);
+                }}
                 loading={<div className="ssr-loading"><div className="ssr-spinner"></div></div>}
-                error={<div className="ssr-error">Failed to load PDF. The file may be corrupted or inaccessible.</div>}
+                error={
+                  <div className="ssr-error">
+                    {pdfError 
+                      ? '❌ Failed to load PDF. The file may be corrupted or inaccessible. Please refresh and try again.'
+                      : 'Failed to load PDF. The file may be corrupted or inaccessible.'}
+                  </div>
+                }
               >
                 {numPages && Array.from({ length: numPages }, (_, idx) => {
                   const pageNum = idx + 1;
@@ -818,11 +836,20 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                         renderTextLayer={false}
                         renderAnnotationLayer={false}
                         loading=""
+                        onRenderError={(error) => {
+                          console.warn('PDF page render error:', error?.message || error);
+                          setPdfError(true);
+                        }}
                       />
                     </div>
                   );
                 })}
               </Document>
+            )}
+            {!hasPdfSource && (
+              <div className="ssr-error">
+                ❌ No PDF source provided. The file location may be invalid.
+              </div>
             )}
           </div>
         </div>

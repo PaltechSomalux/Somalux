@@ -406,7 +406,7 @@ const Categories = () => {
               onClick={() => setPage(p => Math.max(1, p - 1))}
               style={{ opacity: page <= 1 ? 0.5 : 1 }}
             >
-              Previous
+              Previo
             </button>
             <span style={{ color: '#cfd8dc', fontSize: '0.875rem' }}>
               Page {page} of {totalPages} ({filteredRows.length} {filteredRows.length === 1 ? 'category' : 'categories'})

@@ -23,14 +23,21 @@ import {
 import './SecureReader.css'; // Import CSS file
 
 // Verify worker is configured (set in pdfConfig.js at startup)
-if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-  console.error('❌ PDF worker not configured! Attempting fallback...');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-  ).toString();
-} else {
+let secureReaderWorkerReady = false;
+if (pdfjs.GlobalWorkerOptions.workerSrc) {
   console.log('✅ SecureReader: Worker ready:', pdfjs.GlobalWorkerOptions.workerSrc);
+  secureReaderWorkerReady = true;
+} else {
+  console.error('❌ PDF worker not configured! Attempting fallback...');
+  try {
+    const fallbackWorker = '/pdf.worker.min.mjs';
+    pdfjs.GlobalWorkerOptions.workerSrc = fallbackWorker;
+    secureReaderWorkerReady = true;
+    console.log('✅ SecureReader: Worker set to fallback:', fallbackWorker);
+  } catch (e) {
+    console.error('❌ Failed to set PDF worker fallback in SecureReader:', e);
+    secureReaderWorkerReady = false;
+  }
 }
 
 const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sessionId: sessionIdProp, openedAt: openedAtProp }) => {
@@ -41,6 +48,7 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [scrollMode, setScrollMode] = useState(false);
   const [warmMode, setWarmMode] = useState(false);
+  const [pdfError, setPdfError] = useState(!secureReaderWorkerReady);
 
   // Stable per-reader session identifiers for watermarking
   const [sessionId] = useState(() => {
@@ -273,11 +281,19 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
             <Document
               file={src}
               onLoadSuccess={handleDocumentLoad}
+              onError={(error) => {
+                console.error('PDF loading error in SecureReader:', error?.message || error);
+                setPdfError(true);
+              }}
               loading={
                 <div className="loading-text">Loading book pages...</div>
               }
             >
-              {scrollMode && numPages
+              {pdfError ? (
+                <div className="loading-text" style={{ color: '#ff6b6b', padding: '20px' }}>
+                  ❌ Failed to load PDF. Please refresh the page or try again later.
+                </div>
+              ) : scrollMode && numPages
                 ? Array.from({ length: numPages }, (_, idx) => (
                   <div key={idx + 1} className="pdf-page-container">
                     <Page
@@ -286,6 +302,10 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
                       rotate={rotation}
                       renderTextLayer={false}
                       renderAnnotationLayer={false}
+                      onRenderError={(error) => {
+                        console.warn('PDF page render error:', error?.message || error);
+                        setPdfError(true);
+                      }}
                     />
                   </div>
                 ))
@@ -296,6 +316,10 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
                     rotate={rotation}
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
+                    onRenderError={(error) => {
+                      console.warn('PDF page render error:', error?.message || error);
+                      setPdfError(true);
+                    }}
                   />
                 )}
             </Document>

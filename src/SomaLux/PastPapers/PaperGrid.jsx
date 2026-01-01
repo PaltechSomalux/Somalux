@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiFileText, FiFilter, FiX, FiDownload, FiUpload, FiEye, FiBookmark } from 'react-icons/fi';
+import { FiFileText, FiFilter, FiX, FiDownload, FiUpload, FiEye, FiBookmark, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
 import PDFCover from '../Books/PDFCover';
 import { AdBanner } from '../Ads/AdBanner';
@@ -8,9 +8,10 @@ import './PaperPanel.css';
 
 export const PaperGrid = ({
   displayedPapers,
-  visibleCount,
-  setVisibleCount,
   filteredPapers,
+  currentPage,
+  setCurrentPage,
+  pageSize,
   showFilters,
   activeFilter,
   sortBy,
@@ -28,9 +29,12 @@ export const PaperGrid = ({
   onToggleLike,
   paperBookmarks = [],
   paperBookmarksCounts = {},
-  onToggleBookmark
+  onToggleBookmark,
+  faculties = [],
+  facultyFilter = '',
+  onFacultyClick
 }) => {
-  const hasMorePapers = visibleCount < filteredPapers.length;
+  const totalPages = Math.max(1, Math.ceil(filteredPapers.length / pageSize));
 
   return (
     <>
@@ -83,7 +87,13 @@ export const PaperGrid = ({
           )}
 
           {showFilters && (
-            <div className="filter-dropdownpast">
+            <motion.div 
+              className="filter-dropdownpast"
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0 }}
+            >
               <div className="filter-sectionpast">
                 <h4>Filter by:</h4>
                 <div
@@ -92,12 +102,16 @@ export const PaperGrid = ({
                 >
                   All Papers
                 </div>
-                <div
-                  className={`filter-optionpast ${activeFilter === 'recent' ? 'activepast' : ''}`}
-                  onClick={() => handleFilterChange('recent')}
-                >
-                  Recent (2 years)
-                </div>
+
+                {faculties && faculties.length > 0 && (
+                  <div
+                    className={`filter-optionpast ${activeFilter === 'faculty' ? 'activepast' : ''}`}
+                    onClick={() => onFacultyClick?.()}
+                    style={{ cursor: 'pointer', fontWeight: 'bold', color: '#00a884' }}
+                  >
+                    📚 Faculty
+                  </div>
+                )}
               </div>
               <div className="filter-sectionpast">
                 <h4>Sort by:</h4>
@@ -132,7 +146,7 @@ export const PaperGrid = ({
                   Most Viewed
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
       </div>
@@ -156,7 +170,7 @@ export const PaperGrid = ({
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.22 }}
+                        transition={{ duration: 0.05 }}
                         layout
                       >
                         <div style={{ height: '100%' }}>
@@ -170,7 +184,7 @@ export const PaperGrid = ({
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.22 }}
+                        transition={{ duration: 0.05 }}
                         layout
                       >
                         <div
@@ -267,7 +281,7 @@ export const PaperGrid = ({
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.22 }}
+                    transition={{ duration: 0.05 }}
                     layout
                   >
                     <div
@@ -369,27 +383,76 @@ export const PaperGrid = ({
             </AnimatePresence>
           </div>
 
-          {/* Load More Button */}
-          {hasMorePapers && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px', marginBottom: '20px' }}>
-              <button
-                onClick={() => setVisibleCount(prev => prev + 8)}
-                style={{
-                  padding: '10px 30px',
-                  background: 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  fontSize: '0.9rem',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                Load More ({visibleCount} of {filteredPapers.length})
-              </button>
-            </div>
-          )}
+          {/* Pagination Controls */}
+          <motion.div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '12px',
+              marginTop: '24px',
+              marginBottom: '20px'
+            }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.05 }}
+          >
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              style={{
+                padding: '8px 16px',
+                background: currentPage <= 1 ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
+                color: currentPage <= 1 ? '#999' : 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <FiChevronLeft size={16} /> Prev
+            </button>
+
+            <span
+              style={{
+                color: '#666',
+                fontSize: '0.9rem',
+                fontWeight: '500',
+                minWidth: '150px',
+                textAlign: 'center'
+              }}
+            >
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              style={{
+                padding: '8px 16px',
+                background: currentPage >= totalPages ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
+                color: currentPage >= totalPages ? '#999' : 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              Next <FiChevronRight size={16} />
+            </button>
+          </motion.div>
     </>
   );
 };
+
+export default React.memo(PaperGrid);

@@ -17,10 +17,7 @@ import './FastReader.css';
 // Verify worker is configured (set in pdfConfig.js at startup)
 if (!pdfjs.GlobalWorkerOptions.workerSrc) {
   console.error('❌ PDF worker not configured! Attempting fallback...');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-  ).toString();
+  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 } else {
   console.log('✅ FastReader: Worker ready:', pdfjs.GlobalWorkerOptions.workerSrc);
 }

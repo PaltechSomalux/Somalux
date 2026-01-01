@@ -7,7 +7,7 @@ const Books = ({ userProfile }) => {
   const [rows, setRows] = useState([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(23);
   const [search, setSearch] = useState('');
   const [categories, setCategories] = useState([]);
   const [categoryId, setCategoryId] = useState(null);
@@ -341,10 +341,53 @@ const Books = ({ userProfile }) => {
           </table>
         </div>
 
-        <div className="actions" style={{ marginTop: 10 }}>
-          <button className="btn" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
-          <span style={{ color: '#cfd8dc' }}>Page {page} of {totalPages}</span>
-          <button className="btn" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '12px',
+          marginTop: '24px',
+          marginBottom: '20px'
+        }}>
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            style={{
+              padding: '8px 16px',
+              background: page <= 1 ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
+              color: page <= 1 ? '#999' : '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: page <= 1 ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              opacity: page <= 1 ? 0.6 : 1
+            }}
+          >
+            ← Prev
+          </button>
+          <span style={{ color: '#cfd8dc', fontSize: '14px', fontWeight: '500', minWidth: '120px', textAlign: 'center' }}>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            style={{
+              padding: '8px 16px',
+              background: page >= totalPages ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
+              color: page >= totalPages ? '#999' : '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              opacity: page >= totalPages ? 0.6 : 1
+            }}
+          >
+            Next →
+          </button>
         </div>
       </div>
     </div>

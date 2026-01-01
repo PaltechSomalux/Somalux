@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createBookSubmission, createBook, fetchCategories } from '../api';
 import { createUniversitySubmission } from '../campusApi';
-import { createPastPaper, createPastPaperSubmission, getUniversitiesForDropdown } from '../pastPapersApi';
+import { createPastPaper, createPastPaperSubmission, getUniversitiesForDropdown, getFacultiesByUniversity, getUnitNamesByUniversityAndFaculty, getYearsByUniversityFacultyAndUnitName, checkDuplicatePastPaper } from '../pastPapersApi';
 import { 
   autoFillUniversityData, 
   searchUniversityNames,
@@ -124,10 +124,24 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
   // Past Papers state
   const [paperPdf, setPaperPdf] = useState(null);
   const [universities, setUniversities] = useState([]);
+  const [faculties, setFaculties] = useState([]);
+  const [unitNames, setUnitNames] = useState([]);
+  const [years, setYears] = useState([]);
   const [paperForm, setPaperForm] = useState({ 
     university_id: '', faculty: '', unit_code: '', 
     unit_name: '', year: '', semester: '', exam_type: '' 
   });
+  
+  // Custom value states for Faculty, Unit Name, and Year
+  const [useCustomFaculty, setUseCustomFaculty] = useState(false);
+  const [customFaculty, setCustomFaculty] = useState('');
+  const [useCustomUnitName, setUseCustomUnitName] = useState(false);
+  const [customUnitName, setCustomUnitName] = useState('');
+  const [useCustomYear, setUseCustomYear] = useState(false);
+  const [customYear, setCustomYear] = useState('');
+  
+  // Success state for past paper upload
+  const [lastUploadedPaper, setLastUploadedPaper] = useState(null);
 
   const [busy, setBusy] = useState(false);
   const [extractingCover, setExtractingCover] = useState(false);
@@ -148,32 +162,43 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
     const extractCoverFromPDF = async () => {
       setExtractingCover(true);
       try {
-        // Set worker if not already set
+        // Set worker if not already set - use local worker file
         if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+          pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
         }
 
         const arrayBuffer = await pdf.arrayBuffer();
+        
+        // Add a small delay to ensure worker is initialized
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         
-        if (pdfDoc.numPages > 0) {
-          const page = await pdfDoc.getPage(1);
-          const viewport = page.getViewport({ scale: 2 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          
-          const context = canvas.getContext('2d');
-          await page.render({ canvasContext: context, viewport }).promise;
-          
-          // Convert canvas to blob and create a file
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const coverFile = new File([blob], `${pdf.name.replace('.pdf', '')}_cover.png`, { type: 'image/png' });
-              setCover(coverFile);
-              showToast({ type: 'success', message: 'Cover image extracted from PDF!' });
+        if (pdfDoc && pdfDoc.numPages > 0) {
+          try {
+            const page = await pdfDoc.getPage(1);
+            const viewport = page.getViewport({ scale: 2 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            
+            const context = canvas.getContext('2d');
+            if (context) {
+              await page.render({ canvasContext: context, viewport }).promise;
+              
+              // Convert canvas to blob and create a file
+              canvas.toBlob((blob) => {
+                if (blob) {
+                  const coverFile = new File([blob], `${pdf.name.replace('.pdf', '')}_cover.png`, { type: 'image/png' });
+                  setCover(coverFile);
+                  showToast({ type: 'success', message: 'Cover image extracted from PDF!' });
+                }
+              }, 'image/png', 0.95);
             }
-          }, 'image/png', 0.95);
+          } catch (pageError) {
+            console.warn('Could not render PDF page:', pageError);
+            showToast({ type: 'info', message: 'Could not auto-extract cover. You can upload one manually.' });
+          }
         }
       } catch (error) {
         console.error('Error extracting cover from PDF:', error);
@@ -296,7 +321,52 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
       setIsAutoFilling(false);
     }
   };
-  const onPaperChange = (k) => (e) => setPaperForm((f) => ({ ...f, [k]: e.target.value }));
+  const onPaperChange = (k) => async (e) => {
+    const value = e.target.value;
+    setPaperForm((f) => ({ ...f, [k]: value }));
+    
+    // When university changes, fetch faculties for that university
+    if (k === 'university_id' && value) {
+      try {
+        const facultiesData = await getFacultiesByUniversity(value);
+        setFaculties(facultiesData);
+        // Reset faculty, unit name, and year selection when university changes
+        setPaperForm((f) => ({ ...f, faculty: '', unit_name: '', year: '' }));
+        setUnitNames([]);
+        setYears([]);
+      } catch (error) {
+        console.error('Error fetching faculties:', error);
+        setFaculties([]);
+      }
+    }
+    
+    // When faculty changes, fetch unit names for that faculty and university
+    if (k === 'faculty' && value && paperForm.university_id) {
+      try {
+        const unitNamesData = await getUnitNamesByUniversityAndFaculty(paperForm.university_id, value);
+        setUnitNames(unitNamesData);
+        // Reset unit name and year selection when faculty changes
+        setPaperForm((f) => ({ ...f, unit_name: '', year: '' }));
+        setYears([]);
+      } catch (error) {
+        console.error('Error fetching unit names:', error);
+        setUnitNames([]);
+      }
+    }
+    
+    // When unit name changes, fetch years for that unit, faculty, and university
+    if (k === 'unit_name' && value && paperForm.university_id && paperForm.faculty) {
+      try {
+        const yearsData = await getYearsByUniversityFacultyAndUnitName(paperForm.university_id, paperForm.faculty, value);
+        setYears(yearsData);
+        // Reset year selection when unit name changes
+        setPaperForm((f) => ({ ...f, year: '' }));
+      } catch (error) {
+        console.error('Error fetching years:', error);
+        setYears([]);
+      }
+    }
+  };
 
   const submitBook = async () => {
     if (!pdf) { showToast({ type: 'error', message: 'Please choose a PDF file.' }); return; }
@@ -372,26 +442,51 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
   const submitPastPaper = async () => {
     if (!paperPdf) { showToast({ type: 'error', message: 'Please choose a PDF file.' }); return; }
     if (!paperForm.university_id) { showToast({ type: 'error', message: 'Please select a university.' }); return; }
-    if (!paperForm.faculty) { showToast({ type: 'error', message: 'Please enter faculty.' }); return; }
+    
+    // Validate faculty - either from dropdown or custom input
+    const faculty = useCustomFaculty ? customFaculty : paperForm.faculty;
+    if (!faculty) { showToast({ type: 'error', message: 'Please enter faculty.' }); return; }
+    
     if (!paperForm.unit_code) { showToast({ type: 'error', message: 'Please enter unit code.' }); return; }
-    if (!paperForm.unit_name) { showToast({ type: 'error', message: 'Please enter unit name.' }); return; }
-    if (!paperForm.year) { showToast({ type: 'error', message: 'Please enter year.' }); return; }
+    
+    // Validate unit name - either from dropdown or custom input
+    const unitName = useCustomUnitName ? customUnitName : paperForm.unit_name;
+    if (!unitName) { showToast({ type: 'error', message: 'Please enter unit name.' }); return; }
+    
+    // Validate year - either from dropdown or custom input
+    const year = useCustomYear ? customYear : paperForm.year;
+    if (!year) { showToast({ type: 'error', message: 'Please enter year.' }); return; }
     
     setBusy(true);
-    // Show instant success feedback
-    showToast({ type: 'success', message: 'Past paper submitted! Processing...' });
-    // Reset form immediately for instant feedback
-    setPaperForm({ university_id: '', faculty: '', unit_code: '', unit_name: '', year: '', semester: '', exam_type: '' });
-    setPaperPdf(null);
-    
     try {
+      // Check for duplicate paper before uploading
+      const duplicateCheck = await checkDuplicatePastPaper({
+        universityId: paperForm.university_id,
+        faculty: faculty,
+        unitCode: paperForm.unit_code,
+        unitName: unitName,
+        year: year
+      });
+
+      if (duplicateCheck.exists) {
+        showToast({ 
+          type: 'warning', 
+          message: `This past paper (${paperForm.unit_code} - ${unitName} for ${year}) already exists in the system.` 
+        });
+        setBusy(false);
+        return;
+      }
+
+      // Show instant success feedback
+      showToast({ type: 'success', message: 'Past paper submitted! Processing...' });
+      
       const metadata = {
-        title: `${paperForm.unit_code} - ${paperForm.unit_name}`,
+        title: `${paperForm.unit_code} - ${unitName}`,
         university_id: paperForm.university_id || null,
-        faculty: paperForm.faculty,
+        faculty: faculty,
         unit_code: paperForm.unit_code,
-        unit_name: paperForm.unit_name,
-        year: paperForm.year ? Number(paperForm.year) : null,
+        unit_name: unitName,
+        year: year ? Number(year) : null,
         semester: paperForm.semester || '',
         exam_type: paperForm.exam_type || 'Main',
         uploaded_by: userProfile?.id || null
@@ -399,6 +494,19 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
       
       console.log('📤 Submitting past paper with metadata:', JSON.stringify(metadata, null, 2));
       console.log('📤 Current form state:', JSON.stringify(paperForm, null, 2));
+      
+      // Reset form for next upload
+      setPaperForm({ university_id: '', faculty: '', unit_code: '', unit_name: '', year: '', semester: '', exam_type: '' });
+      setCustomFaculty('');
+      setCustomUnitName('');
+      setCustomYear('');
+      setUseCustomFaculty(false);
+      setUseCustomUnitName(false);
+      setUseCustomYear(false);
+      setPaperPdf(null);
+      setFaculties([]);
+      setUnitNames([]);
+      setYears([]);
       
       // Determine if admin or user - admins get instant display, users get approval workflow
       const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'editor';
@@ -409,8 +517,9 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
         console.error('Past paper upload failed:', e);
         showToast({ type: 'error', message: e?.message || 'Upload failed.' });
       });
-      // Navigate instantly without waiting for upload to complete
-      setTimeout(() => navigate('/user/upload'), 300);
+    } catch (e) {
+      console.error('Upload validation failed:', e);
+      showToast({ type: 'error', message: e?.message || 'Upload validation failed.' });
     } finally { setBusy(false); }
   };
 
@@ -740,23 +849,170 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
             </select>
 
             <label className="label" style={{ marginTop: 10 }}>Faculty *</label>
-            <input className="input" placeholder="e.g., Engineering, Business, Arts" value={paperForm.faculty} onChange={onPaperChange('faculty')} />
+            {!useCustomFaculty ? (
+              <select className="select" value={paperForm.faculty} onChange={onPaperChange('faculty')} disabled={!paperForm.university_id || faculties.length === 0}>
+                <option value="">
+                  {!paperForm.university_id ? 'Select a university first' : faculties.length === 0 ? 'No faculties available' : 'Select Faculty'}
+                </option>
+                {faculties.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+            ) : (
+              <input 
+                className="input" 
+                placeholder="e.g., Engineering, Business, Arts" 
+                value={customFaculty} 
+                onChange={(e) => setCustomFaculty(e.target.value)}
+                style={{
+                  backgroundColor: '#1f2c33',
+                  color: '#ffffff',
+                  border: '1px solid #333',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  width: '100%',
+                  outline: 'none',
+                  transition: 'border-color 0.2s ease'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#00a884'}
+                onBlur={(e) => e.target.style.borderColor = '#333'}
+              />
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+              <input 
+                type="checkbox" 
+                id="custom-faculty-toggle"
+                checked={useCustomFaculty}
+                onChange={(e) => setUseCustomFaculty(e.target.checked)}
+                style={{ 
+                  cursor: 'pointer',
+                  width: '16px',
+                  height: '16px',
+                  accentColor: '#00a884'
+                }}
+              />
+              <label htmlFor="custom-faculty-toggle" style={{ color: '#8696a0', fontSize: '12px', cursor: 'pointer', userSelect: 'none' }}>
+                Add
+              </label>
+            </div>
 
             <div className="grid-2" style={{ marginTop: 10 }}>
               <div>
                 <label className="label">Unit Name *</label>
-                <input className="input" placeholder="e.g., Introduction to Programming" value={paperForm.unit_name} onChange={onPaperChange('unit_name')} />
+                {!useCustomUnitName ? (
+                  <select className="select" value={paperForm.unit_name} onChange={onPaperChange('unit_name')} disabled={!paperForm.faculty && !useCustomFaculty || unitNames.length === 0}>
+                    <option value="">
+                      {(!paperForm.faculty && !useCustomFaculty) ? 'Select a faculty first' : unitNames.length === 0 ? 'No units available' : 'Select Unit Name'}
+                    </option>
+                    {unitNames.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                ) : (
+                  <input 
+                    className="input" 
+                    placeholder="e.g., Introduction to Programming" 
+                    value={customUnitName} 
+                    onChange={(e) => setCustomUnitName(e.target.value)}
+                    style={{
+                      backgroundColor: '#1f2c33',
+                      color: '#ffffff',
+                      border: '1px solid #333',
+                      borderRadius: '8px',
+                      padding: '10px 12px',
+                      width: '100%',
+                      outline: 'none',
+                      transition: 'border-color 0.2s ease'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#00a884'}
+                    onBlur={(e) => e.target.style.borderColor = '#333'}
+                  />
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                  <input 
+                    type="checkbox" 
+                    id="custom-unit-toggle"
+                    checked={useCustomUnitName}
+                    onChange={(e) => setUseCustomUnitName(e.target.checked)}
+                    style={{ 
+                      cursor: 'pointer',
+                      width: '16px',
+                      height: '16px',
+                      accentColor: '#00a884'
+                    }}
+                  />
+                  <label htmlFor="custom-unit-toggle" style={{ color: '#8696a0', fontSize: '12px', cursor: 'pointer', userSelect: 'none' }}>
+                    Add
+                  </label>
+                </div>
               </div>
               <div>
                 <label className="label">Unit Code *</label>
-                <input className="input" placeholder="e.g., CS101" value={paperForm.unit_code} onChange={onPaperChange('unit_code')} />
+                <input 
+                  className="input" 
+                  placeholder="e.g., CS101" 
+                  value={paperForm.unit_code} 
+                  onChange={onPaperChange('unit_code')}
+                  style={{
+                    backgroundColor: '#1f2c33',
+                    color: '#ffffff',
+                    border: '1px solid #333',
+                    borderRadius: '8px',
+                    padding: '10px 12px',
+                    width: '100%',
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#00a884'}
+                  onBlur={(e) => e.target.style.borderColor = '#333'}
+                />
               </div>
             </div>
 
             <div className="grid-2" style={{ marginTop: 10 }}>
               <div>
                 <label className="label">Year *</label>
-                <input className="input" type="number" placeholder="e.g., 2023" value={paperForm.year} onChange={onPaperChange('year')} />
+                {!useCustomYear ? (
+                  <select className="select" value={paperForm.year} onChange={onPaperChange('year')} disabled={!paperForm.unit_name && !useCustomUnitName || years.length === 0}>
+                    <option value="">
+                      {(!paperForm.unit_name && !useCustomUnitName) ? 'Select a unit first' : years.length === 0 ? 'No years available' : 'Select Year'}
+                    </option>
+                    {years.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                ) : (
+                  <input 
+                    className="input" 
+                    type="number" 
+                    placeholder="e.g., 2023" 
+                    value={customYear} 
+                    onChange={(e) => setCustomYear(e.target.value)}
+                    style={{
+                      backgroundColor: '#1f2c33',
+                      color: '#ffffff',
+                      border: '1px solid #333',
+                      borderRadius: '8px',
+                      padding: '10px 12px',
+                      width: '100%',
+                      outline: 'none',
+                      transition: 'border-color 0.2s ease'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#00a884'}
+                    onBlur={(e) => e.target.style.borderColor = '#333'}
+                  />
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                  <input 
+                    type="checkbox" 
+                    id="custom-year-toggle"
+                    checked={useCustomYear}
+                    onChange={(e) => setUseCustomYear(e.target.checked)}
+                    style={{ 
+                      cursor: 'pointer',
+                      width: '16px',
+                      height: '16px',
+                      accentColor: '#00a884'
+                    }}
+                  />
+                  <label htmlFor="custom-year-toggle" style={{ color: '#8696a0', fontSize: '12px', cursor: 'pointer', userSelect: 'none' }}>
+                    Add
+                  </label>
+                </div>
               </div>
               <div>
                 <label className="label">Semester</label>
@@ -783,6 +1039,8 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
           </div>
         </div>
       )}
+
+
     </div>
   );
 };

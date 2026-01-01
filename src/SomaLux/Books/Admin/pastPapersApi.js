@@ -236,6 +236,33 @@ export async function uploadPastPaperFile(file) {
   }
 }
 
+export async function checkDuplicatePastPaper({ universityId, faculty, unitCode, unitName, year }) {
+  try {
+    const { data, error } = await supabase
+      .from('past_papers')
+      .select('id, unit_code, unit_name, faculty, year')
+      .eq('university_id', universityId)
+      .eq('faculty', faculty)
+      .eq('unit_code', unitCode)
+      .eq('unit_name', unitName)
+      .eq('year', year ? Number(year) : null);
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error checking duplicate:', error);
+      throw error;
+    }
+    
+    return {
+      exists: data && data.length > 0,
+      count: data ? data.length : 0,
+      paper: data && data.length > 0 ? data[0] : null
+    };
+  } catch (err) {
+    console.error('Duplicate check failed:', err);
+    throw err;
+  }
+}
+
 export async function createPastPaper({ metadata, pdfFile }) {
   try {
     if (!pdfFile) {
@@ -468,6 +495,90 @@ export async function getFaculties() {
   }
 }
 
+/**
+ * Fetch faculties for a specific university
+ * @param {string|number} universityId - The university ID
+ * @returns {Promise<string[]>} Array of unique faculty names for that university
+ */
+export async function getFacultiesByUniversity(universityId) {
+  if (!universityId) return [];
+  
+  try {
+    const { data, error } = await supabase
+      .from('past_papers')
+      .select('faculty')
+      .eq('university_id', universityId)
+      .order('faculty');
+
+    if (error) throw error;
+
+    // Get unique faculties
+    const faculties = [...new Set(data.map(item => item.faculty))].filter(Boolean);
+    return faculties;
+  } catch (error) {
+    console.error('Error fetching faculties for university:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch unit names for a specific university and faculty
+ * @param {string|number} universityId - The university ID
+ * @param {string} faculty - The faculty name
+ * @returns {Promise<string[]>} Array of unique unit names for that university and faculty
+ */
+export async function getUnitNamesByUniversityAndFaculty(universityId, faculty) {
+  if (!universityId || !faculty) return [];
+  
+  try {
+    const { data, error } = await supabase
+      .from('past_papers')
+      .select('unit_name')
+      .eq('university_id', universityId)
+      .eq('faculty', faculty)
+      .order('unit_name');
+
+    if (error) throw error;
+
+    // Get unique unit names
+    const unitNames = [...new Set(data.map(item => item.unit_name))].filter(Boolean);
+    return unitNames;
+  } catch (error) {
+    console.error('Error fetching unit names for university and faculty:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch years for a specific university, faculty, and unit name
+ * @param {string|number} universityId - The university ID
+ * @param {string} faculty - The faculty name
+ * @param {string} unitName - The unit name
+ * @returns {Promise<number[]>} Array of unique years for that university, faculty, and unit
+ */
+export async function getYearsByUniversityFacultyAndUnitName(universityId, faculty, unitName) {
+  if (!universityId || !faculty || !unitName) return [];
+  
+  try {
+    const { data, error } = await supabase
+      .from('past_papers')
+      .select('year')
+      .eq('university_id', universityId)
+      .eq('faculty', faculty)
+      .eq('unit_name', unitName)
+      .order('year', { ascending: false });
+
+    if (error) throw error;
+
+    // Get unique years and convert to numbers
+    const years = [...new Set(data.map(item => item.year))].filter(Boolean).sort((a, b) => b - a);
+    return years;
+  } catch (error) {
+    console.error('Error fetching years for university, faculty, and unit:', error);
+    return [];
+  }
+}
+
 const DROPDOWN_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 export async function getUniversitiesForDropdown({ forceRefresh = false } = {}) {
@@ -527,12 +638,19 @@ export async function getPastPaperStats() {
   }
 }
 
-export async function getPastPaperCountByUniversity(universityId) {
+export async function getPastPaperCountByUniversity(universityId, subscriptionTier = null) {
   try {
-    const { count } = await supabase
+    let query = supabase
       .from('past_papers')
       .select('*', { count: 'exact', head: true })
       .eq('university_id', universityId);
+    
+    // For premium users, show all papers; for non-premium, show only papers with file URLs
+    if (subscriptionTier !== 'premium' && subscriptionTier !== 'premium_pro') {
+      query = query.not('file_url', 'is', null);
+    }
+    
+    const { count } = await query;
     
     return count || 0;
   } catch (error) {

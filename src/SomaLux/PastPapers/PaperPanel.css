@@ -168,7 +168,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  transition: color 0.2s;
+  transition: color 0.05s;
   font-weight: 500;
 }
 
@@ -291,7 +291,7 @@
   font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.05s ease;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -337,6 +337,16 @@
   min-width: 180px;
   margin-top: 0.5rem;
   border: 1px solid var(--bg-darker);
+  animation: fadeInInstant 0s;
+}
+
+@keyframes fadeInInstant {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .filter-sectionpast {
@@ -362,7 +372,7 @@
   color: var(--text-dark);
   background: transparent;
   margin-bottom: 0.2rem;
-  transition: all 0.2s ease;
+  transition: all 0.05s ease;
 }
 
 .filter-optionpast.activepast {

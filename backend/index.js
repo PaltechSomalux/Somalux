@@ -244,25 +244,24 @@ app.get('/api/admin/authenticated-users', async (req, res) => {
 
     console.log('[authenticated-users] Profiles count:', profiles?.length || 0);
 
-    // Try to get all auth users using the admin API
+    // Use profiles as the authoritative source of all users
+    // The profiles table contains all registered users from auth
     let authUsers = [];
     try {
-      const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-      if (authError) {
-        console.warn('[authenticated-users] auth.admin.listUsers error:', authError);
-      } else {
-        authUsers = users || [];
-        console.log('[authenticated-users] Auth users count:', authUsers.length);
-      }
-    } catch (authErr) {
-      console.error('[authenticated-users] Exception calling listUsers:', authErr?.message || authErr);
-      // If admin API doesn't work, use profiles as the source of truth
+      // Map profiles to auth user format for consistency
       authUsers = (profiles || []).map(p => ({
         id: p.id,
         email: p.email,
         created_at: p.created_at,
-        user_metadata: { full_name: p.full_name, avatar_url: p.avatar_url }
+        user_metadata: { 
+          full_name: p.full_name, 
+          avatar_url: p.avatar_url 
+        }
       }));
+      console.log('[authenticated-users] Using profiles as source, total auth users:', authUsers.length);
+    } catch (err) {
+      console.error('[authenticated-users] Error mapping profiles:', err?.message || err);
+      authUsers = [];
     }
 
     // Get the latest session for each user

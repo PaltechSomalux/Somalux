@@ -110,7 +110,7 @@ export const BookPanel = ({ demoMode = false }) => {
   const [pageLoading, setPageLoading] = useState(false);
   const [pageCacheStatus, setPageCacheStatus] = useState({}); // page -> 'cached'|'remote'|'loading'
   const [hasMore, setHasMore] = useState(true);
-  const BOOKS_PER_PAGE = 20;
+  const BOOKS_PER_PAGE = 31;
   const [filteredByCategory, setFilteredByCategory] = useState(null);
   const [selectedBook, setSelectedBook] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -518,7 +518,8 @@ export const BookPanel = ({ demoMode = false }) => {
       console.log(`📡 Fetching page ${page} from network...`);
       console.log('🔍 Supabase URL:', process.env.REACT_APP_SUPABASE_URL || 'using fallback');
       console.log('🔑 Supabase Key available:', !!process.env.REACT_APP_SUPABASE_ANON_KEY);
-      const result = await fetchBooksOptimized(supabase, page, BOOKS_PER_PAGE);
+      // Fetch ALL books for pagination
+      const result = await fetchBooksOptimized(supabase, 1, 50000);
       
       const { books: rows, categories: cats, totalCount: count } = result;
       const catMap = new Map((cats || []).map(c => [c.id, c.name]));
@@ -1090,11 +1091,10 @@ export const BookPanel = ({ demoMode = false }) => {
         .channel('public:books')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'books' }, (payload) => {
           console.log('📡 Real-time update: books table changed', payload.eventType);
-          // Invalidate cache and force refresh
+          // Invalidate cache and force refresh (DON'T reset page)
           booksCache.remove('all_books_page_1');
           booksCache.remove('total_books_count');
-          setCurrentPage(1);
-          fetchAll(true, 1);
+          fetchAll(true, currentPage);
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'book_likes' }, () => {
           console.log('📡 Real-time update: book likes changed');
@@ -1112,8 +1112,7 @@ export const BookPanel = ({ demoMode = false }) => {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'book_ratings' }, () => {
           console.log('📡 Real-time update: ratings changed');
           booksCache.remove('all_books_page_1');
-          setCurrentPage(1);
-          fetchAll(true, 1);
+          fetchAll(true, currentPage);
         })
         .subscribe((status) => {
           console.log('📡 Subscription status:', status);
@@ -1122,12 +1121,12 @@ export const BookPanel = ({ demoMode = false }) => {
             if (poller) { clearInterval(poller); poller = null; }
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             console.warn('⚠️ Real-time subscription failed, using polling');
-            if (!poller) poller = setInterval(() => fetchAll(true, 1), 30000); // Poll every 30s
+            if (!poller) poller = setInterval(() => fetchAll(true), 30000); // Poll every 30s
           }
         });
     } catch (err) {
       console.warn('Realtime unavailable, falling back to polling.', err);
-      if (!poller) poller = setInterval(() => fetchAll(true, 1), 30000);
+      if (!poller) poller = setInterval(() => fetchAll(true), 30000);
     }
 
     return () => {
@@ -2905,63 +2904,54 @@ export const BookPanel = ({ demoMode = false }) => {
 
             return (
               <div>
-                <div className="pagination">
-                <button
-                  className="pagination-btn"
-                  disabled={currentPage === 1}
-                  onClick={() => handlePageChange(currentPage - 1)}
-                >
-                  <FiChevronLeft size={16} />
-                  Previous
-                </button>
+                <div className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '24px', marginBottom: '20px' }}>
+                  <button
+                    className="pagination-btn"
+                    disabled={currentPage <= 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    style={{
+                      padding: '8px 16px',
+                      background: currentPage <= 1 ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
+                      color: currentPage <= 1 ? '#999' : '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '13px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    <FiChevronLeft size={16} />
+                    Prev
+                  </button>
 
-                <div className="pagination-numbers">
-                  {Array.from({ length: Math.min(5, computedTotal) }, (_, i) => {
-                    let pageNum;
-                    if (computedTotal <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= computedTotal - 2) {
-                      pageNum = computedTotal - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#666', minWidth: '80px', textAlign: 'center' }}>
+                    Page {currentPage} of {computedTotal}
+                  </span>
 
-                    return (
-                          <button
-                            key={pageNum}
-                            className={`pagination-number ${currentPage === pageNum ? 'active' : ''}`}
-                            onClick={() => handlePageChange(pageNum)}
-                            disabled={pageLoading || currentPage === pageNum}
-                            aria-current={currentPage === pageNum ? 'page' : undefined}
-                            aria-label={`Go to page ${pageNum}`}
-                          >
-                              {pageNum}
-                              {(() => {
-                                const status = pageCacheStatus[pageNum] || (getCachedPage(pageNum) ? 'cached' : 'remote');
-                                const color = status === 'cached' ? '#10b981' : status === 'loading' ? '#f59e0b' : '#64748b';
-                                return (
-                                  <span
-                                    style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 8, marginLeft: 8, background: color }}
-                                    title={status}
-                                  />
-                                );
-                              })()}
-                          </button>
-                    );
-                  })}
-                </div>
-
-                <button
-                  className="pagination-btn"
-                  disabled={pageLoading || currentPage === computedTotal}
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  aria-label="Next page"
-                >
-                  Next
-                  <FiChevronRight size={16} />
-                </button>
+                  <button
+                    className="pagination-btn"
+                    disabled={currentPage >= computedTotal}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    style={{
+                      padding: '8px 16px',
+                      background: currentPage >= computedTotal ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
+                      color: currentPage >= computedTotal ? '#999' : '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: currentPage >= computedTotal ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '13px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Next
+                    <FiChevronRight size={16} />
+                  </button>
                 </div>
 
                 {pageLoading && (

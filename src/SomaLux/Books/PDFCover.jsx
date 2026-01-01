@@ -5,20 +5,30 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 // Verify worker is configured (set in pdfConfig.js at startup)
-if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-  console.error('❌ PDF worker not configured! Attempting fallback...');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-  ).toString();
-} else {
+// Check if it's properly set before use
+let workerReady = false;
+if (pdfjs.GlobalWorkerOptions.workerSrc) {
   console.log('✅ PDFCover: Worker ready:', pdfjs.GlobalWorkerOptions.workerSrc);
+  workerReady = true;
+} else {
+  console.error('❌ PDF worker not configured! Attempting fallback...');
+  try {
+    const fallbackWorker = '/pdf.worker.min.mjs';
+    pdfjs.GlobalWorkerOptions.workerSrc = fallbackWorker;
+    workerReady = true;
+    console.log('✅ PDFCover: Worker set to fallback:', fallbackWorker);
+  } catch (e) {
+    console.error('❌ Failed to set PDF worker fallback:', e);
+    workerReady = false;
+  }
 }
 
 const PDFCover = ({ src, alt, className, style, onClick, loading = 'lazy' }) => {
-  const [error, setError] = useState(false);
+  const [error, setError] = useState(!workerReady);
+  const [isLoading, setIsLoading] = useState(true);
   const containerRef = React.useRef(null);
   const [containerWidth, setContainerWidth] = useState(280);
+  const renderAttemptRef = useRef(0);
 
   // Update PDF width based on container width
   useEffect(() => {
@@ -34,6 +44,30 @@ const PDFCover = ({ src, alt, className, style, onClick, loading = 'lazy' }) => 
     window.addEventListener('resize', updateWidth);
     return () => window.removeEventListener('resize', updateWidth);
   }, []);
+
+  // If PDF worker not ready, show fallback immediately
+  if (!workerReady) {
+    console.warn('PDF worker not ready, showing fallback for:', src);
+    return (
+      <div
+        className={className}
+        style={{
+          ...style,
+          backgroundColor: '#00a884',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontSize: '0.8em',
+          textAlign: 'center',
+          padding: '10px',
+        }}
+        onClick={onClick}
+      >
+        📄 PDF
+      </div>
+    );
+  }
 
   if (error || !src) {
     // Fallback to placeholder if PDF fails to load
@@ -72,22 +106,47 @@ const PDFCover = ({ src, alt, className, style, onClick, loading = 'lazy' }) => 
       }}
       onClick={onClick}
     >
+      {isLoading && (
+        <div style={{ textAlign: 'center', color: '#888', padding: '20px', position: 'absolute' }}>
+          Loading...
+        </div>
+      )}
       <Document
         file={src}
         onLoadSuccess={() => {
-          // Document loaded
+          // Document loaded successfully
+          setIsLoading(false);
+          renderAttemptRef.current = 0;
+          console.log('✅ PDF document loaded:', src);
         }}
         onError={(error) => {
           console.warn('PDF load error (will display fallback):', error?.message || error);
+          // Check if it's a worker-related error
+          if (error?.message?.includes('worker') || error?.message?.includes('sendWithPromise')) {
+            console.error('⚠️ Worker error detected, reinitializing...');
+            // Force reinitialize worker
+            try {
+              pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+            } catch (e) {
+              console.error('Failed to reinitialize worker:', e);
+            }
+          }
+          setIsLoading(false);
           setError(true);
         }}
-        loading={<div style={{ textAlign: 'center', color: '#888' }}>Loading...</div>}
+        loading={<div style={{ textAlign: 'center', color: '#888', padding: '20px' }}>Loading PDF...</div>}
       >
         <Page
           pageNumber={1}
           width={containerWidth}
           onRenderError={(error) => {
             console.warn('PDF render error (will display fallback):', error?.message || error);
+            setIsLoading(false);
+            setError(true);
+          }}
+          onError={(error) => {
+            console.warn('PDF page error (will display fallback):', error?.message || error);
+            setIsLoading(false);
             setError(true);
           }}
         />

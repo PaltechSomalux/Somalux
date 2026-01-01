@@ -38,8 +38,10 @@ import { BiCommentDetail } from 'react-icons/bi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CommentsSection } from './CommentsSection';
 import { UniversityGrid } from './UniversityGrid';
+import { FacultyGridDisplay } from './FacultyGridDisplay';
 import { API_URL } from '../../config';
 import { PaperGrid } from './PaperGrid';
+import { PaperGridSkeleton, PulseLoader, InfiniteScrollLoader } from './PaperSkeleton';
 import './PaperPanel.css';
 
 export const PaperPanel = ({ demoMode = false }) => {
@@ -50,13 +52,16 @@ export const PaperPanel = ({ demoMode = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [universitySearchTerm, setUniversitySearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(8);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(31);
   const [selectedPaper, setSelectedPaper] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const [sortBy, setSortBy] = useState('default');
   const [welcomeMessage, setWelcomeMessage] = useState(demoMode);
   const [universityFilter, setUniversityFilter] = useState(null);
+  const [facultyFilter, setFacultyFilter] = useState(null);
+  const [showFacultyGrid, setShowFacultyGrid] = useState(false);
   const [user, setUser] = useState(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authAction, setAuthAction] = useState('view');
@@ -108,6 +113,30 @@ export const PaperPanel = ({ demoMode = false }) => {
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
       return [];
+    }
+  });
+  const [facultyViews, setFacultyViews] = useState(() => {
+    try {
+      const saved = localStorage.getItem('facultyViews');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+  const [facultyLikes, setFacultyLikes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('facultyLikes');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+  const [facultyLikesCounts, setFacultyLikesCounts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('facultyLikesCounts');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
     }
   });
   const [paperBookmarksCounts, setpaperBookmarksCounts] = useState(() => {
@@ -165,6 +194,91 @@ export const PaperPanel = ({ demoMode = false }) => {
       authListener?.subscription?.unsubscribe();
     };
   }, []);
+
+  // Load faculty views and likes from database
+  useEffect(() => {
+    const loadFacultyData = async () => {
+      if (!user) {
+        // For anonymous users, use localStorage
+        const savedViews = JSON.parse(localStorage.getItem('facultyViews') || '{}');
+        const savedLikes = JSON.parse(localStorage.getItem('facultyLikes') || '{}');
+        const savedCounts = JSON.parse(localStorage.getItem('facultyLikesCounts') || '{}');
+        setFacultyViews(savedViews);
+        setFacultyLikes(savedLikes);
+        setFacultyLikesCounts(savedCounts);
+        return;
+      }
+
+      try {
+        // Load faculty views for current user
+        const { data: viewsData, error: viewsError } = await supabase
+          .from('faculty_views')
+          .select('faculty_name, views')
+          .eq('user_id', user.id);
+
+        if (viewsError) throw viewsError;
+
+        const viewsObj = {};
+        if (viewsData) {
+          viewsData.forEach(row => {
+            viewsObj[row.faculty_name] = row.views || 0;
+          });
+        }
+        setFacultyViews(viewsObj);
+
+        // Load faculty likes for current user
+        const { data: likesData, error: likesError } = await supabase
+          .from('faculty_likes')
+          .select('faculty_name')
+          .eq('user_id', user.id);
+
+        if (likesError) throw likesError;
+
+        const likesObj = {};
+        if (likesData) {
+          likesData.forEach(row => {
+            likesObj[row.faculty_name] = true;
+          });
+        }
+        setFacultyLikes(likesObj);
+
+        // Load aggregated like counts across all users
+        const { data: countsData, error: countsError } = await supabase.rpc('get_faculty_like_counts');
+
+        if (!countsError && countsData) {
+          const countsObj = {};
+          countsData.forEach(row => {
+            countsObj[row.faculty_name] = row.count || 0;
+          });
+          setFacultyLikesCounts(countsObj);
+        } else {
+          // Fallback: count likes from faculty_likes table
+          const { data: allLikes } = await supabase
+            .from('faculty_likes')
+            .select('faculty_name');
+
+          const countsObj = {};
+          if (allLikes) {
+            allLikes.forEach(row => {
+              countsObj[row.faculty_name] = (countsObj[row.faculty_name] || 0) + 1;
+            });
+          }
+          setFacultyLikesCounts(countsObj);
+        }
+      } catch (error) {
+        console.error('Error loading faculty data:', error);
+        // Fallback to localStorage
+        const savedViews = JSON.parse(localStorage.getItem('facultyViews') || '{}');
+        const savedLikes = JSON.parse(localStorage.getItem('facultyLikes') || '{}');
+        const savedCounts = JSON.parse(localStorage.getItem('facultyLikesCounts') || '{}');
+        setFacultyViews(savedViews);
+        setFacultyLikes(savedLikes);
+        setFacultyLikesCounts(savedCounts);
+      }
+    };
+
+    loadFacultyData();
+  }, [user?.id]);
 
   const fetchSubscription = useCallback(async (currentUser) => {
     if (!currentUser?.id) {
@@ -235,11 +349,34 @@ export const PaperPanel = ({ demoMode = false }) => {
     }
   }, [location.state]);
 
-  // Load past papers from database
+  // Load past papers from database - use cache first for INSTANT load
   useEffect(() => {
+    // Try to load from cache FIRST (instant display)
+    try {
+      const cached = localStorage.getItem('cachedPastPapers');
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        // Use cache if less than 5 minutes old
+        if (Date.now() - timestamp < 5 * 60 * 1000) {
+          setPapers(data);
+          setLoading(false);
+          // Fetch fresh data in background (non-blocking)
+          loadPastPapers();
+          loadUniversities();
+          loadFaculties();
+          return;
+        }
+      }
+    } catch (e) {}
+    
+    // No cache or cache expired, fetch normally
     loadPastPapers();
-    loadUniversities();
-    loadFaculties();
+    
+    // Load universities and faculties in background (non-blocking)
+    setTimeout(() => {
+      loadUniversities();
+      loadFaculties();
+    }, 50);
   }, []);
 
   // Reload papers when university filter changes
@@ -402,14 +539,14 @@ export const PaperPanel = ({ demoMode = false }) => {
 
   const loadPastPapers = async () => {
     try {
-      const { data } = await fetchPastPapers({ page: 1, pageSize: 100 });
+      // Fetch ALL papers so we can paginate through all pages
+      const { data } = await fetchPastPapers({ page: 1, pageSize: 100000 });
       
-      // Transform and display papers instantly
       const transformedData = (data || []).map(paper => ({
         id: paper.id,
         title: paper.title || `${paper.unit_code || ''} - ${paper.unit_name || ''}`,
-        course: paper.unit_name || paper.title, // Fallback to title if unit_name missing
-        courseCode: paper.unit_code || '', // Empty string if missing
+        course: paper.unit_name || paper.title,
+        courseCode: paper.unit_code || '',
         faculty: paper.faculty || 'Unknown',
         university: paper.universities?.name || paper.university || 'Unknown',
         year: paper.year,
@@ -424,11 +561,30 @@ export const PaperPanel = ({ demoMode = false }) => {
         created_at: paper.created_at
       }));
       
-      // Set papers immediately without waiting
+      // Cache papers in localStorage
+      try {
+        localStorage.setItem('cachedPastPapers', JSON.stringify({
+          data: transformedData,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        // Storage quota exceeded, ignore
+      }
+      
       setPapers(transformedData);
       setLoading(false);
     } catch (error) {
       console.error('Error loading past papers:', error);
+      // If API fails, try to show cached data
+      try {
+        const cached = localStorage.getItem('cachedPastPapers');
+        if (cached) {
+          const { data } = JSON.parse(cached);
+          setPapers(data);
+          setLoading(false);
+          return;
+        }
+      } catch (e) {}
       setLoading(false);
     }
   };
@@ -797,6 +953,13 @@ export const PaperPanel = ({ demoMode = false }) => {
       );
     }
     
+    // Apply faculty filter if one is selected
+    if (facultyFilter) {
+      result = result.filter(paper => 
+        paper.faculty?.toLowerCase() === facultyFilter.toLowerCase()
+      );
+    }
+    
     // Apply search filter (works with university filter too)
     if (searchTerm) {
       const raw = searchTerm.trim().toLowerCase();
@@ -863,15 +1026,20 @@ export const PaperPanel = ({ demoMode = false }) => {
     }
     
     return result;
-  }, [papers, searchTerm, activeFilter, sortBy, universityFilter]);
+  }, [papers, searchTerm, activeFilter, sortBy, universityFilter, facultyFilter]);
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(filteredPapers.length / pageSize)), [filteredPapers.length, pageSize]);
 
   useEffect(() => {
-    setDisplayedPapers(filteredPapers.slice(0, visibleCount));
-  }, [filteredPapers, visibleCount]);
+    // Reset to page 1 when filters change
+    setCurrentPage(1);
+  }, [searchTerm, activeFilter, sortBy, universityFilter, facultyFilter]);
 
-  const loadMore = () => {
-    setVisibleCount(prev => prev + 4);
-  };
+  useEffect(() => {
+    const startIdx = (currentPage - 1) * pageSize;
+    const endIdx = startIdx + pageSize;
+    setDisplayedPapers(filteredPapers.slice(startIdx, endIdx));
+  }, [filteredPapers, currentPage, pageSize]);
 
   const handlePaperClick = async (paper) => {
     if (!user) {
@@ -982,27 +1150,158 @@ export const PaperPanel = ({ demoMode = false }) => {
     setSelectedPaper(null);
   };
 
-  const toggleFilters = () => {
+  const toggleFilters = useCallback(() => {
     setShowFilters(!showFilters);
-  };
+  }, [showFilters]);
 
-  const handleFilterChange = (filter) => {
+  const handleFilterChange = useCallback((filter) => {
     setActiveFilter(filter);
     setShowFilters(false);
-    setVisibleCount(8);
     setWelcomeMessage(false);
     
-    // Clear university filter if changing to another filter
+    // Clear university and faculty filters if changing to another filter
     if (filter !== 'university') {
       setUniversityFilter(null);
     }
+    if (filter !== 'faculty') {
+      setFacultyFilter(null);
+    }
+  }, []);
+
+  const handleFacultyClick = useCallback((faculty) => {
+    setFacultyFilter(faculty);
+    setActiveFilter('faculty');
+    setShowFilters(false);
+    setWelcomeMessage(false);
+    setShowFacultyGrid(false);
+  }, []);
+
+  const handleFacultyGridOpen = useCallback(() => {
+    setShowFacultyGrid(true);
+    setShowFilters(false);
+  }, []);
+
+  const handleBackFromFacultyGrid = useCallback(() => {
+    // Close faculty grid while preserving university filter and other state
+    setShowFacultyGrid(false);
+    // Keep universityFilter, searchTerm, and other paper viewing state intact
+  }, []);
+
+  const handleFacultySelect = useCallback((faculty) => {
+    // Record view for this faculty in database
+    const trackFacultyView = async () => {
+      try {
+        if (user?.id) {
+          // Insert or update faculty view record in database
+          const { error } = await supabase.from('faculty_views').upsert({
+            user_id: user.id,
+            faculty_name: faculty,
+            views: (facultyViews[faculty] || 0) + 1,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id,faculty_name' });
+
+          if (!error) {
+            // Update local state
+            setFacultyViews(prev => {
+              const updated = { ...prev, [faculty]: (prev[faculty] || 0) + 1 };
+              localStorage.setItem('facultyViews', JSON.stringify(updated));
+              return updated;
+            });
+          }
+        } else {
+          // For anonymous users, just use localStorage
+          setFacultyViews(prev => {
+            const updated = { ...prev, [faculty]: (prev[faculty] || 0) + 1 };
+            localStorage.setItem('facultyViews', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      } catch (err) {
+        console.error('Error tracking faculty view:', err);
+        // Fallback to localStorage
+        setFacultyViews(prev => {
+          const updated = { ...prev, [faculty]: (prev[faculty] || 0) + 1 };
+          localStorage.setItem('facultyViews', JSON.stringify(updated));
+          return updated;
+        });
+      }
+    };
+
+    trackFacultyView();
+
+    // Select the faculty and close grid
+    setFacultyFilter(faculty);
+    setShowFacultyGrid(false);
+    setActiveFilter('faculty');
+  }, [user]);
+
+  const handleToggleFacultyLike = async (faculty) => {
+    if (!user?.id) return; // Only authenticated users can like
+
+    const isCurrentlyLiked = facultyLikes[faculty];
+    
+    try {
+      // Update database
+      if (isCurrentlyLiked) {
+        // Unlike - delete the like record
+        const { error } = await supabase
+          .from('faculty_likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('faculty_name', faculty);
+
+        if (!error) {
+          // Update local state
+          setFacultyLikes(prev => {
+            const updated = { ...prev, [faculty]: false };
+            localStorage.setItem('facultyLikes', JSON.stringify(updated));
+            return updated;
+          });
+
+          setFacultyLikesCounts(prev => {
+            const updated = {
+              ...prev,
+              [faculty]: (prev[faculty] || 1) - 1
+            };
+            localStorage.setItem('facultyLikesCounts', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      } else {
+        // Like - insert new like record
+        const { error } = await supabase.from('faculty_likes').insert({
+          user_id: user.id,
+          faculty_name: faculty,
+          created_at: new Date().toISOString()
+        });
+
+        if (!error) {
+          // Update local state
+          setFacultyLikes(prev => {
+            const updated = { ...prev, [faculty]: true };
+            localStorage.setItem('facultyLikes', JSON.stringify(updated));
+            return updated;
+          });
+
+          setFacultyLikesCounts(prev => {
+            const updated = {
+              ...prev,
+              [faculty]: (prev[faculty] || 0) + 1
+            };
+            localStorage.setItem('facultyLikesCounts', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling faculty like:', err);
+    }
   };
 
-  const handleSortChange = (sortType) => {
+  const handleSortChange = useCallback((sortType) => {
     setSortBy(sortType);
-    setVisibleCount(8);
     setWelcomeMessage(false);
-  };
+  }, []);
 
   const handleToggleUniversityLike = async (uniId) => {
     // Optimistic update - update UI immediately
@@ -1187,30 +1486,27 @@ export const PaperPanel = ({ demoMode = false }) => {
           <p className="subtitlepast">Access past exam papers organized by university</p>
         </header>
         
-        <div className="controlspast">
+        <motion.div
+          className="controlspast"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.05 }}
+        >
           <div className="search-containerpast">
             <input
               type="text"
               className="search-inputpast"
               placeholder="Search papers..."
               disabled
+              style={{ opacity: 0.5 }}
             />
           </div>
-          <button className="filter-buttonpast" disabled>
+          <button className="filter-buttonpast" disabled style={{ opacity: 0.5 }}>
             <FiFilter /> University
           </button>
-        </div>
+        </motion.div>
         
-        <div className="gridpast">
-          {[...Array(8)].map((_, index) => (
-            <div key={index} className="skeleton-cardpast">
-              <div className="skeleton-iconpast"></div>
-              <div className="skeleton-textpast" style={{ width: '70%' }}></div>
-              <div className="skeleton-textpast" style={{ width: '90%' }}></div>
-              <div className="skeleton-textpast" style={{ width: '50%' }}></div>
-            </div>
-          ))}
-        </div>
+        <PaperGridSkeleton count={3} />
       </div>
     );
   }
@@ -1251,7 +1547,6 @@ export const PaperPanel = ({ demoMode = false }) => {
             trackUniversityView(uni.id);
             setUniversityFilter(uni.name);
             setSearchTerm('');
-            setVisibleCount(8);
           }}
           setRatingModalOpen={setRatingModalOpen}
           setSelectedUniversity={setSelectedUniversity}
@@ -1262,13 +1557,27 @@ export const PaperPanel = ({ demoMode = false }) => {
         />
       ) : (
         <>
+          {/* Show Faculty Grid if faculty filter button is clicked */}
+          {showFacultyGrid ? (
+            <FacultyGridDisplay
+              faculties={faculties}
+              papers={papers}
+              universityFilter={universityFilter}
+              facultyViews={facultyViews}
+              facultyLikes={facultyLikes}
+              facultyLikesCounts={facultyLikesCounts}
+              onToggleLike={handleToggleFacultyLike}
+              onFacultySelect={handleFacultySelect}
+              onBack={handleBackFromFacultyGrid}
+            />
+          ) : (
+            <>
           {/* Back Button - Responsive Header */}
           <div className="back-header-pastpast" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid rgba(134, 150, 160, 0.2)' }}>
             <button 
               onClick={() => {
                 setUniversityFilter(null);
                 setSearchTerm('');
-                setVisibleCount(8);
                 setUniversitySearchTerm('');
               }}
               className="back-button-past"
@@ -1282,8 +1591,9 @@ export const PaperPanel = ({ demoMode = false }) => {
           {/* Search and Filter Controls - Matching BookPanel Layout */}
           <PaperGrid
             displayedPapers={displayedPapers}
-            visibleCount={visibleCount}
-            setVisibleCount={setVisibleCount}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            pageSize={pageSize}
             filteredPapers={filteredPapers}
             showFilters={showFilters}
             activeFilter={activeFilter}
@@ -1303,7 +1613,12 @@ export const PaperPanel = ({ demoMode = false }) => {
             paperBookmarks={paperBookmarks}
             paperBookmarksCounts={paperBookmarksCounts}
             onToggleBookmark={handleTogglePaperBookmark}
+            faculties={faculties}
+            facultyFilter={facultyFilter}
+            onFacultyClick={handleFacultyGridOpen}
           />
+            </>
+          )}
         </>
       )}
 

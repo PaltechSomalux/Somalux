@@ -11,6 +11,9 @@ const Users = ({ isSuperAdmin }) => {
   const [saving, setSaving] = useState({});
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [activeFilter, setActiveFilter] = useState('');
+  const [sortBy, setSortBy] = useState('latest_login'); // 'ranking' or 'latest_login'
+  const [sortDir, setSortDir] = useState('desc'); // 'asc' or 'desc'
   const [page, setPage] = useState(1);
   const [pageSize] = useState(15);
   const [showTierModal, setShowTierModal] = useState(false);
@@ -276,14 +279,42 @@ const Users = ({ isSuperAdmin }) => {
   };
 
   const filteredRows = useMemo(() => {
-    return rows.filter(u => {
+    let filtered = rows.filter(u => {
       const matchSearch = !search || 
         (u.email && u.email.toLowerCase().includes(search.toLowerCase())) ||
         (u.display_name && u.display_name.toLowerCase().includes(search.toLowerCase()));
       const matchRole = !roleFilter || u.role === roleFilter;
-      return matchSearch && matchRole;
+      const matchActive = !activeFilter || u.status === activeFilter;
+      return matchSearch && matchRole && matchActive;
     });
-  }, [rows, search, roleFilter]);
+
+    // Apply sorting
+    if (sortBy === 'latest_login') {
+      filtered.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        const diff = dateB - dateA;
+        return sortDir === 'desc' ? diff : -diff;
+      });
+    } else {
+      // Default ranking sort
+      filtered.sort((a, b) => {
+        const scoreA = typeof a.rankScore === 'number' ? a.rankScore : -1;
+        const scoreB = typeof b.rankScore === 'number' ? b.rankScore : -1;
+        let diff = scoreB - scoreA;
+        if (diff !== 0) return sortDir === 'desc' ? diff : -diff;
+        const roleOrder = { admin: 0, editor: 1, viewer: 2 };
+        const ra = roleOrder[a.role] ?? 3;
+        const rb = roleOrder[b.role] ?? 3;
+        if (ra !== rb) return ra - rb;
+        const nameA = (a.display_name || a.email || '').toLowerCase();
+        const nameB = (b.display_name || b.email || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+    }
+
+    return filtered;
+  }, [rows, search, roleFilter, activeFilter, sortBy, sortDir]);
 
   const paginatedRows = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -295,7 +326,7 @@ const Users = ({ isSuperAdmin }) => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, roleFilter]);
+  }, [search, roleFilter, activeFilter, sortBy, sortDir]);
 
   const handleTierClick = (user) => {
     if (!user || !user.id) return;
@@ -327,14 +358,41 @@ const Users = ({ isSuperAdmin }) => {
         </div>
         <select
           className="select"
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          style={{ minWidth: 150, width: 'auto' }}
+          value={roleFilter ? `role:${roleFilter}` : activeFilter ? `active:${activeFilter}` : `sort:${sortBy}:${sortDir}`}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value.startsWith('role:')) {
+              setRoleFilter(value.substring(5));
+              setActiveFilter('');
+              setSortBy('ranking');
+              setSortDir('desc');
+            } else if (value.startsWith('active:')) {
+              setActiveFilter(value.substring(7));
+              setRoleFilter('');
+              setSortBy('ranking');
+              setSortDir('desc');
+            } else if (value.startsWith('sort:')) {
+              const parts = value.substring(5).split(':');
+              setSortBy(parts[0]);
+              setSortDir(parts[1]);
+              setRoleFilter('');
+              setActiveFilter('');
+            }
+          }}
+          style={{ minWidth: 200, width: 'auto' }}
         >
-          <option value="">All Roles</option>
-          <option value="admin">Admin</option>
-          <option value="editor">Editor</option>
-          <option value="viewer">Viewer</option>
+          <option value="role:">All Roles</option>
+          <option value="role:admin">Admin</option>
+          <option value="role:editor">Editor</option>
+          <option value="role:viewer">Viewer</option>
+          <option value="active:">All Status</option>
+          <option value="active:online">Online</option>
+          <option value="active:offline">Offline</option>
+          <option value="active:signed_out">Signed Out</option>
+          <option value="sort:ranking:desc">Ranking (High to Low)</option>
+          <option value="sort:ranking:asc">Ranking (Low to High)</option>
+          <option value="sort:latest_login:desc">Login (Newest)</option>
+          <option value="sort:latest_login:asc">Login (Oldest)</option>
         </select>
       </div>
 

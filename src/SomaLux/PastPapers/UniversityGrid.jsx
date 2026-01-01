@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiMapPin, FiEye } from 'react-icons/fi';
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
 import { FaSearch } from 'react-icons/fa';
 import { AdBanner } from '../Ads/AdBanner';
+import { getPastPaperCountByUniversity } from '../Books/Admin/pastPapersApi';
 import './PaperPanel.css';
 
 export const UniversityGrid = ({
@@ -21,6 +22,29 @@ export const UniversityGrid = ({
   universityLikesCounts = {},
   onToggleLike
 }) => {
+  const [paperCounts, setPaperCounts] = useState({});
+
+  // Fetch actual paper counts from database
+  useEffect(() => {
+    const fetchCounts = async () => {
+      const counts = {};
+      for (const uni of universities) {
+        try {
+          // Pass user's subscription tier for accurate filtering
+          counts[uni.id] = await getPastPaperCountByUniversity(uni.id, user?.subscription_tier);
+        } catch (err) {
+          console.error(`Error fetching paper count for ${uni.name}:`, err);
+          counts[uni.id] = 0;
+        }
+      }
+      setPaperCounts(counts);
+    };
+
+    if (universities.length > 0) {
+      fetchCounts();
+    }
+  }, [universities, user?.subscription_tier]);
+
   const filteredUniversities = universities.filter(uni => 
     !universitySearchTerm || 
     uni.name?.toLowerCase().includes(universitySearchTerm.toLowerCase()) ||
@@ -74,7 +98,7 @@ export const UniversityGrid = ({
             // Calculate stats first (before conditional rendering)
             const stats = ratingStats[uni.id] || { average: 0, count: 0 };
             const userRating = userRatings[uni.id];
-            const paperCount = papers.filter(p => p.university === uni.name).length;
+            const paperCount = paperCounts[uni.id] || 0;
             
             // For mobile: Show ad after 3rd university (index 2)
             // For desktop: Show ad in middle position
@@ -168,8 +192,8 @@ export const UniversityGrid = ({
                     <span style={{ fontSize: '0.65rem', color: '#8696a0', display: 'flex', alignItems: 'center', gap: '2px' }}>
                       <FiEye size={12} /> {uni.views || 0}
                     </span>
-                    <span style={{ fontSize: '0.65rem', color: '#00a884', fontWeight: '500' }}>
-                      {paperCount} papers
+                    <span style={{ fontSize: '0.65rem', color: '#00a884', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      📄 {paperCount} papers
                     </span>
                     {user && (
                       <button
@@ -274,8 +298,8 @@ export const UniversityGrid = ({
                     <span style={{ fontSize: '0.65rem', color: '#8696a0', display: 'flex', alignItems: 'center', gap: '2px' }}>
                       <FiEye size={12} /> {uni.views || 0}
                     </span>
-                    <span style={{ fontSize: '0.65rem', color: '#00a884', fontWeight: '500' }}>
-                      {paperCount} papers
+                    <span style={{ fontSize: '0.65rem', color: '#00a884', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      📄 {paperCount} papers
                     </span>
                     {user && (
                       <button
