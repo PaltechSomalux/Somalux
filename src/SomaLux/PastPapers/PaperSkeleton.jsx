@@ -6,7 +6,7 @@ import { FiFileText } from 'react-icons/fi';
 const shimmerAnimation = {
   initial: { backgroundPosition: '200% center' },
   animate: { backgroundPosition: '-200% center' },
-  transition: { duration: 0.3, repeat: Infinity, ease: 'linear' }
+  transition: { duration: 1.2, repeat: Infinity, ease: 'linear' }
 };
 
 const containerVariants = {
@@ -14,15 +14,15 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.01,
-      delayChildren: 0.02
+      staggerChildren: 0.005,
+      delayChildren: 0.01
     }
   }
 };
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.15 } }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.1 } }
 };
 
 export const PaperSkeleton = () => {

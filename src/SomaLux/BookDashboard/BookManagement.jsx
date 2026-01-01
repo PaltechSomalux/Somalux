@@ -96,12 +96,14 @@ export const BookManagement = () => {
     <div className={`book-management ${isScrolled ? 'scrolled' : ''}`}>
       {/* Header */}
       <div className="book-management-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', paddingTop: '2px' }}>
           <h2 className="header-title">Somalux</h2>
+          <div style={{ marginTop: '8px' }}>
+            <VerificationBadge tier={currentUserTier} size="sm" showLabel={false} showTooltip={true} />
+          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <VerificationBadge tier={currentUserTier} size="md" showLabel={false} showTooltip={true} />
           {/* Reusable Profile component */}
           <Profile />
         </div>

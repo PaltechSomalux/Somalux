@@ -5,7 +5,8 @@ import { FiX } from 'react-icons/fi';
 import ReactDOM from 'react-dom';
 import './AdBanner.css';
 
-export function AdBanner({ placement, limit = 1, className = '', demo = false }) {
+// Internal component with all the hook logic
+function AdBannerContent({ placement, limit = 1, className = '', demo = false }) {
   const [ads, setAds] = useState([]);
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -598,4 +599,23 @@ export function AdBanner({ placement, limit = 1, className = '', demo = false })
 
   // Render ad as portal to overlay it on top of everything
   return ReactDOM.createPortal(adContent, document.body);
+}
+
+// Wrapper component that checks subscription tier based on placement
+export function AdBanner({ placement, limit = 1, className = '', demo = false, user = null }) {
+  const isGridPlacement = placement?.startsWith('grid');
+  const userTier = user?.subscription_tier || 'basic';
+  
+  // premium_pro users: no ads at all
+  if (userTier === 'premium_pro') {
+    return null;
+  }
+  
+  // premium users: only grid placement ads (grid-books, grid-pastpapers, grid-campus, grid-authors, grid-categories)
+  if (userTier === 'premium' && !isGridPlacement) {
+    return null;
+  }
+  
+  // basic users and other cases: render the ad
+  return <AdBannerContent placement={placement} limit={limit} className={className} demo={demo} />;
 }

@@ -6,6 +6,7 @@ import { CommentsSection } from './CommentsSection';
 import { AuthModal } from './AuthModal';
 import { RatingModal } from './RatingModal';
 import { SubscriptionModal } from './SubscriptionModal';
+import VerificationTierModal from './VerificationTierModal';
 import { AdBanner } from '../Ads/AdBanner';
 import {
   FaHeart,
@@ -635,7 +636,7 @@ export const BookPanel = ({ demoMode = false }) => {
         // Fetch the user's role and activity metadata from the profiles table
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('role, created_at, last_active_at')
+          .select('role, created_at, last_active_at, subscription_tier')
           .eq('id', session.user.id)
           .single();
 
@@ -644,7 +645,8 @@ export const BookPanel = ({ demoMode = false }) => {
         // Set user with the role information and cache it
         const userData = {
           ...session.user,
-          role: profile?.role || 'viewer'
+          role: profile?.role || 'viewer',
+          subscription_tier: profile?.subscription_tier || 'basic'
         };
         userCache = userData;
         setUser(userData);
@@ -2172,7 +2174,7 @@ export const BookPanel = ({ demoMode = false }) => {
   return (
     <div className="containerBKP">
       {/* Ads Banner */}
-      <AdBanner placement="homepage" limit={1} />
+      <AdBanner placement="homepage" limit={1} user={user} />
       
       {/* Inline overrides: compact horizontal padding for small screens */}
       <style>{`
@@ -2706,7 +2708,8 @@ export const BookPanel = ({ demoMode = false }) => {
                 const adPosition = isMobile ? 3 : Math.floor(displayedBooks.length / 2);
                 
                 // Render ad at the appropriate position
-                if (index === adPosition && displayedBooks.length > 0) {
+                // Render ad at the appropriate position
+                if (index === adPosition && displayedBooks.length > 0 && user?.subscription_tier !== 'premium_pro') {
                   return (
                     <React.Fragment key={`ad-position-${index}`}>
                       {/* Grid Ad */}
@@ -2719,83 +2722,83 @@ export const BookPanel = ({ demoMode = false }) => {
                         layout
                       >
                         <div className="book-cardBKP">
-                          <AdBanner placement="grid-books" limit={5} />
+                          <AdBanner placement="grid-books" limit={5} user={user} />
                         </div>
                       </motion.div>
                       
                       {/* Current Book */}
                       <motion.div
-                        key={book.id}
-                        initial={isMounted ? { opacity: 0, y: 12 } : false}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.22 }}
-                        layout
+                      key={book.id}
+                      initial={isMounted ? { opacity: 0, y: 12 } : false}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.22 }}
+                      layout
+                    >
+                      <div
+                        className="book-cardBKP"
+                        onClick={() => viewBookDetails(book)}
+                        onMouseEnter={() => prefetchResource(book.downloadUrl)}
+                        onFocus={() => prefetchResource(book.downloadUrl)}
+                        tabIndex={0}
                       >
-                        <div
-                          className="book-cardBKP"
-                          onClick={() => viewBookDetails(book)}
-                          onMouseEnter={() => prefetchResource(book.downloadUrl)}
-                          onFocus={() => prefetchResource(book.downloadUrl)}
-                          tabIndex={0}
-                        >
-                          <div className="badge-containerBKP">
-                            {book.trending && (
-                              <span className="trending-badgeBKP">
-                                <FiTrendingUp size={12} /> Trending
-                              </span>
-                            )}
-                          </div>
-
-                          <img src={book.bookImage} alt={book.title} className="book-coverBKP" loading="lazy" decoding="async" />
-
-                          <div className="card-contentBKP">
-                            <h3 className="book-titleBKP">{book.title}</h3>
-                            <p className="book-authorBKP">by {book.author}</p>
-
-                            <div className="book-metaBKP">
-                              <span className="ratingBKP">
-                                <FiStar fill={book.rating > 0 ? "#fbbf24" : "none"} color={book.rating > 0 ? "#fbbf24" : "#64748b"} />
-                                {book.rating > 0 ? book.rating.toFixed(1) : <span className="na-textBKP">N/A</span>}
-                                {book.ratingCount > 0 && <span className="rating-countBKP">({book.ratingCount})</span>}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="action-buttonsBKP">
-                            <ReactionButtonsBKP
-                              itemId={book.id}
-                              loves={bookLoves[book.id] || 0}
-                              onLove={toggleLove}
-                              isLoved={bookReactions[book.id]?.loved}
-                            />
-                            <span className="view-countBKP">
-                              <FiEye size={14} color="#64748b" /> <span className="countBKP">{book.views.toLocaleString()}</span>
+                        <div className="badge-containerBKP">
+                          {book.trending && (
+                            <span className="trending-badgeBKP">
+                              <FiTrendingUp size={12} /> Trending
                             </span>
-                            <span className="downloads-countBKP">
-                              <FiDownload size={14} color="#64748b" /> <span className="countBKP">{book.downloads.toLocaleString()}</span>
+                          )}
+                        </div>
+
+                        <img src={book.bookImage} alt={book.title} className="book-coverBKP" loading="lazy" decoding="async" />
+
+                        <div className="card-contentBKP">
+                          <h3 className="book-titleBKP">{book.title}</h3>
+                          <p className="book-authorBKP">by {book.author}</p>
+
+                          <div className="book-metaBKP">
+                            <span className="ratingBKP">
+                              <FiStar fill={book.rating > 0 ? "#fbbf24" : "none"} color={book.rating > 0 ? "#fbbf24" : "#64748b"} />
+                              {book.rating > 0 ? book.rating.toFixed(1) : <span className="na-textBKP">N/A</span>}
+                              {book.ratingCount > 0 && <span className="rating-countBKP">({book.ratingCount})</span>}
                             </span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleWishlist(book.id);
-                              }}
-                              className={`wishlist-buttonBKP ${wishlist.includes(book.id) ? 'activeBKP' : ''}`}
-                            >
-                              <FiBookmark
-                                size={14}
-                                fill={wishlist.includes(book.id) ? '#6366f1' : 'none'}
-                                color={wishlist.includes(book.id) ? '#6366f1' : '#64748b'}
-                              />
-                            </button>
                           </div>
                         </div>
-                      </motion.div>
-                    </React.Fragment>
+
+                        <div className="action-buttonsBKP">
+                          <ReactionButtonsBKP
+                            itemId={book.id}
+                            loves={bookLoves[book.id] || 0}
+                            onLove={toggleLove}
+                            isLoved={bookReactions[book.id]?.loved}
+                          />
+                          <span className="view-countBKP">
+                            <FiEye size={14} color="#64748b" /> <span className="countBKP">{book.views.toLocaleString()}</span>
+                          </span>
+                          <span className="downloads-countBKP">
+                            <FiDownload size={14} color="#64748b" /> <span className="countBKP">{book.downloads.toLocaleString()}</span>
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleWishlist(book.id);
+                            }}
+                            className={`wishlist-buttonBKP ${wishlist.includes(book.id) ? 'activeBKP' : ''}`}
+                          >
+                            <FiBookmark
+                              size={14}
+                              fill={wishlist.includes(book.id) ? '#6366f1' : 'none'}
+                              color={wishlist.includes(book.id) ? '#6366f1' : '#64748b'}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </React.Fragment>
                   );
                 }
                 
-                // Render regular book card
+                // For all other indices, render the book normally
                 return (
                   <motion.div
                     key={book.id}
@@ -3060,34 +3063,36 @@ export const BookPanel = ({ demoMode = false }) => {
               <div className="modal-actionsBKP">
                 <div className="actions-primary-rowBKP">
                   <Download
-                  book={selectedBook}
-                  variant="full"
-                  onDownloadStart={async () => {
-                    if (!requireAuth('download')) return false;
+                    book={selectedBook}
+                    variant="full"
+                    user={user}
+                    onUpgradeClick={() => setShowSubscriptionModal?.(true)}
+                    onDownloadStart={async () => {
+                      if (!requireAuth('download')) return false;
 
-                    // Log per-user download (analytics) - with better error handling
-                    try {
-                      if (user && selectedBook && selectedBook.id) {
-                        const downloadRecord = {
-                          user_id: user.id,
-                          book_id: selectedBook.id,
-                          downloaded_at: new Date().toISOString(),
-                          user_agent: navigator.userAgent || 'unknown'
-                        };
+                      // Log per-user download (analytics) - with better error handling
+                      try {
+                        if (user && selectedBook && selectedBook.id) {
+                          const downloadRecord = {
+                            user_id: user.id,
+                            book_id: selectedBook.id,
+                            downloaded_at: new Date().toISOString(),
+                            user_agent: navigator.userAgent || 'unknown'
+                          };
 
-                        const { data, error } = await supabase
-                          .from('book_downloads')
-                          .insert([downloadRecord])
-                          .select();
+                          const { data, error } = await supabase
+                            .from('book_downloads')
+                            .insert([downloadRecord])
+                            .select();
 
-                        if (error) {
-                          console.error('❌ Failed to log book download:', {
-                            error: error.message,
-                            code: error.code,
-                            details: error.details,
-                            hint: error.hint,
-                            context: { userId: user.id, bookId: selectedBook.id }
-                          });
+                          if (error) {
+                            console.error('❌ Failed to log book download:', {
+                              error: error.message,
+                              code: error.code,
+                              details: error.details,
+                              hint: error.hint,
+                              context: { userId: user.id, bookId: selectedBook.id }
+                            });
                         } else {
                           console.log('✅ Download logged successfully:', data);
                           
@@ -3219,6 +3224,17 @@ export const BookPanel = ({ demoMode = false }) => {
         user={user}
         onSubscribed={async (sub) => {
           setSubscription(sub);
+          setShowSubscriptionModal(false);
+        }}
+      />
+
+      <VerificationTierModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        userTier={user?.subscription_tier || 'basic'}
+        onSelectTier={(tier) => {
+          // This will handle tier selection
+          // In next phase: integrate payment processing
           setShowSubscriptionModal(false);
         }}
       />

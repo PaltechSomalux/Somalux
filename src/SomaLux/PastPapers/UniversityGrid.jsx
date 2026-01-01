@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiMapPin, FiEye } from 'react-icons/fi';
+import { FiMapPin, FiEye, FiLock } from 'react-icons/fi';
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
 import { FaSearch } from 'react-icons/fa';
 import { AdBanner } from '../Ads/AdBanner';
@@ -20,7 +20,8 @@ export const UniversityGrid = ({
   user,
   universityLikes = {},
   universityLikesCounts = {},
-  onToggleLike
+  onToggleLike,
+  setShowSubscriptionModal
 }) => {
   const [paperCounts, setPaperCounts] = useState({});
 
@@ -105,8 +106,8 @@ export const UniversityGrid = ({
             const isMobile = window.innerWidth < 768;
             const adPosition = isMobile ? 3 : Math.floor(filteredUniversities.length / 2);
             
-            // Render ad at the appropriate position
-            if (index === adPosition && filteredUniversities.length > 0) {
+            // Render ad at the appropriate position (only if not premium_pro)
+            if (index === adPosition && filteredUniversities.length > 0 && user?.subscription_tier !== 'premium_pro') {
               return (
                 <React.Fragment key={`ad-position-${index}`}>
                   {/* Grid Ad */}
@@ -119,7 +120,7 @@ export const UniversityGrid = ({
                     layout
                   >
                     <div style={{ height: '100%' }}>
-                      <AdBanner placement="grid-campus" limit={5} />
+                      <AdBanner placement="grid-campus" limit={5} user={user} />
                     </div>
                   </motion.div>
                   
@@ -192,9 +193,22 @@ export const UniversityGrid = ({
                     <span style={{ fontSize: '0.65rem', color: '#8696a0', display: 'flex', alignItems: 'center', gap: '2px' }}>
                       <FiEye size={12} /> {uni.views || 0}
                     </span>
-                    <span style={{ fontSize: '0.65rem', color: '#00a884', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      📄 {paperCount} papers
-                    </span>
+                    {user?.subscription_tier && (user.subscription_tier === 'premium' || user.subscription_tier === 'premium_pro') ? (
+                      <span style={{ fontSize: '0.65rem', color: '#00a884', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                        {paperCount} papers
+                      </span>
+                    ) : (
+                      <span 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowSubscriptionModal?.(true);
+                        }}
+                        style={{ fontSize: '0.65rem', color: '#FFB800', display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }} 
+                        title="Click to upgrade to Premium"
+                      >
+                        <FiLock size={12} />
+                      </span>
+                    )}
                     {user && (
                       <button
                         onClick={(e) => {
@@ -298,9 +312,22 @@ export const UniversityGrid = ({
                     <span style={{ fontSize: '0.65rem', color: '#8696a0', display: 'flex', alignItems: 'center', gap: '2px' }}>
                       <FiEye size={12} /> {uni.views || 0}
                     </span>
-                    <span style={{ fontSize: '0.65rem', color: '#00a884', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      📄 {paperCount} papers
-                    </span>
+                    {user?.subscription_tier && (user.subscription_tier === 'premium' || user.subscription_tier === 'premium_pro') ? (
+                      <span style={{ fontSize: '0.65rem', color: '#00a884', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                        {paperCount} papers
+                      </span>
+                    ) : (
+                      <span 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowSubscriptionModal?.(true);
+                        }}
+                        style={{ fontSize: '0.65rem', color: '#FFB800', display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }} 
+                        title="Click to upgrade to Premium"
+                      >
+                        <FiLock size={12} />
+                      </span>
+                    )}
                     {user && (
                       <button
                         onClick={(e) => {

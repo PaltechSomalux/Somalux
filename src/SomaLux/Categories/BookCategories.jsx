@@ -29,6 +29,7 @@ export const BookCategories = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const [sortBy, setSortBy] = useState('default');
+  const [userProfile, setUserProfile] = useState(null);
 
   // ⚡ Initialize from cache IMMEDIATELY on mount
   useEffect(() => {
@@ -65,6 +66,28 @@ export const BookCategories = () => {
       }
     })();
   }, [visibleCount]);
+
+  // Fetch user profile on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user?.id) {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('subscription_tier')
+            .eq('id', authData.user.id)
+            .single();
+          
+          if (!error && data) {
+            setUserProfile(data);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching user profile:', err);
+      }
+    })();
+  }, []);
 
   // Helper: log category search events to backend for analytics
   const logSearchEvent = useCallback(
@@ -372,7 +395,7 @@ export const BookCategories = () => {
 
   return (
     <div className="containercat">
-      <AdBanner placement="categories" limit={1} />
+      <AdBanner placement="categories" limit={1} user={userProfile} />
       
       <header className="headercat">
         <h1 className="titlecat">Categories</h1>
@@ -482,7 +505,7 @@ export const BookCategories = () => {
                 const adPosition = isMobile ? 3 : Math.floor(displayedCategories.length / 2);
                 
                 // Render ad at the appropriate position
-                if (index === adPosition && displayedCategories.length > 0) {
+                if (index === adPosition && displayedCategories.length > 0 && userProfile?.subscription_tier !== 'premium_pro') {
                   return (
                     <React.Fragment key={`ad-position-${index}`}>
                       {/* Grid Ad */}
@@ -495,7 +518,7 @@ export const BookCategories = () => {
                         layout
                       >
                         <div className="category-cardcat">
-                          <AdBanner placement="grid-categories" limit={5} />
+                          <AdBanner placement="grid-categories" limit={5} user={userProfile} />
                         </div>
                       </motion.div>
                       

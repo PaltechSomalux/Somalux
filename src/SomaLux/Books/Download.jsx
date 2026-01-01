@@ -3,6 +3,8 @@ import { FiDownload } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import { downloadOptimizer } from '../../utils/DownloadOptimizer';
+import { checkDownloadLimit, recordDownload } from '../../utils/downloadLimitService';
+import DownloadLimitModal from './DownloadLimitModal';
 
 const IconDownloadButton = styled(motion.button)`
   background: transparent; /* Keep background transparent */
@@ -137,8 +139,12 @@ export const Download = ({
   onDownloadComplete,
   downloadText = 'Save',
   downloadingText = 'Downloading...',
+  user,
+  onUpgradeClick,
 }) => {
   const [downloading, setDownloading] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitInfo, setLimitInfo] = useState(null);
   const abortControllerRef = useRef(null);
 
   // Handle case where neither book nor file is provided
@@ -148,6 +154,15 @@ export const Download = ({
 
   const handleDownload = async (e) => {
     e.stopPropagation();
+
+    // Check download limit for non-premium users
+    const limitCheck = checkDownloadLimit(user);
+    if (!limitCheck.allowed) {
+      setLimitInfo(limitCheck);
+      setShowLimitModal(true);
+      return;
+    }
+
     try {
       if (onDownloadStart) {
         const ok = await onDownloadStart();
@@ -164,6 +179,8 @@ export const Download = ({
       // If a direct file URL is provided
       if (file) {
         await highSpeedDownload(file.url, file.filename || file.url.split('/').pop());
+        // Record the download
+        await recordDownload(user, 'file', file.id || file.filename, file.filename);
       }
       // If a book object is provided (legacy support)
       else if (book) {
@@ -173,9 +190,13 @@ export const Download = ({
             book.downloadUrl,
             book.downloadFilename || `${book.title.replace(/\s+/g, '_')}.${book.fileFormat || 'txt'}`
           );
+          // Record the download
+          await recordDownload(user, 'book', book.id, book.title);
         } else {
           // Fallback to generating a sample text file (original behavior)
           await generateSampleDownload(book);
+          // Record the download
+          await recordDownload(user, 'book_sample', book.id, book.title);
         }
       }
 
@@ -207,29 +228,55 @@ export const Download = ({
 
   if (variant === 'full') {
     return (
-      <FullDownloadButton
-        onClick={handleDownload}
-        disabled={downloading}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        aria-label={`Download ${book?.title || file?.filename || 'file'}`}
-      >
-        <FiDownload size={18} />
-        {downloading ? downloadingText : downloadText}
-      </FullDownloadButton>
+      <>
+        <FullDownloadButton
+          onClick={handleDownload}
+          disabled={downloading}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          aria-label={`Download ${book?.title || file?.filename || 'file'}`}
+        >
+          <FiDownload size={18} />
+          {downloading ? downloadingText : downloadText}
+        </FullDownloadButton>
+        <DownloadLimitModal
+          isOpen={showLimitModal}
+          onClose={() => setShowLimitModal(false)}
+          remaining={limitInfo?.remaining}
+          limit={limitInfo?.limit}
+          error={limitInfo?.error}
+          onUpgradeClick={() => {
+            setShowLimitModal(false);
+            onUpgradeClick?.();
+          }}
+        />
+      </>
     );
   }
 
   return (
-    <IconDownloadButton
-      onClick={handleDownload}
-      disabled={downloading}
-      title={`Download ${book?.title || file?.filename || 'file'}`}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      aria-label={`Download ${book?.title || file?.filename || 'file'}`}
-    >
-      <FiDownload size={18} />
-    </IconDownloadButton>
+    <>
+      <IconDownloadButton
+        onClick={handleDownload}
+        disabled={downloading}
+        title={`Download ${book?.title || file?.filename || 'file'}`}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        aria-label={`Download ${book?.title || file?.filename || 'file'}`}
+      >
+        <FiDownload size={18} />
+      </IconDownloadButton>
+      <DownloadLimitModal
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        remaining={limitInfo?.remaining}
+        limit={limitInfo?.limit}
+        error={limitInfo?.error}
+        onUpgradeClick={() => {
+          setShowLimitModal(false);
+          onUpgradeClick?.();
+        }}
+      />
+    </>
   );
 };

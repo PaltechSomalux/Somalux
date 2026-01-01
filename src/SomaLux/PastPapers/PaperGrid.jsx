@@ -161,7 +161,7 @@ export const PaperGrid = ({
                 const adPosition = isMobile ? 3 : Math.floor(displayedPapers.length / 2);
                 
                 // Render ad at the appropriate position
-                if (index === adPosition && displayedPapers.length > 0) {
+                if (index === adPosition && displayedPapers.length > 0 && user?.subscription_tier !== 'premium_pro') {
                   return (
                     <React.Fragment key={`ad-position-${index}`}>
                       {/* Grid Ad */}
@@ -174,7 +174,7 @@ export const PaperGrid = ({
                         layout
                       >
                         <div style={{ height: '100%' }}>
-                          <AdBanner placement="grid-pastpapers" limit={5} />
+                          <AdBanner placement="grid-pastpapers" limit={5} user={user} />
                         </div>
                       </motion.div>
                       
@@ -201,11 +201,11 @@ export const PaperGrid = ({
 
                     {/* Card Content */}
                     <div className="card-contentpast">
-                      <h3 style={{ margin: 0, fontSize: '0.65rem', color: '#e9edef', fontWeight: '600', lineHeight: '1.2', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 1, overflow: 'hidden' }}>
+                      <h3 style={{ margin: 0, fontSize: '0.65rem', color: '#e9edef', fontWeight: '600', lineHeight: '1.3', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden', wordBreak: 'break-word', minHeight: '20px' }}>
                         {paper.course ? `${paper.course}${paper.courseCode ? ` ${paper.courseCode}` : ''}` : paper.courseCode || paper.title}
                       </h3>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.6em', color: '#8696a0', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.6em', color: '#8696a0', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minHeight: '14px' }}>
                         {paper.faculty && <span>{paper.faculty}</span>}
                         {paper.year && <span>•</span>}
                         {paper.year && <span>{paper.year}</span>}
@@ -298,11 +298,11 @@ export const PaperGrid = ({
 
                       {/* Card Content */}
                       <div className="card-contentpast">
-                        <h3 style={{ margin: 0, fontSize: '0.65rem', color: '#e9edef', fontWeight: '600', lineHeight: '1.2', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 1, overflow: 'hidden' }}>
+                        <h3 style={{ margin: 0, fontSize: '0.65rem', color: '#e9edef', fontWeight: '600', lineHeight: '1.3', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden', wordBreak: 'break-word', minHeight: '20px' }}>
                           {paper.course ? `${paper.course}${paper.courseCode ? ` ${paper.courseCode}` : ''}` : paper.courseCode || paper.title}
                         </h3>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.6em', color: '#8696a0', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.6em', color: '#8696a0', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minHeight: '14px' }}>
                           {paper.faculty && <span>{paper.faculty}</span>}
                           {paper.year && <span>•</span>}
                           {paper.year && <span>{paper.year}</span>}

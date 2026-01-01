@@ -30,6 +30,7 @@ export const Authors = () => {
   const [authorReactions, setAuthorReactions] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
 
   // ⚡ Initialize authors from cache IMMEDIATELY on mount
   useEffect(() => {
@@ -86,6 +87,23 @@ export const Authors = () => {
     (async () => {
       const user = await getCurrentUser();
       setCurrentUserId(user?.id || null);
+      
+      // Fetch user profile for subscription tier
+      if (user?.id) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('subscription_tier')
+            .eq('id', user.id)
+            .single();
+          
+          if (!error && data) {
+            setUserProfile(data);
+          }
+        } catch (err) {
+          console.error('Error fetching user profile:', err);
+        }
+      }
     })();
   }, []);
 
@@ -858,7 +876,7 @@ export const Authors = () => {
 
   return (
     <div className="dashboard-container no-empty-space">
-      <AdBanner placement="authors" limit={1} />
+      <AdBanner placement="authors" limit={1} user={userProfile} />
       
       <header className="headerBKP">
         <div>
@@ -893,7 +911,7 @@ export const Authors = () => {
               const adPosition = isMobile ? 3 : Math.floor(currentAuthors.length / 2);
               
               // Render ad at the appropriate position
-              if (index === adPosition && currentAuthors.length > 0) {
+              if (index === adPosition && currentAuthors.length > 0 && userProfile?.subscription_tier !== 'premium_pro') {
                 return (
                   <React.Fragment key={`ad-position-${index}`}>
                     {/* Grid Ad */}
@@ -907,7 +925,7 @@ export const Authors = () => {
                         maxHeight: '240px'
                       }}
                     >
-                      <AdBanner placement="grid-authors" limit={5} />
+                      <AdBanner placement="grid-authors" limit={5} user={userProfile} />
                     </div>
                     
                     {/* Current Author */}

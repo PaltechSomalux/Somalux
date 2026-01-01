@@ -6,6 +6,8 @@ import styled from 'styled-components';
 import { supabase } from '../Books/supabaseClient';
 import { trackPastPaperDownload } from '../Books/Admin/pastPapersApi';
 import { downloadOptimizer } from '../../utils/DownloadOptimizer';
+import { checkDownloadLimit, recordDownload } from '../../utils/downloadLimitService';
+import DownloadLimitModal from '../Books/DownloadLimitModal';
 
 const DownloadButton = styled(motion.button)`
   background: transparent;
@@ -134,9 +136,13 @@ export const Download = ({
   paper, 
   variant = 'icon',
   onDownloadStart,
-  onDownloadComplete 
+  onDownloadComplete,
+  user,
+  onUpgradeClick
 }) => {
   const [downloading, setDownloading] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitInfo, setLimitInfo] = useState(null);
   const abortControllerRef = useRef(null);
 
   // Handle case where paper is undefined
@@ -146,6 +152,15 @@ export const Download = ({
 
   const handleDownload = async (e) => {
     e.stopPropagation();
+
+    // Check download limit for non-premium users
+    const limitCheck = checkDownloadLimit(user);
+    if (!limitCheck.allowed) {
+      setLimitInfo(limitCheck);
+      setShowLimitModal(true);
+      return;
+    }
+
     setDownloading(true);
     if (onDownloadStart) onDownloadStart();
     
@@ -169,6 +184,8 @@ export const Download = ({
       // Track download
       if (paper.id) {
         await trackPastPaperDownload(paper.id);
+        // Record in download history
+        await recordDownload(user, 'paper', paper.id, paper.title || paper.course);
       }
 
       setDownloading(false);
@@ -182,30 +199,56 @@ export const Download = ({
 
   if (variant === 'full') {
     return (
-      <FullDownloadButton
-        onClick={handleDownload}
-        disabled={downloading}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        aria-label={`Download ${paper.title || paper.course}`}
-      >
-        <FiDownload size={24} />
-        {downloading ? 'Downloading...' : 'Download'}
-      </FullDownloadButton>
+      <>
+        <FullDownloadButton
+          onClick={handleDownload}
+          disabled={downloading}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          aria-label={`Download ${paper.title || paper.course}`}
+        >
+          <FiDownload size={24} />
+          {downloading ? 'Downloading...' : 'Download'}
+        </FullDownloadButton>
+        <DownloadLimitModal
+          isOpen={showLimitModal}
+          onClose={() => setShowLimitModal(false)}
+          remaining={limitInfo?.remaining}
+          limit={limitInfo?.limit}
+          error={limitInfo?.error}
+          onUpgradeClick={() => {
+            setShowLimitModal(false);
+            onUpgradeClick?.();
+          }}
+        />
+      </>
     );
   }
 
   return (
-    <DownloadButton
-      onClick={handleDownload}
-      disabled={downloading}
-      title={`Download ${paper.title || paper.course}`}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      aria-label={`Download ${paper.title || paper.course}`}
-    >
-      <FiDownload size={20} />
-    </DownloadButton>
+    <>
+      <DownloadButton
+        onClick={handleDownload}
+        disabled={downloading}
+        title={`Download ${paper.title || paper.course}`}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        aria-label={`Download ${paper.title || paper.course}`}
+      >
+        <FiDownload size={20} />
+      </DownloadButton>
+      <DownloadLimitModal
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        remaining={limitInfo?.remaining}
+        limit={limitInfo?.limit}
+        error={limitInfo?.error}
+        onUpgradeClick={() => {
+          setShowLimitModal(false);
+          onUpgradeClick?.();
+        }}
+      />
+    </>
   );
 };
 

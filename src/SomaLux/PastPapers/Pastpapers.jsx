@@ -24,7 +24,7 @@ import { ShareButton } from './PastpaperShare';
 import { Download } from './PastpaperDownload';
 import { AuthModal } from '../Books/AuthModal';
 import { RatingModal } from '../Books/RatingModal';
-import { SubscriptionModal } from '../Books/SubscriptionModal';
+import VerificationTierModal from '../Books/VerificationTierModal';
 import SecureReader from '../Books/SecureReader';
 import SimpleScrollReader from '../Books/SimpleScrollReader';
 import PDFCover from '../Books/PDFCover';
@@ -175,18 +175,47 @@ export const PaperPanel = ({ demoMode = false }) => {
     return new Date(subscription.end_at) > new Date();
   }, [subscription]);
 
-  // Check authentication status
+  // Check authentication status and load user profile with subscription_tier
   useEffect(() => {
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      
+      if (user) {
+        // Fetch user profile to get subscription_tier
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('subscription_tier')
+          .eq('id', user.id)
+          .single();
+        
+        // Merge profile data with auth user
+        setUser({
+          ...user,
+          subscription_tier: profile?.subscription_tier || 'basic'
+        });
+      } else {
+        setUser(null);
+      }
     };
     checkUser();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user || null);
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
+        // Fetch user profile to get subscription_tier
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('subscription_tier')
+          .eq('id', session.user.id)
+          .single();
+        
+        // Merge profile data with auth user
+        setUser({
+          ...session.user,
+          subscription_tier: profile?.subscription_tier || 'basic'
+        });
         setAuthModalOpen(false);
+      } else {
+        setUser(null);
       }
     });
 
@@ -1514,7 +1543,7 @@ export const PaperPanel = ({ demoMode = false }) => {
   return (
     <div className="containerpast" style={{ display: 'flex', flexDirection: 'column' }}>
       {/* Feed Ad - Between Past Paper Items */}
-      <AdBanner placement="papers" limit={1} />
+      <AdBanner placement="papers" limit={1} user={user} />
       
       {/* Conditional Header - Show different header based on university selection */}
       {!universityFilter ? (
@@ -1554,6 +1583,7 @@ export const PaperPanel = ({ demoMode = false }) => {
           universityLikes={universityLikes}
           universityLikesCounts={universityLikesCounts}
           onToggleLike={handleToggleUniversityLike}
+          setShowSubscriptionModal={setShowSubscriptionModal}
         />
       ) : (
         <>
@@ -1663,7 +1693,12 @@ export const PaperPanel = ({ demoMode = false }) => {
 
               <div className="modal-actionspast">
                 <div className="actions-primary-rowpast">
-                  <Download paper={selectedPaper} variant="full" />
+                  <Download 
+                    paper={selectedPaper} 
+                    variant="full" 
+                    user={user}
+                    onUpgradeClick={() => setShowSubscriptionModal(true)}
+                  />
                   <button
                     className="btn-readpast btn-action-primarypast"
                     onClick={() => openReader(selectedPaper)}
@@ -1735,15 +1770,15 @@ export const PaperPanel = ({ demoMode = false }) => {
         action={authAction}
       />
 
-      <SubscriptionModal
+      <VerificationTierModal
         isOpen={showSubscriptionModal}
         onClose={() => {
           setShowSubscriptionModal(false);
         }}
-        user={user}
-        product="past_papers"
-        onSubscribed={(sub) => {
-          setSubscription(sub);
+        userTier={user?.subscription_tier || 'basic'}
+        onSelectTier={(tier) => {
+          // The tier selection will be handled by VerificationTierModal
+          // which handles the payment flow
           setShowSubscriptionModal(false);
         }}
       />
