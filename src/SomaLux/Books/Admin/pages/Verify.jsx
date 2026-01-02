@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchAuthenticatedUsers, updateUserTier, fetchUploadCountsByUser } from '../api';
+import { fetchProfiles, updateUserTier } from '../api';
 import { useAdminUI } from '../AdminUIContext';
 import { FiCheck, FiAward, FiStar, FiSearch } from 'react-icons/fi';
 import VerificationBadge from '../components/VerificationBadge';
@@ -24,29 +24,20 @@ const Verify = ({ userProfile }) => {
   const load = async () => {
     setLoading(true);
     try {
-      const [allProfiles, uploadCounts] = await Promise.all([
-        fetchAuthenticatedUsers(),
-        fetchUploadCountsByUser()
-      ]);
-      
-      const uploadsMap = new Map(
-        (uploadCounts || []).map((u) => [String(u.uploaded_by), {
-          total: typeof u.total === 'number' ? u.total : (u.books || 0) + (u.past_papers || 0) + (u.universities || 0),
-        }])
-      );
+      console.log('[Verify.load] Loading profiles...');
+      const allProfiles = await fetchProfiles();
+      console.log('[Verify.load] Fetched', allProfiles?.length || 0, 'profiles');
       
       const profiles = (allProfiles || [])
         .filter(p => p && p.id) // Ensure valid profiles
         .map(p => {
-          const contrib = uploadsMap.get(String(p.id)) || { total: 0 };
           return {
             ...p,
             display_name: p.full_name || p.email,
             subscription_tier: p.subscription_tier || 'basic',
             subscription_started_at: p.subscription_started_at,
             subscription_expires_at: p.subscription_expires_at,
-            avatar_url: p.avatar_url,
-            uploadCount: contrib.total || 0
+            avatar_url: p.avatar_url
           };
         });
       
@@ -54,7 +45,7 @@ const Verify = ({ userProfile }) => {
       setRows(profiles);
       setCount(profiles.length);
     } catch (error) {
-      console.error('Failed to load profiles:', error);
+      console.error('[Verify.load] Failed to load profiles:', error?.message || error);
       showToast({ type: 'error', message: 'Failed to load users.' });
     } finally {
       setLoading(false);
@@ -83,21 +74,13 @@ const Verify = ({ userProfile }) => {
   const updateTier = async (userId, newTier) => {
     setUpdating(s => ({ ...s, [userId]: true }));
     try {
-      const result = await updateUserTier(userId, newTier);
-      
-      // Update local state with response data
-      setRows(prevRows => 
-        prevRows.map(r => r.id === userId ? { 
-          ...r, 
-          subscription_tier: result.data?.subscription_tier || newTier,
-          subscription_started_at: result.data?.subscription_started_at || new Date().toISOString()
-        } : r)
-      );
-      
-      showToast({ type: 'success', message: `User tier updated to ${newTier}` });
+      console.log('[Verify.updateTier] Updating tier for user:', userId, 'to:', newTier);
+      await updateUserTier(userId, newTier);
+      console.log('[Verify.updateTier] Tier updated successfully');
+      await load();
     } catch (error) {
-      console.error('Failed to update tier:', error);
-      showToast({ type: 'error', message: 'Failed to update user tier.' });
+      console.error('[Verify.updateTier] Error updating tier:', error?.message || error);
+      showToast({ type: 'error', message: `Failed to update user tier: ${error?.message || 'Unknown error'}` });
     } finally {
       setUpdating(s => ({ ...s, [userId]: false }));
     }

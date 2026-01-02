@@ -39,6 +39,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SimpleScrollReader from './SimpleScrollReader';
 import { API_URL } from '../../config';
 import './BookPanel.css';
+import './Admin/admin.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { booksCache, categoriesCache, statsCache } from './utils/cacheManager';
 import { fetchUserRankingsAdmin } from './Admin/api';
@@ -2295,6 +2296,7 @@ export const BookPanel = ({ demoMode = false }) => {
               setWelcomeMessage(false);
             }}
             className="search-inputBKP"
+            autoComplete="off"
           />
           {searchTerm && (
             <button
@@ -2909,22 +2911,9 @@ export const BookPanel = ({ demoMode = false }) => {
               <div>
                 <div className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '24px', marginBottom: '20px' }}>
                   <button
-                    className="pagination-btn"
+                    className="btn"
                     disabled={currentPage <= 1}
                     onClick={() => handlePageChange(currentPage - 1)}
-                    style={{
-                      padding: '8px 16px',
-                      background: currentPage <= 1 ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
-                      color: currentPage <= 1 ? '#999' : '#fff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '13px',
-                      fontWeight: '500'
-                    }}
                   >
                     <FiChevronLeft size={16} />
                     Prev
@@ -2935,22 +2924,9 @@ export const BookPanel = ({ demoMode = false }) => {
                   </span>
 
                   <button
-                    className="pagination-btn"
+                    className="btn"
                     disabled={currentPage >= computedTotal}
                     onClick={() => handlePageChange(currentPage + 1)}
-                    style={{
-                      padding: '8px 16px',
-                      background: currentPage >= computedTotal ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
-                      color: currentPage >= computedTotal ? '#999' : '#fff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: currentPage >= computedTotal ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '13px',
-                      fontWeight: '500'
-                    }}
                   >
                     Next
                     <FiChevronRight size={16} />

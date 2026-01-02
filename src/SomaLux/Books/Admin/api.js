@@ -127,13 +127,13 @@ export async function fetchAllUsers() {
 }
 
 export async function createCategory(values) {
-  const { data, error } = await supabase.from('categories').insert(values).select('*').single();
+  const { data, error } = await supabase.from('categories').insert(values).select().maybeSingle();
   if (error) throw error;
   return data;
 }
 
 export async function updateCategory(id, values) {
-  const { data, error } = await supabase.from('categories').update(values).eq('id', id).select('*').single();
+  const { data, error } = await supabase.from('categories').update(values).eq('id', id).select().maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -329,7 +329,7 @@ export async function createBook({ metadata, pdfFile, coverFile }) {
     file_size: pdfFile?.size || null
   };
   
-  const { data, error } = await supabase.from('books').insert(payload).select('*').single();
+  const { data, error } = await supabase.from('books').insert(payload).select().maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -364,7 +364,7 @@ export async function createBookSubmission({ metadata, pdfFile, coverFile }) {
     status: 'pending'
   };
   
-  const { data, error } = await supabase.from('book_submissions').insert(payload).select('*').single();
+  const { data, error } = await supabase.from('book_submissions').insert(payload).select().maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -387,7 +387,7 @@ export async function updateBook(id, { updates, newPdfFile, newCoverFile, oldFil
     const uploaded = await uploadCover(newCoverFile);
     patch.cover_image_url = uploaded.publicUrl;
   }
-  const { data, error } = await supabase.from('books').update(patch).eq('id', id).select('*').single();
+  const { data, error } = await supabase.from('books').update(patch).eq('id', id).select().maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -399,7 +399,7 @@ export async function deleteBook({ id, file_path }) {
       .from('books')
       .select('file_url, cover_image_url')
       .eq('id', id)
-      .single();
+      .maybeSingle();
     
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.warn('Could not fetch book details before deletion:', fetchError);
@@ -618,50 +618,25 @@ export function getAvatarPublicUrl(avatarPath) {
 }
 
 // Fetch all authenticated users with their status and activity (direct Supabase)
+// Fetch authenticated users via backend API endpoint
 export async function fetchAuthenticatedUsers() {
+  const origin = getBackendOrigin();
+  console.log('[fetchAuthenticatedUsers] Fetching from:', origin + '/api/admin/authenticated-users');
+  
   try {
-    // Fetch all profiles from database
-    const { data: profiles, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (profileError) throw profileError;
+    const res = await fetch(`${origin}/api/admin/authenticated-users`);
+    console.log('[fetchAuthenticatedUsers] Response status:', res.status);
     
-    // Fetch all auth users to get avatar_url from user_metadata
-    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-    const authUserMap = new Map();
-    
-    if (authData?.users) {
-      authData.users.forEach(authUser => {
-        authUserMap.set(authUser.id, {
-          avatar_url: authUser.user_metadata?.avatar_url || null,
-          full_name: authUser.user_metadata?.full_name || null
-        });
-      });
-      console.log('[fetchAuthenticatedUsers] Fetched auth metadata for', authData.users.length, 'users');
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.error('[fetchAuthenticatedUsers] Response not OK:', text?.substring?.(0, 200));
+      throw new Error(text || `Failed to fetch authenticated users (status ${res.status})`);
     }
     
-    // Enrich profiles with auth user metadata including avatar_url
-    const enrichedProfiles = (profiles || []).map(profile => {
-      const authMeta = authUserMap.get(profile.id) || {};
-      
-      return {
-        ...profile,
-        // Use avatar_url from auth metadata first, then fall back to profiles table
-        avatar_url: authMeta.avatar_url || profile.avatar_url || null,
-        // Use full_name from auth metadata if available
-        full_name: profile.full_name || authMeta.full_name || null,
-        display_name: profile.full_name || authMeta.full_name || profile.email || null
-      };
-    });
+    const payload = await res.json().catch(() => ({}));
+    console.log('[fetchAuthenticatedUsers] Payload received:', { ok: payload?.ok, usersCount: payload?.users?.length || 0 });
     
-    console.log('[fetchAuthenticatedUsers] Fetched', enrichedProfiles.length, 'profiles');
-    const withAvatars = enrichedProfiles.filter(p => p.avatar_url).length;
-    console.log('[fetchAuthenticatedUsers] Profiles with avatars:', withAvatars);
-    enrichedProfiles.slice(0, 3).forEach((p, i) => {
-      console.log(`[fetchAuthenticatedUsers] Profile ${i}:`, { id: p.id, email: p.email, avatar_url: p.avatar_url?.substring(0, 50) });
-    });
-    return enrichedProfiles;
+    return payload?.users || [];
   } catch (e) {
     console.error('[fetchAuthenticatedUsers] Error:', e?.message || e);
     return [];
@@ -836,16 +811,19 @@ export async function fetchUploadCountsByUser() {
 }
 
 export async function updateUserRole(id, role) {
+  const origin = getBackendOrigin();
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ role })
-      .eq('id', id)
-      .select('*')
-      .single();
-    
-    if (error) throw error;
-    return data || null;
+    const res = await fetch(`${origin}/api/elib/users/${encodeURIComponent(id)}/role`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(errText || `Failed to update role (status ${res.status})`);
+    }
+    const payload = await res.json().catch(() => ({}));
+    return payload?.data || null;
   } catch (error) {
     console.error('[updateUserRole] Error:', error?.message || error);
     throw error;
@@ -1996,33 +1974,53 @@ export async function getSupabaseUsageReport() {
 
 // Update user subscription tier
 export async function updateUserTier(userId, tier) {
+  const origin = getBackendOrigin();
+  const endpoint = `${origin}/api/elib/users/${userId}/tier`;
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ subscription_tier: tier })
-      .eq('id', userId)
-      .select('*')
-      .single();
-    
-    if (error) throw error;
-    return data;
+    const response = await fetch(endpoint, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription_tier: tier })
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(text || `Failed to update user tier (status ${response.status})`);
+    }
+    const payload = await response.json();
+    return payload?.data || null;
   } catch (error) {
-    console.error('Error updating user tier:', error);
+    console.error('[updateUserTier] Error:', error?.message || error);
     throw error;
   }
 }
 
 // Fetch all user profiles for tier management
 export async function fetchAllProfilesForVerify() {
+  const origin = getBackendOrigin();
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, email, full_name, avatar_url, role, subscription_tier, subscription_started_at, subscription_expires_at')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data || [];
+    // Call backend to get fresh profile data with tier info
+    const res = await fetch(`${origin}/api/admin/authenticated-users`);
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(text || `Failed to fetch profiles (status ${res.status})`);
+    }
+    const payload = await res.json().catch(() => ({}));
+    const users = payload?.users || [];
+    
+    // Map to ensure all fields are present
+    return (users || []).map(u => ({
+      id: u.id,
+      email: u.email,
+      full_name: u.full_name || u.display_name,
+      display_name: u.display_name || u.full_name || u.email?.split('@')[0],
+      avatar_url: u.avatar_url,
+      role: u.role,
+      subscription_tier: u.subscription_tier || 'basic',
+      subscription_started_at: u.subscription_started_at,
+      subscription_expires_at: u.subscription_expires_at
+    }));
   } catch (error) {
-    console.error('Error fetching profiles for verify:', error);
+    console.error('Error fetching profiles for verify:', error?.message || error);
     throw error;
   }
 }

@@ -4,6 +4,7 @@ import { FiFileText, FiFilter, FiX, FiDownload, FiUpload, FiEye, FiBookmark, FiC
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
 import { AdBanner } from '../Ads/AdBanner';
 import './PaperPanel.css';
+import '../Books/Admin/admin.css';
 
 export const PaperGrid = React.memo(({
   displayedPapers,
@@ -67,6 +68,7 @@ export const PaperGrid = React.memo(({
             value={localSearchValue}
             onChange={handleSearchChange}
             className="search-inputpast"
+            autoComplete="off"
           />
           {localSearchValue && (
             <button
@@ -441,24 +443,7 @@ export const PaperGrid = React.memo(({
               marginBottom: '20px'
             }}
           >
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage <= 1}
-              style={{
-                padding: '8px 16px',
-                background: currentPage <= 1 ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
-                color: currentPage <= 1 ? '#999' : 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
-                fontSize: '0.9rem',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                transition: 'all 0.3s ease'
-              }}
-            >
+            <button className="btn" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}>
               <FiChevronLeft size={16} /> Prev
             </button>
 
@@ -474,24 +459,7 @@ export const PaperGrid = React.memo(({
               Page {currentPage} of {totalPages}
             </span>
 
-            <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage >= totalPages}
-              style={{
-                padding: '8px 16px',
-                background: currentPage >= totalPages ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
-                color: currentPage >= totalPages ? '#999' : 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
-                fontSize: '0.9rem',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                transition: 'all 0.3s ease'
-              }}
-            >
+            <button className="btn" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>
               Next <FiChevronRight size={16} />
             </button>
           </div>

@@ -238,6 +238,7 @@ const Comment = ({ comment, mediaId, currentUser, onDelete, onLikeToggle, onRepl
                 placeholder={`Replying to @${comment.user}`}
                 className="reply-input-comments"
                 maxLength={280}
+                autoComplete="off"
               />
               <input
                 type="file"
@@ -443,6 +444,7 @@ export const CommentsSection = ({
                 className="new-comment-input-comments"
                 maxLength={280}
                 disabled={isSubmitting}
+                autoComplete="off"
               />
               <input
                 type="file"

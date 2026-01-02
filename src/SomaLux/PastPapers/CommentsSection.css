@@ -92,8 +92,8 @@
   background: none;
   cursor: pointer;
   color: #95a8b8;
-  padding: 6px;
-  border-radius: 50%;
+  border: none;
+  padding: 0;
   transition: all 0.2s ease;
 }
 
@@ -160,8 +160,8 @@
   background: none;
   cursor: pointer;
   color: #95a8b8;
-  padding: 6px 10px;
-  border-radius: 12px;
+  border: none;
+  padding: 0;
   transition: all 0.2s ease;
 }
 
@@ -176,11 +176,11 @@
 }
 
 .reply-btn-comments {
-  background: #0b1216;
+  background: none;
   cursor: pointer;
   color: #95a8b8;
-  padding: 6px 10px;
-  border-radius: 12px;
+  border: none;
+  padding: 0;
   transition: all 0.2s ease;
 }
 
@@ -221,14 +221,17 @@
 }
 
 .send-reply-btn-comments {
-  background: #00b388;
+  background: none;
   cursor: pointer;
-  color: #fff;
-  padding: 8px;
-  border-radius: 50%;
+  color: #95a8b8;
   border: none;
+  padding: 0;
   transition: all 0.2s ease;
   order: 2;
+}
+
+.send-reply-btn-comments:not(:disabled) {
+  color: #00b388;
 }
 
 .send-reply-btn-comments:disabled {
@@ -320,14 +323,17 @@
 }
 
 .submit-comment-btn-comments {
-  background: #00b388;
+  background: none;
   cursor: pointer;
-  color: #fff;
-  padding: 8px;
-  border-radius: 50%;
+  color: #95a8b8;
   border: none;
+  padding: 0;
   transition: all 0.2s ease;
   order: 2;
+}
+
+.submit-comment-btn-comments:not(:disabled) {
+  color: #00b388;
 }
 
 .submit-comment-btn-comments:disabled {
@@ -383,12 +389,12 @@
 .media-upload-btn-comments {
   background: none;
   cursor: pointer;
-  padding: 8px;
   color: #95a8b8;
   font-size: 30px;
-  border-radius: 50%;
   transition: all 0.2s ease;
   order: 0;
+  border: none;
+  padding: 0;
 }
 
 .media-upload-btn-comments:focus {

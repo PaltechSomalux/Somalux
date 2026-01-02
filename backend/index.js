@@ -318,6 +318,9 @@ app.get('/api/admin/authenticated-users', async (req, res) => {
         display_name: authUser.user_metadata?.full_name || profile.full_name || authUser.email?.split('@')[0] || 'Unknown',
         avatar_url: authUser.user_metadata?.avatar_url || profile.avatar_url || null,
         role: profile.role || 'viewer',
+        subscription_tier: profile.subscription_tier || 'basic',
+        subscription_started_at: profile.subscription_started_at || null,
+        subscription_expires_at: profile.subscription_expires_at || null,
         is_active: profile.is_active !== false,
         created_at: authUser.created_at,
         last_active_at: profile.last_active_at,
@@ -463,7 +466,7 @@ app.post('/api/elib/books', async (req, res) => {
   try {
     const { metadata } = req.body || {};
     if (!metadata || !metadata.title) return res.status(400).json({ error: 'metadata.title required' });
-    const { data, error } = await supabaseAdmin.from('books').insert(metadata).select('*').single();
+    const { data, error } = await supabaseAdmin.from('books').insert(metadata).select().maybeSingle();
     if (error) throw error;
     await logAudit({ actor: req.headers['x-actor-email'] || 'public', action: 'create', entity: 'books', record_id: data.id, details: { metadata }, ip: req.ip });
     res.json({ ok: true, data });
@@ -478,7 +481,7 @@ app.patch('/api/elib/books/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { updates = {}, delete_paths = [] } = req.body || {};
-    const { data, error } = await supabaseAdmin.from('books').update(updates).eq('id', id).select('*').single();
+    const { data, error } = await supabaseAdmin.from('books').update(updates).eq('id', id).select().maybeSingle();
     if (error) throw error;
     // Best-effort storage delete for provided paths
     if (Array.isArray(delete_paths) && delete_paths.length > 0) {
@@ -540,7 +543,7 @@ app.post('/api/elib/categories', async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
   try {
     const { name, description } = req.body || {};
-    const { data, error } = await supabaseAdmin.from('categories').insert({ name, description }).select('*').single();
+    const { data, error } = await supabaseAdmin.from('categories').insert({ name, description }).select().maybeSingle();
     if (error) throw error;
     await logAudit({ actor: req.headers['x-actor-email'] || 'public', action: 'create', entity: 'categories', record_id: data.id, details: { name, description }, ip: req.ip });
     res.json({ ok: true, data });
@@ -551,7 +554,7 @@ app.patch('/api/elib/categories/:id', async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
   try {
     const { id } = req.params; const { name, description } = req.body || {};
-    const { data, error } = await supabaseAdmin.from('categories').update({ name, description }).eq('id', id).select('*').single();
+    const { data, error } = await supabaseAdmin.from('categories').update({ name, description }).eq('id', id).select().maybeSingle();
     if (error) throw error;
     await logAudit({ actor: req.headers['x-actor-email'] || 'public', action: 'update', entity: 'categories', record_id: id, details: { name, description }, ip: req.ip });
     res.json({ ok: true, data });
@@ -573,12 +576,24 @@ app.delete('/api/elib/categories/:id', async (req, res) => {
 app.patch('/api/elib/users/:id/role', async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
   try {
-    const { id } = req.params; const { role } = req.body || {};
-    const { data, error } = await supabaseAdmin.from('profiles').update({ role }).eq('id', id).select('*').single();
-    if (error) throw error;
+    const { id } = req.params; 
+    const { role } = req.body || {};
+    console.log(`[PATCH /api/elib/users/:id/role] Updating role for user ${id} to ${role}`);
+    
+    const { data, error } = await supabaseAdmin.from('profiles').update({ role }).eq('id', id).select().maybeSingle();
+    
+    if (error) {
+      console.error(`[PATCH /api/elib/users/:id/role] Supabase error:`, error);
+      throw error;
+    }
+    
+    console.log(`[PATCH /api/elib/users/:id/role] Success. Data:`, data);
     await logAudit({ actor: req.headers['x-actor-email'] || 'public', action: 'update_role', entity: 'profiles', record_id: id, details: { role }, ip: req.ip });
     res.json({ ok: true, data });
-  } catch (e) { res.status(500).json({ error: e.message || 'update failed' }); }
+  } catch (e) { 
+    console.error(`[PATCH /api/elib/users/:id/role] Catch error:`, e?.message || e);
+    res.status(500).json({ error: e.message || 'update failed' }); 
+  }
 });
 
 // Users: subscription tier change
@@ -587,6 +602,8 @@ app.patch('/api/elib/users/:id/tier', async (req, res) => {
   try {
     const { id } = req.params;
     const { subscription_tier } = req.body || {};
+    console.log(`[PATCH /api/elib/users/:id/tier] Updating tier for user ${id} to ${subscription_tier}`);
+    
     const updateData = { subscription_tier };
     
     // Set subscription dates if upgrading to premium tiers
@@ -599,11 +616,20 @@ app.patch('/api/elib/users/:id/tier', async (req, res) => {
       updateData.subscription_expires_at = null;
     }
     
-    const { data, error } = await supabaseAdmin.from('profiles').update(updateData).eq('id', id).select('*').single();
-    if (error) throw error;
+    const { data, error } = await supabaseAdmin.from('profiles').update(updateData).eq('id', id).select().maybeSingle();
+    
+    if (error) {
+      console.error(`[PATCH /api/elib/users/:id/tier] Supabase error:`, error);
+      throw error;
+    }
+    
+    console.log(`[PATCH /api/elib/users/:id/tier] Success. Data:`, data);
     await logAudit({ actor: req.headers['x-actor-email'] || 'public', action: 'update_tier', entity: 'profiles', record_id: id, details: { subscription_tier }, ip: req.ip });
     res.json({ ok: true, data });
-  } catch (e) { res.status(500).json({ error: e.message || 'update failed' }); }
+  } catch (e) { 
+    console.error(`[PATCH /api/elib/users/:id/tier] Catch error:`, e?.message || e);
+    res.status(500).json({ error: e.message || 'update failed' }); 
+  }
 });
 
 // Audit logs: list (basic pagination and filters)
