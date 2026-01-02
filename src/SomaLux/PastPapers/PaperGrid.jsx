@@ -1,13 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { FiFileText, FiFilter, FiX, FiDownload, FiUpload, FiEye, FiBookmark, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
 import { AdBanner } from '../Ads/AdBanner';
-import { useBatchedPDFLoader } from '../Books/useBatchedPDFLoader';
-import PDFCover from '../Books/PDFCover';
 import './PaperPanel.css';
 
-export const PaperGrid = ({
+export const PaperGrid = React.memo(({
   displayedPapers,
   filteredPapers,
   currentPage,
@@ -40,15 +38,7 @@ export const PaperGrid = ({
   const searchDebounceRef = useRef(null);
   const [localSearchValue, setLocalSearchValue] = useState(searchTerm);
   
-  // Initialize batched PDF loader
-  const {
-    shouldRenderPDF,
-    onPaperLoadComplete,
-    getCurrentBatch,
-    loadingState
-  } = useBatchedPDFLoader(displayedPapers, 5);
-  
-  const handleSearchChange = (e) => {
+  const handleSearchChange = useCallback((e) => {
     const value = e.target.value;
     setLocalSearchValue(value);
     
@@ -61,7 +51,7 @@ export const PaperGrid = ({
     searchDebounceRef.current = setTimeout(() => {
       setSearchTerm(value);
     }, 300);
-  };
+  }, [setSearchTerm]);
   
   const totalPages = Math.max(1, Math.ceil(filteredPapers.length / pageSize));
 
@@ -219,41 +209,28 @@ export const PaperGrid = ({
                           className="paper-cardpast"
                           onClick={() => onPaperSelect(paper)}
                         >
-                    {/* Paper Cover - conditionally render PDF or placeholder based on batch loading */}
-                    {shouldRenderPDF(paper.id) ? (
-                      <PDFCover
-                        src={paper.file_url}
-                        style={{
-                          width: '100%',
-                          height: '140px',
-                          borderRadius: '6px',
-                          marginBottom: '8px'
-                        }}
-                        onLoadComplete={() => onPaperLoadComplete(paper.id)}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '140px',
-                          backgroundColor: '#1f2937',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '6px',
-                          marginBottom: '8px',
-                          color: '#8696a0',
-                          fontSize: '0.8rem',
-                          textAlign: 'center',
-                          padding: '8px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                          <FiFileText size={24} />
-                          <span>{paper.course ? (paper.courseCode ? `${paper.course} ${paper.courseCode}` : paper.course) : paper.courseCode || 'Paper'}</span>
-                        </div>
+                    {/* Paper Cover - Always show placeholder */}
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '140px',
+                        backgroundColor: '#1f2937',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '6px',
+                        marginBottom: '8px',
+                        color: '#8696a0',
+                        fontSize: '0.8rem',
+                        textAlign: 'center',
+                        padding: '8px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                        <FiFileText size={24} />
+                        <span>{paper.course ? (paper.courseCode ? `${paper.course} ${paper.courseCode}` : paper.course) : paper.courseCode || 'Paper'}</span>
                       </div>
-                    )}
+                    </div>
 
                     {/* Card Content */}
                     <div className="card-contentpast">
@@ -344,41 +321,28 @@ export const PaperGrid = ({
                       className="paper-cardpast"
                       onClick={() => onPaperSelect(paper)}
                     >
-                      {/* Paper Cover - conditionally render PDF or placeholder based on batch loading */}
-                      {shouldRenderPDF(paper.id) ? (
-                        <PDFCover
-                          src={paper.file_url}
-                          style={{
-                            width: '100%',
-                            height: '140px',
-                            borderRadius: '6px',
-                            marginBottom: '8px'
-                          }}
-                          onLoadComplete={() => onPaperLoadComplete(paper.id)}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: '100%',
-                            height: '140px',
-                            backgroundColor: '#1f2937',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderRadius: '6px',
-                            marginBottom: '8px',
-                            color: '#8696a0',
-                            fontSize: '0.8rem',
-                            textAlign: 'center',
-                            padding: '8px'
-                          }}
-                        >
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                            <FiFileText size={24} />
-                            <span>{paper.course ? (paper.courseCode ? `${paper.course} ${paper.courseCode}` : paper.course) : paper.courseCode || 'Paper'}</span>
-                          </div>
+                      {/* Paper Cover - Always show placeholder */}
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '140px',
+                          backgroundColor: '#1f2937',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '6px',
+                          marginBottom: '8px',
+                          color: '#8696a0',
+                          fontSize: '0.8rem',
+                          textAlign: 'center',
+                          padding: '8px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                          <FiFileText size={24} />
+                          <span>{paper.course ? (paper.courseCode ? `${paper.course} ${paper.courseCode}` : paper.course) : paper.courseCode || 'Paper'}</span>
                         </div>
-                      )}
+                      </div>
 
                       {/* Card Content */}
                       <div className="card-contentpast">
@@ -533,6 +497,6 @@ export const PaperGrid = ({
           </div>
     </>
   );
-};
+});
 
-export default React.memo(PaperGrid);
+export default PaperGrid;

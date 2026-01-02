@@ -1,0 +1,57 @@
+.time-range-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.time-range-button {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #202c33;
+  border-radius: 4px;
+  color: #8696a0;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.time-range-button:hover {
+  border-color: #00a884;
+  color: #00a884;
+}
+
+.time-range-button.active {
+  background: #00a884;
+  border-color: #00a884;
+  color: white;
+  box-shadow: 0 0 8px rgba(0, 168, 132, 0.3);
+}
+
+/* Responsive for smaller screens */
+@media (max-width: 768px) {
+  .time-range-selector {
+    gap: 6px;
+  }
+
+  .time-range-button {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .time-range-selector {
+    gap: 4px;
+  }
+
+  .time-range-button {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+}

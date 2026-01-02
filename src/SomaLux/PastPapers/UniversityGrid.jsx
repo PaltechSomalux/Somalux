@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiMapPin, FiEye } from 'react-icons/fi';
 import { MdVerified } from 'react-icons/md';
@@ -8,7 +8,7 @@ import { AdBanner } from '../Ads/AdBanner';
 import { getPastPaperCountByUniversity } from '../Books/Admin/pastPapersApi';
 import './PaperPanel.css';
 
-export const UniversityGrid = ({
+export const UniversityGrid = React.memo(({
   universities,
   universitySearchTerm,
   setUniversitySearchTerm,
@@ -26,19 +26,29 @@ export const UniversityGrid = ({
 }) => {
   const [paperCounts, setPaperCounts] = useState({});
 
-  // Fetch actual paper counts from database
+  // Fetch actual paper counts from database - batch load with rate limiting
   useEffect(() => {
     const fetchCounts = async () => {
       const counts = {};
-      for (const uni of universities) {
-        try {
-          // Pass user's subscription tier for accurate filtering
-          counts[uni.id] = await getPastPaperCountByUniversity(uni.id, user?.subscription_tier);
-        } catch (err) {
-          console.error(`Error fetching paper count for ${uni.name}:`, err);
-          counts[uni.id] = 0;
-        }
+      
+      // Load counts in batches of 5 to avoid overwhelming the server
+      const batches = [];
+      for (let i = 0; i < universities.length; i += 5) {
+        batches.push(universities.slice(i, i + 5));
       }
+
+      for (const batch of batches) {
+        await Promise.all(batch.map(async (uni) => {
+          try {
+            // Pass user's subscription tier for accurate filtering
+            counts[uni.id] = await getPastPaperCountByUniversity(uni.id, user?.subscription_tier);
+          } catch (err) {
+            console.error(`Error fetching paper count for ${uni.name}:`, err);
+            counts[uni.id] = 0;
+          }
+        }));
+      }
+      
       setPaperCounts(counts);
     };
 
@@ -364,4 +374,6 @@ export const UniversityGrid = ({
       </div>
     </>
   );
-};
+});
+
+export default UniversityGrid;

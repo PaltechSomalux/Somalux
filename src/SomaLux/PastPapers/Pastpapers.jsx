@@ -27,7 +27,6 @@ import { RatingModal } from '../Books/RatingModal';
 import VerificationTierModal from '../Books/VerificationTierModal';
 import SecureReader from '../Books/SecureReader';
 import SimpleScrollReader from '../Books/SimpleScrollReader';
-import PDFCover from '../Books/PDFCover';
 import { FaSearch } from 'react-icons/fa';
 import { AdBanner } from '../Ads/AdBanner';
 import { 
@@ -47,6 +46,7 @@ import './PaperPanel.css';
 export const PaperPanel = ({ demoMode = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const reloadTimeoutRef = useRef(null);
   const [papers, setPapers] = useState([]);
   const [displayedPapers, setDisplayedPapers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -174,6 +174,101 @@ export const PaperPanel = ({ demoMode = false }) => {
     if (!subscription || !subscription.end_at) return false;
     return new Date(subscription.end_at) > new Date();
   }, [subscription]);
+
+  // Define data loading functions BEFORE useEffects that depend on them
+  const loadPastPapers = useCallback(async () => {
+    try {
+      // Fetch papers in reasonable batches (max 500 per request) to prevent lag
+      const { data } = await fetchPastPapers({ page: 1, pageSize: 500 });
+      
+      const transformedData = (data || []).map(paper => ({
+        id: paper.id,
+        title: paper.title || `${paper.unit_code || ''} - ${paper.unit_name || ''}`,
+        course: paper.unit_name || paper.title,
+        courseCode: paper.unit_code || '',
+        faculty: paper.faculty || 'Unknown',
+        university: paper.universities?.name || paper.university || 'Unknown',
+        year: paper.year,
+        semester: paper.semester,
+        examType: paper.exam_type,
+        downloads: paper.downloads_count || 0,
+        downloads_count: paper.downloads_count || 0,
+        views: paper.views_count || 0,
+        views_count: paper.views_count || 0,
+        file_url: paper.file_url,
+        downloadUrl: paper.file_url || null,
+        created_at: paper.created_at
+      }));
+      
+      // Cache papers in localStorage
+      try {
+        localStorage.setItem('cachedPastPapers', JSON.stringify({
+          data: transformedData,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        // Storage quota exceeded, ignore
+      }
+      
+      setPapers(transformedData);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading past papers:', error);
+      // If API fails, try to show cached data
+      try {
+        const cached = localStorage.getItem('cachedPastPapers');
+        if (cached) {
+          const { data } = JSON.parse(cached);
+          setPapers(data);
+          setLoading(false);
+          return;
+        }
+      } catch (e) {}
+      setLoading(false);
+    }
+  }, []);
+
+  const loadUniversities = useCallback(async () => {
+    try {
+      const { data } = await fetchUniversities({ page: 1, pageSize: 50 });
+      // Display universities instantly
+      setUniversities(data || []);
+
+      // Load stats in background with rate limiting - max 5 concurrent requests
+      const statsPromises = (data || []).map(async (uni) => {
+        const stat = await getUniversityRatingStats(uni.id);
+        setRatingStats(prev => ({ ...prev, [uni.id]: stat }));
+      });
+      
+      // Wait for stats to load in controlled batches to avoid overwhelming
+      for (let i = 0; i < statsPromises.length; i += 5) {
+        await Promise.all(statsPromises.slice(i, i + 5)).catch(() => {});
+      }
+
+      // Load user ratings in background if logged in - rate limited
+      if (user) {
+        const ratingPromises = (data || []).map(async (uni) => {
+          const rating = await getUserUniversityRating(uni.id);
+          if (rating) setUserRatings(prev => ({ ...prev, [uni.id]: rating }));
+        });
+        
+        for (let i = 0; i < ratingPromises.length; i += 5) {
+          await Promise.all(ratingPromises.slice(i, i + 5)).catch(() => {});
+        }
+      }
+    } catch (error) {
+      console.error('Error loading universities:', error);
+    }
+  }, [user]);
+
+  const loadFaculties = useCallback(async () => {
+    try {
+      const data = await getFaculties();
+      setFaculties(data);
+    } catch (error) {
+      console.error('Error loading faculties:', error);
+    }
+  }, []);
 
   // Check authentication status and load user profile with subscription_tier
   useEffect(() => {
@@ -354,20 +449,18 @@ export const PaperPanel = ({ demoMode = false }) => {
     console.log('Setting up real-time subscription for past papers');
     const subscription = subscribeToPastPapers((payload) => {
       console.log('Past paper change detected:', payload);
-      // Reload papers instantly on any change
-      loadPastPapers();
+      // Reload papers with a debounce to prevent multiple rapid reloads
+      if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current);
+      reloadTimeoutRef.current = setTimeout(() => {
+        loadPastPapers();
+      }, 1000);
     });
-
-    // Also set up polling as fallback every 10 seconds
-    const pollInterval = setInterval(() => {
-      loadPastPapers();
-    }, 10000);
 
     return () => {
       subscription?.unsubscribe();
-      clearInterval(pollInterval);
+      if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current);
     };
-  }, []);
+  }, [loadPastPapers]);
 
   // Handle university filter from navigation
   useEffect(() => {
@@ -389,38 +482,49 @@ export const PaperPanel = ({ demoMode = false }) => {
         if (Date.now() - timestamp < 5 * 60 * 1000) {
           setPapers(data);
           setLoading(false);
-          // Fetch fresh data in background (non-blocking)
-          loadPastPapers();
-          loadUniversities();
-          loadFaculties();
+          // Fetch fresh data in background SEQUENTIALLY (non-blocking)
+          setTimeout(() => {
+            loadPastPapers().then(() => {
+              // After papers load, load universities
+              setTimeout(() => {
+                loadUniversities();
+                loadFaculties();
+              }, 100);
+            });
+          }, 50);
           return;
         }
       }
     } catch (e) {}
     
     // No cache or cache expired, fetch normally
-    loadPastPapers();
-    
-    // Load universities and faculties in background (non-blocking)
-    setTimeout(() => {
-      loadUniversities();
-      loadFaculties();
-    }, 50);
+    loadPastPapers().then(() => {
+      // After papers load, load universities and faculties sequentially
+      setTimeout(() => {
+        loadUniversities();
+        loadFaculties();
+      }, 100);
+    });
   }, []);
 
-  // Reload papers when university filter changes
+  // Reload papers when university filter changes - debounced
   useEffect(() => {
-    if (universityFilter) {
+    if (!universityFilter) return;
+    
+    if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current);
+    reloadTimeoutRef.current = setTimeout(() => {
       loadPastPapers();
-    }
+    }, 300);
+    
+    return () => {
+      if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current);
+    };
   }, [universityFilter]);
 
   // Refresh subscription whenever user changes
   useEffect(() => {
     if (user) {
       fetchSubscription(user);
-      // Refresh user-specific university ratings when auth changes
-      loadUniversities();
     } else {
       setSubscription(null);
     }
@@ -563,99 +667,6 @@ export const PaperPanel = ({ demoMode = false }) => {
       setTimeout(() => setNotification(null), 5000);
     } finally {
       setUploadBusy(false);
-    }
-  };
-
-  const loadPastPapers = async () => {
-    try {
-      // Fetch ALL papers so we can paginate through all pages
-      const { data } = await fetchPastPapers({ page: 1, pageSize: 100000 });
-      
-      const transformedData = (data || []).map(paper => ({
-        id: paper.id,
-        title: paper.title || `${paper.unit_code || ''} - ${paper.unit_name || ''}`,
-        course: paper.unit_name || paper.title,
-        courseCode: paper.unit_code || '',
-        faculty: paper.faculty || 'Unknown',
-        university: paper.universities?.name || paper.university || 'Unknown',
-        year: paper.year,
-        semester: paper.semester,
-        examType: paper.exam_type,
-        downloads: paper.downloads_count || 0,
-        downloads_count: paper.downloads_count || 0,
-        views: paper.views_count || 0,
-        views_count: paper.views_count || 0,
-        file_url: paper.file_url,
-        downloadUrl: paper.file_url || null,
-        created_at: paper.created_at
-      }));
-      
-      // Cache papers in localStorage
-      try {
-        localStorage.setItem('cachedPastPapers', JSON.stringify({
-          data: transformedData,
-          timestamp: Date.now()
-        }));
-      } catch (e) {
-        // Storage quota exceeded, ignore
-      }
-      
-      setPapers(transformedData);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading past papers:', error);
-      // If API fails, try to show cached data
-      try {
-        const cached = localStorage.getItem('cachedPastPapers');
-        if (cached) {
-          const { data } = JSON.parse(cached);
-          setPapers(data);
-          setLoading(false);
-          return;
-        }
-      } catch (e) {}
-      setLoading(false);
-    }
-  };
-
-  const loadUniversities = async () => {
-    try {
-      const { data } = await fetchUniversities({ page: 1, pageSize: 50 });
-      // Display universities instantly
-      setUniversities(data || []);
-
-      // Load stats in background without blocking
-      Promise.all((data || []).map(async (uni) => {
-        const stat = await getUniversityRatingStats(uni.id);
-        return { id: uni.id, stat };
-      })).then((results) => {
-        const stats = {};
-        results.forEach(({ id, stat }) => stats[id] = stat);
-        setRatingStats(stats);
-      }).catch(err => console.error('Error loading rating stats:', err));
-
-      // Load user ratings in background if logged in
-      if (user) {
-        Promise.all((data || []).map(async (uni) => {
-          const rating = await getUserUniversityRating(uni.id);
-          return { id: uni.id, rating };
-        })).then((results) => {
-          const userRatingsMap = {};
-          results.forEach(({ id, rating }) => { if (rating) userRatingsMap[id] = rating; });
-          setUserRatings(userRatingsMap);
-        }).catch(err => console.error('Error loading user ratings:', err));
-      }
-    } catch (error) {
-      console.error('Error loading universities:', error);
-    }
-  };
-
-  const loadFaculties = async () => {
-    try {
-      const data = await getFaculties();
-      setFaculties(data);
-    } catch (error) {
-      console.error('Error loading faculties:', error);
     }
   };
 

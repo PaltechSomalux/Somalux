@@ -26,7 +26,7 @@ const getColorGradient = (faculty) => {
   return COLOR_GRADIENTS[index];
 };
 
-export const FacultyGridDisplay = ({
+export const FacultyGridDisplay = React.memo(({
   faculties,
   papers,
   universityFilter,
@@ -230,6 +230,6 @@ export const FacultyGridDisplay = ({
       </div>
     </div>
   );
-};
+});
 
 export default FacultyGridDisplay;
