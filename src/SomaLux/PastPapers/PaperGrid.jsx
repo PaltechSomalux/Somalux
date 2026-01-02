@@ -1,9 +1,10 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { FiFileText, FiFilter, FiX, FiDownload, FiUpload, FiEye, FiBookmark, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
-import PDFCover from '../Books/PDFCover';
 import { AdBanner } from '../Ads/AdBanner';
+import { useBatchedPDFLoader } from '../Books/useBatchedPDFLoader';
+import PDFCover from '../Books/PDFCover';
 import './PaperPanel.css';
 
 export const PaperGrid = ({
@@ -34,6 +35,34 @@ export const PaperGrid = ({
   facultyFilter = '',
   onFacultyClick
 }) => {
+  // Debounce search input to prevent excessive updates
+  const searchInputRef = useRef(null);
+  const searchDebounceRef = useRef(null);
+  const [localSearchValue, setLocalSearchValue] = useState(searchTerm);
+  
+  // Initialize batched PDF loader
+  const {
+    shouldRenderPDF,
+    onPaperLoadComplete,
+    getCurrentBatch,
+    loadingState
+  } = useBatchedPDFLoader(displayedPapers, 5);
+  
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setLocalSearchValue(value);
+    
+    // Clear previous debounce
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    
+    // Debounce the actual state update by 300ms
+    searchDebounceRef.current = setTimeout(() => {
+      setSearchTerm(value);
+    }, 300);
+  };
+  
   const totalPages = Math.max(1, Math.ceil(filteredPapers.length / pageSize));
 
   return (
@@ -42,15 +71,19 @@ export const PaperGrid = ({
       <div className="controlspast">
         <div className="search-containerpast">
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Search papers by course, code or faculty..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={localSearchValue}
+            onChange={handleSearchChange}
             className="search-inputpast"
           />
-          {searchTerm && (
+          {localSearchValue && (
             <button
-              onClick={() => setSearchTerm('')}
+              onClick={() => {
+                setLocalSearchValue('');
+                setSearchTerm('');
+              }}
               className="clear-buttonpast"
             >
               <FiX size={16} />
@@ -87,12 +120,8 @@ export const PaperGrid = ({
           )}
 
           {showFilters && (
-            <motion.div 
+            <div 
               className="filter-dropdownpast"
-              initial={{ opacity: 1 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0 }}
             >
               <div className="filter-sectionpast">
                 <h4>Filter by:</h4>
@@ -146,15 +175,14 @@ export const PaperGrid = ({
                   Most Viewed
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
         </div>
       </div>
 
       {/* Stats Summary */}
       <div className="gridpast">
-            <AnimatePresence>
-              {displayedPapers.map((paper, index) => {
+            {displayedPapers.map((paper, index) => {
                 // For mobile: Show ad after 3rd paper (index 2)
                 // For desktop: Show ad in middle position
                 const isMobile = window.innerWidth < 768;
@@ -170,7 +198,7 @@ export const PaperGrid = ({
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.05 }}
+                        transition={{ duration: 0.2 }}
                         layout
                       >
                         <div style={{ height: '100%' }}>
@@ -184,20 +212,48 @@ export const PaperGrid = ({
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.05 }}
+                        transition={{ duration: 0.2 }}
                         layout
                       >
                         <div
                           className="paper-cardpast"
                           onClick={() => onPaperSelect(paper)}
                         >
-                    {/* Paper Cover - Renders first page of PDF */}
-                    <PDFCover
-                      src={paper.downloadUrl}
-                      alt={paper.title}
-                      className="paper-snapshotpast"
-                      loading="lazy"
-                    />
+                    {/* Paper Cover - conditionally render PDF or placeholder based on batch loading */}
+                    {shouldRenderPDF(paper.id) ? (
+                      <PDFCover
+                        src={paper.file_url}
+                        style={{
+                          width: '100%',
+                          height: '140px',
+                          borderRadius: '6px',
+                          marginBottom: '8px'
+                        }}
+                        onLoadComplete={() => onPaperLoadComplete(paper.id)}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '140px',
+                          backgroundColor: '#1f2937',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '6px',
+                          marginBottom: '8px',
+                          color: '#8696a0',
+                          fontSize: '0.8rem',
+                          textAlign: 'center',
+                          padding: '8px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                          <FiFileText size={24} />
+                          <span>{paper.course ? (paper.courseCode ? `${paper.course} ${paper.courseCode}` : paper.course) : paper.courseCode || 'Paper'}</span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Card Content */}
                     <div className="card-contentpast">
@@ -281,20 +337,48 @@ export const PaperGrid = ({
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.05 }}
+                    transition={{ duration: 0.2 }}
                     layout
                   >
                     <div
                       className="paper-cardpast"
                       onClick={() => onPaperSelect(paper)}
                     >
-                      {/* Paper Cover - Renders first page of PDF */}
-                      <PDFCover
-                        src={paper.downloadUrl}
-                        alt={paper.title}
-                        className="paper-snapshotpast"
-                        loading="lazy"
-                      />
+                      {/* Paper Cover - conditionally render PDF or placeholder based on batch loading */}
+                      {shouldRenderPDF(paper.id) ? (
+                        <PDFCover
+                          src={paper.file_url}
+                          style={{
+                            width: '100%',
+                            height: '140px',
+                            borderRadius: '6px',
+                            marginBottom: '8px'
+                          }}
+                          onLoadComplete={() => onPaperLoadComplete(paper.id)}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: '100%',
+                            height: '140px',
+                            backgroundColor: '#1f2937',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '6px',
+                            marginBottom: '8px',
+                            color: '#8696a0',
+                            fontSize: '0.8rem',
+                            textAlign: 'center',
+                            padding: '8px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                            <FiFileText size={24} />
+                            <span>{paper.course ? (paper.courseCode ? `${paper.course} ${paper.courseCode}` : paper.course) : paper.courseCode || 'Paper'}</span>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Card Content */}
                       <div className="card-contentpast">
@@ -380,11 +464,10 @@ export const PaperGrid = ({
                   </motion.div>
                 );
               })}
-            </AnimatePresence>
           </div>
 
           {/* Pagination Controls */}
-          <motion.div
+          <div
             style={{
               display: 'flex',
               justifyContent: 'center',
@@ -393,9 +476,6 @@ export const PaperGrid = ({
               marginTop: '24px',
               marginBottom: '20px'
             }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.05 }}
           >
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
@@ -450,7 +530,7 @@ export const PaperGrid = ({
             >
               Next <FiChevronRight size={16} />
             </button>
-          </motion.div>
+          </div>
     </>
   );
 };

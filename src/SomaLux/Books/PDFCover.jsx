@@ -23,7 +23,7 @@ if (pdfjs.GlobalWorkerOptions.workerSrc) {
   }
 }
 
-const PDFCover = ({ src, alt, className, style, onClick, loading = 'lazy' }) => {
+const PDFCover = ({ src, alt, className, style, onClick, loading = 'lazy', onLoadComplete }) => {
   const [error, setError] = useState(!workerReady);
   const [isLoading, setIsLoading] = useState(true);
   const containerRef = React.useRef(null);
@@ -107,8 +107,8 @@ const PDFCover = ({ src, alt, className, style, onClick, loading = 'lazy' }) => 
       onClick={onClick}
     >
       {isLoading && (
-        <div style={{ textAlign: 'center', color: '#888', padding: '20px', position: 'absolute' }}>
-          Loading...
+        <div style={{ textAlign: 'center', color: '#888', padding: '20px', position: 'absolute', display: 'none' }}>
+          Preview...
         </div>
       )}
       <Document
@@ -118,6 +118,9 @@ const PDFCover = ({ src, alt, className, style, onClick, loading = 'lazy' }) => 
           setIsLoading(false);
           renderAttemptRef.current = 0;
           console.log('✅ PDF document loaded:', src);
+          if (onLoadComplete) {
+            onLoadComplete();
+          }
         }}
         onError={(error) => {
           console.warn('PDF load error (will display fallback):', error?.message || error);
@@ -134,7 +137,7 @@ const PDFCover = ({ src, alt, className, style, onClick, loading = 'lazy' }) => 
           setIsLoading(false);
           setError(true);
         }}
-        loading={<div style={{ textAlign: 'center', color: '#888', padding: '20px' }}>Loading PDF...</div>}
+        loading={<div style={{ textAlign: 'center', color: '#888', padding: '20px' }}>Preview PDF...</div>}
       >
         <Page
           pageNumber={1}
@@ -155,4 +158,4 @@ const PDFCover = ({ src, alt, className, style, onClick, loading = 'lazy' }) => 
   );
 };
 
-export default PDFCover;
+export default React.memo(PDFCover);

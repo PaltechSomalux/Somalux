@@ -1599,6 +1599,7 @@ export const PaperPanel = ({ demoMode = false }) => {
               onToggleLike={handleToggleFacultyLike}
               onFacultySelect={handleFacultySelect}
               onBack={handleBackFromFacultyGrid}
+              user={user}
             />
           ) : (
             <>

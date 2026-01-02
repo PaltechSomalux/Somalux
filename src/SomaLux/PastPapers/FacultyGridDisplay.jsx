@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiEye, FiChevronLeft } from 'react-icons/fi';
+import { MdVerified } from 'react-icons/md';
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
 import { FaSearch } from 'react-icons/fa';
 import './PaperPanel.css';
@@ -34,7 +35,8 @@ export const FacultyGridDisplay = ({
   facultyViews = {},
   onToggleLike,
   facultyLikes = {},
-  facultyLikesCounts = {}
+  facultyLikesCounts = {},
+  user
 }) => {
   const [facultySearchTerm, setFacultySearchTerm] = useState('');
 
@@ -178,9 +180,25 @@ export const FacultyGridDisplay = ({
                         <FiEye size={12} />
                         <span>{viewCount}</span>
                       </div>
-                      <div style={{ color: '#00a884', fontWeight: '600' }}>
-                        {paperCount} papers
-                      </div>
+                      {user && user.subscription_tier && (user.subscription_tier === 'premium' || user.subscription_tier === 'premium_pro') ? (
+                        <div style={{ color: '#00a884', fontWeight: '600' }}>
+                          {paperCount} papers
+                        </div>
+                      ) : user ? (
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          style={{ color: '#1DA1F2', display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }} 
+                          title="Premium feature"
+                        >
+                          <MdVerified size={12} />
+                        </div>
+                      ) : (
+                        <div style={{ color: '#00a884', fontWeight: '600' }}>
+                          {paperCount} papers
+                        </div>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

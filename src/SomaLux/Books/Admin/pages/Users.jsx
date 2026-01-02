@@ -26,38 +26,14 @@ const Users = ({ isSuperAdmin }) => {
     setLoading(true);
     try {
       let profiles = [];
-      let uploadCounts = [];
       let rankings = [];
+      let uploadCounts = [];
 
       try {
-        // First, try to fetch all profiles directly from Supabase
         profiles = await fetchProfiles();
-        console.log('[Users.load] fetchProfiles success:', profiles?.length || 0, profiles?.slice?.(0,3));
+        console.log('[Users.load] fetchProfiles success:', profiles?.length || 0);
       } catch (e) {
         console.error('[Users.load] fetchProfiles error:', e?.message || e);
-      }
-
-      // If profiles is empty, try fetchAuthenticatedUsers as fallback
-      if (!profiles || profiles.length === 0) {
-        try {
-          const authUsers = await fetchAuthenticatedUsers();
-          if (authUsers && authUsers.length > 0) {
-            profiles = authUsers.map(u => ({
-              ...u,
-              display_name: u.full_name || u.display_name || u.email?.split('@')[0] || ''
-            }));
-            console.log('[Users.load] fetchAuthenticatedUsers fallback success:', profiles?.length || 0);
-          }
-        } catch (e) {
-          console.error('[Users.load] fetchAuthenticatedUsers error:', e?.message || e);
-        }
-      }
-
-      try {
-        uploadCounts = await fetchUploadCountsByUser();
-        console.log('[Users.load] fetchUploadCountsByUser success:', uploadCounts?.length || 0);
-      } catch (e) {
-        console.error('[Users.load] fetchUploadCountsByUser error:', e?.message || e);
       }
 
       try {
@@ -67,10 +43,17 @@ const Users = ({ isSuperAdmin }) => {
         console.error('[Users.load] fetchUserRankingsAdmin error:', e?.message || e);
       }
 
+      try {
+        uploadCounts = await fetchUploadCountsByUser();
+        console.log('[Users.load] fetchUploadCountsByUser success:', uploadCounts?.length || 0);
+      } catch (e) {
+        console.error('[Users.load] fetchUploadCountsByUser error:', e?.message || e);
+      }
+
       console.groupCollapsed('[Users.load] fetched data');
-      console.log('profiles (count):', Array.isArray(profiles) ? profiles.length : profiles, profiles && profiles.slice ? profiles.slice(0,5) : profiles);
-      console.log('uploadCounts (count):', Array.isArray(uploadCounts) ? uploadCounts.length : uploadCounts, uploadCounts && uploadCounts.slice ? uploadCounts.slice(0,10) : uploadCounts);
-      console.log('rankings (count):', Array.isArray(rankings) ? rankings.length : rankings, rankings && rankings.slice ? rankings.slice(0,10) : rankings);
+      console.log('profiles (count):', Array.isArray(profiles) ? profiles.length : profiles, profiles?.slice?.(0, 3));
+      console.log('rankings (count):', Array.isArray(rankings) ? rankings.length : rankings, rankings?.slice?.(0, 5));
+      console.log('uploadCounts (count):', Array.isArray(uploadCounts) ? uploadCounts.length : uploadCounts, uploadCounts?.slice?.(0, 10));
       console.groupEnd();
 
       const uploadsMap = new Map(

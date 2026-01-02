@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiMapPin, FiEye, FiLock } from 'react-icons/fi';
+import { FiMapPin, FiEye } from 'react-icons/fi';
+import { MdVerified } from 'react-icons/md';
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
 import { FaSearch } from 'react-icons/fa';
 import { AdBanner } from '../Ads/AdBanner';
@@ -203,10 +204,10 @@ export const UniversityGrid = ({
                           e.stopPropagation();
                           setShowSubscriptionModal?.(true);
                         }}
-                        style={{ fontSize: '0.65rem', color: '#FFB800', display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }} 
+                        style={{ fontSize: '0.65rem', color: '#1DA1F2', display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }} 
                         title="Click to upgrade to Premium"
                       >
-                        <FiLock size={12} />
+                        <MdVerified size={12} />
                       </span>
                     )}
                     {user && (
@@ -322,10 +323,10 @@ export const UniversityGrid = ({
                           e.stopPropagation();
                           setShowSubscriptionModal?.(true);
                         }}
-                        style={{ fontSize: '0.65rem', color: '#FFB800', display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }} 
+                        style={{ fontSize: '0.65rem', color: '#1DA1F2', display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }} 
                         title="Click to upgrade to Premium"
                       >
-                        <FiLock size={12} />
+                        <MdVerified size={12} />
                       </span>
                     )}
                     {user && (

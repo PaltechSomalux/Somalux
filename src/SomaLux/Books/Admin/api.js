@@ -25,16 +25,13 @@ export async function fetchCategories() {
 
 // Admin-only: fetch all user rankings (score, tier, rank_position, etc.)
 export async function fetchUserRankingsAdmin() {
-  const origin = getBackendOrigin();
-  const endpoint = `${origin}/api/admin/user-rankings`;
   try {
-    const res = await fetch(endpoint);
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(text || `Failed to fetch user rankings (status ${res.status})`);
-    }
-    const payload = await res.json().catch(() => ({}));
-    return payload?.rankings || [];
+    const { data, error } = await supabase
+      .from('user_rankings')
+      .select('*')
+      .order('rank_position', { ascending: true });
+    if (error) throw error;
+    return data || [];
   } catch (e) {
     console.error('Error fetching admin user rankings:', e);
     return [];
@@ -43,20 +40,26 @@ export async function fetchUserRankingsAdmin() {
 
 // Admin-only: fetch top search queries for a given scope from search_events
 export async function fetchSearchAnalyticsTop(scope, { days = 30, limit = 20 } = {}) {
-  const origin = getBackendOrigin();
-  const params = new URLSearchParams();
-  if (scope) params.set('scope', scope);
-  if (days) params.set('days', String(days));
-  if (limit) params.set('limit', String(limit));
-  const endpoint = `${origin}/api/admin/search-analytics/top?${params.toString()}`;
   try {
-    const res = await fetch(endpoint);
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(text || `Failed to fetch search analytics (status ${res.status})`);
+    let query = supabase
+      .from('search_events')
+      .select('query, count');
+    
+    if (scope) {
+      query = query.eq('scope', scope);
     }
-    const payload = await res.json().catch(() => ({}));
-    return payload.rows || [];
+    
+    if (days) {
+      const daysAgo = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      query = query.gte('created_at', daysAgo);
+    }
+    
+    const { data, error } = await query
+      .order('count', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return data || [];
   } catch (e) {
     console.error('Error fetching admin search analytics top:', e);
     return [];
@@ -66,19 +69,23 @@ export async function fetchSearchAnalyticsTop(scope, { days = 30, limit = 20 } =
 // Admin-only: fetch per-user search history from search_events
 export async function fetchUserSearchHistoryAdmin(userId, { limit = 200, days } = {}) {
   if (!userId) return [];
-  const origin = getBackendOrigin();
-  const params = new URLSearchParams();
-  if (limit) params.set('limit', String(limit));
-  if (days) params.set('days', String(days));
-  const endpoint = `${origin}/api/admin/search-analytics/user/${encodeURIComponent(userId)}?${params.toString()}`;
   try {
-    const res = await fetch(endpoint);
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(text || `Failed to fetch user search history (status ${res.status})`);
+    let query = supabase
+      .from('search_events')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (days) {
+      const daysAgo = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      query = query.gte('created_at', daysAgo);
     }
-    const payload = await res.json().catch(() => ({}));
-    return payload.events || [];
+    
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return data || [];
   } catch (e) {
     console.error('Error fetching admin user search history:', e);
     return [];
@@ -88,17 +95,15 @@ export async function fetchUserSearchHistoryAdmin(userId, { limit = 200, days } 
 // Admin-only: fetch a single user's ranking by id
 export async function fetchUserRankingAdmin(userId) {
   if (!userId) return null;
-  const origin = getBackendOrigin();
-  const endpoint = `${origin}/api/admin/user-rankings/${encodeURIComponent(userId)}`;
   try {
-    const res = await fetch(endpoint);
-    if (!res.ok) {
-      if (res.status === 404) return null;
-      const text = await res.text().catch(() => '');
-      throw new Error(text || `Failed to fetch user ranking (status ${res.status})`);
-    }
-    const payload = await res.json().catch(() => ({}));
-    return payload?.ranking || null;
+    const { data, error } = await supabase
+      .from('user_rankings')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (error) throw error;
+    return data || null;
   } catch (e) {
     console.error('Error fetching admin user ranking by id:', e);
     return null;
@@ -573,69 +578,220 @@ export async function fetchStats() {
 }
 
 export async function fetchProfiles() {
-  console.log('[fetchProfiles] Starting fetch...');
-  
-  // First try to fetch from the backend endpoint which gets ALL auth users
   try {
-    console.log('[fetchProfiles] Calling fetchAuthenticatedUsers from backend...');
-    const authUsers = await fetchAuthenticatedUsers();
-    console.log('[fetchProfiles] fetchAuthenticatedUsers returned:', authUsers?.length || 0, 'users', authUsers?.slice?.(0,2));
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
     
-    if (authUsers && authUsers.length > 0) {
-      const mapped = authUsers.map(u => ({
-        ...u,
-        display_name: u.full_name || u.email?.split('@')[0] || ''
-      }));
-      console.log('[fetchProfiles] Returning', mapped.length, 'mapped users from backend');
-      return mapped;
+    if (error) {
+      console.error('[fetchProfiles] Supabase error:', error);
+      throw error;
     }
+    
+    // Map full_name to display_name for compatibility with existing code
+    return (data || []).map(p => ({
+      ...p,
+      display_name: p.full_name || p.email?.split('@')[0] || ''
+    }));
   } catch (e) {
-    console.warn('[fetchProfiles] fetchAuthenticatedUsers failed:', e?.message || e);
+    console.error('[fetchProfiles] Error:', e?.message || e);
+    return [];
   }
-
-  console.log('[fetchProfiles] Falling back to direct Supabase fetch...');
-  // Fallback: Fetch directly from profiles table
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false });
-  
-  if (error) {
-    console.error('[fetchProfiles] Supabase error:', error);
-    throw error;
-  }
-  
-  console.log('[fetchProfiles] Supabase returned:', data?.length || 0, 'profiles');
-  
-  // Map full_name to display_name for compatibility with existing code
-  return (data || []).map(p => ({
-    ...p,
-    display_name: p.full_name || p.email?.split('@')[0] || ''
-  }));
 }
 
-// Fetch all authenticated users with their status and activity (direct backend call)
-export async function fetchAuthenticatedUsers() {
-  const origin = getBackendOrigin();
-  console.log('[fetchAuthenticatedUsers] Fetching from:', origin + '/api/admin/authenticated-users');
-  
+// Helper function to get public avatar URL from storage path
+export function getAvatarPublicUrl(avatarPath) {
+  if (!avatarPath) return null;
+  // If it's already a full URL, return as-is
+  if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+    return avatarPath;
+  }
+  // Otherwise, generate public URL from storage path
   try {
-    const res = await fetch(`${origin}/api/admin/authenticated-users`);
-    console.log('[fetchAuthenticatedUsers] Response status:', res.status);
+    const { data } = supabase.storage.from('user-avatars').getPublicUrl(avatarPath);
+    return data?.publicUrl || null;
+  } catch (e) {
+    console.error('[getAvatarPublicUrl] Error getting public URL:', e);
+    return null;
+  }
+}
+
+// Fetch all authenticated users with their status and activity (direct Supabase)
+export async function fetchAuthenticatedUsers() {
+  try {
+    // Fetch all profiles from database
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (profileError) throw profileError;
     
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      console.error('[fetchAuthenticatedUsers] Response not OK:', text?.substring?.(0, 200));
-      throw new Error(text || `Failed to fetch authenticated users (status ${res.status})`);
+    // Fetch all auth users to get avatar_url from user_metadata
+    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+    const authUserMap = new Map();
+    
+    if (authData?.users) {
+      authData.users.forEach(authUser => {
+        authUserMap.set(authUser.id, {
+          avatar_url: authUser.user_metadata?.avatar_url || null,
+          full_name: authUser.user_metadata?.full_name || null
+        });
+      });
+      console.log('[fetchAuthenticatedUsers] Fetched auth metadata for', authData.users.length, 'users');
     }
     
-    const payload = await res.json().catch(() => ({}));
-    console.log('[fetchAuthenticatedUsers] Payload received:', { ok: payload?.ok, usersCount: payload?.users?.length || 0 });
+    // Enrich profiles with auth user metadata including avatar_url
+    const enrichedProfiles = (profiles || []).map(profile => {
+      const authMeta = authUserMap.get(profile.id) || {};
+      
+      return {
+        ...profile,
+        // Use avatar_url from auth metadata first, then fall back to profiles table
+        avatar_url: authMeta.avatar_url || profile.avatar_url || null,
+        // Use full_name from auth metadata if available
+        full_name: profile.full_name || authMeta.full_name || null,
+        display_name: profile.full_name || authMeta.full_name || profile.email || null
+      };
+    });
     
-    return payload?.users || [];
+    console.log('[fetchAuthenticatedUsers] Fetched', enrichedProfiles.length, 'profiles');
+    const withAvatars = enrichedProfiles.filter(p => p.avatar_url).length;
+    console.log('[fetchAuthenticatedUsers] Profiles with avatars:', withAvatars);
+    enrichedProfiles.slice(0, 3).forEach((p, i) => {
+      console.log(`[fetchAuthenticatedUsers] Profile ${i}:`, { id: p.id, email: p.email, avatar_url: p.avatar_url?.substring(0, 50) });
+    });
+    return enrichedProfiles;
   } catch (e) {
     console.error('[fetchAuthenticatedUsers] Error:', e?.message || e);
     return [];
+  }
+}
+
+// Migrate avatars from storage bucket to profiles table
+export async function migrateAvatarsToProfilesTable() {
+  try {
+    console.log('[migrateAvatarsToProfilesTable] Starting migration...');
+    
+    // List all files in user-avatars bucket
+    const { data: avatarFiles, error: listError } = await supabase.storage
+      .from('user-avatars')
+      .list('', { limit: 10000 });
+    
+    if (listError) {
+      console.error('[migrateAvatarsToProfilesTable] Error listing files:', listError);
+      return { success: false, error: listError.message };
+    }
+    
+    console.log('[migrateAvatarsToProfilesTable] Found', avatarFiles?.length || 0, 'avatar files');
+    
+    if (!avatarFiles || avatarFiles.length === 0) {
+      return { success: true, migrated: 0, message: 'No avatar files found' };
+    }
+    
+    // Get all profiles
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email, avatar_url, avatar_path');
+    
+    if (profileError) {
+      console.error('[migrateAvatarsToProfilesTable] Error fetching profiles:', profileError);
+      return { success: false, error: profileError.message };
+    }
+    
+    console.log('[migrateAvatarsToProfilesTable] Found', profiles?.length || 0, 'profiles');
+    
+    const migrateResults = {
+      updated: [],
+      skipped: [],
+      errors: []
+    };
+    
+    // Filter avatar files (exclude system files)
+    const validAvatarFiles = (avatarFiles || [])
+      .filter(f => !f.id.startsWith('.') && f.name.match(/\.(jpg|jpeg|png|gif|webp)$/i));
+    
+    console.log('[migrateAvatarsToProfilesTable] Valid avatar files:', validAvatarFiles.length);
+    
+    // For each profile without an avatar, assign next available avatar
+    let fileIndex = 0;
+    
+    for (const profile of (profiles || [])) {
+      // Skip profiles that already have avatars
+      if (profile.avatar_url) {
+        migrateResults.skipped.push(profile.id);
+        console.log(`[migrateAvatarsToProfilesTable] Profile ${profile.id} already has avatar_url, skipping`);
+        continue;
+      }
+      
+      // If no more files, stop
+      if (fileIndex >= validAvatarFiles.length) {
+        console.log(`[migrateAvatarsToProfilesTable] No more avatar files for remaining profiles`);
+        break;
+      }
+      
+      const avatarFile = validAvatarFiles[fileIndex];
+      
+      try {
+        // Generate public URL
+        const { data } = supabase.storage.from('user-avatars').getPublicUrl(avatarFile.name);
+        const publicUrl = data?.publicUrl;
+        
+        console.log(`[migrateAvatarsToProfilesTable] Generated URL for ${avatarFile.name}: ${publicUrl}`);
+        
+        if (!publicUrl) {
+          console.warn(`[migrateAvatarsToProfilesTable] Failed to generate public URL for ${avatarFile.name}`);
+          migrateResults.errors.push({ id: profile.id, error: 'Failed to generate public URL' });
+          fileIndex++;
+          continue;
+        }
+        
+        // Update profile with avatar
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            avatar_url: publicUrl,
+            avatar_path: avatarFile.name
+          })
+          .eq('id', profile.id);
+        
+        if (updateError) {
+          console.warn(`[migrateAvatarsToProfilesTable] Error updating profile ${profile.id}:`, updateError);
+          migrateResults.errors.push({ id: profile.id, error: updateError.message });
+        } else {
+          console.log(`[migrateAvatarsToProfilesTable] Updated profile ${profile.id} with ${avatarFile.name}`);
+          migrateResults.updated.push({ 
+            id: profile.id, 
+            email: profile.email,
+            file: avatarFile.name,
+            url: publicUrl
+          });
+        }
+        
+        fileIndex++;
+      } catch (e) {
+        console.error(`[migrateAvatarsToProfilesTable] Exception for profile ${profile.id}:`, e);
+        migrateResults.errors.push({ id: profile.id, error: e.message });
+        fileIndex++;
+      }
+    }
+    
+    console.log('[migrateAvatarsToProfilesTable] Migration complete:', {
+      updated: migrateResults.updated.length,
+      skipped: migrateResults.skipped.length,
+      errors: migrateResults.errors.length
+    });
+    
+    return {
+      success: true,
+      migrated: migrateResults.updated.length,
+      skipped: migrateResults.skipped.length,
+      errors: migrateResults.errors.length,
+      details: migrateResults
+    };
+  } catch (err) {
+    console.error('[migrateAvatarsToProfilesTable] Unexpected error:', err);
+    return { success: false, error: err.message };
   }
 }
 
@@ -680,19 +836,16 @@ export async function fetchUploadCountsByUser() {
 }
 
 export async function updateUserRole(id, role) {
-  const origin = getBackendOrigin();
   try {
-    const res = await fetch(`${origin}/api/elib/users/${encodeURIComponent(id)}/role`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role }),
-    });
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      throw new Error(errText || `Failed to update role (status ${res.status})`);
-    }
-    const payload = await res.json().catch(() => ({}));
-    return payload?.data || null;
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ role })
+      .eq('id', id)
+      .select('*')
+      .single();
+    
+    if (error) throw error;
+    return data || null;
   } catch (error) {
     console.error('[updateUserRole] Error:', error?.message || error);
     throw error;
@@ -1843,19 +1996,15 @@ export async function getSupabaseUsageReport() {
 
 // Update user subscription tier
 export async function updateUserTier(userId, tier) {
-  const origin = getBackendOrigin();
-  const endpoint = `${origin}/api/elib/users/${userId}/tier`;
   try {
-    const response = await fetch(endpoint, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subscription_tier: tier })
-    });
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      throw new Error(text || `Failed to update user tier (status ${response.status})`);
-    }
-    const data = await response.json();
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ subscription_tier: tier })
+      .eq('id', userId)
+      .select('*')
+      .single();
+    
+    if (error) throw error;
     return data;
   } catch (error) {
     console.error('Error updating user tier:', error);

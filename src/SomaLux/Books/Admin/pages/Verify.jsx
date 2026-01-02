@@ -1,14 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchAllProfilesForVerify, updateUserTier } from '../api';
+import { fetchAuthenticatedUsers, updateUserTier, fetchUploadCountsByUser } from '../api';
 import { useAdminUI } from '../AdminUIContext';
 import { FiCheck, FiAward, FiStar, FiSearch } from 'react-icons/fi';
+import VerificationBadge from '../components/VerificationBadge';
 
 const Verify = ({ userProfile }) => {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(15);
   const [search, setSearch] = useState('');
   const [tierFilter, setTierFilter] = useState('');
   const [updating, setUpdating] = useState({});
@@ -23,12 +24,33 @@ const Verify = ({ userProfile }) => {
   const load = async () => {
     setLoading(true);
     try {
-      const allProfiles = await fetchAllProfilesForVerify();
-      const profiles = (allProfiles || []).map(p => ({
-        ...p,
-        subscription_tier: p.subscription_tier || 'basic',
-        subscription_started_at: p.subscription_started_at
-      }));
+      const [allProfiles, uploadCounts] = await Promise.all([
+        fetchAuthenticatedUsers(),
+        fetchUploadCountsByUser()
+      ]);
+      
+      const uploadsMap = new Map(
+        (uploadCounts || []).map((u) => [String(u.uploaded_by), {
+          total: typeof u.total === 'number' ? u.total : (u.books || 0) + (u.past_papers || 0) + (u.universities || 0),
+        }])
+      );
+      
+      const profiles = (allProfiles || [])
+        .filter(p => p && p.id) // Ensure valid profiles
+        .map(p => {
+          const contrib = uploadsMap.get(String(p.id)) || { total: 0 };
+          return {
+            ...p,
+            display_name: p.full_name || p.email,
+            subscription_tier: p.subscription_tier || 'basic',
+            subscription_started_at: p.subscription_started_at,
+            subscription_expires_at: p.subscription_expires_at,
+            avatar_url: p.avatar_url,
+            uploadCount: contrib.total || 0
+          };
+        });
+      
+      console.log('[Verify.load] Loaded profiles:', profiles.length);
       setRows(profiles);
       setCount(profiles.length);
     } catch (error) {
@@ -144,8 +166,10 @@ const Verify = ({ userProfile }) => {
         <table className="table">
           <thead>
             <tr>
-              <th>User</th>
+              <th>#</th>
+              <th>Name</th>
               <th>Email</th>
+              <th>Uploads</th>
               <th>Current Tier</th>
               <th>Subscription Date</th>
               <th>Change Tier To</th>
@@ -154,17 +178,71 @@ const Verify = ({ userProfile }) => {
           <tbody>
             {paginatedRows.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', color: '#8696a0', padding: 20 }}>
+                <td colSpan={6} style={{ textAlign: 'center', color: '#8696a0', padding: 20 }}>
                   No users found
                 </td>
               </tr>
             ) : (
-              paginatedRows.map(u => {
+              paginatedRows.map((u, idx) => {
+                const rowNum = (page - 1) * pageSize + idx + 1;
                 const tier = getTierBadge(u.subscription_tier);
                 return (
                   <tr key={u.id}>
-                    <td>{u.display_name || u.email?.split('@')[0] || 'Unknown'}</td>
+                    <td style={{ fontSize: '13px', fontWeight: '600', color: '#00a884' }}>
+                      #{rowNum}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ position: 'relative' }} className="viewer-avatar">
+                          {u.avatar_url ? (
+                            <img
+                              src={u.avatar_url}
+                              alt={u.display_name || u.email || 'User avatar'}
+                              style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                // Fallback if image fails to load
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            (u.display_name || u.email || '?').charAt(0).toUpperCase()
+                          )}
+                          {u.uploadCount > 0 && (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: -4,
+                              right: -4,
+                              backgroundColor: '#00a884',
+                              color: 'white',
+                              borderRadius: '50%',
+                              width: 20,
+                              height: 20,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 10,
+                              fontWeight: 'bold',
+                              border: '2px solid #0a1419'
+                            }}>
+                              {u.uploadCount > 99 ? '99+' : u.uploadCount}
+                            </div>
+                          )}
+                          {(u.subscription_tier === 'premium' || u.subscription_tier === 'premium_pro') && (
+                            <div style={{
+                              position: 'absolute',
+                              top: -6,
+                              right: -6,
+                              zIndex: 2
+                            }}>
+                              <VerificationBadge tier={u.subscription_tier} size="sm" showLabel={false} showTooltip={true} />
+                            </div>
+                          )}
+                        </div>
+                        <span>{u.display_name || '—'}</span>
+                      </div>
+                    </td>
                     <td style={{ fontSize: 12, color: '#8696a0' }}>{u.email}</td>
+                    <td style={{ fontSize: 12, fontWeight: '600', color: '#00a884' }}>{u.uploadCount}</td>
                     <td>
                       <div style={{
                         display: 'flex',
@@ -206,28 +284,10 @@ const Verify = ({ userProfile }) => {
       </div>
 
       {/* Pagination */}
-      <div className="actions" style={{ marginTop: 10 }}>
+      <div className="actions" style={{ marginTop: 10, justifyContent: 'space-between' }}>
         <button className="btn" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
-        <span style={{ color: '#cfd8dc' }}>Page {page} of {totalPages}</span>
+        <span style={{ color: '#cfd8dc' }}>Page {page} of {totalPages} ({filteredRows.length} users)</span>
         <button className="btn" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
-      </div>
-
-      {/* Info Box */}
-      <div style={{
-        marginTop: 16,
-        padding: 12,
-        backgroundColor: 'rgba(0, 168, 132, 0.05)',
-        border: '1px solid rgba(0, 168, 132, 0.2)',
-        borderRadius: 6,
-        color: '#8696a0',
-        fontSize: 12
-      }}>
-        <strong style={{ color: '#00a884' }}>Tier Information:</strong>
-        <ul style={{ margin: '8px 0 0 0', paddingLeft: 16 }}>
-          <li><strong>Basic:</strong> Default tier for all new users</li>
-          <li><strong>Premium:</strong> <span style={{ color: '#2196F3' }}>●</span> Blue verification - Enhanced features</li>
-          <li><strong>Premium Pro:</strong> <span style={{ color: '#FFD700' }}>●</span> Gold verification - All premium features</li>
-        </ul>
       </div>
     </div>
   );

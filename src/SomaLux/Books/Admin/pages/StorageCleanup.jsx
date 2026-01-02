@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getOrphanedFilesReport, cleanupOrphanedFiles, clearAllCaches, getCacheStats, getSupabaseUsageReport } from '../api';
+import { getOrphanedFilesReport, cleanupOrphanedFiles, clearAllCaches, getCacheStats, getSupabaseUsageReport, migrateAvatarsToProfilesTable } from '../api';
 import { useAdminUI } from '../AdminUIContext';
 
 const StorageCleanup = ({ userProfile }) => {
@@ -9,6 +9,7 @@ const StorageCleanup = ({ userProfile }) => {
   const [cacheStats, setCacheStats] = useState(null);
   const [cacheCleared, setCacheCleared] = useState(null);
   const [usageReport, setUsageReport] = useState(null);
+  const [migrationResults, setMigrationResults] = useState(null);
   const { confirm, showToast } = useAdminUI();
 
   const isAdmin = userProfile?.role === 'admin' || 
@@ -119,6 +120,45 @@ const StorageCleanup = ({ userProfile }) => {
     } catch (error) {
       console.error('Failed to get usage report:', error);
       showToast({ type: 'error', message: 'Failed to load usage report.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMigrateAvatars = async () => {
+    if (!isAdmin) {
+      showToast({ type: 'error', message: 'Only admins can access storage management.' });
+      return;
+    }
+
+    const ok = await confirm({
+      title: 'Migrate avatars to profiles table?',
+      message: 'This will migrate existing avatar files from storage to user profiles table. This will link avatars to users so they display correctly. This action cannot be undone.',
+      confirmLabel: 'Migrate Avatars',
+      cancelLabel: 'Cancel',
+      variant: 'warning',
+    });
+
+    if (!ok) return;
+
+    setLoading(true);
+    try {
+      const results = await migrateAvatarsToProfilesTable();
+      setMigrationResults(results);
+      if (results.success) {
+        showToast({ 
+          type: 'success', 
+          message: `Avatar migration completed! Migrated: ${results.migrated}, Skipped: ${results.skipped}, Errors: ${results.errors}.` 
+        });
+      } else {
+        showToast({ 
+          type: 'error', 
+          message: `Avatar migration failed: ${results.error}` 
+        });
+      }
+    } catch (error) {
+      console.error('Failed to migrate avatars:', error);
+      showToast({ type: 'error', message: 'Avatar migration failed.' });
     } finally {
       setLoading(false);
     }
@@ -355,6 +395,61 @@ const StorageCleanup = ({ userProfile }) => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* AVATAR MIGRATION SECTION */}
+      <div className="panel">
+        <div className="panel-title">👤 Avatar Migration to Profiles</div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <p style={{ color: '#8696a0', marginBottom: '12px' }}>
+            Link existing avatar files from storage to user profiles. This will ensure all user avatars display correctly in the admin dashboard.
+          </p>
+        </div>
+
+        <div className="actions" style={{ marginBottom: '16px' }}>
+          <button 
+            className="btn primary" 
+            onClick={handleMigrateAvatars}
+            disabled={loading}
+            style={{ backgroundColor: '#3b82f6' }}
+          >
+            {loading ? 'Migrating...' : 'Migrate Avatars to Profiles'}
+          </button>
+        </div>
+
+        {migrationResults && (
+          <div className="panel" style={{ marginBottom: '16px', backgroundColor: '#1a1a2e' }}>
+            <h4 style={{ color: '#e9edef', marginBottom: '12px' }}>📊 Migration Results</h4>
+            
+            {migrationResults.success ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                <div style={{ padding: '12px', backgroundColor: '#0b141a', borderRadius: '4px', borderLeft: '4px solid #10b981' }}>
+                  <div style={{ color: '#8696a0', fontSize: '0.9rem' }}>Migrated Profiles</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>
+                    {migrationResults.migrated}
+                  </div>
+                </div>
+                <div style={{ padding: '12px', backgroundColor: '#0b141a', borderRadius: '4px', borderLeft: '4px solid #6b7280' }}>
+                  <div style={{ color: '#8696a0', fontSize: '0.9rem' }}>Skipped (Already Linked)</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#6b7280' }}>
+                    {migrationResults.skipped}
+                  </div>
+                </div>
+                <div style={{ padding: '12px', backgroundColor: '#0b141a', borderRadius: '4px', borderLeft: '4px solid #ef4444' }}>
+                  <div style={{ color: '#8696a0', fontSize: '0.9rem' }}>Errors</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>
+                    {migrationResults.errors}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: '12px', backgroundColor: '#7f1d1d', borderRadius: '4px', color: '#fca5a5' }}>
+                ❌ Migration failed: {migrationResults.error}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* STORAGE SECTION */}

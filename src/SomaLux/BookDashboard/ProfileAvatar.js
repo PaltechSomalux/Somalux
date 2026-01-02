@@ -113,6 +113,24 @@ export const ProfileAvatar = ({
         console.warn('Avatar map update failed:', e?.message);
       }
       
+      // Update profiles table with avatar URL and file path
+      try {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ 
+            avatar_url: publicUrl,
+            avatar_path: fileName  // Also save the file name for reference
+          })
+          .eq('id', authUser?.id);
+        if (profileError) {
+          console.warn('Failed to update profile avatar_url:', profileError?.message);
+        } else {
+          console.log('Profile avatar_url and avatar_path updated successfully');
+        }
+      } catch (e) {
+        console.warn('Error updating profile:', e?.message);
+      }
+      
       // Update UI
       setProfileImage(publicUrl);
       console.log('UI updated with new avatar');
