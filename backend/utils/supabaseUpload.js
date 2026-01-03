@@ -206,3 +206,105 @@ export async function bookExistsByISBN(isbn, supabaseClient) {
     return false;
   }
 }
+
+/**
+ * Upload past paper PDF to Supabase
+ * @param {object} params
+ * @param {object} params.supabase - Supabase client
+ * @param {Buffer} params.pdfBuffer - PDF file buffer
+ * @param {string} params.fileName - Original filename
+ * @param {object} params.details - Extracted paper details (unit_code, year, etc.)
+ * @returns {object} Upload result
+ */
+export async function uploadPastPaperToSupabase({
+  supabase,
+  pdfBuffer,
+  fileName,
+  details
+}) {
+  try {
+    const paperId = uuidv4();
+    const ext = fileName.split('.').pop().toLowerCase();
+    
+    if (ext !== 'pdf') {
+      throw new Error('Only PDF files are supported');
+    }
+
+    const storagePath = `past-papers/${paperId}/${fileName}`;
+
+    // Upload PDF to storage
+    console.log(`📤 Uploading PDF to storage...`);
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('past-papers')
+      .upload(storagePath, pdfBuffer, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: 'application/pdf'
+      });
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      throw new Error(`Failed to upload file: ${uploadError.message}`);
+    }
+
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('past-papers')
+      .getPublicUrl(storagePath);
+    
+    const fileUrl = publicUrlData?.publicUrl || uploadData.path;
+
+    // Prepare record
+    const nowIso = new Date().toISOString();
+    const paperRecord = {
+      id: paperId,
+      title: details.unit_name || `${details.unit_code || 'Past Paper'} - ${details.year || 'Unknown'}`,
+      university_id: details.university_id || null,
+      subject: details.faculty || '',
+      course_code: details.unit_code || '',
+      file_url: fileUrl,
+      file_path: storagePath,
+      exam_year: details.year ? Number(details.year) : null,
+      semester: details.semester || null,
+      exam_type: details.exam_type || 'Main',
+      level: null,
+      file_size: pdfBuffer.length,
+      uploaded_by: details.uploaded_by || null,
+      is_submission: details.is_submission ? true : false,
+      is_featured: false,
+      is_active: true,
+      downloads_count: 0,
+      views_count: 0,
+      rating: 0,
+      rating_count: 0,
+      created_at: nowIso,
+      updated_at: nowIso
+    };
+
+    // Insert record - use proper table name
+    console.log(`💾 Saving record to database...`);
+    const { data: paperData, error: insertError } = await supabase
+      .from('past_papers')
+      .insert(paperRecord)
+      .select('*')
+      .single();
+
+    if (insertError) {
+      console.error('Database insert error:', insertError);
+      throw new Error(`Failed to create past paper record: ${insertError.message}`);
+    }
+
+    console.log(`✅ Past paper uploaded successfully`);
+    return {
+      ok: true,
+      paperId,
+      paper: paperData,
+      fileUrl
+    };
+
+  } catch (error) {
+    console.error('Upload failed:', error.message);
+    throw error;
+  }
+}
+

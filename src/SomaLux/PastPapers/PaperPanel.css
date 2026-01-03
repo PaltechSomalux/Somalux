@@ -400,7 +400,7 @@
   padding-right: 0;
 }
 
-/* Small phones -> 2 columns with slightly larger cards */
+/* Small phones -> 3 columns with slightly larger cards */
 @media (min-width: 420px) {
   .gridpast {
     grid-template-columns: repeat(3, 1fr);

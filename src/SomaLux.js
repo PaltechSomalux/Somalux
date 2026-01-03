@@ -43,6 +43,7 @@ export function SomaLux() {
 
                     {/* Books */}
                     <Route path="/BookManagement" element={<BookManagement />} />
+                    <Route path="/BookManagement/:tab" element={<BookManagement />} />
                     <Route path="/books/admin/*" element={<BooksAdmin />} />
                     <Route path="/past-papers/admin" element={<Navigate to="/books/admin/content?tab=pastpapers" replace />} />
                     <Route path="/books/reading-dashboard" element={<ReadingDashboard />} />

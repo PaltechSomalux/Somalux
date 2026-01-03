@@ -212,35 +212,20 @@ export const PaperGrid = React.memo(({
                           onClick={() => onPaperSelect(paper)}
                         >
                     {/* Paper Cover - Always show placeholder */}
-                    <div
-                      style={{
-                        width: '100%',
-                        height: '140px',
-                        backgroundColor: '#1f2937',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '6px',
-                        marginBottom: '8px',
-                        color: '#8696a0',
-                        fontSize: '0.8rem',
-                        textAlign: 'center',
-                        padding: '8px'
-                      }}
-                    >
+                    <div className="paper-snapshotpast">
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                         <FiFileText size={24} />
-                        <span>{paper.course ? (paper.courseCode ? `${paper.course} ${paper.courseCode}` : paper.course) : paper.courseCode || 'Paper'}</span>
+                        <span style={{ fontSize: '0.75rem' }}>{paper.course ? (paper.courseCode ? `${paper.course} ${paper.courseCode}` : paper.course) : paper.courseCode || 'Paper'}</span>
                       </div>
                     </div>
 
                     {/* Card Content */}
                     <div className="card-contentpast">
-                      <h3 style={{ margin: 0, fontSize: '0.65rem', color: '#e9edef', fontWeight: '600', lineHeight: '1.3', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden', wordBreak: 'break-word', minHeight: '20px' }}>
+                      <h3 className="paper-titlepast">
                         {paper.course ? `${paper.course}${paper.courseCode ? ` ${paper.courseCode}` : ''}` : paper.courseCode || paper.title}
                       </h3>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.6em', color: '#8696a0', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minHeight: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.6em', color: '#8696a0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minHeight: '14px' }}>
                         {paper.faculty && <span>{paper.faculty}</span>}
                         {paper.year && <span>•</span>}
                         {paper.year && <span>{paper.year}</span>}
@@ -324,35 +309,20 @@ export const PaperGrid = React.memo(({
                       onClick={() => onPaperSelect(paper)}
                     >
                       {/* Paper Cover - Always show placeholder */}
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '140px',
-                          backgroundColor: '#1f2937',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '6px',
-                          marginBottom: '8px',
-                          color: '#8696a0',
-                          fontSize: '0.8rem',
-                          textAlign: 'center',
-                          padding: '8px'
-                        }}
-                      >
+                      <div className="paper-snapshotpast">
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                           <FiFileText size={24} />
-                          <span>{paper.course ? (paper.courseCode ? `${paper.course} ${paper.courseCode}` : paper.course) : paper.courseCode || 'Paper'}</span>
+                          <span style={{ fontSize: '0.75rem' }}>{paper.course ? (paper.courseCode ? `${paper.course} ${paper.courseCode}` : paper.course) : paper.courseCode || 'Paper'}</span>
                         </div>
                       </div>
 
                       {/* Card Content */}
                       <div className="card-contentpast">
-                        <h3 style={{ margin: 0, fontSize: '0.65rem', color: '#e9edef', fontWeight: '600', lineHeight: '1.3', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden', wordBreak: 'break-word', minHeight: '20px' }}>
+                        <h3 className="paper-titlepast">
                           {paper.course ? `${paper.course}${paper.courseCode ? ` ${paper.courseCode}` : ''}` : paper.courseCode || paper.title}
                         </h3>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.6em', color: '#8696a0', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minHeight: '14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.6em', color: '#8696a0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minHeight: '14px' }}>
                           {paper.faculty && <span>{paper.faculty}</span>}
                           {paper.year && <span>•</span>}
                           {paper.year && <span>{paper.year}</span>}

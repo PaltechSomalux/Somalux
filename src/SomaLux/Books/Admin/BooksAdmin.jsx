@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, Navigate, useNavigate, useLocation, Link } from
 import { 
   FiBarChart2, FiBookOpen, FiUpload, FiFolder,
   FiSettings, FiUsers, FiChevronLeft, FiChevronRight,
-  FiRefreshCw, FiGrid, FiSearch, FiHardDrive, FiCheck
+  FiRefreshCw, FiGrid, FiSearch, FiHardDrive, FiCheck, FiClock
 } from 'react-icons/fi';
 import { MdAdminPanelSettings } from "react-icons/md";
 import { BiSpeaker } from 'react-icons/bi';
@@ -14,6 +14,7 @@ import { API_URL } from '../../../config';
 import './admin.css';
 import { AdminUIProvider } from './AdminUIContext';
 import { supabase } from '../supabaseClient';
+import UploadHistoryPage from './pages/UploadHistoryPage';
 
 // NotificationBadge stays — now used for submissions and other alerts
 const NotificationBadge = ({ count }) => {
@@ -303,6 +304,10 @@ export const BooksAdmin = () => {
             </NavLink>
           )}
 
+          <NavLink to="/books/admin/upload-history" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+            <FiClock /> <span>Upload History</span>
+          </NavLink>
+
           <NavLink to="/books/admin/categories" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
             <FiFolder /> <span>Categories</span>
           </NavLink>
@@ -364,6 +369,7 @@ export const BooksAdmin = () => {
                 {/* Books Routes */}
                 <Route path="content" element={<ContentManagement userProfile={userProfile} />} />
                 <Route path="upload" element={<Upload userProfile={userProfile} />} />
+                <Route path="upload-history" element={<UploadHistoryPage userProfile={userProfile} />} />
 
                 {canAccessContentFeatures && (
                   <>

@@ -1222,6 +1222,198 @@ app.get('/api/elib/bulk-upload/processes', async (req, res) => {
   }
 });
 
+// ==================== PAST PAPERS BULK UPLOAD ====================
+
+const bulkUploadPastPapersProcesses = new Map();
+
+app.post('/api/elib/bulk-upload-pastpapers/start', async (req, res) => {
+  console.log(`📨 [PAST-PAPERS-BULK-UPLOAD-START] Request received at ${new Date().toISOString()}`);
+
+  if (!supabaseAdmin) {
+    console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-START] Supabase not configured`);
+    return res.status(500).json({ error: 'Supabase not configured on server' });
+  }
+
+  try {
+    const { papersDirectory, uploadedBy, asSubmission } = req.body;
+    const actorEmail = req.headers['x-actor-email'] || 'admin';
+    const actorName = req.headers['x-actor-name'] || 'Unknown';
+
+    console.log(`📂 [PAST-PAPERS-BULK-UPLOAD-START] Directory: ${papersDirectory}`);
+    console.log(`👤 [PAST-PAPERS-BULK-UPLOAD-START] Uploader: ${uploadedBy || 'null'}`);
+    console.log(`📋 [PAST-PAPERS-BULK-UPLOAD-START] AsSubmission: ${asSubmission}`);
+
+    if (!papersDirectory?.trim()) {
+      console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-START] No directory provided`);
+      return res.status(400).json({ error: 'Directory path is required' });
+    }
+
+    // Validate directory exists
+    const path = require('path');
+    const fs = require('fs');
+    const normalizedPath = path.normalize(papersDirectory);
+    
+    try {
+      const stat = fs.statSync(normalizedPath);
+      if (!stat.isDirectory()) {
+        console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-START] Path is not a directory: ${normalizedPath}`);
+        return res.status(400).json({ error: 'Path is not a directory' });
+      }
+      console.log(`✅ [PAST-PAPERS-BULK-UPLOAD-START] Directory exists and is accessible`);
+    } catch (e) {
+      console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-START] Directory access error:`, e.message);
+      return res.status(400).json({ error: `Directory not found or not accessible: ${e.message}` });
+    }
+
+    const processId = crypto.randomUUID();
+
+    // Create process tracking object
+    const stopFlag = { stopped: false };
+    const process = {
+      id: processId,
+      status: 'running',
+      papersDirectory,
+      uploadedBy,
+      asSubmission,
+      startedAt: new Date().toISOString(),
+      completedAt: null,
+      startedByEmail: actorEmail,
+      startedByName: actorName,
+      stats: {
+        total: 0,
+        processed: 0,
+        successful: 0,
+        failed: 0,
+        skipped: 0
+      },
+      stopFlag
+    };
+
+    bulkUploadPastPapersProcesses.set(processId, process);
+    console.log(`🔑 [PAST-PAPERS-BULK-UPLOAD-START] Process ID: ${processId}`);
+
+    // Start background upload
+    console.log(`🚀 [PAST-PAPERS-BULK-UPLOAD-START] Starting background upload process`);
+    
+    (async () => {
+      try {
+        console.log(`📋 [PAST-PAPERS-BULK-UPLOAD-${processId}] Calling bulkUploadPastPapers...`);
+        const { bulkUploadPastPapers } = await import('./scripts/bulkUploadPastPapers.js');
+        
+        const stats = await bulkUploadPastPapers({
+          papersDirectory,
+          supabaseUrl: process.env.SUPABASE_URL,
+          supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+          uploadedBy,
+          asSubmission,
+          onProgress: (data) => {
+            // Update process stats
+            if (data.stats) {
+              process.stats = { ...data.stats };
+            }
+          },
+          stopFlag
+        });
+
+        console.log(`✅ [PAST-PAPERS-BULK-UPLOAD-${processId}] Upload completed:`, stats);
+        process.status = 'completed';
+        process.completedAt = new Date().toISOString();
+        process.stats = stats;
+
+        // Notify admin
+        if (actorEmail && actorEmail !== 'admin') {
+          try {
+            await sendEmail({
+              to: actorEmail,
+              subject: `Past Papers Bulk Upload Complete`,
+              html: buildBrandedEmailHtml(`
+                <h2>Upload Complete</h2>
+                <p>Your bulk upload of past papers has completed.</p>
+                <ul>
+                  <li>Total: ${stats.total}</li>
+                  <li>Successful: ${stats.successful}</li>
+                  <li>Failed: ${stats.failed}</li>
+                  <li>Skipped: ${stats.skipped}</li>
+                </ul>
+              `)
+            });
+          } catch (emailErr) {
+            console.warn(`⚠️ Failed to send email to ${actorEmail}:`, emailErr.message);
+          }
+        }
+
+      } catch (error) {
+        console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-${processId}] Error:`, error.message);
+        process.status = 'failed';
+        process.error = error.message;
+        process.completedAt = new Date().toISOString();
+      }
+    })();
+
+    console.log(`✅ [PAST-PAPERS-BULK-UPLOAD-START] Response sent with processId: ${processId}`);
+    res.json({ ok: true, processId });
+
+  } catch (error) {
+    console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-START] Exception caught:`, error.message);
+    res.status(500).json({ error: error.message || 'Failed to start bulk upload' });
+  }
+});
+
+app.get('/api/elib/bulk-upload-pastpapers/status/:processId', async (req, res) => {
+  try {
+    const { processId } = req.params;
+    const process = bulkUploadPastPapersProcesses.get(processId);
+
+    if (!process) {
+      return res.status(404).json({ error: 'Process not found' });
+    }
+
+    const { stopFlag, ...safeProcess } = process;
+    res.json({ ok: true, process: safeProcess });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to get status' });
+  }
+});
+
+app.post('/api/elib/bulk-upload-pastpapers/stop/:processId', async (req, res) => {
+  try {
+    const { processId } = req.params;
+    const process = bulkUploadPastPapersProcesses.get(processId);
+
+    if (!process) {
+      return res.status(404).json({ error: 'Process not found' });
+    }
+
+    if (process.status === 'running') {
+      process.stopFlag.stopped = true;
+      process.status = 'stopped';
+    }
+
+    const { stopFlag, ...safeProcess } = process;
+    res.json({ ok: true, process: safeProcess });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to stop process' });
+  }
+});
+
+app.get('/api/elib/bulk-upload-pastpapers/processes', async (req, res) => {
+  try {
+    const processes = Array.from(bulkUploadPastPapersProcesses.values())
+      .map(p => {
+        const { stopFlag, ...rest } = p;
+        return rest;
+      })
+      .sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt))
+      .slice(0, 20);
+
+    res.json({ ok: true, processes });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to list processes' });
+  }
+});
 
 // === Submissions Endpoints (Books + Past Papers) ===
 app.get('/api/elib/submissions', async (req, res) => {
@@ -3341,6 +3533,310 @@ if (existsSync(buildPath)) {
     });
   });
 }
+
+// Search for faculty of a unit at a university using Google Search
+// This helps auto-fill the faculty field accurately
+app.get('/api/elib/search-unit-faculty', async (req, res) => {
+  try {
+    const { universityName, unitCode, unitName } = req.query;
+    
+    if (!universityName || !unitCode) {
+      return res.status(400).json({ error: 'universityName and unitCode are required' });
+    }
+
+    const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+    const GOOGLE_SEARCH_ENGINE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;
+    
+    if (!GOOGLE_API_KEY || !GOOGLE_SEARCH_ENGINE_ID) {
+      console.warn('⚠️ Google Search API not configured');
+      return res.status(503).json({ 
+        error: 'Faculty search not available',
+        fallback: true 
+      });
+    }
+
+    // Known Egerton University faculties for matching
+    const egerton_faculties = [
+      'Faculty of Agriculture',
+      'Faculty of Arts and Social Sciences',
+      'Faculty of Commerce',
+      'Faculty of Education and Community Development Studies',
+      'Faculty of Engineering and Technology',
+      'Faculty of Environment and Resources Development',
+      'Faculty of Health Sciences',
+      'Faculty of Law',
+      'Faculty of Science',
+      'Faculty of Veterinary Medicine and Surgery'
+    ];
+
+    // ======================================================
+    // EGERTON UNIVERSITY 2026 - VERIFIED UNIT CODES
+    // 161 Verified Codes Across 10 Faculties
+    // ======================================================
+    const egerton_unit_mapping = {
+      // ========== 1. FACULTY OF AGRICULTURE (FoA) - 13 codes ==========
+      'AGEC': 'Agriculture', 'AGBM': 'Agriculture',
+      'ANSC': 'Agriculture', 'APHY': 'Agriculture',
+      'CROP': 'Agriculture', 'HORT': 'Agriculture',
+      'SOIL': 'Agriculture', 'LPBP': 'Agriculture',
+      'DAIR': 'Agriculture', 'FOST': 'Agriculture',
+      'AENG': 'Agriculture', 'ENTM': 'Agriculture',
+      'AGRI': 'Agriculture',
+      
+      // ========== 2. FACULTY OF ARTS & SOCIAL SCIENCES (FASS) - 18 codes ==========
+      'ECON': 'FASS', 'BECO': 'FASS',
+      'STAT': 'FASS', 'LITL': 'FASS',
+      'ENGL': 'FASS', 'KISW': 'FASS',
+      'LINS': 'FASS', 'FREN': 'FASS',
+      'GERM': 'FASS', 'CRSS': 'FASS',
+      'SOCI': 'FASS', 'PSCS': 'FASS',
+      'PHIL': 'FASS', 'HIST': 'FASS',
+      'RELI': 'FASS', 'ANTH': 'FASS',
+      'LIBS': 'FASS', 'COMM': 'FASS',
+      
+      // ========== 3. FACULTY OF COMMERCE (FoC) - 11 codes ==========
+      'BACT': 'Commerce', 'BFIN': 'Commerce',
+      'BOPM': 'Commerce', 'BBIS': 'Commerce',
+      'BMGT': 'Commerce', 'BBAM': 'Commerce',
+      'BCOM': 'Commerce', 'PROC': 'Commerce',
+      'ENTR': 'Commerce', 'HRM': 'Commerce',
+      'MARK': 'Commerce',
+      
+      // ========== 4. FACULTY OF EDUCATION & COMMUNITY DEVELOPMENT STUDIES (FEDCOS) - 15 codes ==========
+      'AGED': 'FEDCOS',
+      'ACDS': 'FEDCOS',
+      'ADSN': 'FEDCOS',
+      'CDEV': 'FEDCOS',
+      'CIEM': 'FEDCOS',
+      'BUST': 'FEDCOS',
+      'EPSC': 'FEDCOS',
+      'EDFO': 'FEDCOS',
+      'EDUC': 'FEDCOS',
+      'MENT': 'FEDCOS',
+      'PSYC': 'FEDCOS',
+      'GUID': 'FEDCOS',
+      'COUN': 'FEDCOS',
+      'ECD': 'FEDCOS',
+      'SPEC': 'FEDCOS',
+      
+      // ========== 5. FACULTY OF ENGINEERING & TECHNOLOGY (FET) - 20 codes ==========
+      'AGEN': 'FET',
+      'CEEN': 'FET',
+      'ECEN': 'FET',
+      'IEEN': 'FET',
+      'MEEN': 'FET',
+      'WREN': 'FET',
+      'BENG': 'FET',
+      'CENG': 'FET',
+      'SENG': 'FET',
+      'EENG': 'FET',
+      'PENG': 'FET',
+      'TENG': 'FET',
+      'MENG': 'FET',
+      'COMP': 'FET',
+      'ICT': 'FET',
+      'CSCI': 'FET',
+      'DATA': 'FET',
+      'SOFT': 'FET',
+      'NETS': 'FET',
+      
+      // ========== 6. FACULTY OF ENVIRONMENT & RESOURCES DEVELOPMENT (FERD) - 17 codes ==========
+      'ENVS': 'FERD',
+      'GEOG': 'FERD',
+      'NRES': 'FERD',
+      'FRST': 'FERD',
+      'DRLM': 'FERD',
+      'WILD': 'FERD',
+      'ECOT': 'FERD',
+      'WEM': 'FERD',
+      'LAND': 'FERD',
+      'ENVI': 'FERD',
+      'ENMS': 'FERD',
+      'CLEE': 'FERD',
+      'WRES': 'FERD',
+      'FRES': 'FERD',
+      'SWCO': 'FERD',
+      'CONS': 'FERD',
+      'NARE': 'FERD',
+      
+      // ========== 7. FACULTY OF HEALTH SCIENCES (FHS) - 21 codes ==========
+      'ANAT': 'Health Sciences', 'PHYS': 'Health Sciences',
+      'PATH': 'Health Sciences', 'NURS': 'Health Sciences',
+      'NUTR': 'Health Sciences', 'COMH': 'Health Sciences',
+      'REPH': 'Health Sciences', 'PEDI': 'Health Sciences',
+      'IMED': 'Health Sciences', 'SURG': 'Health Sciences',
+      'CLIN': 'Health Sciences', 'EPID': 'Health Sciences',
+      'MICB': 'Health Sciences', 'MED': 'Health Sciences',
+      'MEDS': 'Health Sciences', 'PHAR': 'Health Sciences',
+      'PHARM': 'Health Sciences', 'CHEM': 'Health Sciences',
+      'DENT': 'Health Sciences', 'DRES': 'Health Sciences',
+      'PUHE': 'Health Sciences',
+      
+      // ========== 8. FACULTY OF LAW (FoL) - 7 codes ==========
+      'LAW': 'Law', 'LLB': 'Law',
+      'CLAW': 'Law', 'PLAW': 'Law',
+      'ILWA': 'Law', 'LAWI': 'Law',
+      'LAWS': 'Law',
+      
+      // ========== 9. FACULTY OF SCIENCE (FoS) - 25 codes ==========
+      'BIOL': 'Science', 'ZOO': 'Science',
+      'BOT': 'Science', 'BCMB': 'Science',
+      'CHEM': 'Science', 'COMP': 'Science',
+      'MATH': 'Science', 'STAT': 'Science',
+      'PHYS': 'Science', 'MET': 'Science',
+      'ORGA': 'Science', 'INOR': 'Science',
+      'PHCH': 'Science', 'MECH': 'Science',
+      'ELEC': 'Science', 'OPTI': 'Science',
+      'BIO': 'Science', 'ZOOL': 'Science',
+      'ECOL': 'Science', 'GENT': 'Science',
+      'ALGE': 'Science', 'CALC': 'Science',
+      'GEOL': 'Science', 'MING': 'Science',
+      'GEOM': 'Science',
+      
+      // ========== 10. FACULTY OF VETERINARY MEDICINE & SURGERY (FVMS) - 15 codes ==========
+      'VAPH': 'Veterinary Medicine and Surgery',
+      'VMTP': 'Veterinary Medicine and Surgery',
+      'VPMP': 'Veterinary Medicine and Surgery',
+      'VETA': 'Veterinary Medicine and Surgery',
+      'PARA': 'Veterinary Medicine and Surgery',
+      'ANAV': 'Veterinary Medicine and Surgery',
+      'VMED': 'Veterinary Medicine and Surgery',
+      'VETS': 'Veterinary Medicine and Surgery',
+      'VSUR': 'Veterinary Medicine and Surgery',
+      'DVSO': 'Veterinary Medicine and Surgery',
+      'VPAT': 'Veterinary Medicine and Surgery',
+      'VPHE': 'Veterinary Medicine and Surgery',
+      'DVET': 'Veterinary Medicine and Surgery',
+      'VANA': 'Veterinary Medicine and Surgery',
+      'VPHY': 'Veterinary Medicine and Surgery'
+    };
+
+    const detectEgertonFaculty = (unitPrefix) => {
+      if (!unitPrefix) return null;
+      const faculty = egerton_unit_mapping[unitPrefix];
+      if (faculty) {
+        console.log(`✅ Backend: Egerton verified: "${unitPrefix}" → ${faculty}`);
+        return faculty;
+      }
+      console.log(`❌ Backend: Unknown Egerton unit code: "${unitPrefix}"`);
+      return null;
+    };
+
+    // Helper function to search and extract faculty
+    const searchForFaculty = async (query) => {
+      try {
+        const googleSearchUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}&key=${GOOGLE_API_KEY}&cx=${GOOGLE_SEARCH_ENGINE_ID}&num=5`;
+        
+        const response = await axios.get(googleSearchUrl, { timeout: 5000 });
+        const results = response.data.items || [];
+        
+        // Patterns to extract faculty
+        const facultyPatterns = [
+          /FACULTY\s+OF\s+([A-Z][A-Za-z\s&,.-]+?)(?:\n|\.|,|$|EXAMINATION|EXAM|DEPARTMENT|SCHOOL)/i,
+          /SCHOOL\s+OF\s+([A-Z][A-Za-z\s&,.-]+?)(?:\n|\.|,|$|EXAMINATION|EXAM|DEPARTMENT)/i,
+          /DEPARTMENT\s+OF\s+([A-Z][A-Za-z\s&,.-]+?)(?:\n|\.|,|$|EXAMINATION|EXAM)/i,
+          /(?:FACULTY|SCHOOL|DEPARTMENT):\s*([A-Z][A-Za-z\s&,.-]+?)(?:\n|\.|,|$)/i,
+          /([A-Z][A-Za-z\s&,.-]*FACULTY[A-Za-z\s&,.-]*?)(?:\n|\.|,|$|EXAMINATION|EXAM)/i
+        ];
+        
+        for (const result of results) {
+          const text = (result.snippet || '').toUpperCase();
+          const title = (result.title || '').toUpperCase();
+          const combined = title + ' ' + text;
+          
+          for (const pattern of facultyPatterns) {
+            const match = combined.match(pattern);
+            if (match && match[1]) {
+              const extracted = match[1].trim().replace(/\d+/g, '').trim();
+              
+              // Check if extracted text matches known Egerton faculties
+              for (const egerton_fac of egerton_faculties) {
+                if (egerton_fac.toUpperCase().includes(extracted) || extracted.includes(egerton_fac.toUpperCase())) {
+                  return egerton_fac;
+                }
+                // Also check partial matches
+                const egerton_words = egerton_fac.split(/\s+/);
+                const extracted_words = extracted.split(/\s+/);
+                if (egerton_words.some(w => extracted_words.some(ew => ew.length > 4 && w.includes(ew)))) {
+                  return egerton_fac;
+                }
+              }
+              
+              // If no exact match but extracted text looks valid, return it
+              if (extracted.length > 4 && extracted.length < 120) {
+                return extracted;
+              }
+            }
+          }
+        }
+        
+        return null;
+      } catch (error) {
+        console.error('Error in faculty search:', error.message);
+        return null;
+      }
+    };
+
+    let faculty = null;
+
+    // Strategy 1: Search with full context "[University] [Unit Code] [Unit Name] faculty"
+    console.log(`🔍 Strategy 1: Searching "${universityName} ${unitCode} ${unitName || ''} faculty"`);
+    faculty = await searchForFaculty(`${universityName} ${unitCode} ${unitName || ''} faculty site:.ac.ke OR site:.edu`);
+    
+    // Strategy 2: If not found, try with just unit code and name
+    if (!faculty) {
+      console.log(`🔍 Strategy 2: Searching "${unitCode} ${unitName || ''} course"`);
+      faculty = await searchForFaculty(`${unitCode} ${unitName || ''} course ${universityName} site:.ac.ke`);
+    }
+    
+    // Strategy 3: Try unit code alone
+    if (!faculty) {
+      console.log(`🔍 Strategy 3: Searching "${unitCode} ${universityName}"`);
+      faculty = await searchForFaculty(`${unitCode} ${universityName} department site:.ac.ke`);
+    }
+    
+    // Strategy 4: Try unit name if available
+    if (!faculty && unitName) {
+      console.log(`🔍 Strategy 4: Searching "${unitName} ${universityName}"`);
+      faculty = await searchForFaculty(`${unitName} ${universityName} faculty site:.ac.ke`);
+    }
+    
+    // Strategy 5: Use Egerton strict detection (exact match only)
+    if (!faculty && universityName) {
+      const isEgerton = universityName.toLowerCase().includes('egerton');
+      
+      if (isEgerton) {
+        console.log(`🔍 Strategy 5: Egerton strict detection (exact match only)`);
+        const unitPrefix = unitCode.replace(/\d+/g, '').toUpperCase().trim();
+        console.log(`📋 Unit prefix: "${unitPrefix}"`);
+        
+        faculty = detectEgertonFaculty(unitPrefix);
+        
+        if (faculty) {
+          console.log(`✅ Found faculty from Egerton mapping: ${faculty}`);
+        } else {
+          console.log(`⚠️ Unknown unit code at Egerton: "${unitPrefix}"`);
+        }
+      }
+    }
+    
+    if (faculty) {
+      console.log(`✅ Found faculty via detection strategy: ${faculty}`);
+      return res.json({ faculty, source: 'detection' });
+    }
+    
+    console.log(`⚠️ No faculty found for ${unitCode} at ${universityName}`);
+    return res.json({ faculty: null, source: 'not_found' });
+    
+  } catch (error) {
+    console.error('Error searching for faculty:', error.message);
+    return res.status(500).json({ 
+      error: 'Faculty search failed',
+      details: error.message 
+    });
+  }
+});
+
 
 server = app.listen(PORT, () => {
   console.log(`✅ Backend + WebSocket server running on http://localhost:${PORT}`);

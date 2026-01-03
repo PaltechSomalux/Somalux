@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { BookCategories } from "../Categories/BookCategories";
 import { BookPanel } from "../Books/BookPanel";
 import { Authors } from '../Authors/Authors';
@@ -12,20 +12,61 @@ import { useSwipeTabs } from './useSwipeTabs';
 import './BookManagement.css';
 
 export const BookManagement = () => {
-  const [activeTab, setActiveTab] = useState('books');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [currentUserTier, setCurrentUserTier] = useState('basic');
   const contentRef = useRef(null);
 
-  // Initialize swipe gesture handler
+  // Determine active tab from URL path
+  const getActiveTabFromPath = () => {
+    const path = location.pathname;
+    // Extract the tab segment after /BookManagement/
+    const match = path.match(/\/BookManagement\/([a-z]+)/);
+    if (match) {
+      const tabName = match[1];
+      if (['categories', 'authors', 'pastpapers'].includes(tabName)) {
+        return tabName;
+      }
+    }
+    return 'books'; // default
+  };
+
+  const activeTab = getActiveTabFromPath();
+
+  // Render only the active tab component to avoid rendering all at once
+  const renderActiveComponent = () => {
+    switch (activeTab) {
+      case 'categories':
+        return <BookCategories />;
+      case 'authors':
+        return <Authors />;
+      case 'pastpapers':
+        return <PaperPanel />;
+      case 'books':
+      default:
+        return <BookPanel />;
+    }
+  };
+
+  // Tab definitions (without components to avoid rendering all)
   const tabs = [
-    { id: 'books',      label: 'Books',       component: <BookPanel /> },
-    { id: 'categories', label: 'Categories',  component: <BookCategories /> },
-    { id: 'authors',    label: 'Authors',     component: <Authors /> },
-    { id: 'pastpapers', label: 'Past Papers', component: <PaperPanel /> },
+    { id: 'books',      label: 'Books' },
+    { id: 'categories', label: 'Categories' },
+    { id: 'authors',    label: 'Authors' },
+    { id: 'pastpapers', label: 'Past Papers' },
   ];
 
-  const swipeHandlers = useSwipeTabs(tabs, activeTab, setActiveTab, contentRef);
+  const swipeHandlers = useSwipeTabs(tabs, activeTab, (tabId) => {
+    navigateToTab(tabId);
+  }, contentRef);
+
+  // Navigate to tab by updating URL
+  const navigateToTab = (tabId) => {
+    const basePath = '/BookManagement';
+    const tabPath = tabId === 'books' ? '' : `/${tabId}`;
+    navigate(`${basePath}${tabPath}`, { replace: false });
+  };
 
   // Scroll effect for header shadow
   useEffect(() => {
@@ -34,11 +75,15 @@ export const BookManagement = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch current user's subscription tier
+  // Fetch current user's subscription tier (non-blocking)
   useEffect(() => {
+    let isMounted = true;
+
     const fetchUserTier = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        if (!isMounted) return;
+        
         if (!user) {
           setCurrentUserTier('basic');
           return;
@@ -50,6 +95,8 @@ export const BookManagement = () => {
           .eq('id', user.id)
           .single();
 
+        if (!isMounted) return;
+        
         if (error) {
           console.error('Error fetching subscription tier:', error);
           setCurrentUserTier('basic');
@@ -58,39 +105,32 @@ export const BookManagement = () => {
 
         setCurrentUserTier(profile?.subscription_tier || 'basic');
       } catch (err) {
-        console.error('Error fetching user tier:', err);
-        setCurrentUserTier('basic');
+        if (isMounted) {
+          console.error('Error fetching user tier:', err);
+          setCurrentUserTier('basic');
+        }
       }
     };
 
+    // Start fetching in background without awaiting
     fetchUserTier();
 
-    // Subscribe to auth changes to refresh tier when user changes
+    // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        fetchUserTier();
-      } else {
-        setCurrentUserTier('basic');
+      if (isMounted) {
+        if (session?.user) {
+          fetchUserTier();
+        } else {
+          setCurrentUserTier('basic');
+        }
       }
     });
 
     return () => {
+      isMounted = false;
       subscription?.unsubscribe?.();
     };
   }, []);
-
-  // Auto-switch to books tab when query params exist
-  const location = useLocation();
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get('category') || params.get('book')) {
-      setActiveTab('books');
-    }
-  }, [location.search]);
-
-  const renderActiveTab = () => {
-    return tabs.find(t => t.id === activeTab)?.component;
-  };
 
   return (
     <div className={`book-management ${isScrolled ? 'scrolled' : ''}`}>
@@ -117,7 +157,7 @@ export const BookManagement = () => {
               key={tab.id}
               data-tab-id={tab.id}
               className={`tool-button-convert ${activeTab === tab.id ? 'active-convert' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => navigateToTab(tab.id)}
             >
               <span>{tab.label}</span>
             </button>
@@ -131,7 +171,7 @@ export const BookManagement = () => {
         ref={contentRef}
         {...swipeHandlers}
       >
-        {renderActiveTab()}
+        {renderActiveComponent()}
       </div>
     </div>
   );

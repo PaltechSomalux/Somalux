@@ -195,7 +195,7 @@ export async function fetchPastPapers({
   }
 }
 
-function clearPastPapersCache() {
+export function clearPastPapersCache() {
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -265,19 +265,26 @@ export async function checkDuplicatePastPaper({ universityId, faculty, unitCode,
 
 export async function createPastPaper({ metadata, pdfFile }) {
   try {
+    console.log('🔍 createPastPaper START - metadata:', metadata);
+    
     if (!pdfFile) {
       throw new Error('PDF file is required');
     }
 
     // Upload file directly to Supabase storage (bypasses backend base64 conversion)
+    console.log('📤 Uploading PDF file to Supabase storage...');
     const uploaded = await uploadPastPaperFile(pdfFile);
     const file_url = uploaded.publicUrl;
+    console.log('✅ PDF uploaded successfully:', { path: uploaded.path, url: file_url });
 
     // Generate title with fallbacks
     const title = metadata.title || `${metadata.unit_code} - ${metadata.unit_name}`;
 
     // Get current user
+    console.log('🔐 Getting current authenticated user...');
     const { data: { user } } = await supabase.auth.getUser();
+    console.log('👤 Current user:', { id: user?.id, email: user?.email });
+    
     if (!user) {
       throw new Error('Not authenticated');
     }
@@ -302,7 +309,7 @@ export async function createPastPaper({ metadata, pdfFile }) {
       updated_at: nowIso
     };
 
-    console.log('📝 Creating past paper with data:', JSON.stringify(pastPaperRecord, null, 2));
+    console.log('📝 Record prepared, attempting database insert:', JSON.stringify(pastPaperRecord, null, 2));
 
     const { data: pastPaper, error } = await supabase
       .from('past_papers')
@@ -310,16 +317,21 @@ export async function createPastPaper({ metadata, pdfFile }) {
       .select('*')
       .single();
 
+    console.log('📊 Supabase response:', { error: error?.message, data: pastPaper?.id });
+    
     if (error) {
+      console.error('💥 Database error:', { message: error.message, code: error.code, details: error.details, hint: error.hint });
       throw new Error(error.message || 'Failed to create past paper');
     }
+
+    console.log('✅ Successfully created past paper:', { id: pastPaper.id, title: pastPaper.title, university_id: pastPaper.university_id });
 
     // Clear cache so callers fetch fresh data
     try { clearPastPapersCache(); } catch (e) {}
     
     return pastPaper;
   } catch (err) {
-    console.error('Create past paper failed:', err);
+    console.error('❌ Create past paper failed:', err);
     throw err;
   }
 }
@@ -751,4 +763,234 @@ export function subscribeToPastPapersByUniversity(universityId, callback) {
 
   return subscription;
 }
+
+// =====================================================
+// SMART FACULTY DETECTION
+// =====================================================
+
+/**
+ * Search for the actual faculty of a unit code at a specific university
+ * Uses Google Search to find accurate, university-specific faculty information
+ * 
+ * @param {string} universityName - Name of the university (e.g., "Egerton University")
+ * @param {string} unitCode - Unit code/number (e.g., "212")
+ * @param {string} unitName - Unit name (e.g., "CHEM") - optional, helps with search
+ * @returns {Promise<{faculty: string|null, source: string}>} Faculty name or null if not found
+ */
+export async function searchUnitFaculty(universityName, unitCode, unitName) {
+  try {
+    if (!universityName || !unitCode) {
+      console.warn('⚠️ searchUnitFaculty: Missing university name or unit code');
+      return { faculty: null, source: 'error', error: 'Missing required parameters' };
+    }
+
+    const params = new URLSearchParams({
+      universityName: String(universityName).trim(),
+      unitCode: String(unitCode).trim(),
+      ...(unitName && { unitName: String(unitName).trim() })
+    });
+
+    const url = `${API_BASE}/api/elib/search-unit-faculty?${params.toString()}`;
+    console.log('🔍 Searching faculty via:', url);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 10000 // 10 second timeout
+    });
+
+    if (!response.ok) {
+      console.warn(`⚠️ Faculty search failed with status ${response.status}`);
+      return { faculty: null, source: 'error', status: response.status };
+    }
+
+    const data = await response.json();
+    console.log(`✅ Faculty search result for ${universityName} ${unitCode}:`, data);
+    
+    return data; // Returns { faculty, source, fallback }
+  } catch (error) {
+    console.error('❌ Error searching for faculty:', error);
+    return { 
+      faculty: null, 
+      source: 'error', 
+      error: error.message 
+    };
+  }
+}
+
+// =====================================================
+// UPLOAD HISTORY FUNCTIONS
+// =====================================================
+
+export async function logUploadHistory({ 
+  fileName, 
+  status, 
+  paperTitle, 
+  universityId, 
+  faculty, 
+  unitCode, 
+  unitName, 
+  year, 
+  uploadedBy,
+  errorMessage = null,
+  isDuplicate = false
+}) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const historyRecord = {
+      file_name: fileName,
+      status: status, // 'success', 'failed', 'duplicate'
+      paper_title: paperTitle || '',
+      university_id: universityId || null,
+      faculty: faculty || '',
+      unit_code: unitCode || '',
+      unit_name: unitName || '',
+      year: year ? Number(year) : null,
+      uploaded_by: uploadedBy || user?.id || null,
+      error_message: errorMessage || null,
+      is_duplicate: isDuplicate || false,
+      created_at: new Date().toISOString()
+    };
+
+    console.log('📝 Logging upload history:', historyRecord);
+
+    const { data, error } = await supabase
+      .from('past_papers_upload_history')
+      .insert(historyRecord)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('⚠️ Failed to log upload history:', error);
+      return null;
+    }
+
+    console.log('✅ Upload history logged:', data?.id);
+    return data;
+  } catch (err) {
+    console.error('❌ Error logging upload history:', err);
+    return null;
+  }
+}
+
+export async function fetchUploadHistory({ 
+  page = 1, 
+  pageSize = 20,
+  universityId = null,
+  status = null,
+  startDate = null,
+  endDate = null,
+  uploadedBy = null
+}) {
+  try {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let query = supabase
+      .from('past_papers_upload_history')
+      .select(`
+        id,
+        file_name,
+        status,
+        paper_title,
+        university_id,
+        universities:university_id(id, name),
+        faculty,
+        unit_code,
+        unit_name,
+        year,
+        uploaded_by,
+        profiles:uploaded_by(id, full_name, email),
+        error_message,
+        is_duplicate,
+        created_at
+      `, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (universityId) {
+      query = query.eq('university_id', universityId);
+    }
+
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    if (uploadedBy) {
+      query = query.eq('uploaded_by', uploadedBy);
+    }
+
+    if (startDate) {
+      query = query.gte('created_at', startDate);
+    }
+
+    if (endDate) {
+      query = query.lte('created_at', endDate);
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('❌ Error fetching upload history:', error);
+      throw error;
+    }
+
+    console.log('✅ Fetched upload history:', { count, records: data?.length });
+
+    return { 
+      data: data || [], 
+      count: count || 0 
+    };
+  } catch (err) {
+    console.error('❌ Error in fetchUploadHistory:', err);
+    throw err;
+  }
+}
+
+export async function getUploadHistoryStats() {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayISO = today.toISOString();
+
+    const [
+      { count: todayCount, error: todayError },
+      { count: totalCount, error: totalError },
+      { count: duplicatesCount, error: duplicatesError },
+      { count: failedCount, error: failedError }
+    ] = await Promise.all([
+      supabase
+        .from('past_papers_upload_history')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', todayISO),
+      supabase
+        .from('past_papers_upload_history')
+        .select('id', { count: 'exact', head: true }),
+      supabase
+        .from('past_papers_upload_history')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'duplicate'),
+      supabase
+        .from('past_papers_upload_history')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'failed')
+    ]);
+
+    const stats = {
+      today: todayCount || 0,
+      total: totalCount || 0,
+      duplicates: duplicatesCount || 0,
+      failed: failedCount || 0,
+      successful: (totalCount || 0) - (duplicatesCount || 0) - (failedCount || 0)
+    };
+
+    console.log('📊 Upload history stats:', stats);
+    return stats;
+  } catch (err) {
+    console.error('❌ Error getting upload history stats:', err);
+    return { today: 0, total: 0, duplicates: 0, failed: 0, successful: 0 };
+  }
+}
+
 
