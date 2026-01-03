@@ -491,6 +491,21 @@ export async function trackPastPaperDownload(paperId) {
 
 export async function getFaculties() {
   try {
+    // Hardcoded faculties in the system (short forms only, no duplicates)
+    const hardcodedFaculties = [
+      'Agriculture',
+      'FASS',
+      'Commerce',
+      'FEDCOS',
+      'FET',
+      'Environment Resources',
+      'Health Sciences',
+      'Law',
+      'Science',
+      'Veterinary Medicine'
+    ];
+
+    // Get faculties from database
     const { data, error } = await supabase
       .from('past_papers')
       .select('faculty')
@@ -498,12 +513,29 @@ export async function getFaculties() {
 
     if (error) throw error;
 
-    // Get unique faculties
-    const faculties = [...new Set(data.map(item => item.faculty))].filter(Boolean);
-    return faculties;
+    // Get unique faculties from database
+    const dbFaculties = [...new Set(data.map(item => item.faculty))].filter(Boolean);
+    
+    // Merge hardcoded and database faculties, keeping unique values
+    const allFaculties = [...new Set([...hardcodedFaculties, ...dbFaculties])];
+    
+    // Sort alphabetically
+    return allFaculties.sort();
   } catch (error) {
     console.error('Error fetching faculties:', error);
-    return [];
+    // Return hardcoded faculties as fallback
+    return [
+      'Agriculture',
+      'FASS',
+      'Commerce',
+      'FEDCOS',
+      'FET',
+      'Environment Resources',
+      'Health Sciences',
+      'Law',
+      'Science',
+      'Veterinary Medicine'
+    ].sort();
   }
 }
 

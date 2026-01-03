@@ -25,38 +25,50 @@ export const UniversityGrid = React.memo(({
   setShowSubscriptionModal
 }) => {
   const [paperCounts, setPaperCounts] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch actual paper counts from database - batch load with rate limiting
+  // Initialize paperCounts with 0 for all universities to prevent flash
+  const initialCounts = useMemo(() => {
+    const counts = {};
+    universities.forEach(uni => {
+      counts[uni.id] = 0;
+    });
+    return counts;
+  }, [universities]);
+
+  // Fetch actual paper counts from database - parallel loading for speed
   useEffect(() => {
     const fetchCounts = async () => {
-      const counts = {};
-      
-      // Load counts in batches of 5 to avoid overwhelming the server
-      const batches = [];
-      for (let i = 0; i < universities.length; i += 5) {
-        batches.push(universities.slice(i, i + 5));
-      }
+      setIsLoading(true);
+      const counts = { ...initialCounts };
 
-      for (const batch of batches) {
-        await Promise.all(batch.map(async (uni) => {
+      try {
+        // Load ALL counts in parallel for maximum speed
+        const countPromises = universities.map(async (uni) => {
           try {
-            // Pass user's subscription tier for accurate filtering
-            counts[uni.id] = await getPastPaperCountByUniversity(uni.id, user?.subscription_tier);
+            const count = await getPastPaperCountByUniversity(uni.id, user?.subscription_tier);
+            return { id: uni.id, count };
           } catch (err) {
             console.error(`Error fetching paper count for ${uni.name}:`, err);
-            counts[uni.id] = 0;
+            return { id: uni.id, count: 0 };
           }
-        }));
+        });
+
+        const results = await Promise.all(countPromises);
+        results.forEach(({ id, count }) => {
+          counts[id] = count;
+        });
+
+        setPaperCounts(counts);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setPaperCounts(counts);
     };
 
     if (universities.length > 0) {
       fetchCounts();
     }
-  }, [universities, user?.subscription_tier]);
-
+  }, [universities, user?.subscription_tier, initialCounts]);
   const filteredUniversities = universities.filter(uni => 
     !universitySearchTerm || 
     uni.name?.toLowerCase().includes(universitySearchTerm.toLowerCase()) ||

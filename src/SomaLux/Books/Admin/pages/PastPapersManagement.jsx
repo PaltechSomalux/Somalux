@@ -35,6 +35,8 @@ const PastPapersManagement = ({ userProfile }) => {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({});
   const [newPdf, setNewPdf] = useState(null);
+  const [useCustomFaculty, setUseCustomFaculty] = useState(false);
+  const [customFaculty, setCustomFaculty] = useState('');
 
   const { confirm, showToast } = useAdminUI();
 
@@ -76,16 +78,32 @@ const PastPapersManagement = ({ userProfile }) => {
       year: row.year || '', semester: row.semester || '', exam_type: row.exam_type || ''
     });
     setNewPdf(null);
+    setUseCustomFaculty(false);
+    setCustomFaculty('');
   };
 
-  const cancelEdit = () => { setEditingId(null); setEditDraft({}); setNewPdf(null); };
+  const cancelEdit = () => { 
+    setEditingId(null); 
+    setEditDraft({}); 
+    setNewPdf(null); 
+    setUseCustomFaculty(false);
+    setCustomFaculty('');
+  };
 
   const saveEdit = async (row) => {
     if (!canEdit(row)) {
       showToast({ type: 'error', message: 'You do not have permission to edit this past paper.' });
       return;
     }
-    const updates = { ...editDraft };
+    
+    // Use custom faculty if selected, otherwise use the one from edit draft
+    const faculty = useCustomFaculty ? customFaculty : editDraft.faculty;
+    if (!faculty) {
+      showToast({ type: 'error', message: 'Please select or enter a faculty.' });
+      return;
+    }
+    
+    const updates = { ...editDraft, faculty };
 
     try {
       await updatePastPaper(row.id, { updates, newPdfFile: newPdf, oldFilePath: row.file_path });
@@ -157,6 +175,7 @@ const PastPapersManagement = ({ userProfile }) => {
             <label className="label">Faculty</label>
             <select className="select" value={facultyFilter || ''} onChange={(e) => { setPage(1); setFacultyFilter(e.target.value || null); }}>
               <option value="">All Faculties</option>
+              <option value="Unknown">Unknown</option>
               {faculties.map(f => <option key={f} value={f}>{f}</option>)}
             </select>
           </div>
@@ -190,7 +209,49 @@ const PastPapersManagement = ({ userProfile }) => {
                 <tr key={row.id}>
                   <td style={{ color: row.unit_name ? '#e9edef' : '#8696a0' }}>{editingId === row.id ? <input className="input" value={editDraft.unit_name} onChange={(e) => setEditDraft({ ...editDraft, unit_name: e.target.value })} /> : (row.unit_name || '—')}</td>
                   <td style={{ color: row.unit_code ? '#e9edef' : '#8696a0' }}>{editingId === row.id ? <input className="input" value={editDraft.unit_code} onChange={(e) => setEditDraft({ ...editDraft, unit_code: e.target.value })} /> : (row.unit_code || '—')}</td>
-                  <td style={{ color: row.faculty ? '#e9edef' : '#8696a0' }}>{editingId === row.id ? <input className="input" value={editDraft.faculty} onChange={(e) => setEditDraft({ ...editDraft, faculty: e.target.value })} /> : (row.faculty || '—')}</td>
+                  <td style={{ color: row.faculty ? '#e9edef' : '#8696a0' }}>
+                    {editingId === row.id ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {!useCustomFaculty ? (
+                          <>
+                            <select 
+                              className="select" 
+                              value={editDraft.faculty} 
+                              onChange={(e) => setEditDraft({ ...editDraft, faculty: e.target.value })}
+                              style={{ marginBottom: '4px' }}
+                            >
+                              <option value="">Select Faculty</option>
+                              {faculties && faculties.length > 0 ? faculties.map(f => <option key={f} value={f}>{f}</option>) : <option value="">No faculties available</option>}
+                            </select>
+                          </>
+                        ) : (
+                          <input 
+                            className="input" 
+                            placeholder="e.g., Engineering, Business" 
+                            value={customFaculty} 
+                            onChange={(e) => setCustomFaculty(e.target.value)}
+                          />
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px' }}>
+                          <input 
+                            type="checkbox" 
+                            id={`custom-faculty-${row.id}`}
+                            checked={useCustomFaculty}
+                            onChange={(e) => {
+                              setUseCustomFaculty(e.target.checked);
+                              if (!e.target.checked) {
+                                setCustomFaculty('');
+                              }
+                            }}
+                            style={{ width: '14px', height: '14px', cursor: 'pointer' }}
+                          />
+                          <label htmlFor={`custom-faculty-${row.id}`} style={{ color: '#8696a0', cursor: 'pointer', fontSize: '11px' }}>
+                            Add
+                          </label>
+                        </div>
+                      </div>
+                    ) : (row.faculty || '—')}
+                  </td>
                   <td style={{ color: row.year ? '#e9edef' : '#8696a0' }}>{editingId === row.id ? <input className="input" type="number" value={editDraft.year} onChange={(e) => setEditDraft({ ...editDraft, year: e.target.value })} /> : (row.year || '—')}</td>
                   <td>{editingId === row.id ? <select className="select" value={editDraft.semester} onChange={(e) => setEditDraft({ ...editDraft, semester: e.target.value })}><option value="">—</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select> : (row.semester || '—')}</td>
                   <td>{editingId === row.id ? <select className="select" value={editDraft.exam_type} onChange={(e) => setEditDraft({ ...editDraft, exam_type: e.target.value })}><option value="Main">Main</option><option value="Supplementary">Supplementary</option><option value="CAT">CAT</option><option value="Mock">Mock</option></select> : (row.exam_type || 'Main')}</td>

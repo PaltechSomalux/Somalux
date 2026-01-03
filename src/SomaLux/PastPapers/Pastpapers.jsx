@@ -178,10 +178,34 @@ export const PaperPanel = ({ demoMode = false }) => {
   // Define data loading functions BEFORE useEffects that depend on them
   const loadPastPapers = useCallback(async () => {
     try {
-      // Fetch papers in reasonable batches (max 500 per request) to prevent lag
-      const { data } = await fetchPastPapers({ page: 1, pageSize: 500 });
+      // Fetch papers in chunks of 1000 to support unlimited papers
+      // Continue fetching until all papers are loaded
+      const chunkSize = 1000;
+      let allPapers = [];
+      let pageNum = 1;
+      let hasMore = true;
+      let attempts = 0;
+      const maxAttempts = 50; // Safeguard: max 50,000 papers (50 chunks × 1000)
+
+      while (hasMore && attempts < maxAttempts) {
+        console.log(`📄 Loading papers batch ${pageNum}...`);
+        const { data } = await fetchPastPapers({ page: pageNum, pageSize: chunkSize });
+        
+        if (data && data.length > 0) {
+          allPapers = allPapers.concat(data);
+          console.log(`✅ Loaded ${data.length} papers. Total so far: ${allPapers.length}`);
+          pageNum++;
+          attempts++;
+          hasMore = data.length === chunkSize;
+        } else {
+          console.log(`ℹ️ No more papers found. Total loaded: ${allPapers.length}`);
+          hasMore = false;
+        }
+      }
       
-      const transformedData = (data || []).map(paper => ({
+      console.log(`✨ Finished loading ${allPapers.length} total papers`);
+      
+      const transformedData = (allPapers || []).map(paper => ({
         id: paper.id,
         title: paper.title || `${paper.unit_code || ''} - ${paper.unit_name || ''}`,
         course: paper.unit_name || paper.title,
@@ -1070,6 +1094,20 @@ export const PaperPanel = ({ demoMode = false }) => {
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(filteredPapers.length / pageSize)), [filteredPapers.length, pageSize]);
 
+  // Get unique faculties for the selected university
+  const universitiesFilteredFaculties = useMemo(() => {
+    if (!universityFilter || !Array.isArray(papers)) return [];
+    
+    const uniqueFaculties = new Set();
+    papers.forEach(paper => {
+      if (paper.university?.toLowerCase() === universityFilter.toLowerCase() && paper.faculty) {
+        uniqueFaculties.add(paper.faculty);
+      }
+    });
+    
+    return Array.from(uniqueFaculties).sort();
+  }, [papers, universityFilter]);
+
   useEffect(() => {
     // Reset to page 1 when filters change
     setCurrentPage(1);
@@ -1601,7 +1639,7 @@ export const PaperPanel = ({ demoMode = false }) => {
           {/* Show Faculty Grid if faculty filter button is clicked */}
           {showFacultyGrid ? (
             <FacultyGridDisplay
-              faculties={faculties}
+              faculties={universitiesFilteredFaculties}
               papers={papers}
               universityFilter={universityFilter}
               facultyViews={facultyViews}

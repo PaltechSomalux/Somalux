@@ -210,9 +210,20 @@ export const UploadHistory = ({ userProfile, onClose }) => {
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="pagination-btn"
+            style={{
+              padding: '8px 16px',
+              background: page === 1 ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
+              color: page === 1 ? '#999' : '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: page === 1 ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              opacity: page === 1 ? 0.6 : 1
+            }}
           >
-            Previous
+            ← Previous
           </button>
           <span className="page-info">
             Page {page} of {totalPages}
@@ -220,9 +231,20 @@ export const UploadHistory = ({ userProfile, onClose }) => {
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="pagination-btn"
+            style={{
+              padding: '8px 16px',
+              background: page === totalPages ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
+              color: page === totalPages ? '#999' : '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: page === totalPages ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              opacity: page === totalPages ? 0.6 : 1
+            }}
           >
-            Next
+            Next →
           </button>
         </div>
       )}
