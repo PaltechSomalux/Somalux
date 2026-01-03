@@ -497,23 +497,23 @@ export async function getFaculties() {
       'FASS',
       'Commerce',
       'FEDCOS',
+      'FERD',
       'FET',
-      'Environment Resources',
       'Health Sciences',
       'Law',
       'Science',
       'Veterinary Medicine'
     ];
-
-    // Get faculties from database
+    
+    // Get unique faculties from database
     const { data, error } = await supabase
       .from('past_papers')
-      .select('faculty')
-      .order('faculty');
-
-    if (error) throw error;
-
-    // Get unique faculties from database
+      .select('faculty');
+    
+    if (error || !data) {
+      return hardcodedFaculties.sort();
+    }
+    
     const dbFaculties = [...new Set(data.map(item => item.faculty))].filter(Boolean);
     
     // Merge hardcoded and database faculties, keeping unique values
@@ -529,8 +529,8 @@ export async function getFaculties() {
       'FASS',
       'Commerce',
       'FEDCOS',
+      'FERD',
       'FET',
-      'Environment Resources',
       'Health Sciences',
       'Law',
       'Science',

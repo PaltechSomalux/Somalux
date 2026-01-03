@@ -410,22 +410,12 @@ export async function getFaculties() {
       'FASS',
       'Commerce',
       'FEDCOS',
+      'FERD',
       'FET',
-      'Environment Resources',
       'Health Sciences',
       'Law',
       'Science',
-      'Veterinary Medicine'
-    ];
-
-    // Get faculties from database
-    const { data, error } = await supabase
-      .from('past_papers')
-      .select('faculty')
-      .order('faculty');
-
-    if (error) throw error;
-
+  'Veterinary Medicine'
     // Get unique faculties from database
     const dbFaculties = [...new Set(data.map(item => item.faculty))].filter(Boolean);
     
@@ -442,8 +432,8 @@ export async function getFaculties() {
       'FASS',
       'Commerce',
       'FEDCOS',
+      'FERD',
       'FET',
-      'Environment Resources',
       'Health Sciences',
       'Law',
       'Science',

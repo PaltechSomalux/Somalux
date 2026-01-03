@@ -8,6 +8,146 @@ import { AdBanner } from '../Ads/AdBanner';
 import { getPastPaperCountByUniversity } from '../Books/Admin/pastPapersApi';
 import './PaperPanel.css';
 
+// Memoized university card component to prevent unnecessary re-renders
+const UniversityCard = React.memo(({
+  uni,
+  stats,
+  userRating,
+  paperCount,
+  universityLikes,
+  universityLikesCounts,
+  user,
+  onUniversitySelect,
+  onToggleLike,
+  setShowSubscriptionModal
+}) => (
+  <motion.div
+    key={uni.id}
+    className="paper-cardpast"
+    style={{ 
+      cursor: 'pointer',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      position: 'relative'
+    }}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0 }}
+    transition={{ duration: 0.3 }}
+    layout
+    whileHover={{ y: -5 }}
+    onClick={() => onUniversitySelect(uni)}
+  >
+    {uni.cover_image_url && (
+      <img
+        src={uni.cover_image_url}
+        alt={uni.name}
+        loading="lazy"
+        style={{ 
+          width: '100%', 
+          height: '140px', 
+          objectFit: 'cover',
+          borderBottom: '1px solid #2a3942'
+        }}
+      />
+    )}
+
+    <div className="card-contentpast" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <h3 style={{ margin: 0, fontSize: '0.8rem', color: '#e9edef', fontWeight: '600' }}>
+        {uni.name}
+      </h3>
+      <p style={{ margin: '2px 0 0 0', fontSize: '0.65rem', color: '#8696a0' }}>
+        {uni.location}
+      </p>
+      
+      {/* Star Rating Display */}
+      {stats.average > 0 && (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '4px',
+          marginTop: '4px',
+          fontSize: '0.65rem'
+        }}>
+          <span style={{ color: '#FFD700' }}>★</span>
+          <span style={{ color: '#8696a0' }}>
+            {stats.average.toFixed(1)} ({stats.count})
+          </span>
+        </div>
+      )}
+
+      {/* Paper count and like button */}
+      <div style={{ 
+        marginTop: 'auto', 
+        paddingTop: '6px',
+        borderTop: '1px solid #2a3942',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '4px'
+      }}>
+        <span style={{ fontSize: '0.65rem', color: '#8696a0', display: 'flex', alignItems: 'center', gap: '2px' }}>
+          <FiEye size={12} /> {uni.views || 0}
+        </span>
+        {user?.subscription_tier && (user.subscription_tier === 'premium' || user.subscription_tier === 'premium_pro') ? (
+          <span style={{ fontSize: '0.65rem', color: '#00a884', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '2px' }}>
+            {paperCount} papers
+          </span>
+        ) : (
+          <span 
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowSubscriptionModal?.(true);
+            }}
+            style={{ fontSize: '0.65rem', color: '#1DA1F2', display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }} 
+            title="Click to upgrade to Premium"
+          >
+            <MdVerified size={12} />
+          </span>
+        )}
+        {user && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleLike?.(uni.id);
+            }}
+            title={universityLikes[uni.id] ? "Unlike university" : "Like university"}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '3px',
+              padding: '2px 4px',
+              color: universityLikes[uni.id] ? '#FF1493' : '#8696a0',
+              cursor: 'pointer',
+              fontSize: '0.8rem',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '2px'
+            }}
+          >
+            {universityLikes[uni.id] ? <AiFillHeart size={12} /> : <AiOutlineHeart size={12} />}
+            <span style={{ fontSize: '0.65rem' }}>{universityLikesCounts[uni.id] || 0}</span>
+          </button>
+        )}
+      </div>
+    </div>
+  </motion.div>
+), (prevProps, nextProps) => {
+  // Custom comparison for optimization
+  return (
+    prevProps.uni.id === nextProps.uni.id &&
+    prevProps.paperCount === nextProps.paperCount &&
+    prevProps.stats.average === nextProps.stats.average &&
+    prevProps.stats.count === nextProps.stats.count &&
+    prevProps.universityLikes[prevProps.uni.id] === nextProps.universityLikes[nextProps.uni.id] &&
+    prevProps.universityLikesCounts[prevProps.uni.id] === nextProps.universityLikesCounts[nextProps.uni.id] &&
+    prevProps.user?.subscription_tier === nextProps.user?.subscription_tier
+  );
+});
+
 export const UniversityGrid = React.memo(({
   universities,
   universitySearchTerm,
@@ -36,31 +176,39 @@ export const UniversityGrid = React.memo(({
     return counts;
   }, [universities]);
 
-  // Fetch actual paper counts from database - parallel loading for speed
+  // Fetch actual paper counts from database - batch loading for performance
   useEffect(() => {
     const fetchCounts = async () => {
       setIsLoading(true);
       const counts = { ...initialCounts };
+      const BATCH_SIZE = 5; // Load 5 universities at a time
 
       try {
-        // Load ALL counts in parallel for maximum speed
-        const countPromises = universities.map(async (uni) => {
-          try {
-            const count = await getPastPaperCountByUniversity(uni.id, user?.subscription_tier);
-            return { id: uni.id, count };
-          } catch (err) {
-            console.error(`Error fetching paper count for ${uni.name}:`, err);
-            return { id: uni.id, count: 0 };
-          }
-        });
+        // Load in batches to avoid overwhelming the server and blocking UI
+        for (let i = 0; i < universities.length; i += BATCH_SIZE) {
+          const batch = universities.slice(i, i + BATCH_SIZE);
+          const countPromises = batch.map(async (uni) => {
+            try {
+              const count = await getPastPaperCountByUniversity(uni.id, user?.subscription_tier);
+              return { id: uni.id, count };
+            } catch (err) {
+              console.error(`Error fetching paper count for ${uni.name}:`, err);
+              return { id: uni.id, count: 0 };
+            }
+          });
 
-        const results = await Promise.all(countPromises);
-        results.forEach(({ id, count }) => {
-          counts[id] = count;
-        });
+          const results = await Promise.all(countPromises);
+          results.forEach(({ id, count }) => {
+            counts[id] = count;
+          });
 
-        setPaperCounts(counts);
-      } finally {
+          // Update state after each batch for progressive rendering
+          setPaperCounts(prevCounts => ({ ...prevCounts, ...counts }));
+        }
+
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching paper counts:', err);
         setIsLoading(false);
       }
     };
@@ -148,238 +296,37 @@ export const UniversityGrid = React.memo(({
                   </motion.div>
                   
                   {/* Current University */}
-                  <motion.div
-                    key={uni.id}
-                    className="paper-cardpast"
-                    style={{ 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      overflow: 'hidden',
-                      position: 'relative'
-                    }}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    layout
-                    whileHover={{ y: -5 }}
-                    onClick={() => onUniversitySelect(uni)}
-                  >
-                {uni.cover_image_url && (
-                  <img
-                    src={uni.cover_image_url}
-                    alt={uni.name}
-                    style={{ 
-                      width: '100%', 
-                      height: '140px', 
-                      objectFit: 'cover',
-                      borderBottom: '1px solid #2a3942'
-                    }}
+                  <UniversityCard
+                    uni={uni}
+                    stats={stats}
+                    userRating={userRating}
+                    paperCount={paperCount}
+                    universityLikes={universityLikes}
+                    universityLikesCounts={universityLikesCounts}
+                    user={user}
+                    onUniversitySelect={onUniversitySelect}
+                    onToggleLike={onToggleLike}
+                    setShowSubscriptionModal={setShowSubscriptionModal}
                   />
-                )}
-
-                <div className="card-contentpast" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <h3 style={{ margin: 0, fontSize: '0.8rem', color: '#e9edef', fontWeight: '600' }}>
-                    {uni.name}
-                  </h3>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.65rem', color: '#8696a0' }}>
-                    {uni.location}
-                  </p>
-                  
-                  {/* Star Rating Display */}
-                  {stats.average > 0 && (
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '4px',
-                      marginTop: '4px',
-                      fontSize: '0.65rem'
-                    }}>
-                      <span style={{ color: '#FFD700' }}>★</span>
-                      <span style={{ color: '#8696a0' }}>
-                        {stats.average.toFixed(1)} ({stats.count})
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Paper count and like button */}
-                  <div style={{ 
-                    marginTop: 'auto', 
-                    paddingTop: '6px',
-                    borderTop: '1px solid #2a3942',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    <span style={{ fontSize: '0.65rem', color: '#8696a0', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      <FiEye size={12} /> {uni.views || 0}
-                    </span>
-                    {user?.subscription_tier && (user.subscription_tier === 'premium' || user.subscription_tier === 'premium_pro') ? (
-                      <span style={{ fontSize: '0.65rem', color: '#00a884', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                        {paperCount} papers
-                      </span>
-                    ) : (
-                      <span 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowSubscriptionModal?.(true);
-                        }}
-                        style={{ fontSize: '0.65rem', color: '#1DA1F2', display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }} 
-                        title="Click to upgrade to Premium"
-                      >
-                        <MdVerified size={12} />
-                      </span>
-                    )}
-                    {user && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleLike?.(uni.id);
-                        }}
-                        title={universityLikes[uni.id] ? "Unlike university" : "Like university"}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          borderRadius: '3px',
-                          padding: '2px 4px',
-                          color: universityLikes[uni.id] ? '#FF1493' : '#8696a0',
-                          cursor: 'pointer',
-                          fontSize: '0.8rem',
-                          transition: 'all 0.2s',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '2px'
-                        }}
-                      >
-                        {universityLikes[uni.id] ? <AiFillHeart size={12} /> : <AiOutlineHeart size={12} />}
-                        <span style={{ fontSize: '0.65rem' }}>{universityLikesCounts[uni.id] || 0}</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-                  </motion.div>
                 </React.Fragment>
               );
             }
             
             // Render regular university card
             return (
-              <motion.div
+              <UniversityCard
                 key={uni.id}
-                className="paper-cardpast"
-                style={{ 
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  overflow: 'hidden',
-                  position: 'relative'
-                }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                layout
-                whileHover={{ y: -5 }}
-                onClick={() => onUniversitySelect(uni)}
-              >
-                {uni.cover_image_url && (
-                  <img
-                    src={uni.cover_image_url}
-                    alt={uni.name}
-                    style={{ 
-                      width: '100%', 
-                      height: '140px', 
-                      objectFit: 'cover',
-                      borderBottom: '1px solid #2a3942'
-                    }}
-                  />
-                )}
-
-                <div className="card-contentpast" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <h3 style={{ margin: 0, fontSize: '0.8rem', color: '#e9edef', fontWeight: '600' }}>
-                    {uni.name}
-                  </h3>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.65rem', color: '#8696a0' }}>
-                    {uni.location}
-                  </p>
-                  
-                  {/* Star Rating Display */}
-                  {stats.average > 0 && (
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '4px',
-                      marginTop: '4px',
-                      fontSize: '0.65rem'
-                    }}>
-                      <span style={{ color: '#FFD700' }}>★</span>
-                      <span style={{ color: '#8696a0' }}>
-                        {stats.average.toFixed(1)} ({stats.count})
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Paper count and like button */}
-                  <div style={{ 
-                    marginTop: 'auto', 
-                    paddingTop: '6px',
-                    borderTop: '1px solid #2a3942',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    <span style={{ fontSize: '0.65rem', color: '#8696a0', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      <FiEye size={12} /> {uni.views || 0}
-                    </span>
-                    {user?.subscription_tier && (user.subscription_tier === 'premium' || user.subscription_tier === 'premium_pro') ? (
-                      <span style={{ fontSize: '0.65rem', color: '#00a884', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                        {paperCount} papers
-                      </span>
-                    ) : (
-                      <span 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowSubscriptionModal?.(true);
-                        }}
-                        style={{ fontSize: '0.65rem', color: '#1DA1F2', display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }} 
-                        title="Click to upgrade to Premium"
-                      >
-                        <MdVerified size={12} />
-                      </span>
-                    )}
-                    {user && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleLike?.(uni.id);
-                        }}
-                        title={universityLikes[uni.id] ? "Unlike university" : "Like university"}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          borderRadius: '3px',
-                          padding: '2px 4px',
-                          color: universityLikes[uni.id] ? '#FF1493' : '#8696a0',
-                          cursor: 'pointer',
-                          fontSize: '0.8rem',
-                          transition: 'all 0.2s',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '2px'
-                        }}
-                      >
-                        {universityLikes[uni.id] ? <AiFillHeart size={12} /> : <AiOutlineHeart size={12} />}
-                        <span style={{ fontSize: '0.65rem' }}>{universityLikesCounts[uni.id] || 0}</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
+                uni={uni}
+                stats={stats}
+                userRating={userRating}
+                paperCount={paperCount}
+                universityLikes={universityLikes}
+                universityLikesCounts={universityLikesCounts}
+                user={user}
+                onUniversitySelect={onUniversitySelect}
+                onToggleLike={onToggleLike}
+                setShowSubscriptionModal={setShowSubscriptionModal}
+              />
             );
           })}
         </AnimatePresence>
