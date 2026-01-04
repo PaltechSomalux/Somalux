@@ -160,7 +160,6 @@ export const BookCategories = () => {
         if (mounted) {
           console.log('⚡ Categories loaded from cache - INSTANT');
           setCategories(cachedData.data);
-          setDisplayedCategories(cachedData.data.slice(0, visibleCount));
           setLoading(false);
         }
         // Still refresh in background without blocking UI
@@ -260,7 +259,6 @@ export const BookCategories = () => {
 
         if (mounted) {
           setCategories(mapped);
-          setDisplayedCategories(mapped.slice(0, visibleCount));
           setLoading(false);
         }
       } catch (err) {
@@ -276,7 +274,6 @@ export const BookCategories = () => {
     fetchCategories();
 
     return () => { mounted = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Debounced logging of category searches

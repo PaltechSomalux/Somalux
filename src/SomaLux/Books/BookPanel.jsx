@@ -70,6 +70,93 @@ const ReactionButtonsBKP = ({
   );
 };
 
+// ⚡ Memoized BookCard component to prevent re-renders
+const BookCard = React.memo(({
+  book,
+  onClick,
+  onMouseEnter,
+  onFocus,
+  bookLove,
+  onLove,
+  isLoved,
+  onWishlistToggle,
+  isBookmarked,
+  prefetchResource,
+  isMounted
+}) => {
+  return (
+    <motion.div
+      key={book.id}
+      initial={isMounted ? { opacity: 0, y: 12 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.22 }}
+      layout
+    >
+      <div
+        className="book-cardBKP"
+        onClick={onClick}
+        onMouseEnter={onMouseEnter}
+        onFocus={onFocus}
+        tabIndex={0}
+      >
+        <div className="badge-containerBKP">
+          {book.trending && (
+            <span className="trending-badgeBKP">
+              <FiTrendingUp size={12} /> Trending
+            </span>
+          )}
+        </div>
+
+        <img src={book.bookImage} alt={book.title} className="book-coverBKP" loading="lazy" decoding="async" />
+
+        <div className="card-contentBKP">
+          <h3 className="book-titleBKP">{book.title}</h3>
+          <p className="book-authorBKP">by {book.author}</p>
+
+          <div className="book-metaBKP">
+            <span className="ratingBKP">
+              <FiStar fill={book.rating > 0 ? "#fbbf24" : "none"} color={book.rating > 0 ? "#fbbf24" : "#64748b"} />
+              {book.rating > 0 ? book.rating.toFixed(1) : <span className="na-textBKP">N/A</span>}
+              {book.ratingCount > 0 && <span className="rating-countBKP">({book.ratingCount})</span>}
+            </span>
+          </div>
+        </div>
+
+        <div className="action-buttonsBKP">
+          <ReactionButtonsBKP
+            itemId={book.id}
+            loves={bookLove || 0}
+            onLove={onLove}
+            isLoved={isLoved}
+          />
+          <span className="view-countBKP">
+            <FiEye size={14} color="#64748b" /> <span className="countBKP">{book.views.toLocaleString()}</span>
+          </span>
+          <span className="downloads-countBKP">
+            <FiDownload size={14} color="#64748b" /> <span className="countBKP">{book.downloads.toLocaleString()}</span>
+          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onWishlistToggle(book.id);
+            }}
+            className={`wishlist-buttonBKP ${isBookmarked ? 'activeBKP' : ''}`}
+          >
+            <FiBookmark
+              size={14}
+              fill={isBookmarked ? '#6366f1' : 'none'}
+              color={isBookmarked ? '#6366f1' : '#64748b'}
+            />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+
+BookCard.displayName = 'BookCard';
+
 // Helper component to ping reading session periodically
 const ReaderSessionPinger = ({ user, book }) => {
   useEffect(() => {
@@ -106,6 +193,7 @@ export const BookPanel = ({ demoMode = false }) => {
   const [books, setBooks] = useState([]);
   const [displayedBooks, setDisplayedBooks] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [categoryFilterId, setCategoryFilterId] = useState(null);
@@ -204,6 +292,16 @@ export const BookPanel = ({ demoMode = false }) => {
       }
     })();
   }, [user?.id]);
+
+  // ⚡ Debounce search term to avoid excessive filtering on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1); // Reset to page 1 on search
+    }, 300); // 300ms debounce delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
 /*************  ✨ Windsurf Command ⭐  *************/
 /**
@@ -329,6 +427,19 @@ export const BookPanel = ({ demoMode = false }) => {
   const [mediaComments, setMediaComments] = useState({});
 
   const [commentLikes, setCommentLikes] = useState({});
+
+  // ⚡ Memoized inline styles to prevent object recreation on every render (critical for perf)
+  const modalStyles = useMemo(() => ({
+    overlay: { position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', zIndex: 1100 },
+    modal: { width: 360, background: '#0b1220', color: '#e6eef7', padding: 20, borderRadius: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.6)', textAlign: 'center' },
+    title: { margin: 0, marginBottom: 8 },
+    description: { margin: 0, marginBottom: 18, color: '#9ca3af' },
+    buttonGroup: { display: 'flex', gap: 8, justifyContent: 'center' },
+    loadingContainer: { minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    loadingText: { color: '#6b7280', fontSize: 14 },
+    paginationContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '24px', marginBottom: '20px' },
+    paginationText: { fontSize: '13px', fontWeight: '500', color: '#666', minWidth: '80px', textAlign: 'center' },
+  }), []);
 
   // Helper: log search events to backend for analytics
   const logSearchEvent = useCallback(
@@ -1355,12 +1466,12 @@ export const BookPanel = ({ demoMode = false }) => {
       result = result.filter(book => String(book.categoryId) === String(categoryFilterId));
     }
 
-    if (searchTerm) {
+    if (debouncedSearchTerm) {
       result = result.filter(book =>
-        book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        book.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        book.genre.toLowerCase().includes(searchTerm.toLowerCase())
+        book.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        book.author.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        book.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        book.genre.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       );
     }
 
@@ -1413,7 +1524,7 @@ export const BookPanel = ({ demoMode = false }) => {
     } catch (e) {}
 
     return result;
-  }, [books, searchTerm, activeFilter, sortBy, wishlist, categoryFilterId, focusedBookId]);
+  }, [books, debouncedSearchTerm, activeFilter, sortBy, wishlist, categoryFilterId, focusedBookId]);
 
   useEffect(() => {
     // Show the current page slice
@@ -2150,11 +2261,11 @@ export const BookPanel = ({ demoMode = false }) => {
         </div>
         {/* Network error modal (also shown when initial load fails) */}
         {showNetworkModal && (
-          <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', zIndex: 1100 }}>
-            <div style={{ width: 360, background: '#0b1220', color: '#e6eef7', padding: 20, borderRadius: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.6)', textAlign: 'center' }}>
-              <h3 style={{ margin: 0, marginBottom: 8 }}>Please check your network</h3>
-              <p style={{ margin: 0, marginBottom: 18, color: '#9ca3af' }}>Unable to connect. Please verify your internet connection and try again.</p>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          <div style={modalStyles.overlay}>
+            <div style={modalStyles.modal}>
+              <h3 style={modalStyles.title}>Please check your network</h3>
+              <p style={modalStyles.description}>Unable to connect. Please verify your internet connection and try again.</p>
+              <div style={modalStyles.buttonGroup}>
                 <button className="btn" onClick={() => setShowNetworkModal(false)}>Close</button>
                 <button
                   className="btn primary"
@@ -2185,8 +2296,8 @@ export const BookPanel = ({ demoMode = false }) => {
   if (focusedBookId && filteredBooks.length === 0 && (loading || focusedBookLoading)) {
     return (
       <div className="containerBKP">
-        <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ color: '#6b7280', fontSize: 14 }}>Loading book...</div>
+        <div style={modalStyles.loadingContainer}>
+          <div style={modalStyles.loadingText}>Loading book...</div>
         </div>
       </div>
     );
@@ -2220,11 +2331,11 @@ export const BookPanel = ({ demoMode = false }) => {
       `}</style>
       {/* Network error modal */}
       {showNetworkModal && (
-        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', zIndex: 1100 }}>
-          <div style={{ width: 360, background: '#0b1220', color: '#e6eef7', padding: 20, borderRadius: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.6)', textAlign: 'center' }}>
-            <h3 style={{ margin: 0, marginBottom: 8 }}>Please check your network</h3>
-            <p style={{ margin: 0, marginBottom: 18, color: '#9ca3af' }}>Unable to connect. Please verify your internet connection and try again.</p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+        <div style={modalStyles.overlay}>
+          <div style={modalStyles.modal}>
+            <h3 style={modalStyles.title}>Please check your network</h3>
+            <p style={modalStyles.description}>Unable to connect. Please verify your internet connection and try again.</p>
+            <div style={modalStyles.buttonGroup}>
               <button className="btn" onClick={() => setShowNetworkModal(false)}>Close</button>
               <button
                 className="btn primary"

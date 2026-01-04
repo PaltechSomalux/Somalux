@@ -266,14 +266,19 @@ export const Authors = () => {
 
               // Try Wikipedia (reliable and fast)
               try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+                
                 const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&list=search&srsearch=${encodeURIComponent(name)}&srlimit=1`;
-                const sres = await fetch(searchUrl);
+                const sres = await fetch(searchUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
                 if (sres.ok) {
                   const sdata = await sres.json();
                   const hit = sdata?.query?.search?.[0];
                   if (hit?.pageid) {
                     const pageUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&pageids=${hit.pageid}&prop=pageimages|extracts&exintro=1&explaintext=1&piprop=thumbnail&pithumbsize=400`;
-                    const pres = await fetch(pageUrl);
+                    const pres = await fetch(pageUrl, { signal: controller.signal });
                     if (pres.ok) {
                       const pdata = await pres.json();
                       const page = pdata?.query?.pages?.[hit.pageid];
@@ -289,14 +294,21 @@ export const Authors = () => {
                     }
                   }
                 }
-              } catch (e) {}
+              } catch (e) {
+                // Timeout or other error - continue to next source
+              }
 
               // Skip Open Library and DuckDuckGo for speed - they're slow
               // Only try Google Books as fallback
               try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5 second timeout
+                
                 const q = `inauthor:"${name}"`;
                 const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=1`;
-                const res = await fetch(url);
+                const res = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
                 if (res.ok) {
                   const data = await res.json();
                   const item = (data.items || [])[0];

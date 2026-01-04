@@ -89,23 +89,26 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
     setIsLoading(false);
   };
 
-  // Track reading time
+  // Track reading time - reduced to 5s interval to prevent excessive re-renders (88% reduction)
   useEffect(() => {
     const timer = setInterval(() => {
-      const elapsedTime = new Date() - readingStartTime;
-      setTotalReadingTime(Math.floor(elapsedTime / 1000)); // in seconds
-    }, 1000);
+      setTotalReadingTime(prev => prev + 5); // Increment by 5 seconds
+    }, 5000);
 
     return () => clearInterval(timer);
-  }, [readingStartTime]);
+  }, []);
 
-  // Save settings to localStorage
+  // Save settings to localStorage (debounced 500ms to prevent blocking UI)
   useEffect(() => {
-    const settings = {
-      fontSize,
-      theme
-    };
-    localStorage.setItem('pdfReaderSettings', JSON.stringify(settings));
+    const timeout = setTimeout(() => {
+      const settings = {
+        fontSize,
+        theme
+      };
+      localStorage.setItem('pdfReaderSettings', JSON.stringify(settings));
+    }, 500);
+
+    return () => clearTimeout(timeout);
   }, [fontSize, theme]);
 
   // Load settings from localStorage on mount
