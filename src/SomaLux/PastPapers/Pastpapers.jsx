@@ -50,6 +50,7 @@ export const PaperPanel = ({ demoMode = false }) => {
   const [papers, setPapers] = useState([]);
   const [displayedPapers, setDisplayedPapers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [universitySearchTerm, setUniversitySearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -179,51 +180,61 @@ export const PaperPanel = ({ demoMode = false }) => {
   // Define data loading functions BEFORE useEffects that depend on them
   const loadPastPapers = useCallback(async () => {
     try {
-      // Fetch papers in chunks of 1000 to support unlimited papers
-      // Continue fetching until all papers are loaded
-      const chunkSize = 1000;
+      // Load papers in small batches (250 each) for responsive UI updates
+      const BATCH_SIZE = 250;
       let allPapers = [];
       let pageNum = 1;
       let hasMore = true;
       let attempts = 0;
-      const maxAttempts = 50; // Safeguard: max 50,000 papers (50 chunks × 1000)
+      const maxAttempts = 100; // Support up to 25,000 papers (100 chunks × 250)
+      let initialLoadDone = false;
 
       while (hasMore && attempts < maxAttempts) {
-        console.log(`📄 Loading papers batch ${pageNum}...`);
-        const { data } = await fetchPastPapers({ page: pageNum, pageSize: chunkSize });
-        
-        if (data && data.length > 0) {
-          allPapers = allPapers.concat(data);
-          console.log(`✅ Loaded ${data.length} papers. Total so far: ${allPapers.length}`);
+        try {
+          console.log(`📄 Loading papers batch ${pageNum}...`);
+          const { data } = await fetchPastPapers({ page: pageNum, pageSize: BATCH_SIZE });
+          
+          if (data && data.length > 0) {
+            allPapers = allPapers.concat(data);
+            const totalLoaded = allPapers.length;
+            console.log(`✅ Loaded batch ${pageNum}: ${data.length} papers. Total: ${totalLoaded}`);
+            
+            // Transform and display papers immediately after each batch
+            const transformedData = transformData(allPapers);
+            setPapers(transformedData);
+            
+            // Unblock UI after first batch
+            if (!initialLoadDone) {
+              setLoading(false);
+              initialLoadDone = true;
+              console.log(`🚀 UI unblocked - first batch displayed`);
+            }
+            
+            pageNum++;
+            attempts++;
+            hasMore = data.length === BATCH_SIZE;
+            
+            // Small delay between batches to avoid overwhelming the server
+            if (hasMore) {
+              await new Promise(resolve => setTimeout(resolve, 50));
+            }
+          } else {
+            console.log(`ℹ️ No more papers found. Total loaded: ${allPapers.length}`);
+            hasMore = false;
+          }
+        } catch (batchError) {
+          console.error(`Error loading batch ${pageNum}:`, batchError);
+          // Continue loading remaining batches even if one fails
           pageNum++;
           attempts++;
-          hasMore = data.length === chunkSize;
-        } else {
-          console.log(`ℹ️ No more papers found. Total loaded: ${allPapers.length}`);
-          hasMore = false;
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
       
       console.log(`✨ Finished loading ${allPapers.length} total papers`);
       
-      const transformedData = (allPapers || []).map(paper => ({
-        id: paper.id,
-        title: paper.title || `${paper.unit_code || ''} - ${paper.unit_name || ''}`,
-        course: paper.unit_name || paper.title,
-        courseCode: paper.unit_code || '',
-        faculty: paper.faculty || 'Unknown',
-        university: paper.universities?.name || paper.university || 'Unknown',
-        year: paper.year,
-        semester: paper.semester,
-        examType: paper.exam_type,
-        downloads: paper.downloads_count || 0,
-        downloads_count: paper.downloads_count || 0,
-        views: paper.views_count || 0,
-        views_count: paper.views_count || 0,
-        file_url: paper.file_url,
-        downloadUrl: paper.file_url || null,
-        created_at: paper.created_at
-      }));
+      // Final update with complete dataset
+      const transformedData = transformData(allPapers);
       
       // Cache papers in localStorage
       try {
@@ -231,8 +242,9 @@ export const PaperPanel = ({ demoMode = false }) => {
           data: transformedData,
           timestamp: Date.now()
         }));
+        console.log(`💾 Papers cached successfully`);
       } catch (e) {
-        // Storage quota exceeded, ignore
+        console.warn('Could not cache papers (storage full):', e.message);
       }
       
       setPapers(transformedData);
@@ -244,6 +256,7 @@ export const PaperPanel = ({ demoMode = false }) => {
         const cached = localStorage.getItem('cachedPastPapers');
         if (cached) {
           const { data } = JSON.parse(cached);
+          console.log(`📦 Loaded ${data.length} papers from cache`);
           setPapers(data);
           setLoading(false);
           return;
@@ -251,6 +264,28 @@ export const PaperPanel = ({ demoMode = false }) => {
       } catch (e) {}
       setLoading(false);
     }
+  }, []);
+
+  // Helper function to transform raw paper data
+  const transformData = useCallback((papers) => {
+    return (papers || []).map(paper => ({
+      id: paper.id,
+      title: paper.title || `${paper.unit_code || ''} - ${paper.unit_name || ''}`,
+      course: paper.unit_name || paper.title,
+      courseCode: paper.unit_code || '',
+      faculty: paper.faculty || 'Unknown',
+      university: paper.universities?.name || paper.university || 'Unknown',
+      year: paper.year,
+      semester: paper.semester,
+      examType: paper.exam_type,
+      downloads: paper.downloads_count || 0,
+      downloads_count: paper.downloads_count || 0,
+      views: paper.views_count || 0,
+      views_count: paper.views_count || 0,
+      file_url: paper.file_url,
+      downloadUrl: paper.file_url || null,
+      created_at: paper.created_at
+    }));
   }, []);
 
   const loadUniversities = useCallback(async () => {
@@ -282,12 +317,14 @@ export const PaperPanel = ({ demoMode = false }) => {
   const fetchAndUpdateUniversities = async () => {
     try {
       const { data } = await fetchUniversities({ page: 1, pageSize: 5 });
-      // Cache universities
-      localStorage.setItem('cachedUniversities', JSON.stringify({ data, timestamp: Date.now() }));
-      setUniversities(data || []);
-      setLoading(false);
+      // Cache universities IMMEDIATELY - don't wait for stats
+      if (data && data.length > 0) {
+        localStorage.setItem('cachedUniversities', JSON.stringify({ data, timestamp: Date.now() }));
+        setUniversities(data || []);
+        setLoading(false); // UNBLOCK immediately!
+      }
 
-      // Load stats and ratings COMPLETELY async, no blocking at all
+      // Load stats and ratings COMPLETELY async, no blocking at all (separate effect)
       (async () => {
         const statsPromises = (data || []).map(async (uni) => {
           try {
@@ -511,6 +548,16 @@ export const PaperPanel = ({ demoMode = false }) => {
     }
   }, []);
 
+  // Debounce search term to avoid excessive filtering
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1); // Reset pagination on search
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   // Real-time subscription for past papers - start FIRST before loading
   useEffect(() => {
     if (!subscribeToPastPapers) return;
@@ -543,6 +590,9 @@ export const PaperPanel = ({ demoMode = false }) => {
   // Load past papers from database - use cache first for INSTANT load
   useEffect(() => {
     // Try to load from cache FIRST (instant display)
+    let hasCachedPapers = false;
+    let hasCachedUnis = false;
+    
     try {
       const cached = localStorage.getItem('cachedPastPapers');
       if (cached) {
@@ -550,6 +600,7 @@ export const PaperPanel = ({ demoMode = false }) => {
         // Use cache if less than 5 minutes old
         if (Date.now() - timestamp < 5 * 60 * 1000) {
           setPapers(data);
+          hasCachedPapers = true;
         }
       }
     } catch (e) {}
@@ -561,15 +612,24 @@ export const PaperPanel = ({ demoMode = false }) => {
         // Use cache if less than 30 minutes old
         if (Date.now() - timestamp < 30 * 60 * 1000) {
           setUniversities(data || []);
-          setLoading(false);
+          hasCachedUnis = true;
         }
       }
     } catch (e) {}
 
-    // Fetch both in parallel WITHOUT blocking
-    Promise.all([loadPastPapers(), loadUniversities(), loadFaculties()]).catch(() => {
+    // If we have cache, mark loading as false immediately
+    if (hasCachedUnis) {
       setLoading(false);
-    });
+    }
+
+    // Load fresh data in background (non-blocking)
+    loadFaculties(); // Load faculties ASAP (fast operation)
+    
+    // Load papers in background
+    loadPastPapers().catch(() => setLoading(false));
+    
+    // Load universities in background
+    loadUniversities().catch(() => setLoading(false));
   }, [loadPastPapers, loadUniversities, loadFaculties]);
 
   // Reload papers when university filter changes - debounced
@@ -1067,25 +1127,31 @@ export const PaperPanel = ({ demoMode = false }) => {
   };
 
   const filteredPapers = useMemo(() => {
-    let result = [...papers];
+    // Early exit if no papers
+    if (!papers.length) return [];
+    
+    let result = papers;
+    const uniFilterLower = universityFilter?.toLowerCase();
+    const facultyFilterLower = facultyFilter?.toLowerCase();
+    const searchLower = debouncedSearchTerm?.trim().toLowerCase();
      
     // ALWAYS apply university filter if one is selected - papers are university-specific
-    if (universityFilter) {
+    if (uniFilterLower) {
       result = result.filter(paper => 
-        paper.university?.toLowerCase() === universityFilter.toLowerCase()
+        paper.university?.toLowerCase() === uniFilterLower
       );
     }
     
     // Apply faculty filter if one is selected
-    if (facultyFilter) {
+    if (facultyFilterLower) {
       result = result.filter(paper => 
-        paper.faculty?.toLowerCase() === facultyFilter.toLowerCase()
+        paper.faculty?.toLowerCase() === facultyFilterLower
       );
     }
     
     // Apply search filter (works with university filter too)
-    if (searchTerm) {
-      const raw = searchTerm.trim().toLowerCase();
+    if (searchLower) {
+      const raw = searchLower;
 
       // Try to interpret semester-style queries like "sem 1", "semester 2", "sem3"
       let semesterNumber = null;
@@ -1102,22 +1168,18 @@ export const PaperPanel = ({ demoMode = false }) => {
       result = result.filter(paper => {
         const title = (paper.title || '').toLowerCase();
         const course = (paper.course || '').toLowerCase();
-        const uni = (paper.university || '').toLowerCase();
-        const faculty = (paper.faculty || '').toLowerCase();
         const code = (paper.courseCode || '').toLowerCase();
         const yearStr = String(paper.year || '');
         const semesterStr = String(paper.semester || '').toLowerCase();
         
         // Create a combined searchable field that includes both unit name and code
-        const combinedCourseField = `${course} ${code}`.toLowerCase();
+        const combinedCourseField = `${course} ${code}`;
 
         const textMatch =
           title.includes(raw) ||
           course.includes(raw) ||
           code.includes(raw) ||
           combinedCourseField.includes(raw) ||
-          uni.includes(raw) ||
-          faculty.includes(raw) ||
           yearStr.includes(raw);
 
         const semesterMatch = semesterNumber
@@ -1133,23 +1195,27 @@ export const PaperPanel = ({ demoMode = false }) => {
       result = result.filter(paper => paper.year >= new Date().getFullYear() - 2);
     }
     
-    // Apply sorting
-    if (sortBy === 'title') {
-      result.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-    } else if (sortBy === 'course') {
-      result.sort((a, b) => (a.course || '').localeCompare(b.course || ''));
-    } else if (sortBy === 'university') {
-      result.sort((a, b) => (a.university || '').localeCompare(b.university || ''));
-    } else if (sortBy === 'views') {
-      result.sort((a, b) => (b.views || 0) - (a.views || 0));
-    } else if (sortBy === 'downloads') {
-      result.sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0));
-    } else if (sortBy === 'year') {
-      result.sort((a, b) => (b.year || 0) - (a.year || 0));
+    // Apply sorting with early exit for best performance
+    if (sortBy !== 'default') {
+      const sortedResult = result.slice(); // Non-mutating copy
+      if (sortBy === 'title') {
+        sortedResult.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      } else if (sortBy === 'course') {
+        sortedResult.sort((a, b) => (a.course || '').localeCompare(b.course || ''));
+      } else if (sortBy === 'university') {
+        sortedResult.sort((a, b) => (a.university || '').localeCompare(b.university || ''));
+      } else if (sortBy === 'views') {
+        sortedResult.sort((a, b) => (b.views || 0) - (a.views || 0));
+      } else if (sortBy === 'downloads') {
+        sortedResult.sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0));
+      } else if (sortBy === 'year') {
+        sortedResult.sort((a, b) => (b.year || 0) - (a.year || 0));
+      }
+      return sortedResult;
     }
     
     return result;
-  }, [papers, searchTerm, activeFilter, sortBy, universityFilter, facultyFilter]);
+  }, [papers, debouncedSearchTerm, activeFilter, sortBy, universityFilter, facultyFilter]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(filteredPapers.length / pageSize)), [filteredPapers.length, pageSize]);
 
@@ -1170,13 +1236,18 @@ export const PaperPanel = ({ demoMode = false }) => {
   useEffect(() => {
     // Reset to page 1 when filters change
     setCurrentPage(1);
-  }, [searchTerm, activeFilter, sortBy, universityFilter, facultyFilter]);
+  }, [debouncedSearchTerm, activeFilter, sortBy, universityFilter, facultyFilter]);
 
-  useEffect(() => {
+  const displayedPapersMemo = useMemo(() => {
     const startIdx = (currentPage - 1) * pageSize;
     const endIdx = startIdx + pageSize;
-    setDisplayedPapers(filteredPapers.slice(startIdx, endIdx));
+    return filteredPapers.slice(startIdx, endIdx);
   }, [filteredPapers, currentPage, pageSize]);
+
+  useEffect(() => {
+    // Sync memoized value with state
+    setDisplayedPapers(displayedPapersMemo);
+  }, [displayedPapersMemo]);
 
   const handlePaperClick = async (paper) => {
     // Don't show modal while auth is loading - wait for verification
@@ -1610,21 +1681,17 @@ export const PaperPanel = ({ demoMode = false }) => {
   // Debounced logging of past paper searches
   useEffect(() => {
     try {
-      const q = (searchTerm || '').trim();
+      const q = (debouncedSearchTerm || '').trim();
       if (!q || q.length < 2) return;
 
-      const handle = setTimeout(() => {
-        logSearchEvent({ queryText: q, resultsCount: filteredPapers.length });
-      }, 800);
-
-      return () => clearTimeout(handle);
+      logSearchEvent({ queryText: q, resultsCount: filteredPapers.length });
     } catch {
       // ignore
     }
-  }, [searchTerm, filteredPapers.length, logSearchEvent]);
+  }, [debouncedSearchTerm, filteredPapers.length, logSearchEvent]);
 
-  // Show empty state while loading
-  if (loading && universities.length === 0) {
+  // Show empty state only if truly loading (no cached data)
+  if (loading && universities.length === 0 && papers.length === 0) {
     return (
       <div className="containerpast">
         <header className="headerpast">
