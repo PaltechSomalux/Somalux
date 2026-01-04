@@ -30,8 +30,10 @@
 /* ================= HEADER ================= */
 
 .book-management-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   background: rgba(12, 19, 23, 0.85);
   backdrop-filter: blur(14px);
@@ -60,8 +62,10 @@
 /* ================= TAB BAR ================= */
 
 .tools-scroll-container-convert {
-  position: sticky;
-  top: 68px;
+  position: fixed;
+  top: 54px;
+  left: 0;
+  right: 0;
   z-index: 90;
   background: rgba(12, 19, 23, 0.85);
   backdrop-filter: blur(14px);
@@ -126,6 +130,7 @@
 .file-converter-content-convert {
   padding: 24px 20px;
   min-height: calc(100vh - 150px);
+  margin-top: 105px;
   animation: fadeIn 0.4s ease-in-out;
   /* Enable touch scrolling */
   -webkit-overflow-scrolling: touch;
@@ -159,11 +164,12 @@
   }
 
   .tools-scroll-container-convert {
-    top: 63px;
+    top: 50px;
   }
 
   .file-converter-content-convert {
     padding: 18px;
+    margin-top: 100px;
   }
 
   /* Mobile-specific swipe optimizations */

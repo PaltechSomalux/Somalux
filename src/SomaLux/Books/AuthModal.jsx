@@ -26,6 +26,9 @@ export const AuthModal = ({ isOpen, onClose, onSuccess, action = 'action' }) => 
     setError('');
     
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15sec timeout
+      
       const { data, error: signInError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -33,13 +36,19 @@ export const AuthModal = ({ isOpen, onClose, onSuccess, action = 'action' }) => 
         },
       });
 
+      clearTimeout(timeoutId);
+
       if (signInError) throw signInError;
       
       // Success callback will be handled by auth state change listener
       if (onSuccess) onSuccess();
     } catch (err) {
       console.error('Sign in error:', err);
-      setError(err.message || 'Failed to sign in. Please try again.');
+      if (err?.name === 'AbortError') {
+        setError('Sign in took too long. Please try again.');
+      } else {
+        setError(err.message || 'Failed to sign in. Please try again.');
+      }
       setLoading(false);
     }
   };

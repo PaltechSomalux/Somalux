@@ -97,10 +97,18 @@ const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
         const scoped = asSubmission ? safe.filter((p) => isOwnedByCurrentUser(p)) : safe;
         setProcesses(scoped);
 
-        // Check for incomplete process on mount
-        const incomplete = scoped.find(p => p.status === 'stopped' && p.stats.processed < p.stats.total);
+        // Check for incomplete process (stopped with unfinished work)
+        // Include if: status is 'stopped' AND (has total > 0 with processed < total, OR just has stopped status)
+        const incomplete = scoped.find(p => 
+          p.status === 'stopped' && 
+          (p.stats.processed < p.stats.total || p.stats.total > 0)
+        );
+        
         if (incomplete && !currentProcess) {
           setIncompleteProcess(incomplete);
+        } else if (!incomplete) {
+          // Clear incomplete if no stopped processes found
+          setIncompleteProcess(null);
         }
       }
     } catch (err) {
@@ -209,11 +217,52 @@ const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
     }
   };
 
-  const resumeUpload = () => {
-    if (incompleteProcess) {
-      setPapersDirectory(incompleteProcess.papersDirectory);
-      setShowResumeConfirm(false);
-      startUpload();
+  const resumeUpload = async () => {
+    if (!incompleteProcess) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const actorEmail = userProfile?.email || userProfile?.email_address || null;
+      const actorName = userProfile?.displayName || userProfile?.name || userProfile?.display_name || null;
+      const response = await fetch(`${API_BASE}/api/elib/bulk-upload-pastpapers/resume/${incompleteProcess.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-actor-email': actorEmail || 'admin',
+          'x-actor-name': actorName || ''
+        },
+        body: JSON.stringify({
+          uploadedBy: userProfile?.id || userProfile?.uid || userProfile?.user_id || null
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const msg = data?.error || 'Failed to resume upload';
+        showToast(msg, 'error');
+        throw new Error(msg);
+      }
+
+      if (data.ok) {
+        setCurrentProcess({
+          id: data.processId || incompleteProcess.id,
+          status: 'running',
+          startedAt: new Date().toISOString(),
+          papersDirectory: incompleteProcess.papersDirectory,
+          stats: incompleteProcess.stats || { total: 0, processed: 0, successful: 0, failed: 0, skipped: 0 }
+        });
+        setIncompleteProcess(null);
+        setShowResumeConfirm(false);
+        showToast('Upload resumed from last point', 'success');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to resume upload');
+      showToast(err.message || 'Failed to resume upload', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -233,30 +282,37 @@ const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
       {/* Resume Banner */}
       {incompleteProcess && !currentProcess && (
         <div style={{
-          background: 'rgba(0, 168, 132, 0.1)',
-          border: '1px solid #00a884',
-          borderRadius: '4px',
-          padding: '8px',
-          marginBottom: '8px',
+          background: 'rgba(0, 168, 132, 0.15)',
+          border: '2px solid #00a884',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          marginBottom: '16px',
+          marginTop: '12px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          boxShadow: '0 4px 12px rgba(0, 168, 132, 0.2)'
         }}>
           <div>
-            <div style={{ color: '#00a884', fontWeight: '600', marginBottom: '2px' }}>
-              📂 Incomplete Upload Detected
+            <div style={{ color: '#00a884', fontWeight: '700', marginBottom: '4px', fontSize: '14px' }}>
+              ✓ Incomplete Upload Detected
             </div>
-            <div style={{ color: '#8696a0', fontSize: '13px' }}>
-              {incompleteProcess.stats.processed} of {incompleteProcess.stats.total} papers uploaded from {incompleteProcess.papersDirectory}
+            <div style={{ color: '#8696a0', fontSize: '13px', marginBottom: '2px' }}>
+              {incompleteProcess.stats.processed || 0} of {incompleteProcess.stats.total || 0} papers uploaded
+            </div>
+            <div style={{ color: '#8696a0', fontSize: '12px' }}>
+              📁 {incompleteProcess.papersDirectory}
             </div>
           </div>
-          <button
-            className="btn primary"
-            onClick={() => setShowResumeConfirm(true)}
-            style={{ marginLeft: '8px' }}
-          >
-            Resume Upload
-          </button>
+          <div style={{ display: 'flex', gap: '8px', marginLeft: '16px' }}>
+            <button
+              className="btn primary"
+              onClick={() => setShowResumeConfirm(true)}
+              style={{ whiteSpace: 'nowrap', background: '#00a884' }}
+            >
+              Resume Upload
+            </button>
+          </div>
         </div>
       )}
 
@@ -445,6 +501,57 @@ const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
                 style={{ background: '#ea4335' }}
               >
                 Stop Upload
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resume confirm dialog */}
+      {showResumeConfirm && incompleteProcess && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#1f2c33',
+            border: '1px solid #374151',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '400px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontSize: '18px', fontWeight: '600', color: '#e9edef', marginBottom: '8px' }}>
+                Resume Upload?
+              </div>
+              <div style={{ color: '#8696a0', fontSize: '14px', marginBottom: '8px' }}>
+                Continue uploading {incompleteProcess.stats.total - incompleteProcess.stats.processed} remaining papers from:
+              </div>
+              <div style={{ color: '#00a884', fontSize: '13px', wordBreak: 'break-all' }}>
+                {incompleteProcess.papersDirectory}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                className="btn"
+                onClick={() => setShowResumeConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn primary"
+                onClick={resumeUpload}
+              >
+                Resume Upload
               </button>
             </div>
           </div>

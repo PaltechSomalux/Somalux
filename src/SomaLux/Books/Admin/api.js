@@ -143,7 +143,7 @@ export async function deleteCategory(id) {
   if (error) throw error;
 }
 
-export async function fetchBooks({ page = 1, pageSize = 10, search = '', categoryId = null, sort = { col: 'created_at', dir: 'desc' }, uploadedBy = null }) {
+export async function fetchBooks({ page = 1, pageSize = 10, search = '', categoryId = null, uncategorized = false, sort = { col: 'created_at', dir: 'desc' }, uploadedBy = null }) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
   
@@ -171,7 +171,9 @@ export async function fetchBooks({ page = 1, pageSize = 10, search = '', categor
     if (search) {
       query = query.ilike('title', `%${search}%`);
     }
-    if (categoryId) {
+    if (uncategorized) {
+      query = query.is('category_id', null);
+    } else if (categoryId) {
       query = query.eq('category_id', categoryId);
     }
     if (uploadedBy) {
@@ -460,7 +462,7 @@ export async function fetchStats() {
     const oldestMonthDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
     const oldestMonthIso = oldestMonthDate.toISOString();
 
-    const [booksCountRes, usersDataRes, downloadsRes, viewsCountVal, universitiesCountVal, pastPapersCountVal, recentRes, topRes, categoriesRes, allBooksRes, viewsTimelineRes] = await Promise.all([
+    const [booksCountRes, usersDataRes, downloadsRes, viewsCountVal, universitiesCountVal, pastPapersCountVal, recentRes, topRes, topPastPapersRes, categoriesRes, allBooksRes, viewsTimelineRes] = await Promise.all([
       supabase.from('books').select('id', { count: 'exact', head: true }),
       (async () => {
         try {
@@ -478,6 +480,7 @@ export async function fetchStats() {
       (async () => { const { count } = await supabase.from('past_papers').select('id', { count: 'exact', head: true }); return count || 0; })(),
       supabase.from('books').select('id, title, author, cover_image_url, created_at, views_count').order('created_at', { ascending: false }).limit(10),
       supabase.from('books').select('id, title, cover_image_url, downloads_count, views_count, comments_count').order('downloads_count', { ascending: false }).limit(5),
+      supabase.from('past_papers').select('id, title, downloads_count, views_count').order('downloads_count', { ascending: false }).limit(5),
       supabase.from('categories').select('id, name'),
       supabase.from('books').select('id, category_id, created_at, author, downloads_count, views_count, comments_count, rating'),
       supabase.from('book_views').select('id, view_date').gte('view_date', oldestMonthIso)
@@ -560,6 +563,7 @@ export async function fetchStats() {
       counts: { books: booksCount, users: usersCount, downloads: totalDownloads, views: totalViews, universities: universitiesCount, pastPapers: pastPapersCount, categories: categories.length, authors: authorsCount },
       recent: recentRes.data || [],
       top: topRes.data || [],
+      topPastPapers: topPastPapersRes.data || [],
       monthly: months.map(m => ({ month: m.label, uploads: m.uploads, views: m.views })),
       categories,
       authors

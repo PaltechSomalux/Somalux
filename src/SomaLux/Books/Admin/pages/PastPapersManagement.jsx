@@ -324,15 +324,15 @@ const PastPapersManagement = ({ userProfile }) => {
         {/* Stats Summary */}
         {!loading && rows.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', marginBottom: '12px' }}>
-            <div style={{ background: '#1a2332', border: '1px solid #2a3f56', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
+            <div style={{ background: '#0b1216', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
               <div style={{ color: '#00a884', fontSize: '1.2rem', fontWeight: '600' }}>{rows.reduce((sum, r) => sum + (r.downloads_count || 0), 0)}</div>
               <div>Total Downloads</div>
             </div>
-            <div style={{ background: '#1a2332', border: '1px solid #2a3f56', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
+            <div style={{ background: '#0b1216', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
               <div style={{ color: '#34B7F1', fontSize: '1.2rem', fontWeight: '600' }}>{rows.reduce((sum, r) => sum + (r.views_count || 0), 0)}</div>
               <div>Total Views</div>
             </div>
-            <div style={{ background: '#1a2332', border: '1px solid #2a3f56', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
+            <div style={{ background: '#0b1216', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
               <div style={{ color: '#FFCC00', fontSize: '1.2rem', fontWeight: '600' }}>{rows.length}/{count}</div>
               <div>Page Papers</div>
             </div>
@@ -381,11 +381,11 @@ const PastPapersManagement = ({ userProfile }) => {
         {/* Multi-Edit Mode Toolbar */}
         {isMultiEditMode && (
           <div style={{ 
-            background: '#1a2332', 
-            border: '1px solid #2a3f56', 
+            background: '#0b1216', 
             borderRadius: '6px', 
             padding: '12px',
-            marginBottom: '12px'
+            marginBottom: '12px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)'
           }}>
             <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, color: '#00a884' }}>
@@ -517,14 +517,14 @@ const PastPapersManagement = ({ userProfile }) => {
         {/* Selection Toolbar */}
         {selectedIds.size > 0 && !isMultiEditMode && (
           <div style={{ 
-            background: '#1a2332', 
-            border: '1px solid #2a3f56', 
+            background: '#0b1216', 
             borderRadius: '6px', 
             padding: '12px',
             marginBottom: '12px',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)'
           }}>
             <span style={{ color: '#8696a0' }}>
               {selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected

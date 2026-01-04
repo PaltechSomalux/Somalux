@@ -1,6 +1,7 @@
 // src/BookPanel.jsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from './supabaseClient';
+import { initializeSession, setupAuthListener, clearSessionCache } from '../../utils/sessionManager';
 import { Download } from './Download';
 import { CommentsSection } from './CommentsSection';
 import { AuthModal } from './AuthModal';
@@ -769,11 +770,26 @@ export const BookPanel = ({ demoMode = false }) => {
       }
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      fetchUserWithRole(session);
-    });
+    // Initialize session with cache-first approach
+    (async () => {
+      try {
+        // Try to restore from cache instantly (no network call)
+        const cachedSession = await initializeSession(supabase);
+        if (cachedSession) {
+          console.log('✓ Session restored from cache (instant)');
+          fetchUserWithRole(cachedSession);
+        } else {
+          console.log('ℹ No cached session, user will be prompted to login');
+          setLoadingUser(false);
+        }
+      } catch (err) {
+        console.error('Session initialization failed:', err);
+        setLoadingUser(false);
+      }
+    })();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Setup auth listener for ongoing changes
+    const subscription = setupAuthListener(supabase, (_event, session) => {
       fetchUserWithRole(session);
     });
 
@@ -1701,6 +1717,10 @@ export const BookPanel = ({ demoMode = false }) => {
   };
 
   const requireAuth = (action) => {
+    // Don't show modal while auth is loading - wait for verification
+    if (loadingUser) {
+      return false;
+    }
     if (!user) {
       setAuthAction(action);
       setShowAuthModal(true);

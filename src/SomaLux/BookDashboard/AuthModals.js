@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { supabase } from "../Books/supabaseClient";
+import { clearSessionCache } from "../../utils/sessionManager";
 import { AuthModal } from "../Books/AuthModal";
 import "./AuthModals.css"; // Import this CSS file
 
@@ -31,65 +32,59 @@ export const AuthModals = ({
 
   const handleSignOut = async () => {
     try {
-      // Send optional feedback
-      if (signOutReason.trim() && authUser?.email) {
-        try {
-          const apiOrigin =
-            (typeof window !== "undefined" && window.__API_ORIGIN__) ||
-            (typeof window !== "undefined" && window.location?.hostname === "localhost"
-              ? `${window.location.protocol}//${window.location.hostname}:5000`
-              : "");
-
-          const response = await fetch(`${apiOrigin}/api/user/signout-feedback`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userEmail: authUser.email,
-              userName:
-                authUser.user_metadata?.full_name ||
-                authUser.email?.split("@")[0] ||
-                "User",
-              signOutReason: signOutReason.trim(),
-            }),
-          });
-
-          const contentType = response.headers.get("content-type") || "";
-          let data = null;
-          let text = "";
-
-          if (contentType.includes("application/json")) {
-            data = await response.json();
-          } else {
-            text = await response.text();
-          }
-
-          if (response.ok) {
-            toast.success("Feedback sent – thank you!", {
-              autoClose: 3000,
-            });
-          } else {
-            toast.info("Feedback noted locally");
-          }
-        } catch (err) {
-          console.error("Feedback failed:", err);
-          toast.warning("Continuing sign out...");
-        }
-      }
-
-      // Mark as signed out in your app logic
-      if (authUser && markProfileSignedOut) {
-        await markProfileSignedOut(authUser);
-      }
-
-      // Supabase sign out
-      await supabase.auth.signOut();
-      setAuthUser(null);
       setShowSignOutModal(false);
+      
+      // Clear session cache FIRST (critical for preventing auto-login)
+      clearSessionCache();
+      
+      // Supabase sign out NEXT (non-blocking)
+      supabase.auth.signOut().catch(e => console.error("Sign out error:", e));
+      
+      // Clear local state immediately - no delays
+      setAuthUser(null);
       setSignOutReason("");
       setShowReasonInput(false);
-
       localStorage.removeItem("userProfile");
       window.dispatchEvent(new CustomEvent("authChanged", { detail: { user: null } }));
+
+      // Send feedback asynchronously (non-blocking) with timeout
+      if (signOutReason.trim() && authUser?.email) {
+        // Fire and forget - don't await
+        (async () => {
+          try {
+            const apiOrigin =
+              (typeof window !== "undefined" && window.__API_ORIGIN__) ||
+              (typeof window !== "undefined" && window.location?.hostname === "localhost"
+                ? `${window.location.protocol}//${window.location.hostname}:5000`
+                : "");
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3sec max
+
+            const response = await fetch(`${apiOrigin}/api/user/signout-feedback`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userEmail: authUser.email,
+                userName:
+                  authUser.user_metadata?.full_name ||
+                  authUser.email?.split("@")[0] ||
+                  "User",
+                signOutReason: signOutReason.trim(),
+              }),
+              signal: controller.signal,
+            });
+
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+              console.log("Feedback sent successfully");
+            }
+          } catch (err) {
+            console.warn("Feedback failed (non-blocking):", err?.message);
+          }
+        })();
+      }
 
       toast.success("Signed out successfully", { autoClose: 2000 });
     } catch (err) {

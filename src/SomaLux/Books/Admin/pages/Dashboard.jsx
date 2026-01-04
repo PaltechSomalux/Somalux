@@ -53,6 +53,7 @@ const Dashboard = () => {
     monthly: [],
     categories: [],
     top: [],
+    topPastPapers: [],
     recent: [],
   });
   const [loading, setLoading] = useState(true);
@@ -66,6 +67,7 @@ const Dashboard = () => {
   const [monthlyPage, setMonthlyPage] = useState(1);
   const [categoriesPage, setCategoriesPage] = useState(1);
   const [topPage, setTopPage] = useState(1);
+  const [topPastPapersPage, setTopPastPapersPage] = useState(1);
 
   // added: pagination for viewDetails table
   const [viewPage, setViewPage] = useState(1);
@@ -87,6 +89,11 @@ const Dashboard = () => {
     downloads: Number(b.downloads_count || b.downloads || b.Downloads || 0),
     views: Number(b.views_count || b.views || b.Views || 0),
   })).filter(b => !isNaN(b.downloads));
+  const safeTopPastPapers = (stats.topPastPapers || []).map(p => ({
+    title: p.title || 'Untitled',
+    downloads: Number(p.downloads_count || p.downloads || 0),
+    views: Number(p.views_count || p.views || 0),
+  })).filter(p => !isNaN(p.downloads));
 
   // Time-series data for line chart (uploads/views/downloads if available)
   const _extractNumber = (obj, ...keys) => {
@@ -198,10 +205,14 @@ const Dashboard = () => {
   const nonZeroTop = safeTop
     .filter(b => b.downloads > 0)
     .sort((a, b) => b.downloads - a.downloads);
+  const nonZeroTopPastPapers = safeTopPastPapers
+    .filter(p => p.downloads > 0)
+    .sort((a, b) => b.downloads - a.downloads);
 
   const monthlyTotalPages = Math.max(1, Math.ceil((nonZeroMonthly.length || 0) / OVERVIEW_PAGE_SIZE));
   const categoriesTotalPages = Math.max(1, Math.ceil((nonZeroCategories.length || 0) / OVERVIEW_PAGE_SIZE));
   const topTotalPages = Math.max(1, Math.ceil((nonZeroTop.length || 0) / OVERVIEW_PAGE_SIZE));
+  const topPastPapersTotalPages = Math.max(1, Math.ceil((nonZeroTopPastPapers.length || 0) / OVERVIEW_PAGE_SIZE));
 
   const monthlyStart = (monthlyPage - 1) * OVERVIEW_PAGE_SIZE;
   const monthlyEnd = monthlyStart + OVERVIEW_PAGE_SIZE;
@@ -214,6 +225,10 @@ const Dashboard = () => {
   const topStart = (topPage - 1) * OVERVIEW_PAGE_SIZE;
   const topEnd = topStart + OVERVIEW_PAGE_SIZE;
   const pagedTop = nonZeroTop.slice(topStart, topEnd);
+
+  const topPastPapersStart = (topPastPapersPage - 1) * OVERVIEW_PAGE_SIZE;
+  const topPastPapersEnd = topPastPapersStart + OVERVIEW_PAGE_SIZE;
+  const pagedTopPastPapers = nonZeroTopPastPapers.slice(topPastPapersStart, topPastPapersEnd);
 
   // added: compute pagedViewDetails for viewDetails pagination
   const pagedViewDetails = viewDetails.slice((viewPage - 1) * VIEW_PAGE_SIZE, viewPage * VIEW_PAGE_SIZE);
@@ -595,6 +610,68 @@ const Dashboard = () => {
                     className="btn"
                     disabled={topPage >= topTotalPages}
                     onClick={() => setTopPage(p => Math.min(topTotalPages, p + 1))}
+                  >
+                    Next
+                  </button>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={{ background: '#111b21', borderRadius: 1 }}>
+            <CardContent sx={{ padding: 1 }}>
+              <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Top Past Papers (Downloads)</Typography>
+              <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
+              <Box sx={{ overflowX: 'auto', maxHeight: 350, overflowY: 'auto' }}>
+                <table className="table overview-table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Downloads</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(pagedTopPastPapers.length ? pagedTopPastPapers : []).map((p, i) => {
+                      const totalDownloads = stats.counts.downloads || 0;
+                      const ratio = totalDownloads > 0 ? Math.min(1, (p.downloads || 0) / totalDownloads) : 0;
+                      const percent = Math.round(ratio * 100);
+                      return (
+                        <tr key={i}>
+                          <td>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              <span>{p.title}</span>
+                              <Box sx={{ background: '#202c33', borderRadius: 999, overflow: 'hidden', height: 6 }}>
+                                <Box sx={{ width: `${percent}%`, height: '100%', bgcolor: '#00a884' }} />
+                              </Box>
+                            </Box>
+                          </td>
+                          <td>{p.downloads}</td>
+                        </tr>
+                      );
+                    })}
+                    {nonZeroTopPastPapers.length === 0 && (
+                      <tr><td colSpan={2} style={{ color: '#8696a0' }}>No top past papers data</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </Box>
+              {nonZeroTopPastPapers.length > OVERVIEW_PAGE_SIZE && (
+                <Box className="actions" sx={{ mt: 1.5, display: 'flex', justifyContent: 'space-between' }}>
+                  <button
+                    className="btn"
+                    disabled={topPastPapersPage <= 1}
+                    onClick={() => setTopPastPapersPage(p => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </button>
+                  <span style={{ color: '#cfd8dc', fontSize: 12 }}>
+                    Page {topPastPapersPage} of {topPastPapersTotalPages}
+                  </span>
+                  <button
+                    className="btn"
+                    disabled={topPastPapersPage >= topPastPapersTotalPages}
+                    onClick={() => setTopPastPapersPage(p => Math.min(topPastPapersTotalPages, p + 1))}
                   >
                     Next
                   </button>

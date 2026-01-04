@@ -130,7 +130,7 @@ app.post('/api/utils/send-test-email', async (req, res) => {
 // USER SESSION TRACKING ENDPOINTS
 // ============================================================
 
-// Record user login
+// Record user login - optimized for performance
 app.post('/api/user/session/login', async (req, res) => {
   try {
     const { userId, ipAddress, userAgent, deviceType } = req.body || {};
@@ -139,20 +139,18 @@ app.post('/api/user/session/login', async (req, res) => {
       return res.status(400).json({ error: 'userId is required' });
     }
 
-    // Update profiles table with last_login and session_count
-    const { error: updateError } = await supabaseAdmin
+    // Fire-and-forget profile update (non-blocking)
+    supabaseAdmin
       .from('profiles')
       .update({
         last_login: new Date().toISOString(),
         last_active_at: new Date().toISOString(),
-        total_logins: supabaseAdmin.rpc('increment_total_logins', { user_id: userId })
       })
-      .eq('id', userId);
+      .eq('id', userId)
+      .catch(e => console.warn('Failed to update profile on login:', e?.message));
 
-    if (updateError) console.warn('Failed to update profile on login:', updateError);
-
-    // Record session in user_sessions table
-    const { data: session, error: sessionError } = await supabaseAdmin
+    // Record session in user_sessions table (non-blocking)
+    supabaseAdmin
       .from('user_sessions')
       .insert({
         user_id: userId,
@@ -160,22 +158,17 @@ app.post('/api/user/session/login', async (req, res) => {
         user_agent: userAgent || null,
         device_type: deviceType || 'unknown'
       })
-      .select()
-      .single();
+      .catch(e => console.warn('Failed to record user session:', e?.message));
 
-    if (sessionError) {
-      console.error('Failed to record user session:', sessionError);
-      return res.status(500).json({ error: sessionError.message });
-    }
-
-    res.json({ ok: true, session });
+    // Return immediately without waiting
+    res.json({ ok: true });
   } catch (e) {
     console.error('Error recording login:', e);
     res.status(500).json({ error: e.message || 'Failed to record login' });
   }
 });
 
-// Record user logout
+// Record user logout - optimized for performance
 app.post('/api/user/session/logout', async (req, res) => {
   try {
     const { userId, sessionId } = req.body || {};
@@ -184,42 +177,27 @@ app.post('/api/user/session/logout', async (req, res) => {
       return res.status(400).json({ error: 'userId is required' });
     }
 
-    // Update profiles table with deactivated_at (for sign-out tracking)
-    const { error: updateError } = await supabaseAdmin
+    // Update profiles table with last_active_at (non-blocking)
+    supabaseAdmin
       .from('profiles')
       .update({
         last_active_at: new Date().toISOString()
       })
-      .eq('id', userId);
+      .eq('id', userId)
+      .catch(e => console.warn('Failed to update profile on logout:', e?.message));
 
-    if (updateError) console.warn('Failed to update profile on logout:', updateError);
-
-    // Update session record with logout time if sessionId provided
+    // Update session record with logout time if sessionId provided (non-blocking)
     if (sessionId) {
-      const logoutTime = new Date();
-      const { data: sessionData } = await supabaseAdmin
-        .from('user_sessions')
-        .select('login_time')
-        .eq('id', sessionId)
-        .single();
-
-      let durationMinutes = null;
-      if (sessionData && sessionData.login_time) {
-        const loginTime = new Date(sessionData.login_time);
-        durationMinutes = Math.round((logoutTime - loginTime) / (1000 * 60));
-      }
-
-      const { error: logoutError } = await supabaseAdmin
+      supabaseAdmin
         .from('user_sessions')
         .update({
-          logout_time: logoutTime.toISOString(),
-          session_duration_minutes: durationMinutes
+          logout_time: new Date().toISOString(),
         })
-        .eq('id', sessionId);
-
-      if (logoutError) console.warn('Failed to record logout:', logoutError);
+        .eq('id', sessionId)
+        .catch(e => console.warn('Failed to record logout:', e?.message));
     }
 
+    // Return immediately without waiting
     res.json({ ok: true });
   } catch (e) {
     console.error('Error recording logout:', e);
@@ -345,13 +323,13 @@ app.get('/api/admin/authenticated-users', async (req, res) => {
   }
 });
 
-// Sign-out reason notification endpoint
+// Sign-out reason notification endpoint - optimized (non-blocking)
 app.post('/api/user/signout-feedback', async (req, res) => {
   try {
     const { userEmail, userName, signOutReason } = req.body || {};
 
     if (!signOutReason || !signOutReason.trim()) {
-      // No reason provided, just return success
+      // No reason provided, just return success immediately
       return res.json({ ok: true, sent: false, reason: 'No reason provided' });
     }
 
@@ -359,17 +337,23 @@ app.post('/api/user/signout-feedback', async (req, res) => {
       return res.status(400).json({ error: 'Missing user email' });
     }
 
-    // Send email to admins (they'll be fetched dynamically from the database)
-    const result = await sendSignOutReasonEmail({
-      userEmail,
-      userName,
-      signOutReason
-      // Note: adminEmails not provided, will be fetched from database
-    });
+    // Return success immediately (fire-and-forget pattern)
+    res.json({ ok: true, sent: true });
 
-    res.json({ ok: true, sent: !!result, result });
+    // Send email asynchronously in the background (non-blocking)
+    (async () => {
+      try {
+        await sendSignOutReasonEmail({
+          userEmail,
+          userName,
+          signOutReason
+        });
+      } catch (e) {
+        console.warn('Failed to send sign-out feedback email (background):', e?.message);
+      }
+    })();
   } catch (e) {
-    console.error('Failed to send sign-out feedback:', e);
+    console.error('Failed to process sign-out feedback:', e);
     res.status(500).json({ error: e.message || 'Failed to process sign-out feedback' });
   }
 });
@@ -1395,6 +1379,100 @@ app.post('/api/elib/bulk-upload-pastpapers/stop/:processId', async (req, res) =>
 
   } catch (error) {
     res.status(500).json({ error: error.message || 'Failed to stop process' });
+  }
+});
+
+app.post('/api/elib/bulk-upload-pastpapers/resume/:processId', async (req, res) => {
+  console.log(`📨 [PAST-PAPERS-BULK-UPLOAD-RESUME] Request received for process: ${req.params.processId}`);
+
+  try {
+    const { processId } = req.params;
+    const { uploadedBy } = req.body;
+    const actorEmail = req.headers['x-actor-email'] || 'admin';
+    const actorName = req.headers['x-actor-name'] || 'Unknown';
+
+    const existingProcess = bulkUploadPastPapersProcesses.get(processId);
+
+    if (!existingProcess) {
+      console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-RESUME] Process not found: ${processId}`);
+      return res.status(404).json({ error: 'Process not found' });
+    }
+
+    if (existingProcess.status !== 'stopped') {
+      console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-RESUME] Process status is ${existingProcess.status}, not stopped`);
+      return res.status(400).json({ error: 'Only stopped processes can be resumed' });
+    }
+
+    console.log(`🔑 [PAST-PAPERS-BULK-UPLOAD-RESUME] Resuming process: ${processId}`);
+    console.log(`📂 [PAST-PAPERS-BULK-UPLOAD-RESUME] Directory: ${existingProcess.papersDirectory}`);
+
+    // Reset the stop flag and status to resume
+    existingProcess.stopFlag.stopped = false;
+    existingProcess.status = 'running';
+    existingProcess.resumedAt = new Date().toISOString();
+
+    // Start background upload from where it stopped
+    (async () => {
+      try {
+        console.log(`📋 [PAST-PAPERS-BULK-UPLOAD-${processId}] Resuming bulkUploadPastPapers...`);
+        const { bulkUploadPastPapers } = await import('./scripts/bulkUploadPastPapers.js');
+        
+        const stats = await bulkUploadPastPapers({
+          papersDirectory: existingProcess.papersDirectory,
+          supabaseUrl: process.env.SUPABASE_URL,
+          supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+          uploadedBy: existingProcess.uploadedBy,
+          asSubmission: existingProcess.asSubmission,
+          onProgress: (data) => {
+            // Update process stats
+            if (data.stats) {
+              existingProcess.stats = { ...data.stats };
+            }
+          },
+          stopFlag: existingProcess.stopFlag
+        });
+
+        console.log(`✅ [PAST-PAPERS-BULK-UPLOAD-${processId}] Resume completed:`, stats);
+        existingProcess.status = 'completed';
+        existingProcess.completedAt = new Date().toISOString();
+        existingProcess.stats = stats;
+
+        // Notify admin
+        if (actorEmail && actorEmail !== 'admin') {
+          try {
+            await sendEmail({
+              to: actorEmail,
+              subject: `Past Papers Bulk Upload Completed`,
+              html: buildBrandedEmailHtml(`
+                <h2>Resumed Upload Complete</h2>
+                <p>Your resumed bulk upload of past papers has completed.</p>
+                <ul>
+                  <li>Total: ${stats.total}</li>
+                  <li>Successful: ${stats.successful}</li>
+                  <li>Failed: ${stats.failed}</li>
+                  <li>Skipped: ${stats.skipped}</li>
+                </ul>
+              `)
+            });
+          } catch (emailErr) {
+            console.warn(`⚠️ Failed to send email to ${actorEmail}:`, emailErr.message);
+          }
+        }
+
+      } catch (error) {
+        console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-${processId}] Resume error:`, error.message);
+        existingProcess.status = 'failed';
+        existingProcess.error = error.message;
+        existingProcess.completedAt = new Date().toISOString();
+      }
+    })();
+
+    console.log(`✅ [PAST-PAPERS-BULK-UPLOAD-RESUME] Response sent - resuming process ${processId}`);
+    res.json({ ok: true, processId });
+
+  } catch (error) {
+    console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-RESUME] Exception caught:`, error.message);
+    res.status(500).json({ error: error.message || 'Failed to resume upload' });
   }
 });
 

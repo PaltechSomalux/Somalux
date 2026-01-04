@@ -657,14 +657,14 @@ const AutoUpload = ({ userProfile, asSubmission = false }) => {
             {processes.length > HISTORY_PAGE_SIZE && (
               <div
                 className="actions"
-                style={{ marginTop: '12px', justifyContent: 'space-between' }}
+                style={{ marginTop: '12px', justifyContent: 'center', gap: '24px' }}
               >
                 <button
                   className="btn"
                   disabled={historyPage <= 1}
                   onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
                 >
-                  Prev
+                  ← Prev
                 </button>
                 <span style={{ color: '#cfd8dc', fontSize: 12 }}>
                   Page {historyPage} of {Math.max(1, Math.ceil(processes.length / HISTORY_PAGE_SIZE))}
@@ -678,7 +678,7 @@ const AutoUpload = ({ userProfile, asSubmission = false }) => {
                     )
                   }
                 >
-                  Next
+                  Next →
                 </button>
               </div>
             )}

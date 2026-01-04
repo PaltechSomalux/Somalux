@@ -63,7 +63,8 @@ export const Profile = ({ user: propUser = null }) => {
     if (!user || !user.id) return;
     try {
       const nowIso = new Date().toISOString();
-      await supabase
+      // Non-blocking fire-and-forget profile update
+      supabase
         .from('profiles')
         .upsert(
           {
@@ -75,7 +76,8 @@ export const Profile = ({ user: propUser = null }) => {
             deactivated_at: null,
           },
           { returning: 'minimal' }
-        );
+        )
+        .catch(e => console.warn('Failed to mark profile active', e));
     } catch (e) {
       console.warn('Failed to mark profile active', e);
     }
@@ -85,13 +87,15 @@ export const Profile = ({ user: propUser = null }) => {
     if (!user || !user.id) return;
     try {
       const nowIso = new Date().toISOString();
-      await supabase
+      // Non-blocking fire-and-forget profile update
+      supabase
         .from('profiles')
         .update({
           is_active: false,
           deactivated_at: nowIso,
         })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .catch(e => console.warn('Failed to mark profile signed out', e));
     } catch (e) {
       console.warn('Failed to mark profile signed out', e);
     }
@@ -225,7 +229,11 @@ export const Profile = ({ user: propUser = null }) => {
       }
     })();
 
+    let isMounted = true;
     const { data: { subscription } = {} } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Prevent state updates on unmounted component
+      if (!isMounted) return;
+      
       const user = session?.user || null;
       setAuthUser(user);
       
@@ -241,14 +249,15 @@ export const Profile = ({ user: propUser = null }) => {
 
         const avatarFromAuth = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
         if (avatarFromAuth) {
-          (async () => {
-            await loadAvatar(avatarFromAuth);
-          })();
+          // Non-blocking avatar load
+          loadAvatar(avatarFromAuth).catch(e => console.warn('Avatar load failed:', e));
         }
 
+        // Non-blocking profile marking
         markProfileActive(user);
       } else {
-        markProfileSignedOut(authUser);
+        // User logged out - only clear UI state, DO NOT mark as signed out in database
+        // (markProfileSignedOut should only be called when user explicitly clicks sign out button)
         setLocalUser(null);
         localStorage.removeItem('userProfile');
         setProfileImage(null);
@@ -256,7 +265,9 @@ export const Profile = ({ user: propUser = null }) => {
       window.dispatchEvent(new CustomEvent("authChanged", { detail: { user } }));
     });
 
+
     return () => {
+      isMounted = false;
       try {
         subscription?.unsubscribe?.();
       } catch (e) {}

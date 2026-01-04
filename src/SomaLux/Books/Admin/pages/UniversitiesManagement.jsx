@@ -32,12 +32,23 @@ const UniversitiesManagement = ({ userProfile }) => {
       setRows(data);
       setCount(total);
       
-      // Fetch paper counts for each university
+      // Fetch paper counts for each university in batches (non-blocking)
       const counts = {};
-      for (const uni of data) {
-        counts[uni.id] = await getPastPaperCountByUniversity(uni.id);
+      const BATCH_SIZE = 3;
+      for (let i = 0; i < data.length; i += BATCH_SIZE) {
+        const batch = data.slice(i, i + BATCH_SIZE);
+        const countPromises = batch.map(uni =>
+          getPastPaperCountByUniversity(uni.id)
+            .then(count => ({ id: uni.id, count }))
+            .catch(() => ({ id: uni.id, count: 0 }))
+        );
+        const results = await Promise.all(countPromises);
+        results.forEach(({ id, count }) => {
+          counts[id] = count;
+        });
+        // Update counts progressively
+        setPaperCounts(prevCounts => ({ ...prevCounts, ...counts }));
       }
-      setPaperCounts(counts);
     } finally { setLoading(false); }
   };
 

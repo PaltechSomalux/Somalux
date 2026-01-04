@@ -13,9 +13,14 @@ const Books = ({ userProfile }) => {
   const [categoryId, setCategoryId] = useState(null);
   const [sort, setSort] = useState({ col: 'created_at', dir: 'desc' });
   const [editingId, setEditingId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [editDraft, setEditDraft] = useState({});
   const [newPdf, setNewPdf] = useState(null);
   const [newCover, setNewCover] = useState(null);
+  const [isMultiEditMode, setIsMultiEditMode] = useState(false);
+  const [showCheckboxes, setShowCheckboxes] = useState(false);
+  const [useCustomCategory, setUseCustomCategory] = useState(false);
+  const [customCategory, setCustomCategory] = useState('');
 
   const { confirm, showToast } = useAdminUI();
 
@@ -28,17 +33,48 @@ const Books = ({ userProfile }) => {
   const load = async () => {
     setLoading(true);
     try {
-      const { data, count: total } = await fetchBooks({ 
+      const fetchParams = { 
         page, 
         pageSize, 
         search, 
-        categoryId, 
         sort
-      });
+      };
+      // Handle uncategorized filter
+      if (categoryId === 'uncategorized') {
+        fetchParams.uncategorized = true;
+      } else if (categoryId) {
+        fetchParams.categoryId = categoryId;
+      }
+      
+      const { data, count: total } = await fetchBooks(fetchParams);
       
       setRows(data);
       setCount(total);
     } finally { setLoading(false); }
+  };
+
+  // Fetch all book IDs matching current filters (no pagination)
+  const fetchAllMatchingIds = async () => {
+    try {
+      const fetchParams = { 
+        page: 1, 
+        pageSize: 10000, 
+        search, 
+        sort 
+      };
+      // Handle uncategorized filter
+      if (categoryId === 'uncategorized') {
+        fetchParams.uncategorized = true;
+      } else if (categoryId) {
+        fetchParams.categoryId = categoryId;
+      }
+      
+      const { data } = await fetchBooks(fetchParams);
+      return new Set(data.map(item => item.id));
+    } catch (error) {
+      console.error('Failed to fetch all matching books:', error);
+      return new Set();
+    }
   };
 
   useEffect(() => {
@@ -82,6 +118,146 @@ const Books = ({ userProfile }) => {
     setEditDraft({});
     setNewPdf(null);
     setNewCover(null);
+    setUseCustomCategory(false);
+    setCustomCategory('');
+  };
+
+  // Multi-select handlers
+  const toggleSelectRow = (id) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === count && count > 0) {
+      setSelectedIds(new Set());
+    } else {
+      fetchAllMatchingIds().then(allIds => {
+        setSelectedIds(allIds);
+      });
+    }
+  };
+
+  const startMultiEdit = () => {
+    if (selectedIds.size === 0) {
+      showToast({ type: 'error', message: 'Please select at least one book to edit.' });
+      return;
+    }
+    
+    const visibleSelectedIds = Array.from(selectedIds).filter(id => rows.some(r => r.id === id));
+    if (visibleSelectedIds.length > 0) {
+      const canEditVisible = visibleSelectedIds.every(id => {
+        const row = rows.find(r => r.id === id);
+        return canEdit(row);
+      });
+
+      if (!canEditVisible) {
+        showToast({ type: 'error', message: 'You do not have permission to edit some of the selected books.' });
+        return;
+      }
+    }
+
+    setIsMultiEditMode(true);
+    setEditDraft({
+      title: '', author: '', category_id: '', year: '', publisher: ''
+    });
+  };
+
+  const cancelMultiEdit = () => {
+    setIsMultiEditMode(false);
+    setEditDraft({});
+    setSelectedIds(new Set());
+    setShowCheckboxes(false);
+    setUseCustomCategory(false);
+    setCustomCategory('');
+  };
+
+  const saveMultiEdit = async () => {
+    if (selectedIds.size === 0) {
+      showToast({ type: 'error', message: 'No books selected.' });
+      return;
+    }
+
+    const updates = {};
+    if (editDraft.title) updates.title = editDraft.title;
+    if (editDraft.author) updates.author = editDraft.author;
+    if (editDraft.category_id !== '' || useCustomCategory) updates.category_id = useCustomCategory ? customCategory : editDraft.category_id;
+    if (editDraft.year) updates.year = editDraft.year;
+    if (editDraft.publisher) updates.publisher = editDraft.publisher;
+
+    if (Object.keys(updates).length === 0) {
+      showToast({ type: 'error', message: 'Please enter at least one field to update.' });
+      return;
+    }
+
+    try {
+      const booksToUpdate = Array.from(selectedIds).map(id => {
+        const cachedRow = rows.find(r => r.id === id);
+        return { id, cached: cachedRow };
+      });
+
+      const missingIds = booksToUpdate.filter(p => !p.cached).map(p => p.id);
+      let missingBooksMap = new Map();
+      
+      if (missingIds.length > 0) {
+        const { data: allSelectedBooks } = await fetchBooks({ 
+          page: 1, 
+          pageSize: 10000, 
+          search, 
+          categoryId, 
+          sort 
+        });
+        missingBooksMap = new Map(allSelectedBooks.map(p => [p.id, p]));
+      }
+
+      const updatePromises = [];
+      const batchSize = 5;
+      
+      for (const { id, cached } of booksToUpdate) {
+        const row = cached || missingBooksMap.get(id);
+        if (!row) {
+          console.warn(`Book with ID ${id} not found`);
+          continue;
+        }
+        
+        updatePromises.push(
+          updateBook(id, { 
+            updates, 
+            newPdfFile: null, 
+            newCoverFile: null, 
+            oldFilePath: row.file_path 
+          })
+        );
+
+        if (updatePromises.length >= batchSize) {
+          await Promise.all(updatePromises);
+          updatePromises.length = 0;
+        }
+      }
+
+      if (updatePromises.length > 0) {
+        await Promise.all(updatePromises);
+      }
+
+      cancelMultiEdit();
+      setLoading(true);
+      const { data, count: total } = await fetchBooks({ page, pageSize, search, categoryId, sort });
+      setRows(data);
+      setCount(total);
+      setLoading(false);
+      
+      showToast({ type: 'success', message: `${selectedIds.size} book(s) updated successfully.` });
+    } catch (e) {
+      console.error('Failed to update books:', e?.message || e);
+      showToast({ type: 'error', message: e?.message || 'Failed to update books.' });
+    }
   };
 
   const saveEdit = async (row) => {
@@ -90,6 +266,10 @@ const Books = ({ userProfile }) => {
       return;
     }
     const updates = { ...editDraft };
+    // Use custom category if selected, otherwise use the one from edit draft
+    if (useCustomCategory && customCategory) {
+      updates.category_id = customCategory;
+    }
 
     try {
       await updateBook(row.id, { updates, newPdfFile: newPdf, newCoverFile: newCover, oldFilePath: row.file_path });
@@ -138,23 +318,23 @@ const Books = ({ userProfile }) => {
         {/* Stats Summary */}
         {!loading && rows.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', marginBottom: '12px' }}>
-            <div style={{ background: '#1a2332', border: '1px solid #2a3f56', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
+            <div style={{ background: '#0b1216', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
               <div style={{ color: '#00a884', fontSize: '1.2rem', fontWeight: '600' }}>{rows.reduce((sum, r) => sum + (r.downloads || 0), 0)}</div>
               <div>Total Downloads</div>
             </div>
-            <div style={{ background: '#1a2332', border: '1px solid #2a3f56', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
+            <div style={{ background: '#0b1216', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
               <div style={{ color: '#34B7F1', fontSize: '1.2rem', fontWeight: '600' }}>{rows.reduce((sum, r) => sum + (r.views || 0), 0)}</div>
               <div>Total Views</div>
             </div>
-            <div style={{ background: '#1a2332', border: '1px solid #2a3f56', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
+            <div style={{ background: '#0b1216', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
               <div style={{ color: '#FF6B9D', fontSize: '1.2rem', fontWeight: '600' }}>{rows.reduce((sum, r) => sum + (r.comments_count || 0), 0)}</div>
               <div>Total Comments</div>
             </div>
-            <div style={{ background: '#1a2332', border: '1px solid #2a3f56', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
+            <div style={{ background: '#0b1216', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
               <div style={{ color: '#F44336', fontSize: '1.2rem', fontWeight: '600' }}>{rows.reduce((sum, r) => sum + (r.likes_count || 0), 0)}</div>
               <div>Total Likes</div>
             </div>
-            <div style={{ background: '#1a2332', border: '1px solid #2a3f56', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
+            <div style={{ background: '#0b1216', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
               <div style={{ color: '#FFCC00', fontSize: '1.2rem', fontWeight: '600' }}>{rows.length}/{count}</div>
               <div>Page Books</div>
             </div>
@@ -170,6 +350,7 @@ const Books = ({ userProfile }) => {
             <label className="label" style={{ marginBottom: '0.2rem' }}>Category</label>
             <select className="select" value={categoryId || ''} onChange={(e) => { setPage(1); setCategoryId(e.target.value || null); }} style={{ fontSize: '0.9rem' }}>
               <option value="">All</option>
+              <option value="uncategorized">Uncategorized</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
@@ -177,12 +358,195 @@ const Books = ({ userProfile }) => {
 
         <div className="actions" style={{ marginBottom: 10 }}>
           <button className="btn primary" onClick={() => (window.location.href = '/books/admin/upload')}>Add / Upload New Book</button>
+          {!showCheckboxes && (
+            <button 
+              className="btn" 
+              onClick={() => setShowCheckboxes(true)}
+              style={{ background: '#00a884', color: '#e9edef' }}
+            >
+              📋 Bulk Edit
+            </button>
+          )}
+          {showCheckboxes && !isMultiEditMode && (
+            <button 
+              className="btn" 
+              onClick={() => {
+                setShowCheckboxes(false);
+                setSelectedIds(new Set());
+              }}
+              style={{ background: '#2a3f56', color: '#e9edef' }}
+            >
+              ✕ Cancel Selection
+            </button>
+          )}
         </div>
+
+        {/* Multi-Edit Mode Toolbar */}
+        {isMultiEditMode && (
+          <div style={{ 
+            background: '#0b1216', 
+            borderRadius: '6px', 
+            padding: '12px',
+            marginBottom: '12px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)'
+          }}>
+            <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, color: '#00a884' }}>
+                Edit {selectedIds.size} Book{selectedIds.size !== 1 ? 's' : ''}
+              </h3>
+              <button 
+                className="btn" 
+                onClick={cancelMultiEdit}
+                style={{ background: '#2a3f56', color: '#e9edef' }}
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="grid-2" style={{ gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label className="label" style={{ fontSize: '13px' }}>Title</label>
+                <input 
+                  className="input" 
+                  placeholder="Leave blank to skip" 
+                  value={editDraft.title || ''} 
+                  onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })} 
+                />
+              </div>
+              <div>
+                <label className="label" style={{ fontSize: '13px' }}>Author</label>
+                <input 
+                  className="input" 
+                  placeholder="Leave blank to skip" 
+                  value={editDraft.author || ''} 
+                  onChange={(e) => setEditDraft({ ...editDraft, author: e.target.value })} 
+                />
+              </div>
+              <div>
+                <label className="label" style={{ fontSize: '13px' }}>Category</label>
+                {!useCustomCategory ? (
+                  <select 
+                    className="select" 
+                    value={editDraft.category_id || ''} 
+                    onChange={(e) => setEditDraft({ ...editDraft, category_id: e.target.value })}
+                  >
+                    <option value="">Leave blank to skip</option>
+                    {categories && categories.length > 0 ? categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>) : <option value="">No categories available</option>}
+                  </select>
+                ) : (
+                  <input 
+                    className="input" 
+                    placeholder="e.g., Engineering" 
+                    value={customCategory} 
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                  />
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '12px' }}>
+                  <input 
+                    type="checkbox" 
+                    id="custom-category-multi"
+                    checked={useCustomCategory}
+                    onChange={(e) => {
+                      setUseCustomCategory(e.target.checked);
+                      if (!e.target.checked) {
+                        setCustomCategory('');
+                      }
+                    }}
+                    style={{ width: '14px', height: '14px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="custom-category-multi" style={{ color: '#8696a0', cursor: 'pointer' }}>
+                    Add custom category
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label className="label" style={{ fontSize: '13px' }}>Year</label>
+                <input 
+                  className="input" 
+                  placeholder="Leave blank to skip" 
+                  value={editDraft.year || ''} 
+                  onChange={(e) => setEditDraft({ ...editDraft, year: e.target.value })} 
+                />
+              </div>
+              <div>
+                <label className="label" style={{ fontSize: '13px' }}>Publisher</label>
+                <input 
+                  className="input" 
+                  placeholder="Leave blank to skip" 
+                  value={editDraft.publisher || ''} 
+                  onChange={(e) => setEditDraft({ ...editDraft, publisher: e.target.value })} 
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button 
+                className="btn primary" 
+                onClick={saveMultiEdit}
+                style={{ background: '#00a884' }}
+              >
+                Save Changes to All {selectedIds.size} Book{selectedIds.size !== 1 ? 's' : ''}
+              </button>
+              <button 
+                className="btn" 
+                onClick={cancelMultiEdit}
+                style={{ background: '#2a3f56', color: '#e9edef' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Selection Toolbar */}
+        {selectedIds.size > 0 && !isMultiEditMode && (
+          <div style={{ 
+            background: '#0b1216', 
+            borderRadius: '6px', 
+            padding: '12px',
+            marginBottom: '12px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)'
+          }}>
+            <span style={{ color: '#8696a0' }}>
+              {selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected
+            </span>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                className="btn primary" 
+                onClick={startMultiEdit}
+                style={{ background: '#00a884' }}
+              >
+                Edit Selected ({selectedIds.size})
+              </button>
+              <button 
+                className="btn" 
+                onClick={() => setSelectedIds(new Set())}
+                style={{ background: '#2a3f56', color: '#e9edef' }}
+              >
+                Clear Selection
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="panel" style={{ padding: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table className="table" style={{ minWidth: '1620px', borderCollapse: 'separate', borderSpacing: 0 }}>
             <thead>
               <tr>
+                {showCheckboxes && (
+                  <th style={{ width: '40px' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === count && count > 0}
+                      onChange={toggleSelectAll}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      title={selectedIds.size === count && count > 0 ? 'Unselect all' : 'Select all across all pages'}
+                    />
+                  </th>
+                )}
                 <th style={{ width: '60px' }}>Cover</th>
                 <th style={{ width: '300px', cursor: 'pointer' }} onClick={() => toggleSort('title')}>Title {sort.col === 'title' ? (sort.dir === 'asc' ? '▲' : '▼') : ''}</th>
                 <th style={{ width: '200px', cursor: 'pointer' }} onClick={() => toggleSort('author')}>Author {sort.col === 'author' ? (sort.dir === 'asc' ? '▲' : '▼') : ''}</th>
@@ -200,11 +564,22 @@ const Books = ({ userProfile }) => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={13} style={{ color: '#8696a0', textAlign: 'center' }}>Loading...</td></tr>
+                <tr><td colSpan={showCheckboxes ? 14 : 13} style={{ color: '#8696a0', textAlign: 'center' }}>Loading...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={13} style={{ color: '#8696a0', textAlign: 'center' }}>No data</td></tr>
+                <tr><td colSpan={showCheckboxes ? 14 : 13} style={{ color: '#8696a0', textAlign: 'center' }}>No data</td></tr>
               ) : rows.map(row => (
-                <tr key={row.id}>
+                <tr key={row.id} style={{ background: selectedIds.has(row.id) ? 'rgba(0, 168, 132, 0.1)' : 'transparent' }}>
+                  {showCheckboxes && (
+                    <td style={{ textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(row.id)}
+                        onChange={() => toggleSelectRow(row.id)}
+                        disabled={isMultiEditMode}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                    </td>
+                  )}
                   <td>{row.cover_url ? <img src={row.cover_url} alt="cover" style={{ width: 36, height: 48, objectFit: 'cover', borderRadius: 4 }} /> : <span className="badge">No cover</span>}</td>
                   <td>
                     {editingId === row.id ? (
@@ -218,10 +593,38 @@ const Books = ({ userProfile }) => {
                   </td>
                   <td>
                     {editingId === row.id ? (
-                      <select className="select" value={editDraft.category_id || ''} onChange={(e) => setEditDraft({ ...editDraft, category_id: e.target.value || null })}>
-                        <option value="">Uncategorized</option>
-                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {!useCustomCategory ? (
+                          <select className="select" value={editDraft.category_id || ''} onChange={(e) => setEditDraft({ ...editDraft, category_id: e.target.value || null })}>
+                            <option value="">Uncategorized</option>
+                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        ) : (
+                          <input 
+                            className="input" 
+                            placeholder="e.g., Engineering" 
+                            value={customCategory} 
+                            onChange={(e) => setCustomCategory(e.target.value)}
+                          />
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                          <input 
+                            type="checkbox" 
+                            id="custom-category-edit"
+                            checked={useCustomCategory}
+                            onChange={(e) => {
+                              setUseCustomCategory(e.target.checked);
+                              if (!e.target.checked) {
+                                setCustomCategory('');
+                              }
+                            }}
+                            style={{ width: '14px', height: '14px', cursor: 'pointer' }}
+                          />
+                          <label htmlFor="custom-category-edit" style={{ color: '#8696a0', cursor: 'pointer' }}>
+                            Custom
+                          </label>
+                        </div>
+                      </div>
                     ) : (categories.find(c => c.id === row.category_id)?.name || '—')}
                   </td>
                   <td>
@@ -341,53 +744,10 @@ const Books = ({ userProfile }) => {
           </table>
         </div>
 
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '12px',
-          marginTop: '24px',
-          marginBottom: '20px'
-        }}>
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            style={{
-              padding: '8px 16px',
-              background: page <= 1 ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
-              color: page <= 1 ? '#999' : '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: page <= 1 ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              opacity: page <= 1 ? 0.6 : 1
-            }}
-          >
-            ← Prev
-          </button>
-          <span style={{ color: '#cfd8dc', fontSize: '14px', fontWeight: '500', minWidth: '120px', textAlign: 'center' }}>
-            Page {page} of {totalPages}
-          </span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-            style={{
-              padding: '8px 16px',
-              background: page >= totalPages ? '#e0e0e0' : 'linear-gradient(135deg, #00a884 0%, #008060 100%)',
-              color: page >= totalPages ? '#999' : '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              opacity: page >= totalPages ? 0.6 : 1
-            }}
-          >
-            Next →
-          </button>
+        <div className="actions" style={{ marginTop: 10, justifyContent: 'center', gap: '24px' }}>
+          <button className="btn" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>← Prev</button>
+          <span style={{ color: '#cfd8dc' }}>Page {page} of {totalPages}</span>
+          <button className="btn" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next →</button>
         </div>
       </div>
     </div>

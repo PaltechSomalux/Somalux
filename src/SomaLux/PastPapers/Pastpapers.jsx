@@ -40,7 +40,7 @@ import { UniversityGrid } from './UniversityGrid';
 import { FacultyGridDisplay } from './FacultyGridDisplay';
 import { API_URL } from '../../config';
 import { PaperGrid } from './PaperGrid';
-import { PaperGridSkeleton, PulseLoader, InfiniteScrollLoader } from './PaperSkeleton';
+import { PulseLoader, InfiniteScrollLoader } from './PaperSkeleton';
 import './PaperPanel.css';
 
 export const PaperPanel = ({ demoMode = false }) => {
@@ -63,6 +63,7 @@ export const PaperPanel = ({ demoMode = false }) => {
   const [facultyFilter, setFacultyFilter] = useState(null);
   const [showFacultyGrid, setShowFacultyGrid] = useState(false);
   const [user, setUser] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authAction, setAuthAction] = useState('view');
   const [universities, setUniversities] = useState([]);
@@ -254,36 +255,71 @@ export const PaperPanel = ({ demoMode = false }) => {
 
   const loadUniversities = useCallback(async () => {
     try {
-      const { data } = await fetchUniversities({ page: 1, pageSize: 50 });
-      // Display universities instantly
-      setUniversities(data || []);
-
-      // Load stats in background with rate limiting - max 5 concurrent requests
-      const statsPromises = (data || []).map(async (uni) => {
-        const stat = await getUniversityRatingStats(uni.id);
-        setRatingStats(prev => ({ ...prev, [uni.id]: stat }));
-      });
-      
-      // Wait for stats to load in controlled batches to avoid overwhelming
-      for (let i = 0; i < statsPromises.length; i += 5) {
-        await Promise.all(statsPromises.slice(i, i + 5)).catch(() => {});
-      }
-
-      // Load user ratings in background if logged in - rate limited
-      if (user) {
-        const ratingPromises = (data || []).map(async (uni) => {
-          const rating = await getUserUniversityRating(uni.id);
-          if (rating) setUserRatings(prev => ({ ...prev, [uni.id]: rating }));
-        });
-        
-        for (let i = 0; i < ratingPromises.length; i += 5) {
-          await Promise.all(ratingPromises.slice(i, i + 5)).catch(() => {});
+      // Try cache first
+      try {
+        const cached = localStorage.getItem('cachedUniversities');
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          // Use cache if less than 30 minutes old
+          if (Date.now() - timestamp < 30 * 60 * 1000) {
+            setUniversities(data || []);
+            setLoading(false);
+            // Fetch fresh in background
+            setTimeout(() => fetchAndUpdateUniversities(), 500);
+            return;
+          }
         }
-      }
+      } catch (e) {}
+      
+      // No cache, fetch normally
+      await fetchAndUpdateUniversities();
     } catch (error) {
       console.error('Error loading universities:', error);
+      setLoading(false);
     }
   }, [user]);
+
+  const fetchAndUpdateUniversities = async () => {
+    try {
+      const { data } = await fetchUniversities({ page: 1, pageSize: 5 });
+      // Cache universities
+      localStorage.setItem('cachedUniversities', JSON.stringify({ data, timestamp: Date.now() }));
+      setUniversities(data || []);
+      setLoading(false);
+
+      // Load stats and ratings COMPLETELY async, no blocking at all
+      (async () => {
+        const statsPromises = (data || []).map(async (uni) => {
+          try {
+            const stat = await getUniversityRatingStats(uni.id);
+            setRatingStats(prev => ({ ...prev, [uni.id]: stat }));
+          } catch (e) {}
+        });
+        
+        for (let i = 0; i < statsPromises.length; i += 3) {
+          await Promise.all(statsPromises.slice(i, i + 3)).catch(() => {});
+        }
+      })();
+
+      if (user) {
+        (async () => {
+          const ratingPromises = (data || []).map(async (uni) => {
+            try {
+              const rating = await getUserUniversityRating(uni.id);
+              if (rating) setUserRatings(prev => ({ ...prev, [uni.id]: rating }));
+            } catch (e) {}
+          });
+          
+          for (let i = 0; i < ratingPromises.length; i += 3) {
+            await Promise.all(ratingPromises.slice(i, i + 3)).catch(() => {});
+          }
+        })();
+      }
+    } catch (error) {
+      console.error('Error fetching universities:', error);
+      setLoading(false);
+    }
+  };
 
   const loadFaculties = useCallback(async () => {
     try {
@@ -297,25 +333,33 @@ export const PaperPanel = ({ demoMode = false }) => {
   // Check authentication status and load user profile with subscription_tier
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        // Fetch user profile to get subscription_tier
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('subscription_tier')
-          .eq('id', user.id)
-          .single();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
         
-        // Merge profile data with auth user
-        setUser({
-          ...user,
-          subscription_tier: profile?.subscription_tier || 'basic'
-        });
-      } else {
+        if (user) {
+          // Fetch user profile to get subscription_tier
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('subscription_tier')
+            .eq('id', user.id)
+            .single();
+          
+          // Merge profile data with auth user
+          setUser({
+            ...user,
+            subscription_tier: profile?.subscription_tier || 'basic'
+          });
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error checking user auth:', error);
         setUser(null);
+      } finally {
+        setIsAuthLoading(false);
       }
     };
+    
     checkUser();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -336,6 +380,7 @@ export const PaperPanel = ({ demoMode = false }) => {
       } else {
         setUser(null);
       }
+      setIsAuthLoading(false);
     });
 
     return () => {
@@ -505,31 +550,27 @@ export const PaperPanel = ({ demoMode = false }) => {
         // Use cache if less than 5 minutes old
         if (Date.now() - timestamp < 5 * 60 * 1000) {
           setPapers(data);
-          setLoading(false);
-          // Fetch fresh data in background SEQUENTIALLY (non-blocking)
-          setTimeout(() => {
-            loadPastPapers().then(() => {
-              // After papers load, load universities
-              setTimeout(() => {
-                loadUniversities();
-                loadFaculties();
-              }, 100);
-            });
-          }, 50);
-          return;
         }
       }
     } catch (e) {}
-    
-    // No cache or cache expired, fetch normally
-    loadPastPapers().then(() => {
-      // After papers load, load universities and faculties sequentially
-      setTimeout(() => {
-        loadUniversities();
-        loadFaculties();
-      }, 100);
+
+    try {
+      const cachedUnis = localStorage.getItem('cachedUniversities');
+      if (cachedUnis) {
+        const { data, timestamp } = JSON.parse(cachedUnis);
+        // Use cache if less than 30 minutes old
+        if (Date.now() - timestamp < 30 * 60 * 1000) {
+          setUniversities(data || []);
+          setLoading(false);
+        }
+      }
+    } catch (e) {}
+
+    // Fetch both in parallel WITHOUT blocking
+    Promise.all([loadPastPapers(), loadUniversities(), loadFaculties()]).catch(() => {
+      setLoading(false);
     });
-  }, []);
+  }, [loadPastPapers, loadUniversities, loadFaculties]);
 
   // Reload papers when university filter changes - debounced
   useEffect(() => {
@@ -590,6 +631,10 @@ export const PaperPanel = ({ demoMode = false }) => {
 
   const handleUniversityRateClick = (e, university) => {
     e.stopPropagation();
+    // Don't show modal while auth is loading - wait for verification
+    if (isAuthLoading) {
+      return;
+    }
     if (!user) {
       setAuthAction('action');
       setAuthModalOpen(true);
@@ -627,6 +672,12 @@ export const PaperPanel = ({ demoMode = false }) => {
   };
 
   const handleSubmitUpload = async () => {
+    // Don't show modal while auth is loading - wait for verification
+    if (isAuthLoading) {
+      setNotification({ type: 'info', message: 'Verifying your account...' });
+      setTimeout(() => setNotification(null), 4000);
+      return;
+    }
     if (!user) {
       setNotification({ type: 'error', message: 'Please sign in to upload a past paper' });
       setTimeout(() => setNotification(null), 4000);
@@ -788,6 +839,10 @@ export const PaperPanel = ({ demoMode = false }) => {
 
   // Comment handlers for CommentsSection
   const handleSubmitComment = async (commentData) => {
+    // Don't show modal while auth is loading - wait for verification
+    if (isAuthLoading) {
+      return;
+    }
     if (!user) {
       setAuthAction('comment');
       setAuthModalOpen(true);
@@ -880,6 +935,10 @@ export const PaperPanel = ({ demoMode = false }) => {
   };
 
   const handleLikeComment = async (commentId) => {
+    // Don't show modal while auth is loading - wait for verification
+    if (isAuthLoading) {
+      return;
+    }
     if (!user) {
       setAuthAction('action');
       setAuthModalOpen(true);
@@ -1120,6 +1179,10 @@ export const PaperPanel = ({ demoMode = false }) => {
   }, [filteredPapers, currentPage, pageSize]);
 
   const handlePaperClick = async (paper) => {
+    // Don't show modal while auth is loading - wait for verification
+    if (isAuthLoading) {
+      return;
+    }
     if (!user) {
       setAuthAction('view');
       setAuthModalOpen(true);
@@ -1153,6 +1216,10 @@ export const PaperPanel = ({ demoMode = false }) => {
   };
 
   const viewPaperDetails = async (paper) => {
+    // Don't show modal while auth is loading - wait for verification
+    if (isAuthLoading) {
+      return;
+    }
     if (!user) {
       setAuthAction('view');
       setAuthModalOpen(true);
@@ -1556,35 +1623,15 @@ export const PaperPanel = ({ demoMode = false }) => {
     }
   }, [searchTerm, filteredPapers.length, logSearchEvent]);
 
-  if (loading) {
+  // Show empty state while loading
+  if (loading && universities.length === 0) {
     return (
       <div className="containerpast">
         <header className="headerpast">
           <h1 className="titlepast">Past Papers</h1>
           <p className="subtitlepast">Access past exam papers organized by university</p>
         </header>
-        
-        <motion.div
-          className="controlspast"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.05 }}
-        >
-          <div className="search-containerpast">
-            <input
-              type="text"
-              className="search-inputpast"
-              placeholder="Search papers..."
-              disabled
-              style={{ opacity: 0.5 }}
-            />
-          </div>
-          <button className="filter-buttonpast" disabled style={{ opacity: 0.5 }}>
-            <FiFilter /> University
-          </button>
-        </motion.div>
-        
-        <PaperGridSkeleton count={3} />
+        <p style={{ textAlign: 'center', padding: '2rem', color: '#999' }}>Loading universities...</p>
       </div>
     );
   }
