@@ -23,6 +23,7 @@ export const Authors = () => {
   const [coverFallbacks, setCoverFallbacks] = useState({});
   const [modalCoverLoading, setModalCoverLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [followedAuthors, setFollowedAuthors] = useState([]);
   const [showSocialOptions, setShowSocialOptions] = useState(null);
   const [userRatings, setUserRatings] = useState({});
@@ -106,6 +107,16 @@ export const Authors = () => {
       }
     })();
   }, []);
+
+  // ⚡ Debounce search term (300ms delay to prevent excessive filtering)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Fetch and enrich authors from books table (OPTIMIZED)
   useEffect(() => {
@@ -373,10 +384,10 @@ export const Authors = () => {
     return () => { mounted = false; };
   }, []);
 
-  // Filter authors based on search
+  // Filter authors based on search (uses debounced term for performance)
   const filteredAuthors = useMemo(() => {
-    if (!searchTerm) return authors;
-    const term = searchTerm.toLowerCase().trim();
+    if (!debouncedSearchTerm) return authors;
+    const term = debouncedSearchTerm.toLowerCase().trim();
     if (!term) return authors; // Return all if search is only whitespace
     
     const results = authors.filter(author => {
@@ -391,9 +402,9 @@ export const Authors = () => {
       );
     });
     
-    console.log(`Search: "${searchTerm}" | Found: ${results.length} authors`);
+    console.log(`Search: "${debouncedSearchTerm}" | Found: ${results.length} authors`);
     return results;
-  }, [searchTerm, authors]);
+  }, [debouncedSearchTerm, authors]);
 
   // Log search events
   const logSearchEvent = useCallback(async ({ queryText, resultsCount }) => {

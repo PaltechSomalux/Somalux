@@ -23,6 +23,7 @@ export const BookCategories = () => {
   const [categories, setCategories] = useState([]);
   const [displayedCategories, setDisplayedCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(8);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -88,6 +89,15 @@ export const BookCategories = () => {
       }
     })();
   }, []);
+
+  // ⚡ Debounce search term (300ms delay to prevent excessive filtering)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Helper: log category search events to backend for analytics
   const logSearchEvent = useCallback(
@@ -295,11 +305,11 @@ export const BookCategories = () => {
   const filteredCategories = useMemo(() => {
     let result = [...categories];
     
-    // Apply search filter
-    if (searchTerm) {
+    // Apply search filter (uses debounced term for performance)
+    if (debouncedSearchTerm) {
       result = result.filter(cat => 
-        cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cat.description.toLowerCase().includes(searchTerm.toLowerCase())
+        cat.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        cat.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       );
     }
     
@@ -323,7 +333,7 @@ export const BookCategories = () => {
     }
     
     return result;
-  }, [categories, searchTerm, activeFilter, sortBy]);
+  }, [categories, debouncedSearchTerm, activeFilter, sortBy]);
 
   useEffect(() => {
     setDisplayedCategories(filteredCategories.slice(0, visibleCount));
