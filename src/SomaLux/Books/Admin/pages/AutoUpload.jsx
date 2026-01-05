@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiUpload, FiFolder, FiRefreshCw, FiCheck, FiX, FiAlertCircle, FiFile, FiBook, FiFileText, FiClock } from 'react-icons/fi';
+import { FiUpload, FiFolder, FiRefreshCw, FiCheck, FiX, FiAlertCircle, FiFile, FiBook, FiFileText, FiClock, FiPause, FiPlay } from 'react-icons/fi';
 import { createBook, createBookSubmission, fetchCategories } from '../api';
 import { getUniversitiesForDropdown, getFacultiesByUniversity, createPastPaper, createPastPaperSubmission, searchUnitFaculty, clearPastPapersCache, checkDuplicatePastPaper, logUploadHistory } from '../pastPapersApi';
 import { extractPastPaperMetadata, findMatchingUniversity, findMatchingFaculty, guessFacultyFromUnitCode } from '../utils/extractPastPaperMetadata';
@@ -11,6 +11,7 @@ import { useAdminUI } from '../AdminUIContext';
 const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [uploadedCount, setUploadedCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
@@ -19,8 +20,33 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
   const [toast, setToast] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [canResume, setCanResume] = useState(false);
+  const [resumeState, setResumeState] = useState(null);
+  const [isResumingUpload, setIsResumingUpload] = useState(false);
   const folderInputRef = useRef(null);
+  const uploadAbortRef = useRef(false);
+  const pauseRef = useRef(false);
+  const resumeIndexRef = useRef(0);
   const { showToast: uiShowToast } = useAdminUI();
+
+  console.log('📱 [RENDER] BooksAutoUploadContent component rendered. canResume:', canResume);
+
+  // Check if we have a paused upload in localStorage (for immediate UI rendering before state updates)
+  const savedUploadState = (() => {
+    try {
+      const saved = localStorage.getItem('booksUploadState');
+      if (saved) {
+        const state = JSON.parse(saved);
+        if (state.fileNames && state.fileNames.length > 0 && (state.paused || state.uploading)) {
+          console.log('⚡ [QUICK CHECK] Paused upload detected in localStorage: ' + state.fileNames.length + ' files');
+          return state;
+        }
+      }
+    } catch (e) {
+      console.error('⚡ [QUICK CHECK] Error checking localStorage:', e);
+    }
+    return null;
+  })();
 
   useEffect(() => {
     // Configure PDF.js worker
@@ -29,7 +55,109 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
     }
     // Fetch categories
     fetchCategories().then(cats => setCategories(cats || []));
+    
+    // Check for incomplete uploads
+    checkForIncompleteUpload();
   }, []);
+
+  const checkForIncompleteUpload = () => {
+    console.log('🔍 [RESUME CHECK] Starting check for incomplete uploads...');
+    
+    const savedState = localStorage.getItem('booksUploadState');
+    console.log('🔍 [RESUME CHECK] localStorage.booksUploadState exists:', !!savedState);
+    
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        console.log('🔍 [RESUME CHECK] Parsed state:', {
+          fileNames: state.fileNames?.length || 0,
+          paused: state.paused,
+          uploading: state.uploading,
+          uploaded: state.uploaded,
+          failed: state.failed,
+          currentIndex: state.currentIndex,
+          total: state.total,
+          timestamp: new Date(state.timestamp).toLocaleString()
+        });
+        
+        // Check if upload was incomplete (paused or in progress)
+        if (state.fileNames && state.fileNames.length > 0 && (state.paused || state.uploading)) {
+          console.log('✅ [RESUME CHECK] Incomplete upload found! Setting canResume = true');
+          
+          // RESTORE UI STATE FROM SAVED STATE
+          setUploadProgress({ current: state.currentIndex + 1, total: state.total });
+          setUploadedCount(state.uploaded);
+          setFailedCount(state.failed);
+          setDuplicatesCount(state.duplicates || 0);
+          setUploading(true);  // ← SET THIS TO SHOW PROGRESS BAR AND PAUSE/RESUME BUTTONS
+          console.log('📊 [RESUME CHECK] Restored UI state: uploaded=' + state.uploaded + ', failed=' + state.failed + ', total=' + state.total);
+          
+          // CRITICAL: If the upload was paused, set the pause ref so it stays paused on resume
+          if (state.paused) {
+            pauseRef.current = true;
+            setPaused(true);  // ← SET THE PAUSED STATE SO UI REFLECTS IT
+            console.log('🔒 [RESUME CHECK] Setting pauseRef.current = true AND paused state = true to keep upload paused');
+          }
+          setCanResume(true);
+          setResumeState(state);
+        } else {
+          console.log('❌ [RESUME CHECK] No incomplete upload (condition not met)');
+          console.log('  - fileNames exists:', !!state.fileNames);
+          console.log('  - fileNames.length > 0:', state.fileNames?.length > 0);
+          console.log('  - paused or uploading:', state.paused || state.uploading);
+        }
+      } catch (e) {
+        console.error('❌ [RESUME CHECK] Error parsing saved upload state:', e);
+        localStorage.removeItem('booksUploadState');
+      }
+    } else {
+      console.log('❌ [RESUME CHECK] No saved state in localStorage');
+    }
+  };
+
+  const saveUploadState = (files, progress, uploaded, failed, dupes, paused, uploading) => {
+    const state = {
+      fileNames: files.map(f => f.name),
+      currentIndex: progress.current - 1,
+      total: progress.total,
+      uploaded,
+      failed,
+      duplicates: dupes,
+      paused,
+      uploading,
+      timestamp: Date.now()
+    };
+    
+    console.log('💾 [SAVE STATE] Saving upload state:', {
+      files: state.fileNames.length,
+      currentIndex: state.currentIndex,
+      uploaded,
+      failed,
+      paused,
+      uploading
+    });
+    
+    try {
+      localStorage.setItem('booksUploadState', JSON.stringify(state));
+      console.log('✅ [SAVE STATE] Successfully saved to localStorage');
+    } catch (error) {
+      console.error('❌ [SAVE STATE] Failed to save to localStorage:', error);
+      if (error.name === 'QuotaExceededError') {
+        console.error('❌ [SAVE STATE] localStorage quota exceeded!');
+      }
+    }
+  };
+
+  const clearUploadState = () => {
+    console.log('🗑️ [CLEAR STATE] Clearing upload state from localStorage');
+    try {
+      localStorage.removeItem('booksUploadState');
+      console.log('✅ [CLEAR STATE] Successfully cleared');
+    } catch (error) {
+      console.error('❌ [CLEAR STATE] Failed to clear:', error);
+    }
+    setCanResume(false);
+  };
 
   const internalShowToast = (message, type = 'info') => {
     showToast(message, type);
@@ -95,7 +223,25 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
     }
 
     setSelectedFiles(pdfFiles);
-    internalShowToast(`Found ${pdfFiles.length} PDF files`, 'success');
+    
+    // If resuming, check if these files match and skip already-uploaded ones
+    if (isResumingUpload && resumeState) {
+      const matchedFiles = pdfFiles.filter(f => resumeState.fileNames.includes(f.name));
+      if (matchedFiles.length === 0) {
+        internalShowToast('❌ Selected files do not match the upload to resume', 'error');
+        return;
+      }
+      if (matchedFiles.length < resumeState.fileNames.length) {
+        internalShowToast(`⚠️ Only found ${matchedFiles.length} of ${resumeState.fileNames.length} files. Upload will continue with available files.`, 'warning');
+      }
+      setSelectedFiles(matchedFiles);
+      // SET THE RESUME INDEX FOR THE UPLOAD FUNCTION
+      resumeIndexRef.current = resumeState.currentIndex + 1;
+      console.log('📁 [RESUME MODE] Setting resumeIndexRef to:', resumeIndexRef.current, 'from saved currentIndex:', resumeState.currentIndex);
+      internalShowToast(`✅ Found ${matchedFiles.length} files to resume upload (${resumeState.currentIndex + 1}/${resumeState.total} already processed)`, 'success');
+    } else {
+      internalShowToast(`Found ${pdfFiles.length} PDF files`, 'success');
+    }
   };
 
   const handleDragOver = (e) => {
@@ -146,21 +292,62 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
       return;
     }
 
+    console.log('🚀 [UPLOAD START] Starting upload with', selectedFiles.length, 'files');
     setUploading(true);
-    setUploadProgress({ current: 0, total: selectedFiles.length });
-    setUploadedCount(0);
-    setFailedCount(0);
-    setDuplicatesCount(0);
-    setSkippedCount(0);
+    setPaused(false);
+    uploadAbortRef.current = false;
+    pauseRef.current = false;
+    
+    // If resuming, restore counts from saved state
+    const startFromIndex = resumeIndexRef.current;
+    const initialUploaded = resumeState?.uploaded || 0;
+    const initialFailed = resumeState?.failed || 0;
+    const initialDupes = resumeState?.duplicates || 0;
+    
+    console.log('📊 [UPLOAD INIT] startFromIndex:', startFromIndex, 'initialUploaded:', initialUploaded);
+    
+    // Only reset progress if not resuming
+    if (startFromIndex === 0) {
+      setUploadProgress({ current: 0, total: selectedFiles.length });
+      setUploadedCount(0);
+      setFailedCount(0);
+      setDuplicatesCount(0);
+      setSkippedCount(0);
+    } else {
+      // Resuming: restore previous progress
+      setUploadProgress({ current: startFromIndex, total: selectedFiles.length });
+      setUploadedCount(initialUploaded);
+      setFailedCount(initialFailed);
+      setDuplicatesCount(initialDupes);
+      internalShowToast(`Resuming from file ${startFromIndex + 1}/${selectedFiles.length}`, 'info');
+    }
 
-    let uploaded = 0;
-    let failed = 0;
-    let duplicates = 0;
+    let uploaded = initialUploaded;
+    let failed = initialFailed;
+    let duplicates = initialDupes;
     let skipped = 0;
 
-    for (let i = 0; i < selectedFiles.length; i++) {
+    for (let i = startFromIndex; i < selectedFiles.length; i++) {
+      // Check if upload was aborted
+      if (uploadAbortRef.current) {
+        clearUploadState();
+        setUploading(false);
+        internalShowToast('Upload cancelled', 'info');
+        break;
+      }
+
+      // Check if paused and wait
+      while (pauseRef.current && !uploadAbortRef.current) {
+        // Save state while paused
+        saveUploadState(selectedFiles, { current: i, total: selectedFiles.length }, uploaded, failed, duplicates, true, true);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
       const file = selectedFiles[i];
+      console.log(`📄 [FILE ${i + 1}/${selectedFiles.length}] Starting upload of: ${file.name}`);
       setUploadProgress({ current: i + 1, total: selectedFiles.length });
+      // Save progress
+      saveUploadState(selectedFiles, { current: i + 1, total: selectedFiles.length }, uploaded, failed, duplicates, false, true);
 
       try {
         // Extract cover
@@ -180,15 +367,27 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
         }
 
         uploaded++;
+        console.log(`✅ [FILE DONE] Uploaded: ${file.name} (${uploaded}/${selectedFiles.length})`);
         setUploadedCount(uploaded);
+        // SAVE PROGRESS AFTER EACH FILE COMPLETES
+        saveUploadState(selectedFiles, { current: i + 1, total: selectedFiles.length }, uploaded, failed, duplicates, false, true);
       } catch (error) {
-        console.error(`Failed to upload ${file.name}:`, error);
+        console.error(`❌ [FILE ERROR] Failed to upload ${file.name}:`, error);
         failed++;
+        console.log(`❌ [FILE FAILED] Total failed count: ${failed}`);
         setFailedCount(failed);
+        // SAVE PROGRESS AFTER FAILURE TOO
+        saveUploadState(selectedFiles, { current: i + 1, total: selectedFiles.length }, uploaded, failed, duplicates, false, true);
       }
     }
 
+    console.log('🏁 [UPLOAD COMPLETE] Total uploaded:', uploaded, 'Total failed:', failed);
+    clearUploadState();
+    resumeIndexRef.current = 0;
+    setIsResumingUpload(false);
+    setResumeState(null);
     setUploading(false);
+    setPaused(false);
     const message = `Upload complete: ${uploaded} successful, ${failed} failed`;
     internalShowToast(message, failed === 0 ? 'success' : 'info');
     
@@ -197,6 +396,44 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
       setSelectedFiles([]);
       setUploadProgress({ current: 0, total: 0 });
     }, 2000);
+  };
+
+  const handlePause = () => {
+    console.log('⏸️ [PAUSE CLICKED] User clicked pause button');
+    console.log('📋 [PAUSE] Current state: uploaded=' + uploadedCount + ', failed=' + failedCount + ', progress=' + JSON.stringify(uploadProgress));
+    pauseRef.current = true;
+    setPaused(true);
+    
+    // CRITICAL: Save state immediately when pause is clicked
+    console.log('💾 [PAUSE] Forcing save of upload state to localStorage');
+    saveUploadState(selectedFiles, uploadProgress, uploadedCount, failedCount, duplicatesCount, true, true);
+    
+    internalShowToast('Upload paused', 'info');
+  };
+
+  const handleResume = async () => {
+    console.log('▶️ [RESUME CLICKED] User clicked resume button');
+    console.log('🎯 [RESUME] Starting upload from index:', resumeIndexRef.current);
+    
+    pauseRef.current = false;
+    setPaused(false);
+    
+    // CRITICAL: Call uploadFiles() again to continue from saved index
+    if (selectedFiles && selectedFiles.length > 0) {
+      console.log('🚀 [RESUME] Calling uploadFiles() to continue from saved position');
+      await uploadFiles(selectedFiles);
+    }
+    
+    internalShowToast('Upload resumed', 'info');
+  };
+
+  const handleCancel = () => {
+    console.log('❌ [CANCEL CLICKED] User clicked cancel button');
+    uploadAbortRef.current = true;
+    pauseRef.current = false;
+    setUploading(false);
+    setPaused(false);
+    internalShowToast('Upload cancelled', 'info');
   };
 
   const clearSelection = () => {
@@ -211,7 +448,7 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
     }
   };
 
-  const progressPercent = uploadProgress.total > 0 ? (uploadProgress.current / uploadProgress.total) * 100 : 0;
+  const progressPercent = (uploadProgress.total || savedUploadState?.total || 0) > 0 ? ((uploadProgress.current || savedUploadState?.currentIndex + 1 || 0) / (uploadProgress.total || savedUploadState?.total || 0)) * 100 : 0;
   const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024;
 
   return (
@@ -241,7 +478,72 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
       )}
 
       {/* Main Content */}
-      {selectedFiles.length === 0 ? (
+      {isResumingUpload && !selectedFiles.length ? (
+        // Resuming - show instructions
+        <div style={{
+          border: '2px dashed #2196F3',
+          borderRadius: '8px',
+          padding: '40px 20px',
+          textAlign: 'center',
+          background: 'rgba(33, 150, 243, 0.08)',
+          marginBottom: '20px'
+        }}>
+          <FiRefreshCw size={40} style={{ color: '#2196F3', marginBottom: '12px' }} />
+          <h3 style={{ color: '#e9edef', fontSize: '16px', fontWeight: '500', margin: '0 0 8px 0' }}>
+            Resume Upload
+          </h3>
+          <p style={{ color: '#8696a0', fontSize: '13px', margin: '0 0 16px 0' }}>
+            Select the SAME folder to resume upload
+          </p>
+          {resumeState && (
+            <div style={{
+              background: '#1f2c33',
+              border: '1px solid #374151',
+              borderRadius: '6px',
+              padding: '12px',
+              marginBottom: '16px',
+              fontSize: '12px',
+              color: '#8696a0',
+              textAlign: 'left',
+              maxWidth: '400px',
+              margin: '0 auto 16px'
+            }}>
+              <div>📊 Previous Progress:</div>
+              <div style={{ marginTop: '8px', color: '#00a884' }}>
+                ✓ {resumeState.uploaded} uploaded
+              </div>
+              <div style={{ color: '#ea4335' }}>
+                ✗ {resumeState.failed} failed
+              </div>
+              <div style={{ color: '#f1b233' }}>
+                ⏭️ {resumeState.duplicates} duplicates
+              </div>
+              <div style={{ marginTop: '8px', color: '#2196F3' }}>
+                📁 {resumeState.total - resumeState.currentIndex - 1} files remaining
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => folderInputRef.current?.click()}
+            style={{
+              padding: '12px 24px',
+              background: '#2196F3',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <FiFolder size={16} />
+            Select Folder to Resume
+          </button>
+        </div>
+      ) : selectedFiles.length === 0 ? (
         // Upload Area
         <div
           onDragOver={handleDragOver}
@@ -292,7 +594,7 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
               background: '#0b141a'
             }}>
               <div style={{ color: '#e9edef', fontSize: '13px', fontWeight: '500' }}>
-                Files ({selectedFiles.length}) • {totalSize.toFixed(1)} MB
+                Files ({selectedFiles.length > 0 ? selectedFiles.length : ((resumeState || savedUploadState)?.fileNames?.length || 0)}) • {selectedFiles.length > 0 ? totalSize.toFixed(1) : 'resuming...'} MB
               </div>
             </div>
 
@@ -300,33 +602,57 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
               maxHeight: '250px',
               overflowY: 'auto'
             }}>
-              {selectedFiles.map((file, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '10px 16px',
-                    borderBottom: idx < selectedFiles.length - 1 ? '1px solid #1f2c33' : 'none',
-                    color: '#8696a0',
-                    fontSize: '12px'
-                  }}
-                >
-                  <FiFile size={14} style={{ color: '#00a884', flexShrink: 0 }} />
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {file.name}
-                  </span>
-                  <span style={{ color: '#8696a0', fontSize: '11px', flexShrink: 0 }}>
-                    {(file.size / 1024 / 1024).toFixed(1)} MB
-                  </span>
-                </div>
-              ))}
+              {selectedFiles.length > 0 ? (
+                // Show actual files if selected
+                selectedFiles.map((file, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 16px',
+                      borderBottom: idx < selectedFiles.length - 1 ? '1px solid #1f2c33' : 'none',
+                      color: '#8696a0',
+                      fontSize: '12px'
+                    }}
+                  >
+                    <FiFile size={14} style={{ color: '#00a884', flexShrink: 0 }} />
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {file.name}
+                    </span>
+                    <span style={{ color: '#8696a0', fontSize: '11px', flexShrink: 0 }}>
+                      {(file.size / 1024 / 1024).toFixed(1)} MB
+                    </span>
+                  </div>
+                ))
+              ) : (resumeState || savedUploadState) && (resumeState || savedUploadState).fileNames ? (
+                // Show saved file names if resuming a paused upload
+                (resumeState || savedUploadState).fileNames.map((fileName, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 16px',
+                      borderBottom: idx < resumeState.fileNames.length - 1 ? '1px solid #1f2c33' : 'none',
+                      color: '#8696a0',
+                      fontSize: '12px'
+                    }}
+                  >
+                    <FiFile size={14} style={{ color: '#00a884', flexShrink: 0 }} />
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {fileName}
+                    </span>
+                  </div>
+                ))
+              ) : null}
             </div>
           </div>
 
           {/* Progress */}
-          {uploading && (
+          {(uploading || savedUploadState) && (
             <div style={{ marginBottom: '20px' }}>
               <div style={{
                 display: 'flex',
@@ -335,8 +661,8 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
                 color: '#8696a0',
                 fontSize: '12px'
               }}>
-                <span>Progress: {uploadProgress.current} / {uploadProgress.total}</span>
-                <span>✓ {uploadedCount} | ⏭️ {duplicatesCount} | ✗ {failedCount}</span>
+                <span>Progress: {uploadProgress.current || (savedUploadState?.currentIndex + 1) || 0} / {uploadProgress.total || savedUploadState?.total || 0}</span>
+                <span>✓ {uploadedCount || savedUploadState?.uploaded || 0} | ⏭️ {duplicatesCount || savedUploadState?.duplicates || 0} | ✗ {failedCount || savedUploadState?.failed || 0}</span>
               </div>
               <div style={{
                 width: '100%',
@@ -359,7 +685,7 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
               onClick={uploadFiles}
-              disabled={uploading}
+              disabled={uploading || paused}
               style={{
                 flex: 1,
                 padding: '10px 16px',
@@ -379,8 +705,8 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
             >
               {uploading ? (
                 <>
-                  <FiRefreshCw style={{ animation: 'spin 1s linear infinite' }} />
-                  Uploading...
+                  <FiRefreshCw style={{ animation: paused ? 'none' : 'spin 1s linear infinite' }} />
+                  {paused ? 'Paused' : 'Uploading...'}
                 </>
               ) : (
                 <>
@@ -389,6 +715,70 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
                 </>
               )}
             </button>
+            {uploading && (
+              <>
+                {!paused ? (
+                  <button
+                    onClick={handlePause}
+                    style={{
+                      padding: '10px 16px',
+                      background: '#f1b233',
+                      color: '#1f2c33',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <FiPause size={14} />
+                    Pause
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleResume}
+                    style={{
+                      padding: '10px 16px',
+                      background: '#00a884',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <FiPlay size={14} />
+                    Resume
+                  </button>
+                )}
+                <button
+                  onClick={handleCancel}
+                  style={{
+                    padding: '10px 16px',
+                    background: '#ea4335',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <FiX size={14} />
+                  Cancel
+                </button>
+              </>
+            )}
             <button
               onClick={clearSelection}
               disabled={uploading}
@@ -410,6 +800,30 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
               <FiX size={14} />
               Clear
             </button>
+            {canResume && !uploading && (
+              <button
+                onClick={() => {
+                  setIsResumingUpload(true);
+                  internalShowToast('📁 Please select the SAME folder to continue upload', 'info');
+                }}
+                style={{
+                  padding: '10px 16px',
+                  background: '#2196F3',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <FiRefreshCw size={14} />
+                Resume Previous
+              </button>
+            )}
           </div>
         </>
       )}
@@ -485,6 +899,7 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [uploadedCount, setUploadedCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
@@ -495,10 +910,86 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
   const [faculties, setFaculties] = useState([]);
   const [showOverride, setShowOverride] = useState(false);
   const [extractedMetadata, setExtractedMetadata] = useState(null);
+  const [canResumePastPapers, setCanResumePastPapers] = useState(false);
+  const [resumeStatePastPapers, setResumeStatePastPapers] = useState(null);
+  const [isResumingPastPapersUpload, setIsResumingPastPapersUpload] = useState(false);
   const folderInputRef = useRef(null);
+  const uploadAbortRef = useRef(false);
+  const pauseRef = useRef(false);
+  const resumeIndexRef = useRef(0);
 
   const internalShowToast = (message, type = 'info') => {
     showToast(message, type);
+  };
+
+  // localStorage helper functions for past papers
+  const savePastPapersUploadState = (files, progress, uploaded, failed, dupes, paused = false, uploading = false) => {
+    try {
+      const state = {
+        fileNames: files.map(f => f.name),
+        currentIndex: progress.current - 1,
+        total: progress.total,
+        uploaded, failed, duplicates: dupes,
+        paused, uploading,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('pastPapersUploadState', JSON.stringify(state));
+      console.log('✅ [SAVE PAST PAPERS] Successfully saved to localStorage');
+    } catch (error) {
+      console.error('❌ [SAVE PAST PAPERS] Failed to save:', error);
+    }
+  };
+
+  const clearPastPapersUploadState = () => {
+    localStorage.removeItem('pastPapersUploadState');
+  };
+
+  const checkForIncompletePastPapersUpload = () => {
+    console.log('🔍 [PAST PAPERS CHECK] Starting check for incomplete uploads...');
+    const savedState = localStorage.getItem('pastPapersUploadState');
+    console.log('🔍 [PAST PAPERS CHECK] localStorage exists:', !!savedState);
+    
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        console.log('🔍 [PAST PAPERS CHECK] Parsed state:', {
+          fileNames: state.fileNames?.length || 0,
+          paused: state.paused,
+          uploading: state.uploading,
+          uploaded: state.uploaded,
+          failed: state.failed,
+          currentIndex: state.currentIndex,
+          total: state.total
+        });
+        
+        // Check if upload was incomplete (paused or in progress)
+        if (state.fileNames && state.fileNames.length > 0 && (state.paused || state.uploading)) {
+          console.log('✅ [PAST PAPERS CHECK] Incomplete upload found!');
+          
+          // RESTORE UI STATE
+          setUploadProgress({ current: state.currentIndex + 1, total: state.total });
+          setUploadedCount(state.uploaded);
+          setFailedCount(state.failed);
+          setDuplicatesCount(state.duplicates || 0);
+          setUploading(true);
+          console.log('📊 [PAST PAPERS CHECK] Restored UI: uploaded=' + state.uploaded + ', failed=' + state.failed);
+          
+          // If paused, keep it paused
+          if (state.paused) {
+            pauseRef.current = true;
+            setPaused(true);
+            console.log('🔒 [PAST PAPERS CHECK] Upload is paused, keeping paused');
+          }
+          
+          setCanResumePastPapers(true);
+          setResumeStatePastPapers(state);
+        } else {
+          console.log('❌ [PAST PAPERS CHECK] No incomplete upload found');
+        }
+      } catch (error) {
+        console.error('❌ [PAST PAPERS CHECK] Error parsing state:', error);
+      }
+    }
   };
 
   // Load universities on mount
@@ -514,7 +1005,17 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
       }
     };
     loadUniversities();
+    checkForIncompletePastPapersUpload();
   }, []);
+
+  // Auto-resume incomplete past papers upload
+  useEffect(() => {
+    if (canResumePastPapers && !uploading && !isResumingPastPapersUpload) {
+      console.log('🚀 [AUTO RESUME] Auto-triggering resume for past papers upload');
+      setIsResumingPastPapersUpload(true);
+      handleResumePastPapers();
+    }
+  }, [canResumePastPapers]);
 
   // Load faculties when university changes
   useEffect(() => {
@@ -705,6 +1206,9 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
     }
 
     setUploading(true);
+    setPaused(false);
+    uploadAbortRef.current = false;
+    pauseRef.current = false;
     setUploadProgress({ current: 0, total: selectedFiles.length });
     setUploadedCount(0);
     setFailedCount(0);
@@ -715,8 +1219,25 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
     let duplicates = 0;
 
     for (let i = 0; i < selectedFiles.length; i++) {
+      // Check if upload was aborted
+      if (uploadAbortRef.current) {
+        setUploading(false);
+        internalShowToast('Upload cancelled', 'info');
+        break;
+      }
+
+      // Check if paused and wait
+      while (pauseRef.current && !uploadAbortRef.current) {
+        // Save state while paused
+        savePastPapersUploadState(selectedFiles, { current: i, total: selectedFiles.length }, uploaded, failed, duplicates);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
       const file = selectedFiles[i];
       setUploadProgress({ current: i + 1, total: selectedFiles.length });
+      
+      // Save initial progress
+      savePastPapersUploadState(selectedFiles, { current: i + 1, total: selectedFiles.length }, uploaded, failed, duplicates);
       
       let metadata = null; // Declare here so it's accessible in catch block
 
@@ -1159,6 +1680,9 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
         setUploadedCount(uploaded);
         console.log(`✅ Uploaded: ${file.name}`);
         
+        // Save progress to localStorage
+        savePastPapersUploadState(selectedFiles, { current: i + 1, total: selectedFiles.length }, uploaded, failed, duplicates);
+        
         // Clear past papers cache so newly uploaded papers appear immediately
         try { clearPastPapersCache(); } catch (e) {}
       } catch (error) {
@@ -1185,10 +1709,16 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
 
         failed++;
         setFailedCount(failed);
+        
+        // Save progress to localStorage even on failure
+        savePastPapersUploadState(selectedFiles, { current: i + 1, total: selectedFiles.length }, uploaded, failed, duplicates);
       }
     }
 
     setUploading(false);
+    
+    // Clear localStorage when upload completes
+    clearPastPapersUploadState();
     
     // Final cache clear to ensure all new papers are visible
     try { clearPastPapersCache(); } catch (e) {}
@@ -1210,6 +1740,43 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
     }, 2000);
   };
 
+  const handlePausePastPapers = () => {
+    console.log('⏸️ [PAST PAPERS PAUSE] User clicked pause button');
+    console.log('📋 [PAST PAPERS PAUSE] Current state: uploaded=' + uploadedCount + ', failed=' + failedCount + ', progress=' + JSON.stringify(uploadProgress));
+    pauseRef.current = true;
+    setPaused(true);
+    
+    // CRITICAL: Save state immediately when pause is clicked
+    console.log('💾 [PAST PAPERS PAUSE] Forcing save of upload state to localStorage');
+    savePastPapersUploadState(selectedFiles, uploadProgress, uploadedCount, failedCount, duplicatesCount, true, true);
+    
+    internalShowToast('Upload paused', 'info');
+  };
+
+  const handleResumePastPapers = async () => {
+    console.log('▶️ [PAST PAPERS RESUME] User clicked resume button');
+    console.log('🎯 [PAST PAPERS RESUME] Starting upload from index:', resumeIndexRef.current);
+    
+    pauseRef.current = false;
+    setPaused(false);
+    
+    // CRITICAL: Call uploadFiles() again to continue from saved index
+    if (selectedFiles && selectedFiles.length > 0) {
+      console.log('🚀 [PAST PAPERS RESUME] Calling uploadFiles() to continue');
+      await uploadFiles();
+    }
+    
+    internalShowToast('Upload resumed', 'info');
+  };
+
+  const handleCancelPastPapers = () => {
+    uploadAbortRef.current = true;
+    pauseRef.current = false;
+    setUploading(false);
+    setPaused(false);
+    internalShowToast('Upload cancelled', 'info');
+  };
+
   const clearSelection = () => {
     setSelectedFiles([]);
     setUploadProgress({ current: 0, total: 0 });
@@ -1224,7 +1791,24 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
     }
   };
 
-  const progressPercent = uploadProgress.total > 0 ? (uploadProgress.current / uploadProgress.total) * 100 : 0;
+  // Check if we have a paused upload in localStorage (for immediate UI rendering before state updates)
+  const savedPastPapersState = (() => {
+    try {
+      const saved = localStorage.getItem('pastPapersUploadState');
+      if (saved) {
+        const state = JSON.parse(saved);
+        if (state.fileNames && state.fileNames.length > 0 && (state.paused || state.uploading)) {
+          console.log('⚡ [PAST PAPERS QUICK CHECK] Paused upload detected: ' + state.fileNames.length + ' files');
+          return state;
+        }
+      }
+    } catch (e) {
+      console.error('⚡ [PAST PAPERS QUICK CHECK] Error:', e);
+    }
+    return null;
+  })();
+
+  const progressPercent = (uploadProgress.total || savedPastPapersState?.total || 0) > 0 ? ((uploadProgress.current || savedPastPapersState?.currentIndex + 1 || 0) / (uploadProgress.total || savedPastPapersState?.total || 0)) * 100 : 0;
   const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024;
 
   return (
@@ -1254,7 +1838,7 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
       )}
 
       {/* Main Content */}
-      {selectedFiles.length === 0 ? (
+      {selectedFiles.length === 0 && !canResumePastPapers ? (
         // Upload Area
         <div
           onDragOver={handleDragOver}
@@ -1289,6 +1873,120 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
             accept=".pdf"
           />
         </div>
+      ) : canResumePastPapers && selectedFiles.length === 0 ? (
+        // Resume Previous Upload Section
+        <>
+          {/* File List */}
+          <div style={{
+            background: '#0b141a',
+            border: '1px solid #1f2c33',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              padding: '12px 16px',
+              borderBottom: '1px solid #1f2c33',
+              background: '#0b141a'
+            }}>
+              <div style={{ color: '#e9edef', fontSize: '13px', fontWeight: '500' }}>
+                Files ({(resumeStatePastPapers || savedPastPapersState)?.fileNames?.length || 0}) • resuming...
+              </div>
+            </div>
+
+            <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+              {(resumeStatePastPapers || savedPastPapersState) && (resumeStatePastPapers || savedPastPapersState).fileNames ? (
+                (resumeStatePastPapers || savedPastPapersState).fileNames.map((fileName, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '10px 16px',
+                      borderBottom: '1px solid #1f2c33',
+                      color: '#8696a0',
+                      fontSize: '12px'
+                    }}
+                  >
+                    <FiFile size={14} style={{ marginRight: '8px', color: '#00a884' }} />
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {fileName}
+                    </span>
+                  </div>
+                ))
+              ) : null}
+            </div>
+          </div>
+
+          {/* Progress */}
+          {(uploading || savedPastPapersState) && (
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginBottom: '8px',
+                color: '#8696a0',
+                fontSize: '12px'
+              }}>
+                <span>Progress: {uploadProgress.current || (savedPastPapersState?.currentIndex + 1) || 0} / {uploadProgress.total || savedPastPapersState?.total || 0}</span>
+                <span>✓ {uploadedCount || savedPastPapersState?.uploaded || 0} | ⏭️ {duplicatesCount || savedPastPapersState?.duplicates || 0} | ✗ {failedCount || savedPastPapersState?.failed || 0}</span>
+              </div>
+              <div style={{
+                width: '100%',
+                height: '6px',
+                background: '#1f2c33',
+                borderRadius: '3px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${progressPercent}%`,
+                  height: '100%',
+                  background: '#00a884',
+                  transition: 'width 0.3s'
+                }} />
+              </div>
+            </div>
+          )}
+
+          {/* Resume Buttons */}
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={handleResumePastPapers}
+              style={{
+                flex: 1,
+                padding: '10px 16px',
+                background: '#00a884',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <FiPlay size={14} />
+              Resume Previous Upload
+            </button>
+            <button
+              onClick={handleCancelPastPapers}
+              style={{
+                padding: '10px 16px',
+                background: '#374151',
+                color: '#e9edef',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        </>
       ) : (
         <>
           {/* File List */}
@@ -1305,37 +2003,58 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
               background: '#0b141a'
             }}>
               <div style={{ color: '#e9edef', fontSize: '13px', fontWeight: '500' }}>
-                Files ({selectedFiles.length}) • {totalSize.toFixed(1)} MB
+                Files ({selectedFiles.length > 0 ? selectedFiles.length : ((resumeStatePastPapers || savedPastPapersState)?.fileNames?.length || 0)}) • {selectedFiles.length > 0 ? totalSize.toFixed(1) : 'resuming...'} MB
               </div>
             </div>
 
             <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
-              {selectedFiles.map((file, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '10px 16px',
-                    borderBottom: '1px solid #1f2c33',
-                    color: '#8696a0',
-                    fontSize: '12px'
-                  }}
-                >
-                  <FiFile size={14} style={{ marginRight: '8px', color: '#00a884' }} />
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {file.name}
-                  </span>
-                  <span style={{ marginLeft: '8px', color: '#374151' }}>
-                    {(file.size / 1024 / 1024).toFixed(1)} MB
-                  </span>
-                </div>
-              ))}
+              {selectedFiles.length > 0 ? (
+                selectedFiles.map((file, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '10px 16px',
+                      borderBottom: '1px solid #1f2c33',
+                      color: '#8696a0',
+                      fontSize: '12px'
+                    }}
+                  >
+                    <FiFile size={14} style={{ marginRight: '8px', color: '#00a884' }} />
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {file.name}
+                    </span>
+                    <span style={{ marginLeft: '8px', color: '#374151' }}>
+                      {(file.size / 1024 / 1024).toFixed(1)} MB
+                    </span>
+                  </div>
+                ))
+              ) : (resumeStatePastPapers || savedPastPapersState) && (resumeStatePastPapers || savedPastPapersState).fileNames ? (
+                (resumeStatePastPapers || savedPastPapersState).fileNames.map((fileName, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '10px 16px',
+                      borderBottom: '1px solid #1f2c33',
+                      color: '#8696a0',
+                      fontSize: '12px'
+                    }}
+                  >
+                    <FiFile size={14} style={{ marginRight: '8px', color: '#00a884' }} />
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {fileName}
+                    </span>
+                  </div>
+                ))
+              ) : null}
             </div>
           </div>
 
           {/* Progress */}
-          {uploading && (
+          {(uploading || savedPastPapersState) && (
             <div style={{ marginBottom: '20px' }}>
               <div style={{
                 display: 'flex',
@@ -1344,8 +2063,8 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
                 color: '#8696a0',
                 fontSize: '12px'
               }}>
-                <span>Uploading...</span>
-                <span>{uploadProgress.current} of {uploadProgress.total}</span>
+                <span>Progress: {uploadProgress.current || (savedPastPapersState?.currentIndex + 1) || 0} / {uploadProgress.total || savedPastPapersState?.total || 0}</span>
+                <span>✓ {uploadedCount || savedPastPapersState?.uploaded || 0} | ⏭️ {duplicatesCount || savedPastPapersState?.duplicates || 0} | ✗ {failedCount || savedPastPapersState?.failed || 0}</span>
               </div>
               <div style={{
                 width: '100%',
@@ -1384,7 +2103,7 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
 
           {/* Buttons */}
           <div style={{ display: 'flex', gap: '12px' }}>
-            {!uploading && (
+            {!uploading && !savedPastPapersState && (
               <>
                 <button
                   onClick={uploadFiles}
@@ -1416,6 +2135,92 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
                     fontSize: '14px'
                   }}
                 >
+                  Cancel
+                </button>
+              </>
+            )}
+            {(uploading || savedPastPapersState) && (
+              <>
+                <button
+                  disabled={true}
+                  style={{
+                    flex: 1,
+                    padding: '10px 16px',
+                    background: uploading ? '#00a88466' : '#374151',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    opacity: uploading ? 0.6 : 1
+                  }}
+                >
+                  <FiRefreshCw style={{ animation: paused ? 'none' : 'spin 1s linear infinite' }} />
+                  {paused ? 'Paused' : 'Uploading...'}
+                </button>
+                {!paused ? (
+                  <button
+                    onClick={handlePausePastPapers}
+                    style={{
+                      padding: '10px 16px',
+                      background: '#f1b233',
+                      color: '#1f2c33',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <FiPause size={14} />
+                    Pause
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleResumePastPapers}
+                    style={{
+                      padding: '10px 16px',
+                      background: '#00a884',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <FiPlay size={14} />
+                    Resume
+                  </button>
+                )}
+                <button
+                  onClick={handleCancelPastPapers}
+                  style={{
+                    padding: '10px 16px',
+                    background: '#ea4335',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <FiX size={14} />
                   Cancel
                 </button>
               </>

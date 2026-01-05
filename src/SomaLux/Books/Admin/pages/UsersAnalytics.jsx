@@ -15,7 +15,9 @@ const UsersAnalytics = ({ rows }) => {
   } = useMemo(() => {
     const now = new Date();
     let from;
-    if (range === 'week') {
+    if (range === 'daily') {
+      from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    } else if (range === 'week') {
       from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     } else if (range === 'year') {
       from = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
@@ -58,7 +60,7 @@ const UsersAnalytics = ({ rows }) => {
       // Removed graph data for active and signed out users
     ];
 
-    const rangeLabelLocal = range === 'week' ? 'Last 7 days' : range === 'year' ? 'Last 12 months' : 'Last 30 days';
+    const rangeLabelLocal = range === 'daily' ? 'Last 24 hours' : range === 'week' ? 'Last 7 days' : range === 'year' ? 'Last 12 months' : 'Last 30 days';
 
     return {
       kpiActive: activePeriod,
@@ -76,7 +78,7 @@ const UsersAnalytics = ({ rows }) => {
     <div style={{ marginBottom: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {['week', 'month', 'year'].map((key) => (
+          {['daily', 'week', 'month', 'year'].map((key) => (
             <button
               key={key}
               className="btn"

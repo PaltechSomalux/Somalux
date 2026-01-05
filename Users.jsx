@@ -322,6 +322,13 @@ const Users = ({ isSuperAdmin }) => {
                         src={u.avatar_url}
                         alt={u.display_name || u.email || 'User avatar'}
                         style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          if (e.target.parentElement) {
+                            const initials = (u.display_name || u.email || '?').charAt(0).toUpperCase();
+                            e.target.parentElement.textContent = initials;
+                          }
+                        }}
                       />
                     ) : (
                       (u.display_name || u.email || '?').charAt(0).toUpperCase()

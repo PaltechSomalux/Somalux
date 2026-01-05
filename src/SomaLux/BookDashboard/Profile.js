@@ -41,8 +41,16 @@ export const Profile = ({ user: propUser = null }) => {
     notifications: 0,
   };
 
-  const loadAvatar = async (url) => {
-    if (!url) return null;
+  const loadAvatar = async (url, retryCount = 0) => {
+    if (!url) {
+      console.log('⚠️ No URL provided to loadAvatar');
+      return null;
+    }
+    
+    console.log('📸 loadAvatar called with:', url.substring(0, 60) + '...');
+    
+    // For simplicity, just use the avatar URL directly
+    // The backend will handle caching and proxy if needed
     setProfileImage(url);
     return url;
   };
@@ -209,6 +217,23 @@ export const Profile = ({ user: propUser = null }) => {
         markProfileActive(user);
 
         const avatarFromAuth = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+        
+        // Sync avatar from auth metadata to profiles table if not already there (non-blocking)
+        if (avatarFromAuth) {
+          (async () => {
+            try {
+              const { error } = await supabase
+                .from('profiles')
+                .update({ avatar_url: avatarFromAuth })
+                .eq('id', user.id);
+              if (!error) console.log('✅ Avatar synced to profiles table');
+              else console.warn('⚠️ Failed to sync avatar to profiles table:', error);
+            } catch (e) {
+              console.warn('⚠️ Avatar sync error:', e);
+            }
+          })();
+        }
+        
         if (avatarFromAuth) {
           await loadAvatar(avatarFromAuth);
         } else {
@@ -248,9 +273,39 @@ export const Profile = ({ user: propUser = null }) => {
         localStorage.setItem('userProfile', JSON.stringify(authUserData));
 
         const avatarFromAuth = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+        
+        // Sync avatar from auth metadata to profiles table if not already there (non-blocking)
+        if (avatarFromAuth) {
+          (async () => {
+            try {
+              const { error } = await supabase
+                .from('profiles')
+                .update({ avatar_url: avatarFromAuth })
+                .eq('id', user.id);
+              if (!error) console.log('✅ Avatar synced to profiles table');
+              else console.warn('⚠️ Failed to sync avatar:', error);
+            } catch (e) {
+              console.warn('⚠️ Avatar sync error:', e);
+            }
+          })();
+        }
+        
         if (avatarFromAuth) {
           // Non-blocking avatar load
           loadAvatar(avatarFromAuth).catch(e => console.warn('Avatar load failed:', e));
+        } else {
+          // Try to load from profiles table if not in auth metadata (non-blocking)
+          supabase
+            .from('profiles')
+            .select('avatar_url')
+            .eq('id', user.id)
+            .single()
+            .then(({ data: prof }) => {
+              if (prof?.avatar_url) {
+                loadAvatar(prof.avatar_url).catch(e => console.warn('Avatar load from DB failed:', e));
+              }
+            })
+            .catch(e => console.warn('Failed to load avatar from profiles table:', e));
         }
 
         // Non-blocking profile marking
@@ -296,8 +351,11 @@ export const Profile = ({ user: propUser = null }) => {
             className="profile-avatar"
             alt="Profile"
             onError={() => {
-              console.warn('Profile avatar failed to load');
+              console.warn('Profile avatar failed to load, clearing image');
               setProfileImage(null);
+            }}
+            onLoad={() => {
+              console.log('✅ Profile avatar loaded successfully');
             }}
           />
         ) : (

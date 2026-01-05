@@ -379,7 +379,8 @@ const Users = ({ isSuperAdmin }) => {
         </select>
       </div>
 
-      <table className="table">
+      <div style={{ overflowX: 'auto', width: '100%' }}>
+        <table className="table">
         <thead>
           <tr>
             <th>Rank</th>
@@ -411,6 +412,13 @@ const Users = ({ isSuperAdmin }) => {
                         src={u.avatar_url}
                         alt={u.display_name || u.email || 'User avatar'}
                         style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          if (e.target.parentElement) {
+                            const initials = (u.display_name || u.email || '?').charAt(0).toUpperCase();
+                            e.target.parentElement.textContent = initials;
+                          }
+                        }}
                       />
                     ) : (
                       (u.display_name || u.email || '?').charAt(0).toUpperCase()
@@ -542,6 +550,7 @@ const Users = ({ isSuperAdmin }) => {
           })}
         </tbody>
       </table>
+      </div>
       
       {filteredRows.length > 0 && (
         <div className="actions" style={{ marginTop: 10, justifyContent: 'space-between' }}>

@@ -346,7 +346,17 @@ export const BooksAdmin = () => {
                 </div>
                 <div className="admin-user-avatar">
                   {userProfile.avatar_url ? (
-                    <img src={userProfile.avatar_url} alt={userProfile.display_name || userProfile.email} />
+                    <img 
+                      src={userProfile.avatar_url} 
+                      alt={userProfile.display_name || userProfile.email}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        if (e.target.parentElement) {
+                          const initials = (userProfile.display_name || userProfile.email || '?').charAt(0).toUpperCase();
+                          e.target.parentElement.textContent = initials;
+                        }
+                      }}
+                    />
                   ) : (
                     <span>{(userProfile.display_name || userProfile.email || '?').charAt(0).toUpperCase()}</span>
                   )}

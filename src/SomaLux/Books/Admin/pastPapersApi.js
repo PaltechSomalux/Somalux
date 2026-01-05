@@ -1025,4 +1025,62 @@ export async function getUploadHistoryStats() {
   }
 }
 
+export async function clearAllUploadHistory() {
+  try {
+    console.log('🔍 Starting clearAllUploadHistory...');
+    
+    // First, check how many records exist
+    const { count: beforeCount, error: countError } = await supabase
+      .from('past_papers_upload_history')
+      .select('id', { count: 'exact', head: true });
+    
+    console.log('📊 Records before delete:', beforeCount);
+    
+    if (countError) {
+      console.error('❌ Error counting records:', countError);
+    }
+    
+    // Try delete with verbose logging
+    console.log('🗑️ Attempting to delete all records...');
+    const { data, error, status, statusText } = await supabase
+      .from('past_papers_upload_history')
+      .delete()
+      .gte('created_at', '1900-01-01')
+      .select('id');
+
+    console.log('📤 Delete response status:', status, statusText);
+    console.log('📤 Delete response data:', data);
+    
+    if (error) {
+      console.error('❌ Error clearing upload history:', error);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Full error:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+
+    // Verify deletion
+    const { count: afterCount, error: afterCountError } = await supabase
+      .from('past_papers_upload_history')
+      .select('id', { count: 'exact', head: true });
+    
+    console.log('📊 Records after delete:', afterCount);
+    
+    if (afterCountError) {
+      console.error('❌ Error counting after delete:', afterCountError);
+    }
+
+    if (afterCount > 0) {
+      console.warn('⚠️ WARNING: Records still exist after delete. May be RLS policy issue.');
+    }
+
+    console.log('✅ Upload history clear command sent to database');
+    return { success: true, deletedCount: data?.length || 0, remainingCount: afterCount };
+  } catch (err) {
+    console.error('❌ Error in clearAllUploadHistory:', err);
+    console.error('❌ Full error details:', JSON.stringify(err, null, 2));
+    throw err;
+  }
+}
+
 

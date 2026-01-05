@@ -1038,6 +1038,14 @@ const UserDetails = () => {
                     src={profile.avatar_url}
                     alt={profile.display_name || profile.email || 'User avatar'}
                     style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      // Fallback to initials if image fails
+                      e.target.style.display = 'none';
+                      if (e.target.parentElement) {
+                        const initials = (profile.display_name || profile.email || '?').charAt(0).toUpperCase();
+                        e.target.parentElement.textContent = initials;
+                      }
+                    }}
                   />
                 ) : (
                   (profile.display_name || profile.email || '?').charAt(0).toUpperCase()

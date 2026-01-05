@@ -185,6 +185,10 @@ const Verify = ({ userProfile }) => {
                               onError={(e) => {
                                 // Fallback if image fails to load
                                 e.target.style.display = 'none';
+                                if (e.target.parentElement) {
+                                  const initials = (u.display_name || u.email || '?').charAt(0).toUpperCase();
+                                  e.target.parentElement.textContent = initials;
+                                }
                               }}
                             />
                           ) : (

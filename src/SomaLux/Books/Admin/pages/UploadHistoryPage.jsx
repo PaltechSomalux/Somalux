@@ -1,18 +1,61 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { FiTrash2 } from 'react-icons/fi';
 import { UploadHistory } from '../components/UploadHistory';
+import { clearAllUploadHistory } from '../pastPapersApi';
 
 const UploadHistoryPage = ({ userProfile }) => {
+  const [isClearing, setIsClearing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleClearAllHistory = async () => {
+    if (window.confirm('Are you sure you want to delete ALL upload history? This action cannot be undone.')) {
+      try {
+        setIsClearing(true);
+        await clearAllUploadHistory();
+        // Force a complete refresh
+        setRefreshKey(prev => prev + 1);
+        alert('Upload history cleared successfully!');
+      } catch (err) {
+        console.error('Failed to clear history:', err);
+        alert('Failed to clear upload history. Please try again.');
+      } finally {
+        setIsClearing(false);
+      }
+    }
+  };
+
   return (
     <div className="panel" style={{ minHeight: '500px', background: '#111b21', color: '#e9edef' }}>
-      <h2 style={{ 
-        color: '#e9edef', 
-        fontSize: '1.1rem', 
-        fontWeight: '600', 
-        margin: '0 0 20px 0',
-        paddingBottom: '12px'
-      }}>
-        Upload History
-      </h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '12px' }}>
+        <h2 style={{ 
+          color: '#e9edef', 
+          fontSize: '1.1rem', 
+          fontWeight: '600', 
+          margin: 0
+        }}>
+          Upload History
+        </h2>
+        <button
+          onClick={handleClearAllHistory}
+          disabled={isClearing}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            fontSize: '14px',
+            background: '#ea4335',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: isClearing ? 'not-allowed' : 'pointer',
+            opacity: isClearing ? 0.6 : 1
+          }}
+        >
+          <FiTrash2 size={16} />
+          {isClearing ? 'Clearing...' : 'Clear All History'}
+        </button>
+      </div>
       
       <style>{`
         /* Dark theme overrides for UploadHistory component - Exact admin colors */
@@ -326,6 +369,7 @@ const UploadHistoryPage = ({ userProfile }) => {
       `}</style>
 
       <UploadHistory 
+        reloadTrigger={refreshKey}
         userProfile={userProfile} 
         onClose={() => {}} 
       />

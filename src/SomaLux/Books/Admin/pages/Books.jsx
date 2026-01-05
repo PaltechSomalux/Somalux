@@ -306,6 +306,94 @@ const Books = ({ userProfile }) => {
     }
   };
 
+  const handleMultiDelete = async () => {
+    if (selectedIds.size === 0) {
+      showToast({ type: 'error', message: 'Please select at least one book to delete.' });
+      return;
+    }
+
+    const booksToDelete = Array.from(selectedIds);
+
+    const ok = await confirm({
+      title: `Delete ${selectedIds.size} book${selectedIds.size !== 1 ? 's' : ''}?`,
+      message: `You are about to delete ${selectedIds.size} book${selectedIds.size !== 1 ? 's' : ''} and their files. This action cannot be undone.`,
+      confirmLabel: 'Delete All',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      // Get all book data (including file paths)
+      const booksData = [];
+      for (const id of booksToDelete) {
+        const cachedRow = rows.find(r => r.id === id);
+        if (cachedRow) {
+          booksData.push(cachedRow);
+        }
+      }
+
+      // If some books are not in current page view, fetch them
+      const foundIds = new Set(booksData.map(b => b.id));
+      const missingIds = Array.from(booksToDelete).filter(id => !foundIds.has(id));
+      
+      if (missingIds.length > 0) {
+        const { data: allBooks } = await fetchBooks({ 
+          page: 1, 
+          pageSize: 10000, 
+          search, 
+          categoryId, 
+          sort 
+        });
+        
+        missingIds.forEach(id => {
+          const book = allBooks.find(b => b.id === id);
+          if (book) booksData.push(book);
+        });
+      }
+
+      // Verify all books can be deleted (after fetching all data)
+      const canDeleteAll = booksData.every(book => canEdit(book));
+      if (!canDeleteAll) {
+        showToast({ type: 'error', message: 'You do not have permission to delete some of the selected books.' });
+        return;
+      }
+
+      // Delete books sequentially with batch processing
+      const deletePromises = [];
+      const batchSize = 5;
+      
+      for (const book of booksData) {
+        deletePromises.push(
+          deleteBook({ id: book.id, file_path: book.file_path })
+        );
+
+        if (deletePromises.length >= batchSize) {
+          await Promise.all(deletePromises);
+          deletePromises.length = 0;
+        }
+      }
+
+      if (deletePromises.length > 0) {
+        await Promise.all(deletePromises);
+      }
+
+      // Reset selection and reload
+      setSelectedIds(new Set());
+      setShowCheckboxes(false);
+      setLoading(true);
+      const { data, count: total } = await fetchBooks({ page, pageSize, search, categoryId, sort });
+      setRows(data);
+      setCount(total);
+      setLoading(false);
+      
+      showToast({ type: 'success', message: `${booksData.length} book(s) deleted successfully.` });
+    } catch (e) {
+      console.error('Failed to delete books:', e?.message || e);
+      showToast({ type: 'error', message: e?.message || 'Failed to delete books.' });
+    }
+  };
+
   const toggleSort = (col) => {
     setSort((s) => (s.col === col ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' }));
   };
@@ -357,28 +445,30 @@ const Books = ({ userProfile }) => {
         </div>
 
         <div className="actions" style={{ marginBottom: 10 }}>
-          <button className="btn primary" onClick={() => (window.location.href = '/books/admin/upload')}>Add / Upload New Book</button>
-          {!showCheckboxes && (
-            <button 
-              className="btn" 
-              onClick={() => setShowCheckboxes(true)}
-              style={{ background: '#00a884', color: '#e9edef' }}
-            >
-              📋 Bulk Edit
-            </button>
-          )}
-          {showCheckboxes && !isMultiEditMode && (
-            <button 
-              className="btn" 
-              onClick={() => {
-                setShowCheckboxes(false);
-                setSelectedIds(new Set());
-              }}
-              style={{ background: '#2a3f56', color: '#e9edef' }}
-            >
-              ✕ Cancel Selection
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn primary" onClick={() => (window.location.href = '/books/admin/upload')}>Add / Upload New Book</button>
+            {!showCheckboxes && (
+              <button 
+                className="btn" 
+                onClick={() => setShowCheckboxes(true)}
+                style={{ background: '#00a884', color: '#e9edef' }}
+              >
+                📋 Bulk Edit
+              </button>
+            )}
+            {showCheckboxes && !isMultiEditMode && (
+              <button 
+                className="btn" 
+                onClick={() => {
+                  setShowCheckboxes(false);
+                  setSelectedIds(new Set());
+                }}
+                style={{ background: '#2a3f56', color: '#e9edef' }}
+              >
+                ✕ Cancel Selection
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Multi-Edit Mode Toolbar */}
@@ -486,6 +576,14 @@ const Books = ({ userProfile }) => {
                 style={{ background: '#00a884' }}
               >
                 Save Changes to All {selectedIds.size} Book{selectedIds.size !== 1 ? 's' : ''}
+              </button>
+              <button 
+                className="btn" 
+                onClick={handleMultiDelete}
+                style={{ background: '#ff4444', color: '#fff' }}
+                title="Delete selected books"
+              >
+                🗑️ Delete All {selectedIds.size}
               </button>
               <button 
                 className="btn" 

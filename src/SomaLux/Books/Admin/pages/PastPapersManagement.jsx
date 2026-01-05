@@ -314,6 +314,94 @@ const PastPapersManagement = ({ userProfile }) => {
     }
   };
 
+  const handleMultiDelete = async () => {
+    if (selectedIds.size === 0) {
+      showToast({ type: 'error', message: 'Please select at least one past paper to delete.' });
+      return;
+    }
+
+    const papersToDelete = Array.from(selectedIds);
+
+    const ok = await confirm({
+      title: `Delete ${selectedIds.size} past paper${selectedIds.size !== 1 ? 's' : ''}?`,
+      message: `You are about to delete ${selectedIds.size} past paper${selectedIds.size !== 1 ? 's' : ''} and their files. This action cannot be undone.`,
+      confirmLabel: 'Delete All',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      // Get all paper data (including file paths)
+      const papersData = [];
+      for (const id of papersToDelete) {
+        const cachedRow = rows.find(r => r.id === id);
+        if (cachedRow) {
+          papersData.push(cachedRow);
+        }
+      }
+
+      // If some papers are not in current page view, fetch them
+      const foundIds = new Set(papersData.map(p => p.id));
+      const missingIds = Array.from(papersToDelete).filter(id => !foundIds.has(id));
+      
+      if (missingIds.length > 0) {
+        const { data: allPapers } = await fetchPastPapers({ 
+          page: 1, 
+          pageSize: 10000, 
+          search, 
+          faculty: facultyFilter, 
+          sort 
+        });
+        
+        missingIds.forEach(id => {
+          const paper = allPapers.find(p => p.id === id);
+          if (paper) papersData.push(paper);
+        });
+      }
+
+      // Verify all papers can be deleted (after fetching all data)
+      const canDeleteAll = papersData.every(paper => canEdit(paper));
+      if (!canDeleteAll) {
+        showToast({ type: 'error', message: 'You do not have permission to delete some of the selected past papers.' });
+        return;
+      }
+
+      // Delete papers sequentially with batch processing
+      const deletePromises = [];
+      const batchSize = 5;
+      
+      for (const paper of papersData) {
+        deletePromises.push(
+          deletePastPaper({ id: paper.id, file_path: paper.file_path })
+        );
+
+        if (deletePromises.length >= batchSize) {
+          await Promise.all(deletePromises);
+          deletePromises.length = 0;
+        }
+      }
+
+      if (deletePromises.length > 0) {
+        await Promise.all(deletePromises);
+      }
+
+      // Reset selection and reload
+      setSelectedIds(new Set());
+      setShowCheckboxes(false);
+      setLoading(true);
+      const { data, count: total } = await fetchPastPapers({ page, pageSize, search, faculty: facultyFilter, sort });
+      setRows(data);
+      setCount(total);
+      setLoading(false);
+      
+      showToast({ type: 'success', message: `${papersData.length} past paper(s) deleted successfully.` });
+    } catch (e) {
+      console.error('Failed to delete past papers:', e?.message || e);
+      showToast({ type: 'error', message: e?.message || 'Failed to delete past papers.' });
+    }
+  };
+
   const toggleSort = (col) => setSort((s) => (s.col === col ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' }));
 
   return (
@@ -354,28 +442,30 @@ const PastPapersManagement = ({ userProfile }) => {
           </div>
         </div>
         <div className="actions" style={{ marginBottom: 6 }}>
-          <button className="btn primary" onClick={() => (window.location.href = '/books/admin/upload')}>Add New Past Paper</button>
-          {!showCheckboxes && (
-            <button 
-              className="btn" 
-              onClick={() => setShowCheckboxes(true)}
-              style={{ background: '#00a884', color: '#e9edef' }}
-            >
-              📋 Bulk Edit
-            </button>
-          )}
-          {showCheckboxes && !isMultiEditMode && (
-            <button 
-              className="btn" 
-              onClick={() => {
-                setShowCheckboxes(false);
-                setSelectedIds(new Set());
-              }}
-              style={{ background: '#2a3f56', color: '#e9edef' }}
-            >
-              ✕ Cancel Selection
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn primary" onClick={() => (window.location.href = '/books/admin/upload')}>Add New Past Paper</button>
+            {!showCheckboxes && (
+              <button 
+                className="btn" 
+                onClick={() => setShowCheckboxes(true)}
+                style={{ background: '#00a884', color: '#e9edef' }}
+              >
+                📋 Bulk Edit
+              </button>
+            )}
+            {showCheckboxes && !isMultiEditMode && (
+              <button 
+                className="btn" 
+                onClick={() => {
+                  setShowCheckboxes(false);
+                  setSelectedIds(new Set());
+                }}
+                style={{ background: '#2a3f56', color: '#e9edef' }}
+              >
+                ✕ Cancel Selection
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Multi-Edit Mode Toolbar */}
@@ -502,6 +592,14 @@ const PastPapersManagement = ({ userProfile }) => {
                 style={{ background: '#00a884' }}
               >
                 Save Changes to All {selectedIds.size} Item{selectedIds.size !== 1 ? 's' : ''}
+              </button>
+              <button 
+                className="btn" 
+                onClick={handleMultiDelete}
+                style={{ background: '#ff4444', color: '#fff' }}
+                title="Delete selected past papers"
+              >
+                🗑️ Delete All {selectedIds.size}
               </button>
               <button 
                 className="btn" 

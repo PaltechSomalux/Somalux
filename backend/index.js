@@ -2379,6 +2379,120 @@ app.post('/api/authors/fetch-profile-image', async (req, res) => {
   }
 });
 
+// ============= IMAGE PROXY (Cache-enabled) ======================
+
+// Proxy endpoint for Google and other external images to prevent rate limiting
+// Implements caching with ETag support for 24-hour cache validity
+const imageProxyCache = new Map(); // In-memory cache for image metadata
+
+app.get('/api/proxy-image', async (req, res) => {
+  try {
+    const { url } = req.query;
+    
+    if (!url) {
+      return res.status(400).json({ error: 'URL parameter required' });
+    }
+    
+    // Validate URL to prevent SSRF attacks
+    try {
+      const urlObj = new URL(url);
+      const allowedDomains = [
+        'lh3.googleusercontent.com',
+        'lh4.googleusercontent.com',
+        'lh5.googleusercontent.com',
+        'lh6.googleusercontent.com',
+        'apis.google.com',
+        'books.google.com',
+        'en.wikipedia.org',
+        'commons.wikimedia.org'
+      ];
+      
+      if (!allowedDomains.some(domain => urlObj.hostname.includes(domain))) {
+        return res.status(403).json({ error: 'URL domain not allowed' });
+      }
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid URL' });
+    }
+    
+    // Check in-memory cache first
+    if (imageProxyCache.has(url)) {
+      const cached = imageProxyCache.get(url);
+      const age = Date.now() - cached.timestamp;
+      
+      // Cache valid for 24 hours
+      if (age < 86400000) {
+        console.log(`✅ Serving cached image from memory: ${url}`);
+        res.set('Content-Type', cached.contentType);
+        res.set('Cache-Control', 'public, max-age=86400');
+        res.set('X-Cache', 'HIT');
+        return res.send(cached.buffer);
+      } else {
+        // Remove expired cache
+        imageProxyCache.delete(url);
+      }
+    }
+    
+    // Fetch image with proper headers to avoid rate limiting
+    console.log(`📥 Fetching image through proxy: ${url}`);
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://somalux.com/',
+        'Accept': 'image/*',
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'max-age=31536000'
+      },
+      maxRedirects: 5
+    });
+    
+    const contentType = response.headers['content-type'] || 'application/octet-stream';
+    const buffer = Buffer.from(response.data);
+    
+    // Cache the image in memory
+    imageProxyCache.set(url, {
+      buffer,
+      contentType,
+      timestamp: Date.now()
+    });
+    
+    console.log(`✅ Cached image (${buffer.length} bytes): ${url}`);
+    
+    // Send with aggressive caching headers
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=86400, immutable');
+    res.set('X-Cache', 'MISS');
+    res.set('ETag', `"${crypto.createHash('sha256').update(buffer).digest('hex')}"`);
+    res.send(buffer);
+    
+  } catch (error) {
+    console.warn(`⚠️ Image proxy error:`, error.message);
+    res.status(502).json({ 
+      error: 'Failed to fetch image', 
+      message: error.message 
+    });
+  }
+});
+
+// Periodic cleanup of old cache entries (run every 6 hours)
+setInterval(() => {
+  const now = Date.now();
+  let removedCount = 0;
+  
+  for (const [url, data] of imageProxyCache.entries()) {
+    if (now - data.timestamp > 86400000) {
+      imageProxyCache.delete(url);
+      removedCount++;
+    }
+  }
+  
+  if (removedCount > 0) {
+    console.log(`🧹 Cleaned up ${removedCount} expired image cache entries`);
+  }
+}, 6 * 60 * 60 * 1000);
+
 // =============PAYMENT SYSTEM=====================
 
 // M-Pesa configuration

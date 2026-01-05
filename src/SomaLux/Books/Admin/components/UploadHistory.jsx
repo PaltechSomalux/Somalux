@@ -1,29 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { FiDownload, FiFilter, FiX, FiTrendingUp, FiCheckCircle, FiAlertCircle, FiSkipBack } from 'react-icons/fi';
-import { fetchUploadHistory, getUploadHistoryStats } from '../pastPapersApi';
+import { FiDownload, FiFilter, FiX, FiTrendingUp, FiCheckCircle, FiAlertCircle, FiSkipBack, FiTrash2 } from 'react-icons/fi';
+import { fetchUploadHistory, getUploadHistoryStats, clearAllUploadHistory } from '../pastPapersApi';
 import '../styles/UploadHistory.css';
 
-export const UploadHistory = ({ userProfile, onClose }) => {
+export const UploadHistory = ({ userProfile, onClose, reloadTrigger = 0 }) => {
   const [history, setHistory] = useState([]);
   const [stats, setStats] = useState({ today: 0, total: 0, duplicates: 0, failed: 0, successful: 0 });
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [statusFilter, setStatusFilter] = useState(null);
+  const [isClearing, setIsClearing] = useState(false);
   const pageSize = 20;
 
-  useEffect(() => {
-    loadHistory();
-    loadStats();
-  }, [page, statusFilter]);
-
-  const loadHistory = async () => {
+  const loadHistory = async (pageNum = page, filterStatus = statusFilter) => {
     try {
       setLoading(true);
       const result = await fetchUploadHistory({
-        page,
+        page: pageNum,
         pageSize,
-        status: statusFilter
+        status: filterStatus
       });
       setHistory(result.data || []);
       setTotalCount(result.count || 0);
@@ -42,6 +38,28 @@ export const UploadHistory = ({ userProfile, onClose }) => {
       console.error('Failed to load stats:', err);
     }
   };
+
+  // Load data when page or filter changes
+  useEffect(() => {
+    loadHistory(page, statusFilter);
+    loadStats();
+  }, [page, statusFilter]);
+
+  // Reset and reload when reloadTrigger changes
+  useEffect(() => {
+    console.log('Clearing history from UI');
+    setHistory([]);
+    setTotalCount(0);
+    setStats({ today: 0, total: 0, duplicates: 0, failed: 0, successful: 0 });
+    setPage(1);
+    setStatusFilter(null);
+  }, [reloadTrigger]);
+
+  // Initial load on mount
+  useEffect(() => {
+    loadHistory(1, null);
+    loadStats();
+  }, []);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -82,13 +100,53 @@ export const UploadHistory = ({ userProfile, onClose }) => {
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  const handleClearAllHistory = async () => {
+    if (window.confirm('Are you sure you want to delete ALL upload history? This action cannot be undone.')) {
+      try {
+        setIsClearing(true);
+        await clearAllUploadHistory();
+        await loadHistory();
+        await loadStats();
+        alert('Upload history cleared successfully!');
+      } catch (err) {
+        console.error('Failed to clear history:', err);
+        alert('Failed to clear upload history. Please try again.');
+      } finally {
+        setIsClearing(false);
+      }
+    }
+  };
+
   return (
     <div className="upload-history-panel">
       <div className="upload-history-header">
         <h2>Upload History</h2>
-        <button className="close-btn" onClick={onClose}>
-          <FiX size={20} />
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            className="btn danger"
+            onClick={handleClearAllHistory}
+            disabled={isClearing || history.length === 0}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              fontSize: '14px',
+              background: '#ea4335',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: isClearing || history.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: isClearing || history.length === 0 ? 0.6 : 1
+            }}
+          >
+            <FiTrash2 size={16} />
+            {isClearing ? 'Clearing...' : 'Clear All History'}
+          </button>
+          <button className="close-btn" onClick={onClose}>
+            <FiX size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Stats */}

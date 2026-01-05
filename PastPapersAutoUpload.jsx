@@ -14,6 +14,7 @@ const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
   const [incompleteProcess, setIncompleteProcess] = useState(null);
   const [toast, setToast] = useState(null);
   const [historyPage, setHistoryPage] = useState(1);
+  const [paused, setPaused] = useState(false);
   const HISTORY_PAGE_SIZE = 12;
 
   const showToast = (message, type = 'error') => {
@@ -209,12 +210,25 @@ const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
 
       if (data.ok) {
         setCurrentProcess({ ...currentProcess, status: 'stopped' });
+        setPaused(true);
         setShowStopConfirm(false);
         fetchProcesses();
       }
     } catch (err) {
       setError('Failed to stop upload: ' + err.message);
     }
+  };
+
+  const handlePause = () => {
+    setPaused(true);
+    setShowStopConfirm(true);
+  };
+
+  const handleResume = () => {
+    if (!currentProcess) return;
+    setPaused(false);
+    // The resume will be handled by the existing resumeUpload flow
+    setCurrentProcess({ ...currentProcess, status: 'running' });
   };
 
   const resumeUpload = async () => {
@@ -391,13 +405,36 @@ const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
             )}
           </button>
 
+          {currentProcess && currentProcess.status === 'running' && !paused && (
+            <button
+              className="btn"
+              onClick={handlePause}
+              style={{ background: '#f1b233', color: '#1f2c33', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <FiPause size={18} />
+              Pause
+            </button>
+          )}
+
+          {currentProcess && paused && (
+            <button
+              className="btn primary"
+              onClick={handleResume}
+              style={{ background: '#00a884', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <FiPlay size={18} />
+              Resume
+            </button>
+          )}
+
           {currentProcess && currentProcess.status === 'running' && (
             <button
               className="btn"
               onClick={() => setShowStopConfirm(true)}
-              style={{ color: '#ea4335' }}
+              style={{ color: '#ea4335', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              Stop Upload
+              <FiX size={18} />
+              Cancel
             </button>
           )}
         </div>
@@ -410,7 +447,7 @@ const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
             {getStatusIcon(currentProcess.status)}
             <div>
               <div style={{ color: '#e9edef', fontWeight: '600' }}>
-                {currentProcess.status === 'running' ? 'Uploading...' : currentProcess.status === 'completed' ? 'Upload Complete' : 'Upload Failed'}
+                {paused ? 'Paused' : (currentProcess.status === 'running' ? 'Uploading...' : currentProcess.status === 'completed' ? 'Upload Complete' : 'Upload Failed')}
               </div>
               <div style={{ color: '#8696a0', fontSize: '12px' }}>
                 {formatDate(currentProcess.startedAt)}
