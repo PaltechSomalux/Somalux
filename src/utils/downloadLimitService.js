@@ -1,6 +1,6 @@
 import { supabase } from '../SomaLux/Books/supabaseClient';
 
-const DAILY_DOWNLOAD_LIMIT_FREE = 5; // Non-premium users
+const DAILY_DOWNLOAD_LIMIT_FREE = 1; // Non-premium users
 const DAILY_DOWNLOAD_LIMIT_PREMIUM = 999; // Premium users (essentially unlimited)
 const STORAGE_KEY = 'somalux_daily_downloads';
 
