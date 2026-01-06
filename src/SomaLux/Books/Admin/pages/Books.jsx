@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { fetchBooks, fetchCategories, deleteBook, updateBook } from '../api';
 import { useAdminUI } from '../AdminUIContext';
 
+
 const Books = ({ userProfile }) => {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
@@ -21,6 +22,7 @@ const Books = ({ userProfile }) => {
   const [showCheckboxes, setShowCheckboxes] = useState(false);
   const [useCustomCategory, setUseCustomCategory] = useState(false);
   const [customCategory, setCustomCategory] = useState('');
+
 
   const { confirm, showToast } = useAdminUI();
 

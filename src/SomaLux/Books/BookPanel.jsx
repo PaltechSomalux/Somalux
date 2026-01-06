@@ -233,6 +233,9 @@ export const BookPanel = ({ demoMode = false }) => {
   const [showNetworkModal, setShowNetworkModal] = useState(false);
   const [networkRetryPage, setNetworkRetryPage] = useState(1);
 
+  // Sharing modal state
+  const [showSharingModal, setShowSharingModal] = useState(false);
+
   const CACHE_TTL_MS = 5 * 60 * 1000;
 
   // Rewards: load daily login bonus and current points once user is known
@@ -3272,30 +3275,19 @@ export const BookPanel = ({ demoMode = false }) => {
                     <FiBook size={16} /> Read
                   </button>
                   <button
-                    className="btn-readBKP btn-action-primaryBKP btn-mark-hiddenBKP"
-                    onClick={() => toggleWishlist(selectedBook.id)}
-                    title={wishlist.find(w => w.id === selectedBook.id) ? "Remove from marked" : "Mark for later"}
-                  >
-                    <FiBookmark size={16} fill={wishlist.find(w => w.id === selectedBook.id) ? "currentColor" : "none"} /> {wishlist.find(w => w.id === selectedBook.id) ? "Marked" : "Mark"}
-                  </button>
-                  <button
                     className="btn-readBKP btn-action-primaryBKP"
                     onClick={() => setShowRatingModal(true)}
                     title="Rate this book"
                   >
                     <FiStar size={16} /> {userRating ? `${userRating}★` : 'Rate'}
                   </button>
-                </div>
-
-                <div className="actions-social-sectionBKP">
-                  <div className="social-label-mobileBKP">Share</div>
-                  <div className="share-rowBKP">
-                    <button className="share-btnBKP share-btn-copyBKP" title="Copy Link" onClick={() => handleShare('copy', selectedBook)}><FiCopy size={14} /><span className="btn-label-mobileBKP">Copy</span></button>
-                    <button className="share-btnBKP share-btn-xBKP" title="Share on X" onClick={() => handleShare('twitter', selectedBook)}><span className="x-text-icon">𝕏</span><span className="btn-label-mobileBKP">X</span></button>
-                    <button className="share-btnBKP share-btn-facebookBKP" title="Facebook" onClick={() => handleShare('facebook', selectedBook)}><FaFacebook size={14} /><span className="btn-label-mobileBKP">Facebook</span></button>
-                    <button className="share-btnBKP share-btn-linkedinBKP" title="LinkedIn" onClick={() => handleShare('linkedin', selectedBook)}><FaLinkedin size={14} /><span className="btn-label-mobileBKP">LinkedIn</span></button>
-                    <button className="share-btnBKP share-btn-emailBKP" title="Email" onClick={() => handleShare('email', selectedBook)}><FiMail size={14} /><span className="btn-label-mobileBKP">Email</span></button>
-                  </div>
+                  <button
+                    className="btn-readBKP btn-action-primaryBKP"
+                    onClick={() => setShowSharingModal(true)}
+                    title="Share this book"
+                  >
+                    <FiShare2 size={16} /> Share
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -3353,6 +3345,261 @@ export const BookPanel = ({ demoMode = false }) => {
         onRate={handleRating}
         existingRating={userRating}
       />
+
+      {/* Sharing Modal */}
+      <AnimatePresence>
+        {showSharingModal && selectedBook && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowSharingModal(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(0,0,0,0.6)',
+              zIndex: 1100,
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#0b1220',
+                color: '#e6eef7',
+                padding: 32,
+                borderRadius: 12,
+                boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
+                textAlign: 'center',
+                maxWidth: 400,
+              }}
+            >
+              <h3 style={{ margin: 0, marginBottom: 8, fontSize: 18, fontWeight: 600 }}>
+                Share "{selectedBook.title}"
+              </h3>
+              <p style={{ margin: 0, marginBottom: 24, color: '#9ca3af', fontSize: 14 }}>
+                Choose how you want to share this book
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <button
+                  className="share-modal-btn"
+                  title="Copy Link"
+                  onClick={() => {
+                    handleShare('copy', selectedBook);
+                    setShowSharingModal(false);
+                  }}
+                  style={{
+                    background: '#1e293b',
+                    color: '#e6eef7',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <FiCopy size={16} />
+                  Copy Link
+                </button>
+
+                <button
+                  className="share-modal-btn"
+                  title="Share on X"
+                  onClick={() => {
+                    handleShare('twitter', selectedBook);
+                    setShowSharingModal(false);
+                  }}
+                  style={{
+                    background: '#1e293b',
+                    color: '#e6eef7',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>𝕏</span>
+                  X
+                </button>
+
+                <button
+                  className="share-modal-btn"
+                  title="Share on Facebook"
+                  onClick={() => {
+                    handleShare('facebook', selectedBook);
+                    setShowSharingModal(false);
+                  }}
+                  style={{
+                    background: '#1e293b',
+                    color: '#e6eef7',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <FaFacebook size={16} />
+                  Facebook
+                </button>
+
+                <button
+                  className="share-modal-btn"
+                  title="Share on LinkedIn"
+                  onClick={() => {
+                    handleShare('linkedin', selectedBook);
+                    setShowSharingModal(false);
+                  }}
+                  style={{
+                    background: '#1e293b',
+                    color: '#e6eef7',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <FaLinkedin size={16} />
+                  LinkedIn
+                </button>
+
+                <button
+                  className="share-modal-btn"
+                  title="Share via Email"
+                  onClick={() => {
+                    handleShare('email', selectedBook);
+                    setShowSharingModal(false);
+                  }}
+                  style={{
+                    background: '#1e293b',
+                    color: '#e6eef7',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <FiMail size={16} />
+                  Email
+                </button>
+
+                <button
+                  className="share-modal-btn"
+                  title="Close"
+                  onClick={() => setShowSharingModal(false)}
+                  style={{
+                    background: 'transparent',
+                    color: '#9ca3af',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#475569';
+                    e.target.style.color = '#e6eef7';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'transparent';
+                    e.target.style.borderColor = '#334155';
+                    e.target.style.color = '#9ca3af';
+                  }}
+                >
+                  <FiX size={16} />
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

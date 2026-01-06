@@ -359,9 +359,107 @@
 .profile-btn-confirm:hover { background: #ff5449; }
 .profile-btn-confirm:active { background: #e63228; }
 
+/* QR Code Modal */
+.qr-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999 !important;
+  padding: 1rem;
+  animation: fadeIn 0.35s ease-out;
+  overflow: auto;
+}
+
+.qr-modal-container {
+  background: transparent;
+  border-radius: 0;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  box-shadow: none;
+  border: none;
+  overflow: visible;
+  animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  box-sizing: border-box;
+  margin: auto;
+}
+
+.qr-modal-header {
+  padding: 24px 28px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #202c33;
+}
+
+.qr-modal-header h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #e9edef;
+}
+
+.qr-modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 32px;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  color: #8696a0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.qr-modal-close-btn:hover {
+  background: rgba(255, 107, 107, 0.1);
+  color: #ff6b6b;
+}
+
+.qr-modal-body {
+  padding: 24px 28px;
+  color: #e9edef;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* Mobile */
 @media (max-width: 480px) {
   .chrome-dropdown { width: 92vw; right: -12px; }
   .library-stats, .last-opened { grid-template-columns: 1fr; }
   .profile-signout-modal { max-width: 92vw; }
+  .qr-modal-container { max-width: 92vw; }
 }

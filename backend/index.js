@@ -26,6 +26,7 @@ import {
 import { sendSignOutReasonEmail } from './routes/adminNotifications.js';
 import adsApiV2 from './routes/adsApiV2.js';
 import { createRankingRoutes } from './routes/rankings.js';
+import featureFlagsRouter from './routes/featureFlags.js';
 
 
 // Express Setup MUST be before any app.use/app.post calls
@@ -34,6 +35,9 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public')); // Serve static files from public folder (for ads, etc)
+
+// Feature Flags Routes
+app.use(featureFlagsRouter);
 
 // FCM topic management - DISABLED (Firebase not used)
 app.post('/subscribe-topic', async (req, res) => {
@@ -4038,4 +4042,5 @@ server = app.listen(PORT, () => {
 
 // Setup WebSocket after server starts
 wss = new WebSocketServer({ server });
+global.wss = wss; // Store reference for feature flags broadcasting
 setupWebSocket();

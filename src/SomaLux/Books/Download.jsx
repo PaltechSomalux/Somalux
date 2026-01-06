@@ -36,20 +36,20 @@ const FullDownloadButton = styled(motion.button)`
   padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid #2a3942;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
+  background: transparent;
   color: #e5e7eb;
   cursor: pointer;
   transition: transform .15s ease, background .15s ease, border-color .15s ease;
   font-size: 0.9rem;
   font-weight: 500;
   white-space: nowrap;
-  flex: 1;
-  min-width: 0;
+  flex: 0 1 auto;
+  min-width: auto;
 
   &:hover {
     transform: translateY(-1px);
     border-color: #6366f1;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
+    background: transparent;
   }
 
   &:disabled {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchStats, fetchViewDetails } from '../api';
 import { FiX, FiEye } from 'react-icons/fi';
 import { Box, Grid, Card, CardContent, Typography, Divider } from '@mui/material';
+
 import {
   LineChart,
   Line,
@@ -393,6 +394,9 @@ const Dashboard = () => {
             </Grid>
           </Grid>
         </Grid>
+
+        {/* Sharing Features Section */}
+
 
         {timeSeries && timeSeries.length > 0 && (
           <Grid size={{ xs: 12, md: 6 }}>

@@ -7,6 +7,7 @@ import { supabase } from "../Books/supabaseClient";
 import { ProfileAvatar } from "./ProfileAvatar";
 import { AuthModals } from "./AuthModals";
 import VerificationTierModal from "../Books/VerificationTierModal";
+import QRCodeShare from "../../components/QRCodeShare";
 import "./Profile.css";
 
 export const Profile = ({ user: propUser = null }) => {
@@ -18,6 +19,8 @@ export const Profile = ({ user: propUser = null }) => {
   const [authUser, setAuthUser] = useState(null);
   const [currentUserTier, setCurrentUserTier] = useState('basic');
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [showActionsGrid, setShowActionsGrid] = useState(false);
 
   const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -119,6 +122,30 @@ export const Profile = ({ user: propUser = null }) => {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Prevent body scroll when QR Code modal is open
+  useEffect(() => {
+    if (showQRCode) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [showQRCode]);
+
+  // Prevent body scroll when Actions Grid modal is open
+  useEffect(() => {
+    if (showActionsGrid) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [showActionsGrid]);
 
   // Load data from storage
   const loadDataFromStorage = () => {
@@ -342,7 +369,8 @@ export const Profile = ({ user: propUser = null }) => {
   const totalBadgeCount = (favorites || 0) + (notifications || 0);
 
   return (
-    <div className="chrome-profile" ref={dropdownRef}>
+    <>
+      <div className="chrome-profile" ref={dropdownRef}>
       {/* Trigger */}
       <button className="profile-trigger" onClick={() => setIsOpen(!isOpen)}>
         {profileImage ? (
@@ -409,102 +437,31 @@ export const Profile = ({ user: propUser = null }) => {
               alignItems: 'center',
               justifyContent: 'flex-end',
             }}>
-              {/* Upgrade Button */}
-              {currentUserTier === 'basic' && (
-                <button
-                  onClick={() => {
-                    setShowVerificationModal(true);
-                    setIsOpen(false);
-                  }}
-                  style={{
-                    padding: '4px 6px',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: '#fff',
-                    backgroundColor: '#00a884',
-                    border: 'none',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#008069';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#00a884';
-                  }}
-                >
-                  Upgrade
-                </button>
-              )}
-
-              {/* Stats Button */}
+              {/* Grid Actions Button */}
               {authUser && (
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    navigate('/books/reading-dashboard');
-                  }}
+                  onClick={() => setShowActionsGrid(!showActionsGrid)}
                   style={{
                     padding: '4px 6px',
                     fontSize: '11px',
                     fontWeight: '600',
                     color: '#00a884',
-                    backgroundColor: 'transparent',
-                    border: 'none',
+                    backgroundColor: showActionsGrid ? 'rgba(0, 168, 132, 0.2)' : 'transparent',
+                    border: '1px solid #00a884',
                     borderRadius: '3px',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '3px',
                     whiteSpace: 'nowrap',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = 'rgba(0, 168, 132, 0.1)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.backgroundColor = showActionsGrid ? 'rgba(0, 168, 132, 0.2)' : 'transparent';
                   }}
-                  title="View reading statistics and achievements"
+                  title="Quick actions"
                 >
-                  <FiBarChart2 size={12} />
-                  Stats
-                </button>
-              )}
-
-              {/* Upload Button */}
-              {authUser && (
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    navigate('/user/upload');
-                  }}
-                  style={{
-                    padding: '4px 6px',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: '#34B7F1',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '3px',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(52, 183, 241, 0.1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                >
-                  <FiUpload size={12} />
-                  Upload
+                  ⊞ {showActionsGrid ? 'Less' : 'More'}
                 </button>
               )}
 
@@ -534,33 +491,218 @@ export const Profile = ({ user: propUser = null }) => {
                   Sign In
                 </button>
               )}
-              {authUser && (
-                <button
-                  onClick={() => setShowSignOutModal(true)}
-                  style={{
-                    padding: '4px 6px',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: '#ff6b6b',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(255, 107, 107, 0.1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                >
-                  Sign Out
-                </button>
-              )}
             </div>
           </div>
+
+          {/* Actions Grid Dropdown - Inside Profile Dropdown */}
+          {showActionsGrid && (
+            <div style={{
+              padding: '12px',
+              background: '#0d1217',
+              borderRadius: '8px',
+              border: 'none',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+              marginTop: '12px'
+            }}>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'row',
+                gap: '16px',
+                justifyContent: 'space-between'
+              }}>
+                {/* Left Column - 2 buttons */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  flex: 1
+                }}>
+                {/* Stats */}
+                <button
+                  onClick={() => {
+                    setShowActionsGrid(false);
+                    setIsOpen(false);
+                    navigate('/books/reading-dashboard');
+                  }}
+                  style={{
+                    padding: '5px 9px',
+                    background: 'transparent',
+                    border: '1px solid #00a884',
+                    color: '#00a884',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    borderRadius: '4px',
+                    whiteSpace: 'nowrap',
+                    width: '100%',
+                    justifyContent: 'center'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 168, 132, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <FiBarChart2 size={13} />
+                  Stats
+                </button>
+
+                {/* Upload */}
+                <button
+                  onClick={() => {
+                    setShowActionsGrid(false);
+                    setIsOpen(false);
+                    navigate('/user/upload');
+                  }}
+                  style={{
+                    padding: '5px 9px',
+                    background: 'transparent',
+                    border: '1px solid #34B7F1',
+                    color: '#34B7F1',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    borderRadius: '4px',
+                    whiteSpace: 'nowrap',
+                    width: '100%',
+                    justifyContent: 'center'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(52, 183, 241, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <FiUpload size={13} />
+                  Upload
+                </button>
+                </div>
+
+                {/* Right Column - 3 buttons */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  flex: 1
+                }}>
+
+                {/* QR Code */}
+                <button
+                  onClick={() => {
+                    setShowActionsGrid(false);
+                    setShowQRCode(true);
+                  }}
+                  style={{
+                    padding: '5px 9px',
+                    background: 'transparent',
+                    border: '1px solid #a78bfa',
+                    color: '#a78bfa',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    borderRadius: '4px',
+                    whiteSpace: 'nowrap',
+                    width: '100%',
+                    justifyContent: 'center'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(167, 139, 250, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  📱
+                  <span>QR Code</span>
+                </button>
+
+                {/* Upgrade */}
+                {currentUserTier === 'basic' && (
+                  <button
+                    onClick={() => {
+                      setShowActionsGrid(false);
+                      setShowVerificationModal(true);
+                    }}
+                    style={{
+                      padding: '5px 9px',
+                      background: 'transparent',
+                      border: '1px solid #f59e0b',
+                      color: '#f59e0b',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      borderRadius: '4px',
+                      whiteSpace: 'nowrap',
+                      width: '100%',
+                      justifyContent: 'center'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    ⬆️
+                    <span>Upgrade</span>
+                  </button>
+                )}
+
+                {/* Sign Out */}
+                <button
+                  onClick={() => {
+                    setShowActionsGrid(false);
+                    setShowSignOutModal(true);
+                  }}
+                  style={{
+                    padding: '5px 9px',
+                    background: 'transparent',
+                    border: '1px solid #ff6b6b',
+                    color: '#ff6b6b',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    borderRadius: '4px',
+                    whiteSpace: 'nowrap',
+                    width: '100%',
+                    justifyContent: 'center'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 107, 107, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  🚪
+                  <span>Sign Out</span>
+                </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Main Content Area */}
         </div>
@@ -589,6 +731,60 @@ export const Profile = ({ user: propUser = null }) => {
         }}
         isLoading={false}
       />
-    </div>
+      </div>
+
+      {/* QR Code Share Modal - Outside all containers for proper centering */}
+      {showQRCode && (
+        <div className="qr-modal-overlay" onClick={() => setShowQRCode(false)}>
+          <div 
+            className="qr-modal-container"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '450px', overflow: 'visible', position: 'relative' }}
+          >
+            {/* Close Button */}
+            <button
+              className="qr-modal-close-btn"
+              onClick={() => setShowQRCode(false)}
+              aria-label="Close"
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '-15px',
+                background: 'none',
+                border: 'none',
+                fontSize: '28px',
+                width: '38px',
+                height: '38px',
+                cursor: 'pointer',
+                color: '#8696a0',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s',
+                zIndex: 10
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 107, 107, 0.1)';
+                e.currentTarget.style.color = '#ff6b6b';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'none';
+                e.currentTarget.style.color = '#8696a0';
+              }}
+            >
+              ×
+            </button>
+
+            <QRCodeShare 
+              url="https://somalux.co.ke"
+              title="Scan to Visit SomaLux"
+              description="Share this QR code to help others discover our platform"
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
+
 };

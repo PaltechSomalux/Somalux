@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchStats, fetchViewDetails } from '../api';
 import { FiX, FiEye } from 'react-icons/fi';
 import { Box, Grid, Card, CardContent, Typography, Divider } from '@mui/material';
+import QRCodeShare from './src/components/QRCodeShare';
 import {
   LineChart,
   Line,
@@ -394,6 +395,27 @@ const Dashboard = () => {
               </Card>
             </Grid>
           </Grid>
+        </Grid>
+
+        {/* Sharing Features Section */}
+        <Grid size={{ xs: 12 }}>
+          <Typography variant="h5" sx={{ color: '#e9edef', mb: 0.25, fontSize: '1.1rem' }}>
+            Sharing Features
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#8696a0', fontSize: '0.75rem', mb: 1.5 }}>
+            Promote SomaLux with our QR code - perfect for marketing, posters, and social media
+          </Typography>
+        </Grid>
+
+        <Grid size={{ xs: 12 }}>
+          <Card sx={{ background: '#111b21', borderRadius: 1, padding: 2 }}>
+            <QRCodeShare 
+              url="https://somalux.co.ke"
+              title="Scan to Visit SomaLux"
+              description="Share this QR code to help others discover our platform"
+              logoPath="/PaltechBlack152.png"
+            />
+          </Card>
         </Grid>
 
         {timeSeries && timeSeries.length > 0 && (
