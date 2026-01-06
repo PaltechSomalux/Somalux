@@ -36,25 +36,33 @@ export const Authors = () => {
   // ⚡ Initialize authors from cache IMMEDIATELY on mount
   useEffect(() => {
     const cacheKey = 'authors_list_cache_v2';
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        const cacheAge = parsed.timestamp ? Date.now() - parsed.timestamp : Infinity;
-        if (cacheAge < 24 * 60 * 60 * 1000 && parsed.data?.length > 0) {
-          console.log('⚡ Authors instant load from localStorage cache');
-          setAuthors(parsed.data);
-          setIsLoading(false);
-          return;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          const cacheAge = parsed.timestamp ? Date.now() - parsed.timestamp : Infinity;
+          if (cacheAge < 24 * 60 * 60 * 1000 && parsed.data?.length > 0) {
+            console.log('⚡ Authors instant load from localStorage cache');
+            setAuthors(parsed.data);
+            setIsLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.warn('localStorage cache error:', e);
         }
-      } catch (e) {
-        console.warn('localStorage cache error:', e);
       }
+    } catch (e) {
+      console.warn('localStorage access error:', e);
     }
     
     // Try IndexedDB as fallback
     (async () => {
       try {
+        if (!cacheDB || !cacheDB.loadAuthors) {
+          console.warn('cacheDB not available');
+          return;
+        }
         const idbAuthors = await cacheDB.loadAuthors();
         if (idbAuthors && idbAuthors.length > 0) {
           console.log('⚡ Authors instant load from IndexedDB cache');

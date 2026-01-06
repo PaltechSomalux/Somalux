@@ -19,29 +19,16 @@ export const registerServiceWorker = async () => {
 
     console.log('Service Worker registered:', registration);
 
-    // Check for updates periodically
-    setInterval(() => {
-      registration.update();
-    }, 60000); // Every minute
-
-    // Listen for new service worker
-    registration.addEventListener('updatefound', () => {
-      const newWorker = registration.installing;
-
-      newWorker.addEventListener('statechange', () => {
-        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          // New service worker available, notify user
-          console.log('New service worker available');
-          notifyNewVersionAvailable(registration);
-        }
-      });
-    });
+    // Don't check for updates automatically to avoid continuous reloading
+    // Users can manually refresh to get updates
 
     // Listen for controller change
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       console.log('Service Worker controller changed - features refreshing');
-      // Refresh features when new SW takes control
-      window.location.reload();
+      // Only notify, don't reload to avoid infinite loops
+      if (window.__featureFlagsContext) {
+        window.__featureFlagsContext.refreshFeatures?.();
+      }
     });
 
     return registration;
@@ -57,11 +44,7 @@ export const registerServiceWorker = async () => {
 function notifyNewVersionAvailable(registration) {
   // You can implement a toast notification here
   console.log('New app version available');
-  
-  // Optional: Auto-update without user action after delay
-  setTimeout(() => {
-    skipWaiting(registration);
-  }, 5 * 60 * 1000); // After 5 minutes
+  // Don't auto-update - let user manually refresh when ready
 }
 
 /**

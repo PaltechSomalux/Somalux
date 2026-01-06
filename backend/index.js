@@ -418,9 +418,11 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 let supabaseAdmin = null;
 if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
   supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+  global.supabaseAdmin = supabaseAdmin; // Make available to routers (feature flags, etc.)
   console.log('🔐 Supabase service-role client initialized');
 } else {
   console.warn('⚠️ SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing. Proxy endpoints will be disabled.');
+  global.supabaseAdmin = null;
 }
 
 // Build a per-request Supabase client using the caller's JWT so that RLS policies
@@ -4033,11 +4035,61 @@ app.get('/api/elib/search-unit-faculty', async (req, res) => {
   }
 });
 
+/**
+ * Diagnostic endpoints for debugging
+ */
+app.get('/api/status', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'somalux-backend',
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'development',
+    version: '1.0.0'
+  });
+});
+
+/**
+ * Global error handler middleware - catches any unhandled errors
+ */
+app.use((err, req, res, next) => {
+  console.error('🔴 GLOBAL ERROR HANDLER:', err);
+  console.error('Path:', req.path);
+  console.error('Method:', req.method);
+  console.error('Stack:', err?.stack);
+  
+  // Send error response
+  res.status(500).json({
+    error: 'Internal server error',
+    message: err?.message || 'Unknown error',
+    path: req.path,
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
+ * 404 handler
+ */
+app.use((req, res) => {
+  console.warn('⚠️ 404 Not Found:', req.method, req.path);
+  res.status(404).json({
+    error: 'Not found',
+    path: req.path,
+    method: req.method
+  });
+});
 
 server = app.listen(PORT, () => {
   console.log(`✅ Backend + WebSocket server running on http://localhost:${PORT}`);
   console.log(`📡 Routes registered: /send-message, /send-group-message, /group/:groupId/messages, /group-messages/read`);
   console.log(`📊 Reading Analytics routes enabled`);
+  console.log(`✨ Feature Flags API: GET /api/features`);
+  console.log(`🏥 Health check: GET /api/health or GET /api/status`);
+  console.log(`🔧 Supabase configured: ${global.supabaseAdmin ? '✅ Yes' : '❌ No'}`);
+  console.log(`📍 API diagnostic endpoints:`);
+  console.log(`   - GET /api/status (backend status)`);
+  console.log(`   - GET /api/health (feature flags status)`);
+  console.log(`   - GET /api/features-simple (test endpoint, no DB)`);
+  console.log(`   - GET /api/features (main endpoint)`);
 });
 
 // Setup WebSocket after server starts

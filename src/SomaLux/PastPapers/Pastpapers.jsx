@@ -255,13 +255,19 @@ export const PaperPanel = ({ demoMode = false }) => {
       try {
         const cached = localStorage.getItem('cachedPastPapers');
         if (cached) {
-          const { data } = JSON.parse(cached);
-          console.log(`📦 Loaded ${data.length} papers from cache`);
-          setPapers(data);
-          setLoading(false);
-          return;
+          try {
+            const { data } = JSON.parse(cached);
+            console.log(`📦 Loaded ${data.length} papers from cache`);
+            setPapers(data);
+            setLoading(false);
+            return;
+          } catch (parseError) {
+            console.warn('Cache parse error:', parseError);
+          }
         }
-      } catch (e) {}
+      } catch (storageError) {
+        console.warn('localStorage access error:', storageError);
+      }
       setLoading(false);
     }
   }, []);
@@ -294,17 +300,23 @@ export const PaperPanel = ({ demoMode = false }) => {
       try {
         const cached = localStorage.getItem('cachedUniversities');
         if (cached) {
-          const { data, timestamp } = JSON.parse(cached);
-          // Use cache if less than 30 minutes old
-          if (Date.now() - timestamp < 30 * 60 * 1000) {
-            setUniversities(data || []);
-            setLoading(false);
-            // Fetch fresh in background
-            setTimeout(() => fetchAndUpdateUniversities(), 500);
-            return;
+          try {
+            const { data, timestamp } = JSON.parse(cached);
+            // Use cache if less than 30 minutes old
+            if (Date.now() - timestamp < 30 * 60 * 1000) {
+              setUniversities(data || []);
+              setLoading(false);
+              // Fetch fresh in background
+              setTimeout(() => fetchAndUpdateUniversities(), 500);
+              return;
+            }
+          } catch (parseError) {
+            console.warn('Cache parse error:', parseError);
           }
         }
-      } catch (e) {}
+      } catch (storageError) {
+        console.warn('localStorage access error:', storageError);
+      }
       
       // No cache, fetch normally
       await fetchAndUpdateUniversities();

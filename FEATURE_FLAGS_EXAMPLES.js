@@ -25,7 +25,7 @@ function DarkModeComponent() {
   );
 }
 
-export default DarkModeComponent;
+export { DarkModeComponent };
 
 
 // ============================================================
@@ -51,7 +51,7 @@ function SearchUI() {
   );
 }
 
-export default SearchUI;
+export { SearchUI };
 
 
 // ============================================================
@@ -74,7 +74,7 @@ function SearchPage() {
   );
 }
 
-export default SearchPage;
+export { SearchPage };
 
 
 // ============================================================
@@ -107,7 +107,7 @@ function Dashboard() {
   );
 }
 
-export default Dashboard;
+export { Dashboard };
 
 
 // ============================================================
@@ -119,7 +119,7 @@ import { useFeatureGate } from '../hooks/useFeatureFlags';
 
 const BetaAnalytics = lazy(() => import('./BetaAnalytics'));
 
-function App() {
+function AppWithAnalytics() {
   const hasBetaAnalytics = useFeatureGate('beta_analytics');
   
   return (
@@ -138,7 +138,7 @@ function App() {
   );
 }
 
-export default App;
+export { AppWithAnalytics };
 
 
 // ============================================================
@@ -167,7 +167,7 @@ function SubmitButton() {
   );
 }
 
-export default SubmitButton;
+export { SubmitButton };
 
 
 // ============================================================
@@ -197,7 +197,7 @@ function CTASection() {
   );
 }
 
-export default CTASection;
+export { CTASection };
 
 
 // ============================================================
@@ -226,7 +226,7 @@ function DataFetcher() {
   );
 }
 
-export default DataFetcher;
+export { DataFetcher };
 
 
 // ============================================================
@@ -251,7 +251,7 @@ function PremiumFeatures() {
   return <AdvancedAnalytics />;
 }
 
-export default PremiumFeatures;
+export { PremiumFeatures };
 
 
 // ============================================================
@@ -276,7 +276,7 @@ function PageWithTracking() {
   return <div>{newUI ? <NewUI /> : <OldUI />}</div>;
 }
 
-export default PageWithTracking;
+export { PageWithTracking };
 
 
 // ============================================================
@@ -309,7 +309,7 @@ function AdvancedSearch() {
   return <BasicSearch />;
 }
 
-export default AdvancedSearch;
+export { AdvancedSearch };
 
 
 // ============================================================
@@ -347,7 +347,7 @@ function UserForm() {
   );
 }
 
-export default UserForm;
+export { UserForm };
 
 
 // ============================================================
@@ -385,7 +385,7 @@ function MonitoredComponent() {
   return <div>{enabled ? <Feature /> : <Default />}</div>;
 }
 
-export default MonitoredComponent;
+export { MonitoredComponent };
 
 
 // ============================================================
@@ -412,7 +412,7 @@ function DependentFeatures() {
   );
 }
 
-export default DependentFeatures;
+export { DependentFeatures };
 
 
 // ============================================================
@@ -423,7 +423,7 @@ import { FeatureFlagsProvider } from './context/FeatureFlagsContext';
 import { registerServiceWorker } from './utils/serviceWorkerManager';
 import { useEffect } from 'react';
 
-function App() {
+function AppWithFeatureFlags() {
   useEffect(() => {
     // Register service worker for smart caching
     registerServiceWorker();
@@ -440,7 +440,7 @@ function App() {
   );
 }
 
-export default App;
+export { AppWithFeatureFlags };
 
 // ============================================================
 // END OF EXAMPLES

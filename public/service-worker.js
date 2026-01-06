@@ -15,7 +15,6 @@ const API_CACHE = `api-cache-${CACHE_VERSION}`;
 const FEATURES_CACHE = 'features-cache';
 
 const STATIC_ASSETS = [
-  '/',
   '/index.html',
   '/manifest.json',
   '/favicon.ico',
@@ -25,43 +24,53 @@ const API_PATTERNS = [
   '/api/features',
   '/api/books',
   '/api/past-papers',
+  '/api/categories',
+  '/api/authors',
 ];
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   console.log('[ServiceWorker] Installing...');
-  event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => {
-      console.log('[ServiceWorker] Caching static assets');
-      return cache.addAll(STATIC_ASSETS).catch(() => {
-        // Graceful failure - some assets may not be available yet
-        console.log('[ServiceWorker] Some static assets not available');
-      });
-    })
-  );
+  // Immediately skip waiting to activate faster
   self.skipWaiting();
+  
+  // Cache static assets in background (non-blocking)
+  caches.open(STATIC_CACHE).then((cache) => {
+    console.log('[ServiceWorker] Caching static assets');
+    cache.addAll(STATIC_ASSETS).catch(() => {
+      // Graceful failure - some assets may not be available yet
+      console.log('[ServiceWorker] Some static assets not available');
+    });
+  });
 });
 
-// Activate event - cleanup old caches
+// Activate event - cleanup old caches and skip waiting
 self.addEventListener('activate', (event) => {
   console.log('[ServiceWorker] Activating...');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => {
-            const isOldStatic = name.startsWith('static-cache-') && name !== STATIC_CACHE;
-            const isOldApi = name.startsWith('api-cache-') && name !== API_CACHE;
-            return isOldStatic || isOldApi;
-          })
-          .map((name) => {
-            console.log('[ServiceWorker] Deleting old cache:', name);
-            return caches.delete(name);
-          })
-      );
-    })
+    Promise.all([
+      // Delete old caches
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames
+            .filter((name) => {
+              const isOldStatic = name.startsWith('static-cache-') && name !== STATIC_CACHE;
+              const isOldApi = name.startsWith('api-cache-') && name !== API_CACHE;
+              const isOldFeatures = name.startsWith('features-cache') && name !== FEATURES_CACHE;
+              return isOldStatic || isOldApi || isOldFeatures;
+            })
+            .map((name) => {
+              console.log('[ServiceWorker] Deleting old cache:', name);
+              return caches.delete(name);
+            })
+        );
+      }),
+      // Claim all clients to activate immediately
+      self.clients.claim().then(() => {
+        console.log('[ServiceWorker] Claimed all clients');
+      })
+    ])
   );
-  self.clients.claim();
 });
 
 // Fetch event - implement caching strategies
@@ -74,15 +83,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Feature flags API - NETWORK FIRST (always get latest)
-  if (url.pathname.includes('/api/features')) {
-    event.respondWith(networkFirstStrategy(request, FEATURES_CACHE));
+  // HTML pages (index.html, etc) - NETWORK FIRST to always get latest app
+  if (request.destination === 'document' || url.pathname === '/') {
+    event.respondWith(networkFirstStrategy(request, STATIC_CACHE));
     return;
   }
 
-  // Other APIs - NETWORK FIRST
+  // Feature flags API - NETWORK FIRST (always get latest)
+  if (url.pathname.includes('/api/features')) {
+    event.respondWith(networkFirstStrategy(request, FEATURES_CACHE, 3000));
+    return;
+  }
+
+  // Categories and authors - CACHE FIRST (change infrequently)
+  if (url.pathname.includes('/api/categories') || url.pathname.includes('/api/authors')) {
+    event.respondWith(cacheFirstStrategy(request, API_CACHE));
+    return;
+  }
+
+  // Other APIs - NETWORK FIRST with 5sec timeout
   if (API_PATTERNS.some((pattern) => url.pathname.includes(pattern))) {
-    event.respondWith(networkFirstStrategy(request, API_CACHE));
+    event.respondWith(networkFirstStrategy(request, API_CACHE, 5000));
     return;
   }
 
@@ -101,10 +122,18 @@ self.addEventListener('fetch', (event) => {
 /**
  * Network-first strategy: Try network, fallback to cache
  * Best for: APIs, frequently changing data
+ * @param {Request} request - The request object
+ * @param {string} cacheName - Cache name to use
+ * @param {number} timeout - Network timeout in milliseconds (default 10000ms)
  */
-async function networkFirstStrategy(request, cacheName) {
+async function networkFirstStrategy(request, cacheName, timeout = 10000) {
   try {
-    const response = await fetch(request);
+    // Create a fetch with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(request, { signal: controller.signal });
+    clearTimeout(timeoutId);
 
     // Cache successful responses
     if (response && response.status === 200) {
@@ -114,7 +143,7 @@ async function networkFirstStrategy(request, cacheName) {
 
     return response;
   } catch (error) {
-    // Network failed, try cache
+    // Network failed or timed out, try cache
     const cached = await caches.match(request);
     if (cached) {
       console.log('[ServiceWorker] Using cached response for:', request.url);
@@ -214,5 +243,3 @@ self.addEventListener('push', (event) => {
     });
   }
 });
-
-export {};

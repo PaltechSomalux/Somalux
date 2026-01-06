@@ -35,26 +35,34 @@ export const BookCategories = () => {
   // ⚡ Initialize from cache IMMEDIATELY on mount
   useEffect(() => {
     const cacheKey = 'categories_cache_v2';
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        const cacheAge = parsed.timestamp ? Date.now() - parsed.timestamp : Infinity;
-        if (cacheAge < 24 * 60 * 60 * 1000 && parsed.data?.length > 0) {
-          console.log('⚡ Categories instant load from localStorage cache');
-          setCategories(parsed.data);
-          setDisplayedCategories(parsed.data.slice(0, visibleCount));
-          setLoading(false);
-          return;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          const cacheAge = parsed.timestamp ? Date.now() - parsed.timestamp : Infinity;
+          if (cacheAge < 24 * 60 * 60 * 1000 && parsed.data?.length > 0) {
+            console.log('⚡ Categories instant load from localStorage cache');
+            setCategories(parsed.data);
+            setDisplayedCategories(parsed.data.slice(0, visibleCount));
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.warn('localStorage cache error:', e);
         }
-      } catch (e) {
-        console.warn('localStorage cache error:', e);
       }
+    } catch (e) {
+      console.warn('localStorage access error:', e);
     }
     
     // Try IndexedDB as fallback
     (async () => {
       try {
+        if (!cacheDB || !cacheDB.loadCategories) {
+          console.warn('cacheDB not available');
+          return;
+        }
         const idbCategories = await cacheDB.loadCategories();
         if (idbCategories && idbCategories.length > 0) {
           console.log('⚡ Categories instant load from IndexedDB cache');

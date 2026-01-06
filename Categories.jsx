@@ -17,15 +17,32 @@ const Categories = () => {
 
   const { confirm, showToast } = useAdminUI();
 
+  // Load from cache immediately to avoid blank UI
+  useEffect(() => {
+    const cacheKey = 'categories_cache_v1';
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const data = JSON.parse(cached);
+        if (data.timestamp && Date.now() - data.timestamp < 24 * 60 * 60 * 1000) {
+          setRows(data.categories || []);
+          setBookCounts(data.bookCounts || {});
+          setLoading(false);
+        }
+      } catch (e) {
+        console.warn('Cache read failed:', e);
+      }
+    }
+  }, []);
+
   const load = async () => {
-    setLoading(true);
     try {
       const categories = await fetchCategories();
       setRows(categories);
       
-      // Fetch book counts for each category
+      // Fetch book counts for each category (non-blocking in background)
       const counts = {};
-      await Promise.all(
+      Promise.all(
         categories.map(async (cat) => {
           const { count, error } = await supabase
             .from('books')
@@ -36,13 +53,22 @@ const Categories = () => {
             counts[cat.id] = count || 0;
           }
         })
-      );
-      setBookCounts(counts);
+      ).then(() => {
+        setBookCounts(counts);
+        // Save to cache after counts are fetched
+        localStorage.setItem('categories_cache_v1', JSON.stringify({
+          categories,
+          bookCounts: counts,
+          timestamp: Date.now()
+        }));
+      }).catch(e => console.warn('Failed to fetch book counts:', e));
+      
+      // Update UI immediately with categories
+      setLoading(false);
     } catch (e) {
       console.error('Failed to load categories:', e);
       showToast({ type: 'error', message: 'Failed to load categories.' });
-    } finally { 
-      setLoading(false); 
+      setLoading(false);
     }
   };
 

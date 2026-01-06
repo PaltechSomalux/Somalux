@@ -22,13 +22,40 @@ const PastPapersManagement = ({ userProfile }) => {
   const isEditor = userProfile?.role === 'editor';
   const totalPages = useMemo(() => Math.max(1, Math.ceil(count / pageSize)), [count, pageSize]);
 
+  // Load from cache immediately to avoid blank UI
+  useEffect(() => {
+    const cacheKey = 'pastpapers_cache_v1';
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const data = JSON.parse(cached);
+        if (data.timestamp && Date.now() - data.timestamp < 24 * 60 * 60 * 1000) {
+          setRows(data.rows || []);
+          setCount(data.count || 0);
+          setLoading(false);
+        }
+      } catch (e) {
+        console.warn('Cache read failed:', e);
+      }
+    }
+  }, []);
+
   const load = async () => {
-    setLoading(true);
     try {
       const { data, count: total } = await fetchPastPapers({ page, pageSize, search, faculty: facultyFilter, sort });
       setRows(data);
       setCount(total);
-    } finally { setLoading(false); }
+      // Save to cache
+      localStorage.setItem('pastpapers_cache_v1', JSON.stringify({
+        rows: data,
+        count: total,
+        timestamp: Date.now()
+      }));
+      setLoading(false);
+    } catch (e) {
+      console.error('Failed to load past papers:', e);
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

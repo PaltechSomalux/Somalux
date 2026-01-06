@@ -36,16 +36,51 @@ export const BookManagement = () => {
 
   // Render only the active tab component to avoid rendering all at once
   const renderActiveComponent = () => {
-    switch (activeTab) {
-      case 'categories':
-        return <BookCategories />;
-      case 'authors':
-        return <Authors />;
-      case 'pastpapers':
-        return <PaperPanel />;
-      case 'books':
-      default:
-        return <BookPanel />;
+    try {
+      console.log('[BookManagement] Rendering tab:', activeTab);
+      switch (activeTab) {
+        case 'categories':
+          console.log('[BookManagement] About to render BookCategories');
+          return (
+            <React.Suspense fallback={<div style={{ padding: '20px', color: '#888' }}>Loading Categories...</div>}>
+              <BookCategories />
+            </React.Suspense>
+          );
+        case 'authors':
+          console.log('[BookManagement] About to render Authors');
+          return (
+            <React.Suspense fallback={<div style={{ padding: '20px', color: '#888' }}>Loading Authors...</div>}>
+              <Authors />
+            </React.Suspense>
+          );
+        case 'pastpapers':
+          console.log('[BookManagement] About to render PaperPanel');
+          return (
+            <React.Suspense fallback={<div style={{ padding: '20px', color: '#888' }}>Loading Past Papers...</div>}>
+              <PaperPanel />
+            </React.Suspense>
+          );
+        case 'books':
+        default:
+          console.log('[BookManagement] About to render BookPanel');
+          return (
+            <React.Suspense fallback={<div style={{ padding: '20px', color: '#888' }}>Loading Books...</div>}>
+              <BookPanel />
+            </React.Suspense>
+          );
+      }
+    } catch (error) {
+      console.error('[BookManagement] Error in renderActiveComponent:', error);
+      return (
+        <div style={{ padding: '20px', color: '#ff6b6b', border: '1px solid #ff6b6b' }}>
+          <h3>Error loading {activeTab} tab</h3>
+          <p>{error.message}</p>
+          <details style={{ whiteSpace: 'pre-wrap', marginTop: '10px' }}>
+            <summary>Stack trace:</summary>
+            {error.stack}
+          </details>
+        </div>
+      );
     }
   };
 
