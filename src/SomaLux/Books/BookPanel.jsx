@@ -1,5 +1,5 @@
 // src/BookPanel.jsx
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import { initializeSession, setupAuthListener, clearSessionCache } from '../../utils/sessionManager';
 import { Download } from './Download';
@@ -30,6 +30,7 @@ import {
   FiEye,
   FiThumbsUp,
   FiMail,
+  FiInfo,
 } from 'react-icons/fi';
 import {
   FaTwitter,
@@ -235,6 +236,10 @@ export const BookPanel = ({ demoMode = false }) => {
 
   // Sharing modal state
   const [showSharingModal, setShowSharingModal] = useState(false);
+  
+  // Book Details dropdown state
+  const [showDetailsDropdown, setShowDetailsDropdown] = useState(false);
+  const detailsRef = useRef(null);
 
   const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -1773,6 +1778,22 @@ export const BookPanel = ({ demoMode = false }) => {
     setSelectedBook(null);
   };
 
+  // Close details dropdown when clicking outside
+  useEffect(() => {
+    if (!showDetailsDropdown) return;
+
+    const handleClickOutside = (event) => {
+      if (detailsRef.current && !detailsRef.current.contains(event.target)) {
+        setShowDetailsDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDetailsDropdown]);
+
   const handleRating = async (rating) => {
     if (!selectedBook || !user) return;
 
@@ -3099,64 +3120,107 @@ export const BookPanel = ({ demoMode = false }) => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.98, opacity: 0 }}
               transition={{ type: 'tween', duration: 0.16 }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                if (showDetailsDropdown && detailsRef.current && !detailsRef.current.contains(e.target)) {
+                  setShowDetailsDropdown(false);
+                } else {
+                  e.stopPropagation();
+                }
+              }}
             >
               <button className="close-buttonBKP" onClick={closeDetails}>
                 <FiX size={24} />
               </button>
 
-              <div className="modal-headerBKP">
-                <img
-                  src={selectedBook.bookImage}
-                  alt={selectedBook.title}
-                  className="book-coverBKP"
-                  loading="lazy"
-                  decoding="async"
-                  style={{ width: '40%', height: '150px', margin: '0 auto 0.1px' }}
-                />
-                <h2>{selectedBook.title}</h2>
-                <p>by {selectedBook.author}</p>
-
-                <div className="stats-containerBKP" style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '8px', flexWrap: 'wrap', color: '#cbd5e1', fontSize: '0.95rem' }}>
-                  <span><strong>Rating:</strong> {selectedBook.rating ? selectedBook.rating.toFixed(1) : 'N/A'} ({selectedBook.ratingCount || 0})</span>
-                  <span>•</span>
-                  <span><strong>Downloads:</strong> {selectedBook.downloads_count || 0}</span>
-                  <span>•</span>
-                  <span><strong>Views:</strong> {selectedBook.views_count || 0}</span>
-                  {userRating && (
-                    <>
-                      <span>•</span>
-                      <span><strong>Your rating:</strong> {userRating}</span>
-                    </>
+              <div style={{ position: 'relative' }} ref={detailsRef}>
+                <button
+                  style={{
+                    position: 'absolute',
+                    top: '1rem',
+                    left: '1rem',
+                    background: 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 8px',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                    zIndex: 1001
+                  }}
+                  onClick={() => setShowDetailsDropdown(!showDetailsDropdown)}
+                  title="View book details"
+                >
+                  <div style={{ width: '3px', height: '3px', borderRadius: '50%', backgroundColor: '#64748b' }}></div>
+                  <div style={{ width: '3px', height: '3px', borderRadius: '50%', backgroundColor: '#64748b' }}></div>
+                  <div style={{ width: '3px', height: '3px', borderRadius: '50%', backgroundColor: '#64748b' }}></div>
+                </button>
+                <AnimatePresence>
+                  {showDetailsDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      style={{
+                        position: 'absolute',
+                        top: '50px',
+                        left: '1rem',
+                        background: '#0d1621',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        minWidth: '200px',
+                        zIndex: 1001,
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ borderBottom: '1px solid #1f2c33', paddingBottom: '10px' }}>
+                          <div style={{ color: '#8696a0', fontSize: '0.65rem', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Genre</div>
+                          <div style={{ color: '#e9edef', fontSize: '0.8rem', fontWeight: '500' }}>{selectedBook.genre || 'Uncategorized'}</div>
+                        </div>
+                        <div style={{ borderBottom: '1px solid #1f2c33', paddingBottom: '10px' }}>
+                          <div style={{ color: '#8696a0', fontSize: '0.65rem', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Pages</div>
+                          <div style={{ color: '#e9edef', fontSize: '0.8rem', fontWeight: '500' }}>{selectedBook.pages || 'N/A'}</div>
+                        </div>
+                        <div style={{ borderBottom: '1px solid #1f2c33', paddingBottom: '10px' }}>
+                          <div style={{ color: '#8696a0', fontSize: '0.65rem', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Language</div>
+                          <div style={{ color: '#e9edef', fontSize: '0.8rem', fontWeight: '500' }}>{selectedBook.language || 'Unknown'}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: '#8696a0', fontSize: '0.65rem', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Publisher</div>
+                          <div style={{ color: '#e9edef', fontSize: '0.8rem', fontWeight: '500' }}>{selectedBook.publisher || 'N/A'}</div>
+                        </div>
+                      </div>
+                    </motion.div>
                   )}
-                </div>
+                </AnimatePresence>
               </div>
 
-              <div className="modal-bodyBKP">
-                <div className="details-containerBKP">
-                  <div className="detail-itemBKP">
-                    <span className="detail-labelBKP">Genre:</span>
-                    <span className="detail-valueBKP">{selectedBook.genre}</span>
-                  </div>
-                  <div className="detail-itemBKP">
-                    <span className="detail-labelBKP">Pages:</span>
-                    <span className="detail-valueBKP">{selectedBook.pages}</span>
-                  </div>
-                  <div className="detail-itemBKP">
-                    <span className="detail-labelBKP">Language:</span>
-                    <span className="detail-valueBKP">{selectedBook.language}</span>
-                  </div>
-                  <div className="detail-itemBKP">
-                    <span className="detail-labelBKP">Publisher:</span>
-                    <span className="detail-valueBKP">{selectedBook.publisher || 'N/A'}</span>
-                  </div>
-                </div>
+              <div className="modal-headerBKP">
+                <h2>{selectedBook.title}</h2>
+                <p>by {selectedBook.author}</p>
+              </div>
 
-                <p className="book-descBKP" style={{ margin: '20px 0' }}>
+              <div className="modal-bodyBKP" style={{ paddingTop: '0', paddingLeft: '0', paddingRight: '0' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '0.2rem' }}>
+                  <img
+                    src={selectedBook.bookImage}
+                    alt={selectedBook.title}
+                    className="book-coverBKP"
+                    loading="lazy"
+                    decoding="async"
+                    style={{ maxWidth: '600px', width: '100%', height: '500px', objectFit: 'contain', borderRadius: '8px', display: 'block' }}
+                  />
+                </div>
+                <p className="book-descBKP" style={{ margin: '0 1.5rem 0 1.5rem' }}>
                   {selectedBook.description}
                 </p>
 
-                <CommentsSection
+                <div style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem', marginTop: '0' }}>
+                  <CommentsSection
                   currentMedia={{ id: selectedBook.id }}
                   currentUser={user?.email || 'Anonymous'}
                   showComments={true}
@@ -3167,7 +3231,8 @@ export const BookPanel = ({ demoMode = false }) => {
                   onDeleteComment={handleDeleteComment}
                   onLikeComment={handleLikeComment}
                   onReplyToComment={handleReplyToComment}
-                />
+                  />
+                </div>
               </div>
 
               <div className="modal-actionsBKP">

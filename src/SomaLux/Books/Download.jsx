@@ -33,14 +33,14 @@ const FullDownloadButton = styled(motion.button)`
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid #2a3942;
   background: transparent;
   color: #e5e7eb;
   cursor: pointer;
   transition: transform .15s ease, background .15s ease, border-color .15s ease;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 500;
   white-space: nowrap;
   flex: 0 1 auto;
@@ -55,6 +55,18 @@ const FullDownloadButton = styled(motion.button)`
   &:disabled {
     opacity: 0.7;
     cursor: not-allowed;
+  }
+  
+  @media (max-width: 640px) {
+    padding: 5px 8px;
+    font-size: 0.75rem;
+    gap: 4px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 4px 6px;
+    font-size: 0.7rem;
+    gap: 3px;
   }
 `;
 

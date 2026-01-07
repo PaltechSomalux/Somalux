@@ -1987,14 +1987,14 @@
   align-items: center; 
   justify-content: center;
   gap: 6px;
-  padding: 8px 12px; 
+  padding: 6px 10px; 
   border-radius: 8px; 
   border: 1px solid #2a3942;
   background: transparent;
   color: #e5e7eb; 
   cursor: pointer; 
   transition: transform .15s ease, background .15s ease, border-color .15s ease;
-  font-size: 0.9rem; 
+  font-size: 0.8rem; 
   font-weight: 500;
   white-space: nowrap;
 }
@@ -2007,8 +2007,8 @@
 
 .btn-readBKP svg { 
   flex-shrink: 0; 
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 /* Colored primary action buttons */
@@ -2042,6 +2042,28 @@
   color: #1DA1F2;
 }
 
+/* Details button styling */
+div[style*="position: relative"] > .btn-readBKP {
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+/* Mobile responsive button sizes */
+@media (max-width: 768px) {
+  .btn-readBKP {
+    flex: 0 1 auto;
+    min-width: auto;
+    font-size: 0.6rem;
+    padding: 4px 8px;
+    gap: 4px;
+  }
+}
+
+div[style*="position: relative"] > .btn-readBKP:hover {
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
 .btn-action-primaryBKP {
   flex: 0 1 auto;
   min-width: auto;
@@ -2051,35 +2073,9 @@
   display: none;
 }
 
-@media (max-width: 420px) {
-  .btn-readBKP {
-    padding: 6px 8px; 
-    font-size: 0.75rem; 
-    gap: 4px;
-  }
-  
-  .btn-readBKP svg {
-    width: 14px;
-    height: 14px;
-  }
-  
-  .btn-action-primaryBKP {
-    padding: 6px 8px;
-  }
-}
 
-@media (max-width: 280px) {
-  .btn-readBKP {
-    padding: 6px 6px; 
-    font-size: 0.7rem; 
-    gap: 2px;
-  }
-  
-  .btn-readBKP svg {
-    width: 12px;
-    height: 12px;
-  }
-}
+
+
 
 /* Hide Mark button on mobile */
 @media (max-width: 768px) {
@@ -2092,8 +2088,8 @@
   }
 
   .btn-action-primaryBKP {
-    flex: 1;
-    min-width: 0;
+    flex: 0 1 auto;
+    min-width: auto;
   }
 }
 
