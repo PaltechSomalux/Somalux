@@ -57,6 +57,30 @@ const FullDownloadButton = styled(motion.button)`
     cursor: not-allowed;
   }
   
+  /* When used with BookPanel styles */
+  &.btn-readBKP {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #2a3942;
+    background: transparent;
+    color: #e5e7eb;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: inline-flex;
+    gap: 6px;
+  }
+
+  &.btn-readBKP:hover {
+    transform: translateY(-1px);
+    border-color: #6366f1;
+    background: transparent;
+  }
+
+  &.btn-readBKP.btn-action-primaryBKP:first-child:hover {
+    border-color: #06b6d4;
+    color: #06b6d4;
+  }
+  
   @media (max-width: 640px) {
     padding: 5px 8px;
     font-size: 0.75rem;
@@ -146,13 +170,15 @@ const highSpeedDownload = async (url, filename) => {
 export const Download = ({
   book,
   file,
+  paper,
   variant = 'icon',
   onDownloadStart,
   onDownloadComplete,
-  downloadText = 'Save',
+  downloadText = 'Download',
   downloadingText = 'Downloading...',
   user,
   onUpgradeClick,
+  className,
 }) => {
   const [downloading, setDownloading] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
@@ -246,7 +272,8 @@ export const Download = ({
           disabled={downloading}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          aria-label={`Download ${book?.title || file?.filename || 'file'}`}
+          aria-label={`Download ${book?.title || paper?.title || file?.filename || 'file'}`}
+          className={className}
         >
           <FiDownload size={18} />
           {downloading ? downloadingText : downloadText}

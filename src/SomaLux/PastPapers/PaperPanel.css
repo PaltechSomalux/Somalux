@@ -27,6 +27,16 @@
   }
 }
 
+/* Shimmer skeleton loading animation */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
 .containerpast {
   max-width: 100%;
   margin-top: 0;
@@ -977,44 +987,91 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   z-index: 1000;
   padding: 1rem;
   overflow-y: auto;
+  will-change: opacity;
+  -webkit-font-smoothing: antialiased;
 }
 
-@media (max-width: 768px) {
+/* Remove padding on mobile for full-width modal */
+@media (max-width: 480px) {
   .modal-overlaypast {
     padding: 0;
-    align-items: flex-start;
+    align-items: flex-end;
+    overflow: hidden;
   }
 }
 
 .modal-contentpast {
-  background: var(--bg-dark);
-  border-radius: 12px;
-  width: 90%;
-  max-width: 650px;
-  max-height: 90vh;
-  overflow-y: auto;
   position: relative;
+  background: var(--bg-dark);
+  margin-top: 70px;
+  border-radius: 12px;
+  overflow: hidden;
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
+.modal-contentpast::-webkit-scrollbar,
+.modal-contentpast::-webkit-scrollbar-track,
+.modal-contentpast::-webkit-scrollbar-thumb {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+/* Tablet - 90% width with padding */
 @media (max-width: 768px) {
   .modal-contentpast {
+    max-width: 90%;
+    margin-top: 0;
+    margin-left: 5%;
+    margin-right: 5%;
+  }
+}
+
+/* Large phone (600px-768px) - 95% width */
+@media (max-width: 600px) {
+  .modal-contentpast {
+    width: 95%;
+    max-width: 95%;
+    margin-top: auto;
+    margin-left: auto;
+    margin-right: auto;
+    bottom: 0;
+    border-radius: 12px 12px 0 0;
+    max-height: 85vh;
+  }
+}
+
+/* Small phone (< 600px) - EDGE-TO-EDGE */
+@media (max-width: 480px) {
+  .modal-contentpast {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     width: 100%;
-    max-width: 100%;
-    max-height: 100vh;
-    border-radius: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    max-width: none;
+    margin: 0 !important;
+    border-radius: 16px 16px 0 0;
+    max-height: 90vh;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -1098,10 +1155,90 @@
   }
 }
 
+/* Global scrollbar hiding for entire modal and PDF viewer */
+.modal-overlaypast,
+.modal-overlaypast *,
+.modal-contentpast,
+.modal-contentpast *,
+.modal-bodypast,
+.modal-bodypast *,
+.react-pdf__Document,
+.react-pdf__Document *,
+.react-pdf__Page,
+.react-pdf__Page *,
+.react-pdf__Page__canvas,
+[class*="pdf"],
+[class*="scroll"],
+[class*="viewer"] {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  -webkit-scrollbar: none !important;
+}
+
+.modal-overlaypast::-webkit-scrollbar,
+.modal-contentpast::-webkit-scrollbar,
+.modal-bodypast::-webkit-scrollbar,
+.react-pdf__Document::-webkit-scrollbar,
+.react-pdf__Page::-webkit-scrollbar,
+.modal-overlaypast *::-webkit-scrollbar,
+.modal-contentpast *::-webkit-scrollbar,
+.modal-bodypast *::-webkit-scrollbar,
+.react-pdf__Document *::-webkit-scrollbar,
+.react-pdf__Page *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.modal-overlaypast::-webkit-scrollbar-track,
+.modal-contentpast::-webkit-scrollbar-track,
+.modal-bodypast::-webkit-scrollbar-track,
+.react-pdf__Document::-webkit-scrollbar-track,
+.react-pdf__Page::-webkit-scrollbar-track,
+.modal-overlaypast *::-webkit-scrollbar-track,
+.modal-contentpast *::-webkit-scrollbar-track,
+.modal-bodypast *::-webkit-scrollbar-track,
+.react-pdf__Document *::-webkit-scrollbar-track,
+.react-pdf__Page *::-webkit-scrollbar-track {
+  background: transparent !important;
+  display: none !important;
+}
+
+.modal-overlaypast::-webkit-scrollbar-thumb,
+.modal-contentpast::-webkit-scrollbar-thumb,
+.modal-bodypast::-webkit-scrollbar-thumb,
+.react-pdf__Document::-webkit-scrollbar-thumb,
+.react-pdf__Page::-webkit-scrollbar-thumb,
+.modal-overlaypast *::-webkit-scrollbar-thumb,
+.modal-contentpast *::-webkit-scrollbar-thumb,
+.modal-bodypast *::-webkit-scrollbar-thumb,
+.react-pdf__Document *::-webkit-scrollbar-thumb,
+.react-pdf__Page *::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  display: none !important;
+}
+
+.modal-overlaypast::-webkit-scrollbar-thumb:hover,
+.modal-contentpast::-webkit-scrollbar-thumb:hover,
+.modal-bodypast::-webkit-scrollbar-thumb:hover,
+.react-pdf__Document::-webkit-scrollbar-thumb:hover,
+.react-pdf__Page::-webkit-scrollbar-thumb:hover,
+.modal-overlaypast *::-webkit-scrollbar-thumb:hover,
+.modal-contentpast *::-webkit-scrollbar-thumb:hover,
+.modal-bodypast *::-webkit-scrollbar-thumb:hover,
+.react-pdf__Document *::-webkit-scrollbar-thumb:hover,
+.react-pdf__Page *::-webkit-scrollbar-thumb:hover {
+  background: transparent !important;
+  display: none !important;
+}
+
+/* Ensure modal body has no scrollbar */
 .modal-bodypast {
   padding: 1.5rem;
   overflow-y: auto;
   flex: 1;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 @media (max-width: 768px) {
@@ -1556,8 +1693,9 @@
 .modal-actionspast {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 1rem 1.5rem;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 0 1rem 1rem;
 }
 
 .actions-primary-rowpast {
@@ -1565,7 +1703,9 @@
   flex-direction: row;
   gap: 8px;
   width: 100%;
-  align-items: stretch;
+  align-items: center;
+  justify-content: space-around;
+  flex-wrap: wrap;
 }
 
 .actions-stats-rowpast {
@@ -2485,4 +2625,70 @@
     width: 20px;
     height: 20px;
   }
+}
+
+/* BookPanel button styling for past papers */
+.btn-readBKP {
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px; 
+  border-radius: 8px; 
+  border: 1px solid #2a3942;
+  background: transparent;
+  color: #e5e7eb; 
+  cursor: pointer; 
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+  font-size: 0.8rem; 
+  font-weight: 500;
+  white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: auto;
+}
+
+.btn-readBKP:hover { 
+  transform: translateY(-1px); 
+  border-color: #6366f1;
+  background: transparent;
+}
+
+.btn-readBKP svg { 
+  flex-shrink: 0; 
+  width: 14px;
+  height: 14px;
+}
+
+/* Colored primary action buttons */
+/* 1st button: Save (amber) */
+.btn-readBKP.btn-action-primaryBKP:nth-child(1) {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.btn-readBKP.btn-action-primaryBKP:nth-child(1):hover {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+/* 2nd button: Share (cyan) */
+.btn-readBKP.btn-action-primaryBKP:nth-child(2) {
+  border-color: #06b6d4;
+  color: #06b6d4;
+}
+
+.btn-readBKP.btn-action-primaryBKP:nth-child(2):hover {
+  border-color: #06b6d4;
+  color: #06b6d4;
+}
+
+/* 3rd button: Read (green) */
+.btn-readBKP.btn-action-primaryBKP:nth-child(3) {
+  border-color: #00FF41;
+  color: #00FF41;
+}
+
+.btn-readBKP.btn-action-primaryBKP:nth-child(3):hover {
+  border-color: #00FF41;
+  color: #00FF41;
 }

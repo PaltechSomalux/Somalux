@@ -567,3 +567,10 @@
 .reply-input-comments:focus {
   box-shadow: 0 0 0 2px rgba(0,179,136,0.35);
 }
+
+.no-comments {
+  font-size: 10px;
+  color: #95a8b8;
+  text-align: left;
+  margin: 4px 0;
+}

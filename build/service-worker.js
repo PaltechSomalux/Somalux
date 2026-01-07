@@ -13,6 +13,8 @@ const CACHE_VERSION = '1.0.0';
 const STATIC_CACHE = `static-cache-${CACHE_VERSION}`;
 const API_CACHE = `api-cache-${CACHE_VERSION}`;
 const FEATURES_CACHE = 'features-cache';
+const PDF_CACHE = 'pdf-cache-v1'; // Dedicated cache for PDFs with aggressive caching
+const IMAGE_CACHE = 'image-cache-v1'; // Dedicated cache for images with aggressive caching
 
 const STATIC_ASSETS = [
   '/index.html',
@@ -57,7 +59,9 @@ self.addEventListener('activate', (event) => {
               const isOldStatic = name.startsWith('static-cache-') && name !== STATIC_CACHE;
               const isOldApi = name.startsWith('api-cache-') && name !== API_CACHE;
               const isOldFeatures = name.startsWith('features-cache') && name !== FEATURES_CACHE;
-              return isOldStatic || isOldApi || isOldFeatures;
+              const isOldPdf = name.startsWith('pdf-cache-') && name !== PDF_CACHE;
+              const isOldImage = name.startsWith('image-cache-') && name !== IMAGE_CACHE;
+              return isOldStatic || isOldApi || isOldFeatures || isOldPdf || isOldImage;
             })
             .map((name) => {
               console.log('[ServiceWorker] Deleting old cache:', name);
@@ -112,6 +116,12 @@ self.addEventListener('fetch', (event) => {
       request.destination === 'script' || 
       request.destination === 'style') {
     event.respondWith(cacheFirstStrategy(request, STATIC_CACHE));
+    return;
+  }
+
+  // PDF files - AGGRESSIVE CACHE FIRST (instant loading for modals/thumbnails)
+  if (url.pathname.endsWith('.pdf') || url.pathname.includes('/pdf') || url.pathname.includes('file_url')) {
+    event.respondWith(aggressiveCacheFirstStrategy(request, PDF_CACHE));
     return;
   }
 
@@ -188,6 +198,47 @@ async function cacheFirstStrategy(request, cacheName) {
     return response;
   } catch (error) {
     return new Response('Network error', {
+      status: 503,
+      statusText: 'Service Unavailable',
+    });
+  }
+}
+
+/**
+ * Aggressive cache-first strategy: INSTANT return from cache, no network delay
+ * Best for: PDFs, images - return cached immediately, update in background
+ * This ensures modals and thumbnails load almost instantly
+ */
+async function aggressiveCacheFirstStrategy(request, cacheName) {
+  const cached = await caches.match(request);
+  
+  if (cached) {
+    // Return cached immediately - NO NETWORK WAIT
+    // Silently update cache in background for next load
+    fetch(request).then((response) => {
+      if (response && response.status === 200) {
+        caches.open(cacheName).then((cache) => {
+          cache.put(request, response.clone());
+        });
+      }
+    }).catch(() => {}); // Silently fail if network unavailable
+
+    return cached;
+  }
+
+  // Not in cache yet, fetch and cache it
+  try {
+    const response = await fetch(request);
+    
+    if (response && response.status === 200) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, response.clone());
+    }
+
+    return response;
+  } catch (error) {
+    // Network failed - return minimal offline response
+    return new Response('Content not available offline', {
       status: 503,
       statusText: 'Service Unavailable',
     });

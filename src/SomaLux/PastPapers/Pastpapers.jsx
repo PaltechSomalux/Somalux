@@ -1,5 +1,6 @@
 // Pastpapers.jsx - Updated with Auth and Real-time Data
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react';
+import { Document, Page } from 'react-pdf';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../Books/supabaseClient';
 import {
@@ -31,7 +32,7 @@ import { FaSearch } from 'react-icons/fa';
 import { AdBanner } from '../Ads/AdBanner';
 import { 
   FiSearch, FiFileText, FiFilter, FiChevronRight, FiChevronLeft, FiX, 
-  FiTrendingUp, FiDownload, FiArrowLeft, FiEye, FiStar, FiMapPin, FiUpload, FiBook, FiBookmark
+  FiTrendingUp, FiDownload, FiArrowLeft, FiEye, FiStar, FiMapPin, FiUpload, FiBook, FiBookmark, FiShare2
 } from 'react-icons/fi';
 import { BiCommentDetail } from 'react-icons/bi';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -42,6 +43,22 @@ import { API_URL } from '../../config';
 import { PaperGrid } from './PaperGrid';
 import { PulseLoader, InfiniteScrollLoader } from './PaperSkeleton';
 import './PaperPanel.css';
+
+/**
+ * Utility: Preload PDF into cache for instant loading in modal
+ * Uses service worker cache to ensure instant display when modal opens
+ */
+const preloadPDFForInstantDisplay = (pdfUrl) => {
+  if (!pdfUrl) return;
+  
+  // Fetch in background to cache it with service worker
+  fetch(pdfUrl, { 
+    method: 'GET',
+    cache: 'force-cache' // Force browser to use cache aggressively
+  }).catch(() => {
+    // Silently fail - preloading is optional
+  });
+};
 
 export const PaperPanel = ({ demoMode = false }) => {
   const location = useLocation();
@@ -171,6 +188,7 @@ export const PaperPanel = ({ demoMode = false }) => {
 
   const [showReader, setShowReader] = useState(false);
   const [readerUrl, setReaderUrl] = useState(null);
+  const [showSharingModal, setShowSharingModal] = useState(false);
 
   const hasActiveSubscription = useMemo(() => {
     if (!subscription || !subscription.end_at) return false;
@@ -1309,6 +1327,11 @@ export const PaperPanel = ({ demoMode = false }) => {
       return;
     }
 
+    // INSTANT LOADING: Preload PDF for lightning-fast modal display
+    if (paper.file_url || paper.downloadUrl) {
+      preloadPDFForInstantDisplay(paper.file_url || paper.downloadUrl);
+    }
+
     setSelectedPaper(paper);
     setWelcomeMessage(false);
     
@@ -1632,6 +1655,81 @@ export const PaperPanel = ({ demoMode = false }) => {
     }
   };
 
+  const handleShare = async (method) => {
+    if (!selectedPaper) return;
+
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+    const shareUrl = `${baseUrl}?paper=${selectedPaper.id}`;
+    const shareText = `Check out "${selectedPaper.title}" from ${selectedPaper.university}`;
+    const hashtags = 'pastpapers,study,learning';
+
+    try {
+      switch (method) {
+        case 'copy':
+          if (navigator.clipboard) {
+            await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+          } else {
+            const textarea = document.createElement('textarea');
+            textarea.value = `${shareText}\n${shareUrl}`;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+          }
+          break;
+
+        case 'twitter':
+          window.open(
+            `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}&hashtags=${encodeURIComponent(hashtags)}`,
+            '_blank',
+            'noopener,noreferrer'
+          );
+          break;
+
+        case 'facebook':
+          window.open(
+            `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`,
+            '_blank',
+            'noopener,noreferrer'
+          );
+          break;
+
+        case 'linkedin':
+          window.open(
+            `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+            '_blank',
+            'noopener,noreferrer'
+          );
+          break;
+
+        case 'email':
+          window.open(
+            `mailto:?subject=${encodeURIComponent(shareText)}&body=${encodeURIComponent(`${shareText}%0A%0A${shareUrl}%0A%0A`)}`,
+            '_blank',
+            'noopener,noreferrer'
+          );
+          break;
+
+        case 'native':
+          if (navigator.share) {
+            await navigator.share({
+              title: shareText,
+              text: selectedPaper.description || shareText,
+              url: shareUrl,
+            });
+          }
+          break;
+
+        default:
+          break;
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+    } finally {
+      setShowSharingModal(false);
+    }
+  };
+
   const scrollCarousel = (direction) => {
     const carousel = carouselRef.current;
     if (carousel) {
@@ -1846,97 +1944,344 @@ export const PaperPanel = ({ demoMode = false }) => {
               onClick={(e) => e.stopPropagation()}
             >
               <button className="close-buttonpast" onClick={closeDetails} aria-label="Close">
-                <FiX size={18} />
+                <FiX size={24} />
               </button>
 
-              <div className="modal-headerpast">
-                <div className="modal-icon-alonepast">
-                  <FiFileText size={56} />
+              <div className="modal-bodyBKP" style={{ paddingTop: '0', paddingLeft: '0', paddingRight: '0' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '0.2rem' }}>
+                  {selectedPaper.file_url || selectedPaper.downloadUrl ? (
+                    <div style={{ width: '100%', maxWidth: '400px', display: 'flex', justifyContent: 'center', borderRadius: '8px', overflow: 'hidden', background: '#121a1f', padding: '0.2rem' }}>
+                      <Suspense fallback={<div style={{ width: '100%', minHeight: '600px' }} />}>
+                        <Document file={selectedPaper.file_url || selectedPaper.downloadUrl} loading="">
+                          <Page pageNumber={1} width={380} renderTextLayer={false} renderAnnotationLayer={false} loading="" />
+                        </Document>
+                      </Suspense>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        maxWidth: '400px',
+                        width: '100%',
+                        height: '500px',
+                        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1))',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '2rem',
+                        textAlign: 'center'
+                      }}
+                    >
+                      <FiFileText size={80} style={{ color: '#6366f1', marginBottom: '1.5rem', opacity: 0.8 }} />
+                      <h2 style={{ margin: '0 0 0.75rem 0', fontSize: '1.1rem', fontWeight: '700', color: '#e9edef' }}>{selectedPaper.title}</h2>
+                      <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#8696a0', fontWeight: '500' }}>{selectedPaper.course}</p>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '1rem', lineHeight: '1.6' }}>
+                        {
+                          [
+                            selectedPaper.university,
+                            selectedPaper.year ? `Year: ${selectedPaper.year}` : null,
+                            selectedPaper.semester ? `Semester ${selectedPaper.semester}` : null,
+                            selectedPaper.examType || null
+                          ].filter(Boolean).join(' • ')
+                        }
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <h2 className="modal-titlepast">{selectedPaper.title}</h2>
-                <p className="modal-course-namepast">{selectedPaper.course}</p>
-                <div className="modal-metapast">
-                  {
-                    [
-                      selectedPaper.university,
-                      selectedPaper.year ? `Year: ${selectedPaper.year}` : null,
-                      selectedPaper.semester ? `Semester ${selectedPaper.semester}` : null,
-                      selectedPaper.examType || null
-                    ].filter(Boolean).join(' • ')
-                  }
-                </div>
-              </div>
 
-              <div className="modal-actionspast">
-                <div className="actions-primary-rowpast">
-                  <Download 
-                    paper={selectedPaper} 
-                    variant="full" 
-                    user={user}
-                    onUpgradeClick={() => setShowSubscriptionModal(true)}
-                  />
-                  <button
-                    className="btn-readpast btn-action-primarypast"
-                    onClick={() => openReader(selectedPaper)}
-                  >
-                    <FiBook size={16} /> Read
-                  </button>
-                  <button
-                    className="btn-readpast btn-action-primarypast"
-                    onClick={() => {
-                      // Add to bookmarks/wishlist
-                    }}
-                  >
-                    <FiBookmark size={16} fill={paperBookmarks.includes(selectedPaper.id) ? "currentColor" : "none"} /> {paperBookmarks.includes(selectedPaper.id) ? "Marked" : "Mark"}
-                  </button>
-                </div>
-
-                <div className="actions-stats-rowpast">
-                  <div className="stat-badge-itemspast">
-                    <span className="stat-label-itempast">
-                      <FiEye size={14} />
-                      Views
-                    </span>
-                    <span className="stat-count-itempast">{selectedPaper.views || 0}</span>
-                  </div>
-                  <div className="stat-badge-itemspast">
-                    <span className="stat-label-itempast">
-                      <FiDownload size={14} />
-                      Downloads
-                    </span>
-                    <span className="stat-count-itempast">{selectedPaper.downloads_count || 0}</span>
-                  </div>
-                  <div className="stat-badge-itemspast">
+                <div style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem', marginTop: '1rem' }}>
+                  <div className="stat-badge-itemspast" style={{ marginBottom: '0.75rem' }}>
                     <span className="stat-label-itempast">
                       <BiCommentDetail size={14} />
                       Comments
                     </span>
                     <span className="stat-count-itempast">{(mediaComments[selectedPaper.id] || []).length}</span>
                   </div>
-                  <ShareButton paper={selectedPaper} variant="minimal" />
+
+                  <div>
+                    <CommentsSection
+                      currentMedia={{ id: String(selectedPaper.id) }}
+                      currentUser={user?.email || 'User'}
+                      showComments={true}
+                      commentsRef={commentsRef}
+                      mediaComments={mediaComments}
+                      commentLikes={commentLikes}
+                      onSubmitComment={handleSubmitComment}
+                      onDeleteComment={handleDeleteComment}
+                      onLikeComment={handleLikeComment}
+                      onReplyToComment={handleReplyToComment}
+                      />
+                  </div>
                 </div>
               </div>
 
-              <div className="modal-comments-sectionpast">
-                <CommentsSection
-                  currentMedia={{ id: String(selectedPaper.id) }}
-                  currentUser={user?.email || 'User'}
-                  showComments={true}
-                  commentsRef={commentsRef}
-                  mediaComments={mediaComments}
-                  commentLikes={commentLikes}
-                  onSubmitComment={handleSubmitComment}
-                  onDeleteComment={handleDeleteComment}
-                  onLikeComment={handleLikeComment}
-                  onReplyToComment={handleReplyToComment}
-                />
+              <div className="modal-actionspast" style={{ marginTop: '16px', paddingTop: '16px' }}>
+                <div className="actions-primary-rowpast">
+                  <Download 
+                    paper={selectedPaper} 
+                    variant="full" 
+                    user={user}
+                    onUpgradeClick={() => setShowSubscriptionModal(true)}
+                    downloadText="Save"
+                    downloadingText="Saving..."
+                    className="btn-readBKP btn-action-primaryBKP"
+                  />
+                  <button
+                    className="btn-readBKP btn-action-primaryBKP"
+                    onClick={() => setShowSharingModal(true)}
+                    title="Share this paper"
+                  >
+                    <FiShare2 size={16} /> Share
+                  </button>
+                  <button
+                    className="btn-readBKP btn-action-primaryBKP"
+                    onClick={() => openReader(selectedPaper)}
+                  >
+                    <FiBook size={16} /> Read
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* Sharing Modal */}
+      <AnimatePresence>
+        {showSharingModal && selectedPaper && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowSharingModal(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(0,0,0,0.6)',
+              zIndex: 1100,
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#0b1220',
+                color: '#e6eef7',
+                padding: 32,
+                borderRadius: 12,
+                boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
+                textAlign: 'center',
+                maxWidth: 400,
+              }}
+            >
+              <h3 style={{ margin: 0, marginBottom: 8, fontSize: 18, fontWeight: 600 }}>
+                Share "{selectedPaper.title}"
+              </h3>
+              <p style={{ margin: 0, marginBottom: 24, color: '#9ca3af', fontSize: 14 }}>
+                Choose how you want to share this paper
+              </p>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <button
+                  title="Copy Link"
+                  onClick={() => handleShare('copy')}
+                  style={{
+                    background: '#1e293b',
+                    color: '#e6eef7',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <FiShare2 size={16} />
+                  Copy Link
+                </button>
+
+                <button
+                  title="Share on X"
+                  onClick={() => handleShare('twitter')}
+                  style={{
+                    background: '#1e293b',
+                    color: '#e6eef7',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>𝕏</span>
+                  X
+                </button>
+
+                <button
+                  title="Share on Facebook"
+                  onClick={() => handleShare('facebook')}
+                  style={{
+                    background: '#1e293b',
+                    color: '#e6eef7',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  Facebook
+                </button>
+
+                <button
+                  title="Share on LinkedIn"
+                  onClick={() => handleShare('linkedin')}
+                  style={{
+                    background: '#1e293b',
+                    color: '#e6eef7',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z"/>
+                  </svg>
+                  LinkedIn
+                </button>
+
+                <button
+                  title="Share via Email"
+                  onClick={() => handleShare('email')}
+                  style={{
+                    background: '#1e293b',
+                    color: '#e6eef7',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <FiShare2 size={16} />
+                  Email
+                </button>
+
+                <button
+                  title="Close"
+                  onClick={() => setShowSharingModal(false)}
+                  style={{
+                    background: 'transparent',
+                    color: '#9ca3af',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'transparent';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <FiX size={16} />
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Auth Modal */}
       <AuthModal
