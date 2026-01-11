@@ -1,9 +1,9 @@
 // SettingsModal.jsx - Enhanced reading settings
 import React, { useState } from 'react';
-import { FiX } from 'react-icons/fi';
+import { FiX, FiBarChart2 } from 'react-icons/fi';
 import './SettingsModal.css';
 
-const SettingsModal = ({ isOpen, fontSize, onFontSizeChange, theme, onThemeChange, onClose }) => {
+const SettingsModal = ({ isOpen, fontSize, onFontSizeChange, theme, onThemeChange, onClose, onStatisticsClick }) => {
   const [lineHeight, setLineHeight] = useState(1.6);
   const [letterSpacing, setLetterSpacing] = useState(0);
 
@@ -172,6 +172,21 @@ const SettingsModal = ({ isOpen, fontSize, onFontSizeChange, theme, onThemeChang
               </div>
             </div>
           </div>
+
+          {/* Statistics Button */}
+          {onStatisticsClick && (
+            <div className="stm-setting-group">
+              <button 
+                onClick={() => {
+                  onStatisticsClick();
+                  onClose();
+                }}
+                className="stm-statistics-btn"
+              >
+                <FiBarChart2 size={18} /> View Reading Statistics
+              </button>
+            </div>
+          )}
 
           <div className="stm-footer">
             <button onClick={onClose} className="stm-close-button">
