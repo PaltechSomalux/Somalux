@@ -11,6 +11,8 @@ import DownloadModal from './DownloadModal';
 import StatisticsModal from './StatisticsModal';
 import SettingsModal from './SettingsModal';
 import NoteModal from './NoteModal';
+import TextSelectionPanel from './TextSelectionPanel';
+import useTextSelection from './useTextSelection';
 import { generateSummaryDocument } from './utils/generateWordDoc';
 import './SimpleScrollReader.css';
 
@@ -71,6 +73,11 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const [totalReadingTime, setTotalReadingTime] = useState(0);
   const [fontSize, setFontSize] = useState(16);
   const [theme, setTheme] = useState('dark');
+  
+  // Use custom hook for high-precision text selection
+  console.log('🔧 SimpleScrollReader: About to call useTextSelection hook');
+  const { selection, position, clearSelection, selectedText } = useTextSelection('.simple-scroll-reader');
+  console.log('🔧 SimpleScrollReader: useTextSelection hook returned', { selection, position });
   const containerRef = useRef(null);
   const scrollAreaRef = useRef(null);
   const pageRefsMap = useRef({});
@@ -83,6 +90,13 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
 
   // Check if PDF source is available
   const hasPdfSource = !!src;
+
+  // Debug: Monitor selection state
+  useEffect(() => {
+    if (selection) {
+      console.log('📲 SimpleScrollReader - Selection state updated:', { selection, position });
+    }
+  }, [selection, position]);
 
   const handleDocumentLoad = ({ numPages: nextNumPages }) => {
     setNumPages(nextNumPages);
@@ -554,9 +568,162 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
     }
   }, [src, extractedText]);
 
+  // Copy selected text
+  const copyText = async () => {
+    if (selectedText && selectedText.length > 0) {
+      try {
+        await navigator.clipboard.writeText(selectedText);
+        console.log('✅ Text copied to clipboard');
+        // Panel stays open with feedback animation
+      } catch (err) {
+        console.error('❌ Failed to copy:', err);
+        // Fallback
+        const textarea = document.createElement('textarea');
+        textarea.value = selectedText;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          console.log('✅ Text copied via fallback');
+        } catch (e) {
+          console.error('❌ Fallback copy failed:', e);
+        }
+        document.body.removeChild(textarea);
+      }
+    }
+  };
+
+  // Add highlight for selected text
+  const addHighlight = (color) => {
+    if (!selectedText || selectedText.length === 0) return;
+
+    try {
+      const sel = window.getSelection();
+      if (!sel.rangeCount || sel.rangeCount === 0) {
+        console.warn('⚠️ No selection range');
+        return;
+      }
+
+      const range = sel.getRangeAt(0);
+      const highlightColor = getHighlightColor(color);
+      
+      // Clone the range to avoid mutating it
+      const rangeCopy = range.cloneRange();
+      
+      // Get all text nodes in the range
+      const textNodes = [];
+      const walker = document.createTreeWalker(
+        rangeCopy.commonAncestorContainer,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+      );
+
+      let node;
+      while (node = walker.nextNode()) {
+        // Check if node is within the range
+        const nodeRange = document.createRange();
+        nodeRange.selectNode(node);
+        
+        // If ranges overlap, include the node
+        if (rangeCopy.compareBoundaryPoints(Range.END_TO_START, nodeRange) < 1 &&
+            rangeCopy.compareBoundaryPoints(Range.START_TO_END, nodeRange) > -1) {
+          textNodes.push(node);
+        }
+      }
+
+      if (textNodes.length === 0) {
+        console.warn('⚠️ No text nodes found in selection');
+        return;
+      }
+
+      // Highlight each text node (handles multi-line selections)
+      textNodes.forEach((textNode) => {
+        const span = document.createElement('span');
+        span.style.backgroundColor = highlightColor;
+        span.style.opacity = '0.35';
+        span.className = 'highlighted-text';
+        
+        // For each text node, wrap it or partial text if at boundaries
+        const parent = textNode.parentNode;
+        
+        // Create a partial selection within this text node
+        const nodeRange = document.createRange();
+        
+        if (textNode === rangeCopy.startContainer && textNode === rangeCopy.endContainer) {
+          // Single node: partial selection
+          const beforeText = textNode.nodeValue.substring(0, rangeCopy.startOffset);
+          const selectedPart = textNode.nodeValue.substring(rangeCopy.startOffset, rangeCopy.endOffset);
+          const afterText = textNode.nodeValue.substring(rangeCopy.endOffset);
+          
+          // Replace node with: before + span(selected) + after
+          if (beforeText) {
+            parent.insertBefore(document.createTextNode(beforeText), textNode);
+          }
+          
+          span.appendChild(document.createTextNode(selectedPart));
+          parent.insertBefore(span, textNode);
+          
+          if (afterText) {
+            parent.insertBefore(document.createTextNode(afterText), textNode);
+          }
+          
+          parent.removeChild(textNode);
+        } else if (textNode === rangeCopy.startContainer) {
+          // Start node: partial from startOffset to end
+          const beforeText = textNode.nodeValue.substring(0, rangeCopy.startOffset);
+          const selectedPart = textNode.nodeValue.substring(rangeCopy.startOffset);
+          
+          if (beforeText) {
+            parent.insertBefore(document.createTextNode(beforeText), textNode);
+          }
+          
+          span.appendChild(document.createTextNode(selectedPart));
+          parent.insertBefore(span, textNode);
+          parent.removeChild(textNode);
+        } else if (textNode === rangeCopy.endContainer) {
+          // End node: partial from start to endOffset
+          const selectedPart = textNode.nodeValue.substring(0, rangeCopy.endOffset);
+          const afterText = textNode.nodeValue.substring(rangeCopy.endOffset);
+          
+          span.appendChild(document.createTextNode(selectedPart));
+          parent.insertBefore(span, textNode);
+          
+          if (afterText) {
+            parent.insertBefore(document.createTextNode(afterText), textNode);
+          }
+          
+          parent.removeChild(textNode);
+        } else {
+          // Middle node: wrap entire text
+          span.appendChild(document.createTextNode(textNode.nodeValue));
+          parent.insertBefore(span, textNode);
+          parent.removeChild(textNode);
+        }
+      });
+
+      console.log(`✨ Highlighted: "${selectedText.substring(0, 30)}..." in ${color}`);
+      sel.removeAllRanges();
+    } catch (err) {
+      console.error('❌ Highlight failed:', err);
+    }
+  };
+
+  // Helper to get highlight color hex value
+  const getHighlightColor = (colorName) => {
+    const colors = {
+      yellow: '#FFFF00',
+      green: '#00FF00',
+      blue: '#0080FF',
+      pink: '#FF0080',
+      orange: '#FF3300'
+    };
+    return colors[colorName.toLowerCase()] || '#FFFF00';
+  };
+
   return (
-    <div className="ssr-overlay" onClick={onClose}>
-      <div className="ssr-container" onClick={e => e.stopPropagation()}>
+    <div className="ssr-overlay" onClick={onClose} style={{ pointerEvents: 'none' }}>
+      <div className="ssr-container" onClick={e => e.stopPropagation()} style={{ pointerEvents: 'auto' }}>
         {/* Header with page indicator */}
         <div className="ssr-header">
           <div className="ssr-title-section">
@@ -836,7 +1003,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                       <Page
                         pageNumber={pageNum}
                         scale={scale}
-                        renderTextLayer={false}
+                        renderTextLayer={true}
                         renderAnnotationLayer={false}
                         loading=""
                         onRenderError={(error) => {
@@ -1019,6 +1186,17 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
           </div>
         )}
       </div>
+
+      {/* High-precision Text Selection Panel */}
+      {selection && position && (
+        <TextSelectionPanel
+          position={position}
+          selectedText={selectedText}
+          onCopy={copyText}
+          onHighlight={addHighlight}
+          onClose={clearSelection}
+        />
+      )}
     </div>
   );
 };

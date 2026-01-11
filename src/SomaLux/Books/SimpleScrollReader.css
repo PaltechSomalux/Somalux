@@ -9,6 +9,42 @@
   --border-color: #2a3942;
 }
 
+/* Text layer styling for selection and highlighting */
+.react-pdf__Page__textContent {
+  user-select: text;
+  cursor: text;
+  position: relative;
+  z-index: 10;
+}
+
+.react-pdf__Page__textContent > span {
+  cursor: text;
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  overflow: visible;
+  background-color: transparent;
+  line-height: 1;
+  letter-spacing: 0;
+  padding: 0;
+  margin: 0;
+  -webkit-user-select: text;
+  user-select: text;
+  display: inline-block;
+  pointer-events: auto;
+}
+
+.react-pdf__Page__textContent > span::selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.react-pdf__Page__textContent > span::-moz-selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  color: transparent;
+}
+
 .ssr-overlay {
   position: fixed;
   inset: 0;

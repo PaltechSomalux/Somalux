@@ -174,8 +174,8 @@ export const Download = ({
   variant = 'icon',
   onDownloadStart,
   onDownloadComplete,
-  downloadText = 'Download',
-  downloadingText = 'Downloading...',
+  downloadText = 'Save',
+  downloadingText = 'Saving...',
   user,
   onUpgradeClick,
   className,
@@ -274,6 +274,7 @@ export const Download = ({
           whileTap={{ scale: 0.98 }}
           aria-label={`Download ${book?.title || paper?.title || file?.filename || 'file'}`}
           className={className}
+          style={{ borderColor: '#06b6d4', color: '#06b6d4' }}
         >
           <FiDownload size={18} />
           {downloading ? downloadingText : downloadText}

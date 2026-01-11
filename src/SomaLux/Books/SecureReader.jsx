@@ -20,6 +20,8 @@ import {
   FiSun,
   FiCheckCircle,
 } from 'react-icons/fi';
+import TextSelectionPanel from './TextSelectionPanel';
+import useTextSelection from './useTextSelection';
 import './SecureReader.css'; // Import CSS file
 
 // Verify worker is configured (set in pdfConfig.js at startup)
@@ -49,6 +51,21 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
   const [scrollMode, setScrollMode] = useState(false);
   const [warmMode, setWarmMode] = useState(false);
   const [pdfError, setPdfError] = useState(!secureReaderWorkerReady);
+  
+  // Highlight state
+  const [highlights, setHighlights] = useState([]);
+  
+  // Use custom hook for high-precision text selection
+  console.log('🔧 SecureReader: About to call useTextSelection hook');
+  const { selection, position, clearSelection, selectedText } = useTextSelection('.pdf-container');
+  console.log('🔧 SecureReader: useTextSelection hook returned', { selection, position });
+
+  // Debug: Monitor selection state
+  useEffect(() => {
+    if (selection) {
+      console.log('📲 SecureReader - Selection state updated:', { selection, position });
+    }
+  }, [selection, position]);
 
   // Stable per-reader session identifiers for watermarking
   const [sessionId] = useState(() => {
@@ -157,6 +174,41 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
       console.warn('Failed to mark book finished', e);
     }
     onClose();
+  };
+
+  // Add highlight
+  const addHighlight = (color) => {
+    if (selectedText && selectedText.length > 0) {
+      const newHighlight = {
+        id: Math.random().toString(36).slice(2, 9),
+        page: pageNumber,
+        text: selectedText,
+        color: color,
+        timestamp: new Date().toISOString(),
+      };
+      setHighlights([...highlights, newHighlight]);
+      clearSelection();
+    }
+  };
+
+  // Copy selected text
+  const copyText = async () => {
+    if (selectedText && selectedText.length > 0) {
+      try {
+        await navigator.clipboard.writeText(selectedText);
+        clearSelection();
+      } catch (err) {
+        console.error('Failed to copy:', err);
+        // Fallback
+        const textarea = document.createElement('textarea');
+        textarea.value = selectedText;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        clearSelection();
+      }
+    }
   };
 
   // Build CSS classes dynamically
@@ -300,7 +352,7 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
                       pageNumber={idx + 1}
                       scale={scale}
                       rotate={rotation}
-                      renderTextLayer={false}
+                      renderTextLayer={true}
                       renderAnnotationLayer={false}
                       onRenderError={(error) => {
                         console.warn('PDF page render error:', error?.message || error);
@@ -314,7 +366,7 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
                     pageNumber={pageNumber}
                     scale={scale}
                     rotate={rotation}
-                    renderTextLayer={false}
+                    renderTextLayer={true}
                     renderAnnotationLayer={false}
                     onRenderError={(error) => {
                       console.warn('PDF page render error:', error?.message || error);
@@ -355,6 +407,17 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
             </div>
           </div>
         </div>
+
+        {/* High-precision Text Selection Panel */}
+        {selection && position && (
+          <TextSelectionPanel
+            position={position}
+            selectedText={selectedText}
+            onCopy={copyText}
+            onHighlight={addHighlight}
+            onClose={clearSelection}
+          />
+        )}
       </div>
     </div>
   );

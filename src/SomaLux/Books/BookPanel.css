@@ -1986,15 +1986,15 @@
   display: inline-flex; 
   align-items: center; 
   justify-content: center;
-  gap: 6px;
-  padding: 6px 10px; 
-  border-radius: 8px; 
+  gap: 1px;
+  padding: 1px 3px; 
+  border-radius: 2px; 
   border: 1px solid #2a3942;
   background: transparent;
   color: #e5e7eb; 
   cursor: pointer; 
   transition: transform .15s ease, background .15s ease, border-color .15s ease;
-  font-size: 0.8rem; 
+  font-size: 0.5rem; 
   font-weight: 500;
   white-space: nowrap;
 }
@@ -2007,39 +2007,85 @@
 
 .btn-readBKP svg { 
   flex-shrink: 0; 
-  width: 14px;
-  height: 14px;
+  width: 8px;
+  height: 8px;
+}
+
+@media (max-width: 640px) {
+  .btn-readBKP {
+    gap: 1px;
+    padding: 1px 2px;
+    border-radius: 2px;
+    font-size: 0.45rem;
+  }
+  
+  .btn-readBKP svg {
+    width: 7px;
+    height: 7px;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn-readBKP {
+    gap: 0px;
+    padding: 0px 2px;
+    border-radius: 2px;
+    font-size: 0.4rem;
+  }
+  
+  .btn-readBKP svg {
+    width: 6px;
+    height: 6px;
+  }
 }
 
 /* Colored primary action buttons */
-.btn-readBKP.btn-action-primaryBKP:nth-child(1):hover {
-  border-color: #06b6d4;
-  color: #06b6d4;
+/* New order: Save(1)/Cyan, Rate(2)/Blue, Share(3)/Gray, Read(4)/Green */
+
+/* Save button (Download component - first child) */
+.actions-primary-rowBKP > button:nth-child(1),
+.actions-primary-rowBKP > div > button:nth-child(1) {
+  border-color: #06b6d4 !important;  /* Cyan for Save */
+  color: #06b6d4 !important;
 }
 
-.btn-readBKP.btn-action-primaryBKP:nth-child(2) {
-  border-color: #00FF41;
-  color: #00FF41;
+.actions-primary-rowBKP > button:nth-child(1):hover,
+.actions-primary-rowBKP > div > button:nth-child(1):hover {
+  border-color: #06b6d4 !important;
+  color: #06b6d4 !important;
 }
 
-.btn-readBKP.btn-action-primaryBKP:nth-child(2):hover {
-  border-color: #00FF41;
-  color: #00FF41;
+/* Rate button (second child) */
+.actions-primary-rowBKP > button.btn-readBKP.btn-action-primaryBKP:nth-child(2) {
+  border-color: #ec4899 !important;  /* Pink/Magenta for Rate */
+  color: #ec4899 !important;
 }
 
-.btn-readBKP.btn-action-primaryBKP:nth-child(3):hover {
-  border-color: #f59e0b;
-  color: #f59e0b;
+.actions-primary-rowBKP > button.btn-readBKP.btn-action-primaryBKP:nth-child(2):hover {
+  border-color: #ec4899 !important;
+  color: #ec4899 !important;
 }
 
-.btn-readBKP.btn-action-primaryBKP:nth-child(4) {
-  border-color: #1DA1F2;
-  color: #1DA1F2;
+/* Share button (third child) */
+.actions-primary-rowBKP > button.btn-readBKP.btn-action-primaryBKP:nth-child(3) {
+  border-color: #f97316 !important;  /* Bright orange for Share */
+  color: #f97316 !important;
 }
 
-.btn-readBKP.btn-action-primaryBKP:nth-child(4):hover {
-  border-color: #1DA1F2;
-  color: #1DA1F2;
+.actions-primary-rowBKP > button.btn-readBKP.btn-action-primaryBKP:nth-child(3):hover {
+  border-color: #f97316 !important;
+  color: #f97316 !important;
+}
+
+/* Read button (fourth child) */
+.actions-primary-rowBKP > button.btn-readBKP.btn-action-primaryBKP:nth-child(4) {
+  border-color: #00FF41 !important;  /* Green for Read (last) */
+  color: #00FF41 !important;
+}
+
+.actions-primary-rowBKP > button.btn-readBKP.btn-action-primaryBKP:nth-child(4):hover {
+  border-color: #00FF41 !important;
+  color: #00FF41 !important;
 }
 
 /* Details button styling */

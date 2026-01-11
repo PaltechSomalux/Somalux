@@ -3241,6 +3241,7 @@ export const BookPanel = ({ demoMode = false }) => {
                     book={selectedBook}
                     variant="full"
                     user={user}
+                    className="btn-readBKP btn-action-primaryBKP"
                     onUpgradeClick={() => setShowSubscriptionModal?.(true)}
                     onDownloadStart={async () => {
                       if (!requireAuth('download')) return false;
@@ -3334,13 +3335,6 @@ export const BookPanel = ({ demoMode = false }) => {
                 />
                   <button
                     className="btn-readBKP btn-action-primaryBKP"
-                    onClick={handleReadClick}
-                    title="Read this book"
-                  >
-                    <FiBook size={16} /> Read
-                  </button>
-                  <button
-                    className="btn-readBKP btn-action-primaryBKP"
                     onClick={() => setShowRatingModal(true)}
                     title="Rate this book"
                   >
@@ -3352,6 +3346,13 @@ export const BookPanel = ({ demoMode = false }) => {
                     title="Share this book"
                   >
                     <FiShare2 size={16} /> Share
+                  </button>
+                  <button
+                    className="btn-readBKP btn-action-primaryBKP"
+                    onClick={handleReadClick}
+                    title="Read this book"
+                  >
+                    <FiBook size={16} /> Read
                   </button>
                 </div>
               </div>

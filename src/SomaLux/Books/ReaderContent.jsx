@@ -97,7 +97,7 @@ const ReaderContent = ({
                     pageNumber={idx + 1}
                     scale={scale}
                     rotate={rotation}
-                    renderTextLayer={false}
+                    renderTextLayer={true}
                     renderAnnotationLayer={false}
                   />
                 </div>
@@ -107,7 +107,7 @@ const ReaderContent = ({
                   pageNumber={pageNumber}
                   scale={scale}
                   rotate={rotation}
-                  renderTextLayer={false}
+                  renderTextLayer={true}
                   renderAnnotationLayer={false}
                 />
               )}

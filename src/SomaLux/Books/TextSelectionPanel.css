@@ -1,0 +1,530 @@
+/* TextSelectionPanel.css - MOBILE OPTIMIZED VERSION */
+
+.text-selection-panel {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0;
+  min-width: 160px;
+  max-width: 95vw;
+  animation: slideIn 0.15s ease-out;
+  pointer-events: auto;
+  isolation: isolate;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.selection-panel-content {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.selection-panel-arrow {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+  bottom: -5px;
+  left: 50%;
+  margin-left: -4px;
+}
+
+.selection-panel-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #333;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.1s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  min-height: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.selection-panel-btn:active {
+  background: #e8e8e8;
+}
+
+@media (hover: hover) {
+  .selection-panel-btn:hover {
+    background: #f5f5f5;
+  }
+}
+
+.copy-btn svg {
+  color: #2196F3;
+}
+
+.selection-panel-divider {
+  height: 1px;
+  background: #eee;
+  margin: 0;
+}
+
+/* Highlight label */
+.highlight-label {
+  padding: 8px 14px 6px;
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Inline color buttons */
+.inline-colors {
+  display: flex;
+  gap: 6px;
+  padding: 8px 14px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.inline-color-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 40px;
+  height: 36px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.7);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.inline-color-btn:active {
+  transform: scale(0.95);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@media (hover: hover) {
+  .inline-color-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    border-color: rgba(0, 0, 0, 0.2);
+  }
+}
+
+.color-name {
+  white-space: nowrap;
+}
+
+/* Close button */
+.panel-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #999;
+  transition: all 0.1s ease;
+  flex-shrink: 0;
+  margin: 4px 6px 6px auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.panel-close-btn:active {
+  color: #d32f2f;
+  background: #ffebee;
+  transform: scale(0.95);
+}
+
+@media (hover: hover) {
+  .panel-close-btn:hover {
+    color: #d32f2f;
+    background: #ffebee;
+  }
+}
+
+.selection-panel-btn.highlight-btn:hover {
+  background: rgba(255, 152, 0, 0.06);
+}
+
+.selection-panel-btn.highlight-btn svg {
+  color: #FF9800;
+}
+
+/* Cancel/Back button */
+.selection-panel-btn.cancel-btn {
+  color: #666;
+  font-size: 12px;
+  margin-top: 2px;
+  padding: 7px 14px;
+}
+
+.selection-panel-btn.cancel-btn:hover {
+  background: #f8f8f8;
+  color: #333;
+}
+
+/* Divider */
+.selection-panel-divider {
+  height: 1px;
+  background: #e8e8e8;
+  margin: 0;
+}
+
+/* Copy feedback */
+.selection-panel-feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px;
+  min-width: 130px;
+  animation: feedbackSlideIn 0.25s ease-out;
+}
+
+@keyframes feedbackSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.feedback-checkmark {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #4CAF50;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  animation: checkmarkBounce 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes checkmarkBounce {
+  0% {
+    transform: scale(0.4);
+  }
+  70% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.feedback-text {
+  color: #4CAF50;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* Color picker */
+.selection-color-picker {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+}
+
+.color-picker-title {
+  padding: 6px 12px;
+  font-size: 10px;
+  color: #999;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.color-options {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  justify-content: center;
+}
+
+.color-option {
+  width: 26px;
+  height: 26px;
+  border-radius: 3px;
+  border: 1px solid #999;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.color-option:hover {
+  transform: scale(1.15);
+}
+
+.color-option:active {
+  transform: scale(0.95);
+}
+
+/* Dark theme variant */
+@media (prefers-color-scheme: dark) {
+  .text-selection-panel {
+    background: #2a2a2a;
+    border-color: #444;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .selection-panel-arrow {
+    background: #2a2a2a;
+    border-color: #444;
+  }
+
+  .selection-panel-btn {
+    color: #e0e0e0;
+  }
+
+  .selection-panel-btn:hover {
+    background: #353535;
+  }
+
+  .selection-panel-btn:active {
+    background: #3a3a3a;
+  }
+
+  .selection-panel-divider {
+    background: #444;
+  }
+
+  .color-picker-title {
+    color: #999;
+  }
+}
+
+/* Overlay to close panel */
+.selection-panel-overlay {
+  /* Transparent background to catch clicks */
+  background: transparent;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .text-selection-panel {
+    min-width: 140px;
+    max-width: 90vw;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  .selection-panel-btn {
+    padding: 10px 12px;
+    font-size: 12px;
+    min-height: 44px;
+    gap: 8px;
+  }
+
+  .inline-colors {
+    gap: 4px;
+    padding: 8px 12px;
+  }
+
+  .inline-color-btn {
+    min-width: 44px;
+    min-height: 40px;
+    height: 34px;
+    font-size: 10px;
+  }
+
+  .color-name {
+    display: none;
+  }
+
+  .highlight-label {
+    padding: 6px 12px 4px;
+    font-size: 11px;
+  }
+
+  .selection-panel-divider {
+    height: 1px;
+  }
+
+  .panel-close-btn {
+    width: 36px;
+    height: 36px;
+    margin: 4px 6px 6px auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .text-selection-panel {
+    min-width: 120px;
+    max-width: 85vw;
+  }
+
+  .selection-panel-btn {
+    padding: 10px 12px;
+    font-size: 11px;
+    min-height: 44px;
+    gap: 6px;
+  }
+
+  .copy-btn svg {
+    min-width: 14px;
+    min-height: 14px;
+  }
+
+  .inline-colors {
+    gap: 4px;
+    padding: 6px 10px;
+  }
+
+  .inline-color-btn {
+    min-width: 40px;
+    min-height: 40px;
+    height: 32px;
+    border-radius: 3px;
+  }
+
+  .highlight-label {
+    padding: 5px 10px 3px;
+    font-size: 10px;
+  }
+
+  .panel-close-btn {
+    min-width: 44px;
+    min-height: 44px;
+    margin: 2px 4px 4px auto;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 360px) {
+  .text-selection-panel {
+    min-width: 110px;
+    max-width: 90vw;
+  }
+
+  .color-name {
+    display: none;
+  }
+
+  .inline-color-btn {
+    font-size: 0;
+  }
+
+  .inline-color-btn::before {
+    content: '';
+    display: inline-block;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .text-selection-panel,
+  .selection-panel-feedback,
+  .feedback-checkmark,
+  .color-option {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Close button */
+.panel-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #999;
+  transition: all 0.1s ease;
+  flex-shrink: 0;
+}
+
+.panel-close-btn:hover {
+  color: #d32f2f;
+  background: #ffebee;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: more) {
+  .text-selection-panel {
+    border-width: 2px;
+  }
+
+  .selection-panel-btn {
+    font-weight: 600;
+  }
+
+  .color-option {
+    border-width: 2px;
+  }
+
+  .panel-close-btn {
+    border: 1px solid currentColor;
+  }
+}
+/* Highlighted text styling */
+.highlighted-text {
+  transition: opacity 0.2s ease;
+  border-radius: 2px;
+  cursor: pointer;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.highlighted-text:active {
+  opacity: 0.7 !important;
+}
+
+@media (hover: hover) {
+  .highlighted-text:hover {
+    opacity: 0.7 !important;
+  }
+}
+
+/* Prevent unwanted selections during touch */
+.simple-scroll-reader {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: none;
+}
+
+.text-selection-panel * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}

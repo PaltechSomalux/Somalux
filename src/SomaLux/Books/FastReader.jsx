@@ -12,6 +12,8 @@ import {
   FiMaximize2,
   FiMinimize2,
 } from 'react-icons/fi';
+import TextSelectionPanel from './TextSelectionPanel';
+import useTextSelection from './useTextSelection';
 import './FastReader.css';
 
 // Verify worker is configured (set in pdfConfig.js at startup)
@@ -21,7 +23,6 @@ if (!pdfjs.GlobalWorkerOptions.workerSrc) {
 } else {
   console.log('✅ FastReader: Worker ready:', pdfjs.GlobalWorkerOptions.workerSrc);
 }
-}
 
 const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
   const [numPages, setNumPages] = useState(null);
@@ -29,6 +30,19 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
   const [scale, setScale] = useState(1.2);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [highlights, setHighlights] = useState([]);
+  
+  // Use custom hook for high-precision text selection
+  console.log('🔧 FastReader: About to call useTextSelection hook');
+  const { selection, position, clearSelection, selectedText } = useTextSelection('.fast-reader-content');
+  console.log('🔧 FastReader: useTextSelection hook returned', { selection, position });
+  
+  // Debug: Monitor selection state
+  useEffect(() => {
+    if (selection) {
+      console.log('📲 FastReader - Selection state updated:', { selection, position });
+    }
+  }, [selection, position]);
   
   // Lazy load pages: only render current page +/- 1
   const [visiblePages, setVisiblePages] = useState(new Set([1]));
@@ -57,11 +71,51 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
   const zoomIn = () => setScale(s => Math.min(2.5, s + 0.2));
   const zoomOut = () => setScale(s => Math.max(0.8, s - 0.2));
 
+  const addHighlight = (color) => {
+    if (selectedText && selectedText.length > 0) {
+      const newHighlight = {
+        id: Math.random().toString(36).slice(2, 9),
+        page: pageNumber,
+        text: selectedText,
+        color: color,
+        timestamp: new Date().toISOString(),
+      };
+      setHighlights([...highlights, newHighlight]);
+      clearSelection();
+    }
+  };
+
+  // Copy selected text
+  const copyText = async () => {
+    if (selectedText && selectedText.length > 0) {
+      try {
+        await navigator.clipboard.writeText(selectedText);
+        clearSelection();
+      } catch (err) {
+        console.error('Failed to copy:', err);
+        // Fallback
+        const textarea = document.createElement('textarea');
+        textarea.value = selectedText;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        clearSelection();
+      }
+    }
+  };
+
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'ArrowRight' || e.key === ' ') goNext();
     else if (e.key === 'ArrowLeft') goPrev();
-    else if (e.key === 'Escape') onClose();
-  }, [numPages, pageNumber]);
+    else if (e.key === 'Escape') {
+      if (position) {
+        clearSelection();
+      } else {
+        onClose();
+      }
+    }
+  }, [numPages, pageNumber, position, clearSelection, onClose]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -134,7 +188,7 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
                 <Page
                   pageNumber={page}
                   scale={scale}
-                  renderTextLayer={false}
+                  renderTextLayer={true}
                   renderAnnotationLayer={false}
                 />
               </div>
@@ -181,6 +235,17 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
             </button>
           </div>
         </div>
+
+        {/* High-precision Text Selection Panel */}
+        {selection && position && (
+          <TextSelectionPanel
+            position={position}
+            selectedText={selectedText}
+            onCopy={copyText}
+            onHighlight={addHighlight}
+            onClose={clearSelection}
+          />
+        )}
       </div>
     </div>
   );
