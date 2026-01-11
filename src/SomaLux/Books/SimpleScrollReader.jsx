@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import { FiX, FiZoomIn, FiZoomOut, FiList, FiDownload, FiBarChart2, FiSettings, FiEdit3, FiBookmark } from 'react-icons/fi';
+import { FiX, FiZoomIn, FiZoomOut, FiList, FiDownload, FiBarChart2, FiSettings, FiEdit3, FiBookmark, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { PDFDocument } from 'pdf-lib';
 import saveAs from 'file-saver';
 import SummaryModal from './SummaryModal';
@@ -73,6 +73,10 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const [totalReadingTime, setTotalReadingTime] = useState(0);
   const [fontSize, setFontSize] = useState(16);
   const [theme, setTheme] = useState('dark');
+  const [mobileButtonsVisible, setMobileButtonsVisible] = useState(false);
+  const [pageFlipMode, setPageFlipMode] = useState(false);
+  const [autoFlipEnabled, setAutoFlipEnabled] = useState(false);
+  const [autoFlipSpeed, setAutoFlipSpeed] = useState(3); // seconds between page flips
   
   // Use custom hook for high-precision text selection
   console.log('🔧 SimpleScrollReader: About to call useTextSelection hook');
@@ -80,6 +84,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   console.log('🔧 SimpleScrollReader: useTextSelection hook returned', { selection, position });
   const containerRef = useRef(null);
   const scrollAreaRef = useRef(null);
+  const pageFlipContainerRef = useRef(null);
   const pageRefsMap = useRef({});
   const scaleRef = useRef(1.0);
   const audioRef = useRef(null);
@@ -87,6 +92,10 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const currentPageAudioRef = useRef(1);
   const pausedPageRef = useRef(null);
   const pausedSentenceIndexRef = useRef(0);
+  
+  // Swipe detection for page flip
+  const touchStartRef = useRef({ x: 0, y: 0 });
+  const touchEndRef = useRef({ x: 0, y: 0 });
 
   // Check if PDF source is available
   const hasPdfSource = !!src;
@@ -281,7 +290,6 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
       if (e.ctrlKey || e.metaKey) {
         if (e.key === '+' || e.key === '=') {
           e.preventDefault();
@@ -324,6 +332,172 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const getBookmarkedPages = () => {
     return Array.from(bookmarks).sort((a, b) => a - b);
   };
+
+  // Page flip navigation
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (numPages && currentPage < numPages) {
+      setCurrentPage(currentPage + 1);
+    } else if (numPages && currentPage >= numPages && autoFlipEnabled) {
+      // Stop auto-flip at the end
+      setAutoFlipEnabled(false);
+    }
+  };
+
+  // Auto-flip effect
+  useEffect(() => {
+    if (!autoFlipEnabled || !pageFlipMode || !numPages) {
+      return;
+    }
+
+    // Stop auto-flip at the last page
+    if (currentPage >= numPages) {
+      setAutoFlipEnabled(false);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setCurrentPage(prev => {
+        if (prev < numPages) {
+          return prev + 1;
+        } else {
+          // Stop auto-flip at the end
+          setAutoFlipEnabled(false);
+          return prev;
+        }
+      });
+    }, autoFlipSpeed * 1000);
+
+    return () => clearInterval(timer);
+  }, [autoFlipEnabled, pageFlipMode, numPages, autoFlipSpeed, currentPage]);
+
+  // Automatic gesture detection - swipe = page flip, scroll = scroll mode
+  useEffect(() => {
+    const handleTouchStart = (e) => {
+      touchStartRef.current = {
+        x: e.changedTouches[0].clientX,
+        y: e.changedTouches[0].clientY,
+        time: Date.now()
+      };
+    };
+
+    const handleTouchEnd = (e) => {
+      if (e.changedTouches.length === 0) return;
+      
+      touchEndRef.current = {
+        x: e.changedTouches[0].clientX,
+        y: e.changedTouches[0].clientY,
+        time: Date.now()
+      };
+
+      // Calculate swipe distance and direction
+      const diffX = touchStartRef.current.x - touchEndRef.current.x;
+      const diffY = touchStartRef.current.y - touchEndRef.current.y;
+      const timeDiff = touchEndRef.current.time - touchStartRef.current.time;
+
+      // Minimum swipe distance to trigger action (40px for more responsive)
+      const minSwipeDistance = 40;
+      const maxSwipeTime = 600; // milliseconds - if longer, it's a scroll not swipe
+      
+      // Only process quick gestures (swipes/flicks)
+      if (timeDiff > maxSwipeTime) {
+        // This is a slow drag - switch to scroll mode
+        setPageFlipMode(false);
+        return;
+      }
+
+      // Detect clear directional intent
+      const isHorizontalSwipe = Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > minSwipeDistance;
+      const isVerticalSwipe = Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > minSwipeDistance;
+
+      if (isHorizontalSwipe) {
+        // Horizontal swipe detected - activate page flip mode
+        setPageFlipMode(true);
+        
+        if (diffX > 0) {
+          // Left swipe - next page
+          goToNextPage();
+        } else {
+          // Right swipe - previous page
+          goToPreviousPage();
+        }
+      } else if (isVerticalSwipe) {
+        // Vertical swipe detected - switch to scroll mode
+        setPageFlipMode(false);
+      }
+    };
+
+    // Attach to scroll area for natural interaction
+    const scrollArea = scrollAreaRef.current;
+    if (scrollArea) {
+      scrollArea.addEventListener('touchstart', handleTouchStart, false);
+      scrollArea.addEventListener('touchend', handleTouchEnd, false);
+    }
+
+    return () => {
+      if (scrollArea) {
+        scrollArea.removeEventListener('touchstart', handleTouchStart);
+        scrollArea.removeEventListener('touchend', handleTouchEnd);
+      }
+    };
+  }, [numPages, currentPage]);
+
+  // Scroll wheel detection - automatically switch to scroll mode when using scroll wheel
+  useEffect(() => {
+    const handleWheel = (e) => {
+      if (pageFlipMode) {
+        // User is scrolling with wheel in page flip mode - switch to scroll mode
+        setPageFlipMode(false);
+      }
+    };
+
+    const scrollArea = scrollAreaRef.current;
+    if (scrollArea) {
+      scrollArea.addEventListener('wheel', handleWheel, false);
+    }
+
+    return () => {
+      if (scrollArea) {
+        scrollArea.removeEventListener('wheel', handleWheel);
+      }
+    };
+  }, [pageFlipMode]);
+
+  // Handle mode switching with instant scroll position restoration
+  useEffect(() => {
+    if (pageFlipMode) {
+      // Switching TO flip mode - no page pre-rendering needed
+      return;
+    }
+    
+    // Switching TO scroll mode - pre-render pages around current page instantly
+    if (numPages) {
+      // Pre-load: current page + 2 pages before and after
+      const pagesToLoad = new Set();
+      const buffer = 2;
+      for (let i = Math.max(1, currentPage - buffer); i <= Math.min(numPages, currentPage + buffer); i++) {
+        pagesToLoad.add(i);
+      }
+      setVisiblePages(pagesToLoad);
+    }
+    
+    // Then restore scroll position on next frame
+    if (scrollAreaRef.current) {
+      const frame = requestAnimationFrame(() => {
+        const pageElement = pageRefsMap.current[currentPage];
+        if (pageElement && scrollAreaRef.current) {
+          const offset = pageElement.getBoundingClientRect().top - scrollAreaRef.current.getBoundingClientRect().top + scrollAreaRef.current.scrollTop;
+          scrollAreaRef.current.scrollTop = offset;
+        }
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [pageFlipMode, currentPage, numPages]);
 
   // Open summary modal for a page
   const openSummary = (pageNumber) => {
@@ -722,7 +896,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   };
 
   return (
-    <div className="ssr-overlay" onClick={onClose} style={{ pointerEvents: 'none' }}>
+    <div className="ssr-overlay" style={{ pointerEvents: 'none' }}>
       <div className="ssr-container" onClick={e => e.stopPropagation()} style={{ pointerEvents: 'auto' }}>
         {/* Header with page indicator */}
         <div className="ssr-header">
@@ -732,15 +906,6 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
           </div>
           
           <div className="ssr-top-controls">
-            {/* Page indicator */}
-            {numPages && (
-              <div className="ssr-page-indicator">
-                <span className="ssr-page-num">{currentPage}</span>
-                <span className="ssr-page-sep">/</span>
-                <span className="ssr-page-total">{numPages}</span>
-              </div>
-            )}
-
             {/* Audio progress indicator - show page reading */}
             {(isAudioPlaying || isPaused) && numPages && (
               <div className="ssr-audio-status" title={`Reading page ${audioPageIndex} of ${numPages}`}>
@@ -751,6 +916,27 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
               </div>
             )}
 
+            {/* Mobile button toggle - show/hide all buttons */}
+            <button 
+              onClick={() => setMobileButtonsVisible(!mobileButtonsVisible)} 
+              className="ssr-icon-btn ssr-mobile-toggle" 
+              title="Toggle controls visibility"
+            >
+              ⋮
+            </button>
+
+            {/* Container for buttons that can be hidden/shown on mobile */}
+            <div className={`ssr-mobile-controls-wrapper ${mobileButtonsVisible ? 'visible' : 'hidden'}`}>
+            
+            {/* Page indicator - hidden when panel is hidden */}
+            {numPages && (
+              <div className="ssr-page-indicator">
+                <span className="ssr-page-num">{currentPage}</span>
+                <span className="ssr-page-sep">/</span>
+                <span className="ssr-page-total">{numPages}</span>
+              </div>
+            )}
+            
             {/* Icon buttons only - no containers */}
             <button onClick={() => setShowTOC(!showTOC)} className="ssr-icon-btn ssr-toc-toggle" title="Toggle table of contents">
               <FiList size={18} />
@@ -853,6 +1039,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
             <button onClick={onClose} className="ssr-icon-btn" title="Close (Esc)">
               <FiX size={18} />
             </button>
+            </div>
           </div>
         </div>
 
@@ -976,44 +1163,70 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                   </div>
                 }
               >
-                {numPages && Array.from({ length: numPages }, (_, idx) => {
-                  const pageNum = idx + 1;
-                  // Only render visible pages + buffer
-                  if (!visiblePages.has(pageNum)) {
+                {/* Page Flip Mode - Always rendered, shown/hidden with CSS */}
+                <div className={`ssr-mode-container ssr-flip-mode ${pageFlipMode ? 'visible' : 'hidden'}`}>
+                  <div className="ssr-page-flip-container" ref={pageFlipContainerRef}>
+                    {numPages && (
+                      <div className="ssr-page-flip-wrapper">
+                        <div className="ssr-single-page">
+                          <Page
+                            pageNumber={currentPage}
+                            scale={scale}
+                            renderTextLayer={true}
+                            renderAnnotationLayer={false}
+                            loading=""
+                            onRenderError={(error) => {
+                              console.warn('PDF page render error:', error?.message || error);
+                              setPdfError(true);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Scroll Mode - Always rendered, shown/hidden with CSS */}
+                <div className={`ssr-mode-container ssr-scroll-mode ${pageFlipMode ? 'hidden' : 'visible'}`}>
+                  {numPages && Array.from({ length: numPages }, (_, idx) => {
+                    const pageNum = idx + 1;
+                    // Only render visible pages + buffer
+                    if (!visiblePages.has(pageNum)) {
+                      return (
+                        <div 
+                          key={pageNum} 
+                          className="ssr-page-placeholder"
+                          ref={(el) => {
+                            if (el) pageRefsMap.current[pageNum] = el;
+                          }}
+                          style={{ height: '800px' }}
+                        />
+                      );
+                    }
+                    
                     return (
                       <div 
                         key={pageNum} 
-                        className="ssr-page-placeholder"
+                        className="ssr-page"
                         ref={(el) => {
                           if (el) pageRefsMap.current[pageNum] = el;
                         }}
-                        style={{ height: '800px' }}
-                      />
+                      >
+                        <Page
+                          pageNumber={pageNum}
+                          scale={scale}
+                          renderTextLayer={true}
+                          renderAnnotationLayer={false}
+                          loading=""
+                          onRenderError={(error) => {
+                            console.warn('PDF page render error:', error?.message || error);
+                            setPdfError(true);
+                          }}
+                        />
+                      </div>
                     );
-                  }
-                  
-                  return (
-                    <div 
-                      key={pageNum} 
-                      className="ssr-page"
-                      ref={(el) => {
-                        if (el) pageRefsMap.current[pageNum] = el;
-                      }}
-                    >
-                      <Page
-                        pageNumber={pageNum}
-                        scale={scale}
-                        renderTextLayer={true}
-                        renderAnnotationLayer={false}
-                        loading=""
-                        onRenderError={(error) => {
-                          console.warn('PDF page render error:', error?.message || error);
-                          setPdfError(true);
-                        }}
-                      />
-                    </div>
-                  );
-                })}
+                  })}
+                </div>
               </Document>
             )}
             {!hasPdfSource && (

@@ -101,7 +101,7 @@
 .ssr-top-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 2px;
   flex-shrink: 0;
 }
 
@@ -113,31 +113,33 @@
   background: transparent;
   padding: 0;
   border-radius: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-dark);
   border: none;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .ssr-page-num {
-  min-width: 25px;
+  min-width: 20px;
   text-align: right;
   color: var(--primary);
   font-weight: 700;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .ssr-page-sep {
   color: var(--text-light);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .ssr-page-total {
-  min-width: 25px;
+  min-width: 20px;
   text-align: left;
   color: var(--text-light);
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .ssr-btn {
@@ -257,14 +259,12 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0, 217, 163, 0.15);
   padding: 6px 12px;
   border-radius: 6px;
   margin: 0 8px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-dark);
-  border: 1px solid rgba(0, 217, 163, 0.3);
 }
 
 .ssr-audio-label {
@@ -272,7 +272,7 @@
 }
 
 .ssr-audio-page {
-  color: #00d9a3;
+  color: #e9edef;
   font-weight: 700;
   min-width: 24px;
 }
@@ -404,6 +404,7 @@
   display: flex;
   flex: 1;
   overflow: hidden;
+  height: 100%;
 }
 
 /* TOC Sidebar - Toggleable like Edge */
@@ -499,14 +500,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 0;
+  padding: 0;
+  margin: 0;
   touch-action: auto;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   -webkit-font-smoothing: antialiased;
   backface-visibility: hidden;
   transform: translateZ(0);
   -webkit-transform: translate3d(0, 0, 0);
   contain: layout style paint;
+  height: 100%;
+  will-change: auto;
 }
 .ssr-scroll-area::-webkit-scrollbar {
   width: 10px;
@@ -527,19 +531,35 @@
 
 /* Page styling */
 .ssr-page {
-  margin: 0 0 15px 0;
+  margin: 0;
+  padding: 0;
   display: flex;
   justify-content: center;
   background: #1a252b;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
   contain: layout style paint;
+  width: 100%;
 }
 
 .ssr-page-placeholder {
-  margin: 0 0 15px 0;
-  background: transparent;
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(90deg, #1a252b 0%, #0f1923 50%, #1a252b 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+  width: 100%;
+  display: block;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .ssr-page canvas {
@@ -593,8 +613,72 @@
   flex-shrink: 0;
 }
 
+/* Mobile Controls Wrapper - Hide/Show all buttons */
+.ssr-mobile-controls-wrapper {
+  display: contents;
+}
+
+.ssr-mobile-controls-wrapper.hidden {
+  display: none !important;
+}
+
+/* Mobile Toggle Button - Always visible on mobile */
+.ssr-mobile-toggle {
+  display: none;
+  font-size: 18px;
+  padding: 4px 6px;
+  margin: 0;
+  letter-spacing: 0px;
+  line-height: 1;
+  color: #6b7280;
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+}
+
+.ssr-mobile-toggle:hover {
+  color: #9ca3af;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
+  /* Make header position relative for absolute positioning */
+  .ssr-header {
+    padding: 12px 0px 12px 20px;
+    position: relative;
+  }
+
+  /* Add right margin to controls on mobile - moved right 5x to end margin */
+  .ssr-top-controls {
+    margin-left: auto;
+    margin-right: 0;
+  }
+
+  /* Show mobile toggle button on mobile - IN FLEX LINE WITH OTHER BUTTONS */
+  .ssr-mobile-toggle {
+    display: flex !important;
+    font-size: 18px;
+    padding: 4px 6px !important;
+    margin: 0 !important;
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    transform: none !important;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    flex-shrink: 0;
+    z-index: 110;
+    order: -1;
+  }
+  
   /* Mobile-first responsive layout */
   .ssr-main-content {
     flex-direction: column;
@@ -1030,7 +1114,6 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(0, 217, 163, 0.1);
   padding: 4px 8px;
   border-radius: 6px;
   margin: 0 4px;
@@ -1043,27 +1126,28 @@
 }
 
 .ssr-speed-control select {
-  background: rgba(12, 109, 88, 0.3);
-  border: 1px solid rgba(12, 109, 88, 0.5);
+  background: transparent;
   color: var(--text-dark);
-  padding: 4px 8px;
+  padding: 2px 4px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   outline: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  width: auto;
+  max-width: 45px;
 }
 
 .ssr-speed-control select:hover {
-  background: rgba(12, 109, 88, 0.4);
-  border-color: var(--primary);
+  background: transparent;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .ssr-speed-control select:focus {
-  background: rgba(12, 109, 88, 0.5);
-  border-color: #00d9a3;
-  box-shadow: 0 0 8px rgba(0, 217, 163, 0.3);
+  background: transparent;
+  box-shadow: 0 0 12px rgba(0, 168, 132, 0.4);
 }
 
 /* Bookmark styles */
@@ -1563,4 +1647,362 @@
 
 .ssr-bookmarks-page-content::-webkit-scrollbar-thumb:hover {
   background: rgba(12, 109, 88, 0.5);
+}
+
+/* Mode containers - ABSOLUTE INSTANT switching, no animations */
+.ssr-mode-container {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  will-change: auto;
+  contain: layout style paint;
+}
+
+.ssr-mode-container.hidden {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.ssr-mode-container.visible {
+  display: flex !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+.ssr-flip-mode {
+  position: relative;
+}
+
+.ssr-scroll-mode {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: auto;
+  padding: 0;
+  flex-direction: column;
+  align-items: center;
+  background: #0b1216;
+  background-color: var(--bg-dark);
+}
+
+/* Page Flip Mode Styles */
+.ssr-page-flip-container {
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  position: relative;
+  will-change: auto;
+}
+
+.ssr-page-flip-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: stretch;
+  width: 100%;
+  height: 100%;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.ssr-single-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 100%;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+.ssr-single-page .react-pdf__Document {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+}
+
+.ssr-single-page .react-pdf__Page {
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.ssr-page-flip-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 15px 20px;
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 8px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.ssr-flip-nav-btn {
+  background: rgba(12, 109, 88, 0.2);
+  border: 1px solid rgba(12, 109, 88, 0.3);
+  color: #0c6d58;
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 16px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.ssr-flip-nav-btn:hover:not(:disabled) {
+  background: rgba(12, 109, 88, 0.4);
+  border-color: rgba(12, 109, 88, 0.6);
+  color: #00FF00;
+  box-shadow: 0 0 8px rgba(12, 109, 88, 0.3);
+}
+
+.ssr-flip-nav-btn:active:not(:disabled) {
+  transform: scale(0.95);
+  background: rgba(12, 109, 88, 0.5);
+}
+
+.ssr-flip-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.ssr-flip-page-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: #e9edef;
+  min-width: 80px;
+  justify-content: center;
+  font-weight: 500;
+}
+
+.ssr-flip-sep {
+  color: #8696a0;
+}
+
+/* Auto-flip controls */
+.ssr-auto-flip-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  padding: 15px 20px;
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 8px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  flex-wrap: wrap;
+}
+
+.ssr-auto-flip-btn {
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #3b82f6;
+  border-radius: 6px;
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.ssr-auto-flip-btn:hover {
+  background: rgba(59, 130, 246, 0.35);
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+.ssr-auto-flip-btn:active {
+  transform: scale(0.95);
+  background: rgba(59, 130, 246, 0.5);
+}
+
+.ssr-auto-flip-btn.active {
+  background: rgba(12, 109, 88, 0.4);
+  border-color: rgba(12, 109, 88, 0.6);
+  color: #0c6d58;
+  box-shadow: 0 0 12px rgba(12, 109, 88, 0.4);
+}
+
+.ssr-auto-flip-btn.active:hover {
+  background: rgba(12, 109, 88, 0.5);
+  border-color: rgba(12, 109, 88, 0.8);
+}
+
+.ssr-speed-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ssr-speed-label {
+  color: #e9edef;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ssr-speed-select {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #e9edef;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  min-height: 36px;
+}
+
+.ssr-speed-select:hover:not(:disabled) {
+  border-color: rgba(59, 130, 246, 0.6);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.ssr-speed-select:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
+}
+
+.ssr-speed-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ssr-speed-select option {
+  background: #0b1216;
+  color: #e9edef;
+}
+
+/* Responsive adjustments for page flip mode */
+@media (max-width: 768px) {
+  .ssr-page-flip-container {
+    padding: 10px;
+  }
+
+  .ssr-page-flip-wrapper {
+    gap: 15px;
+  }
+
+  .ssr-page-flip-nav {
+    gap: 15px;
+    padding: 12px 15px;
+  }
+
+  .ssr-flip-nav-btn {
+    padding: 8px 10px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .ssr-flip-page-info {
+    font-size: 14px;
+  }
+
+  .ssr-auto-flip-controls {
+    gap: 12px;
+    padding: 12px 15px;
+  }
+
+  .ssr-auto-flip-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .ssr-speed-select {
+    padding: 6px 10px;
+    font-size: 12px;
+    min-height: 34px;
+  }
+
+  .ssr-speed-label {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ssr-page-flip-container {
+    padding: 8px;
+  }
+
+  .ssr-page-flip-wrapper {
+    gap: 10px;
+  }
+
+  .ssr-page-flip-nav {
+    gap: 10px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+  }
+
+  .ssr-flip-nav-btn {
+    padding: 6px 8px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .ssr-flip-nav-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .ssr-flip-page-info {
+    font-size: 13px;
+    min-width: 70px;
+  }
+
+  .ssr-auto-flip-controls {
+    gap: 10px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+  }
+
+  .ssr-auto-flip-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    min-height: 36px;
+  }
+
+  .ssr-speed-control {
+    gap: 6px;
+    width: 100%;
+  }
+
+  .ssr-speed-label {
+    font-size: 12px;
+  }
+
+  .ssr-speed-select {
+    padding: 6px 8px;
+    font-size: 11px;
+    min-height: 32px;
+    flex: 1;
+    min-width: 60px;
+  }
 }
