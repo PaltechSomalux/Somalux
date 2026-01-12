@@ -1,5 +1,6 @@
 /* FastReader.css - Minimal, fast-loading PDF reader UI */
 
+/* PERFORMANCE: Enable GPU acceleration */
 .fast-reader-overlay {
   position: fixed;
   inset: 0;
@@ -9,14 +10,18 @@
   align-items: center;
   justify-content: center;
   animation: fadeIn 0.15s ease-out;
+  will-change: opacity;
+  transform: translate3d(0, 0, 0); /* Enable GPU acceleration */
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
+    transform: translate3d(0, 0, 0);
   }
   to {
     opacity: 1;
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -28,6 +33,7 @@
   flex-direction: column;
   overflow: hidden;
   user-select: text;
+  transform: translate3d(0, 0, 0); /* GPU acceleration */
 }
 
 /* Header - minimal */
@@ -39,6 +45,7 @@
   background: #0f0f0f;
   border-bottom: 1px solid #333;
   flex-shrink: 0;
+  contain: layout style; /* CSS containment for better performance */
 }
 
 .fast-reader-info {
@@ -85,8 +92,10 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.1s ease;
+  transition: background-color 0.1s ease;
   flex-shrink: 0;
+  will-change: background-color;
+  contain: layout style paint;
 }
 
 .fast-btn:hover:not(:disabled) {
@@ -124,6 +133,9 @@
   touch-action: manipulation;
   -webkit-user-select: text;
   user-select: text;
+  contain: layout style;
+  will-change: scroll-position;
+  transform: translate3d(0, 0, 0); /* GPU acceleration for scrolling */
 }
 
 .fast-reader-content.fullscreen {
@@ -156,6 +168,9 @@
   touch-action: manipulation;
   -webkit-user-select: text;
   user-select: text;
+  contain: layout style paint;
+  will-change: transform;
+  transform: translate3d(0, 0, 0); /* GPU acceleration */
 }
 
 .fast-page-wrapper.current {
@@ -169,15 +184,8 @@
   margin: 0 auto;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   user-select: text;
-}
-
-.fast-page-wrapper canvas {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  margin: 0 auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  user-select: text;
+  will-change: transform;
+  transform: translate3d(0, 0, 0); /* GPU acceleration */
 }
 
 /* Enable text selection in react-pdf components */
@@ -186,6 +194,9 @@
   position: relative;
   display: inline-block;
   margin: 0 auto;
+  contain: layout style paint;
+  will-change: transform;
+}
 }
 
 .react-pdf__Page__canvas {

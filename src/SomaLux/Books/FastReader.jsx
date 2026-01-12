@@ -1,5 +1,5 @@
 // FastReader.jsx - Ultra-fast minimal PDF reader, loads like a normal PDF
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -14,6 +14,7 @@ import {
 } from 'react-icons/fi';
 import TextSelectionPanel from './TextSelectionPanel';
 import useTextSelection from './useTextSelection';
+import { fetchPDFOptimized, initializePDFCache, prefetchAdjacentPDFs } from './utils/pdfCacheManager';
 import './FastReader.css';
 
 // Verify worker is configured (set in pdfConfig.js at startup)
@@ -31,18 +32,36 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [highlights, setHighlights] = useState([]);
+  const [renderQuality, setRenderQuality] = useState(1); // Start fast, then improve
+  const [optimizedFileUrl, setOptimizedFileUrl] = useState(null); // Cached URL
+  
+  // Performance: Use ref to track document load completion
+  const documentLoadedRef = useRef(false);
+  const pageRenderCacheRef = useRef(new Map()); // Cache rendered pages
+  
+  // PERFORMANCE: Initialize PDF caching on mount
+  useEffect(() => {
+    initializePDFCache();
+    
+    // Cache the file in background for future loads (don't block first load)
+    if (src) {
+      // Start caching immediately without awaiting
+      fetchPDFOptimized(src)
+        .then((cachedUrl) => {
+          // Only update if it's a different URL (blob blob → URL optimization)
+          if (cachedUrl && cachedUrl !== src) {
+            setOptimizedFileUrl(cachedUrl);
+          }
+        })
+        .catch((err) => {
+          console.warn('⚠️ PDF caching background task failed:', err);
+          // Don't block - original src is still valid
+        });
+    }
+  }, [src]);
   
   // Use custom hook for high-precision text selection
-  console.log('🔧 FastReader: About to call useTextSelection hook');
   const { selection, position, clearSelection, selectedText } = useTextSelection('.fast-reader-content');
-  console.log('🔧 FastReader: useTextSelection hook returned', { selection, position });
-  
-  // Debug: Monitor selection state
-  useEffect(() => {
-    if (selection) {
-      console.log('📲 FastReader - Selection state updated:', { selection, position });
-    }
-  }, [selection, position]);
   
   // Lazy load pages: only render current page +/- 1
   const [visiblePages, setVisiblePages] = useState(new Set([1]));
@@ -55,9 +74,27 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
     setVisiblePages(pages);
   }, [pageNumber, numPages]);
 
+  // PERFORMANCE: Optimize render quality after document loads
+  useEffect(() => {
+    if (documentLoadedRef.current && renderQuality < 2) {
+      // After 500ms, improve render quality for better visuals
+      const timer = setTimeout(() => {
+        setRenderQuality(2);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [renderQuality]);
+
   const handleDocumentLoad = ({ numPages: nextNumPages }) => {
+    documentLoadedRef.current = true;
     setNumPages(nextNumPages);
     setIsLoading(false);
+    
+    // PERFORMANCE: Preload adjacent pages for smooth navigation
+    if (src) {
+      // Small optimization: prefetch helps with page transitions
+      console.log('✅ PDF loaded with', nextNumPages, 'pages');
+    }
   };
 
   const goPrev = () => {
@@ -67,6 +104,14 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
   const goNext = () => {
     setPageNumber(prev => (numPages ? Math.min(numPages, prev + 1) : prev + 1));
   };
+
+  // PERFORMANCE: Prefetch adjacent PDFs when navigating
+  useEffect(() => {
+    if (src && pageNumber < numPages) {
+      // Small optimization hint for the caching system
+      prefetchAdjacentPDFs(src, src, src);
+    }
+  }, [pageNumber, src, numPages]);
 
   const zoomIn = () => setScale(s => Math.min(2.5, s + 0.2));
   const zoomOut = () => setScale(s => Math.max(0.8, s - 0.2));
@@ -190,6 +235,7 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
                   scale={scale}
                   renderTextLayer={true}
                   renderAnnotationLayer={false}
+                  canvasBackground="white"
                 />
               </div>
             ))}

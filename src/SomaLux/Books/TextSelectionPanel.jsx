@@ -21,10 +21,14 @@ import {
   FiShare2,
   FiChevronLeft,
   FiDownload,
-  FiUnderline
+  FiUnderline,
+  FiCheck
 } from 'react-icons/fi';
 import { FaFilePdf, FaFileWord } from 'react-icons/fa';
 import { generateSummary, generateKeyPoints, getTextStats } from './utils/summarizeText';
+import { fetchExplanation } from './utils/explainationApi';
+import { explainIntelligentText } from './utils/intelligentTextProcessor';
+import { translateText, getSupportedLanguages } from './utils/translationApi';
 import { saveAs } from 'file-saver';
 import { Document, Packer, Paragraph } from 'docx';
 import jsPDF from 'jspdf';
@@ -71,6 +75,11 @@ const TextSelectionPanel = ({
   const [isSavingFormat, setIsSavingFormat] = useState(null); // Track which format is being saved
   const saveOptionsRef = useRef(null); // Ref for main save options dropdown
   const editSaveSaveOptionsRef = useRef(null); // Ref for edit summary save options dropdown
+  
+  // TRANSLATION STATE
+  const [translationLoading, setTranslationLoading] = useState(false);
+  const [translationResult, setTranslationResult] = useState(null);
+  const [selectedTargetLanguage, setSelectedTargetLanguage] = useState(null);
 
   // Detect mobile on mount and orientation changes
   useEffect(() => {
@@ -189,8 +198,11 @@ const TextSelectionPanel = ({
       navigator.vibrate(50);
     }
 
+    // Determine what to copy - if explanation view is open, copy the explanation content
+    const textToCopy = expandedView && expandedView.type === 'explain' ? expandedView.content : selectedText;
+
     try {
-      await navigator.clipboard.writeText(selectedText);
+      await navigator.clipboard.writeText(textToCopy);
       setCopiedFeedback(true);
 
       feedbackTimeoutRef.current = setTimeout(() => {
@@ -201,7 +213,7 @@ const TextSelectionPanel = ({
       console.error('❌ Copy failed:', err);
       // Fallback copy
       const textarea = document.createElement('textarea');
-      textarea.value = selectedText;
+      textarea.value = textToCopy;
       textarea.style.position = 'fixed';
       textarea.style.left = '-9999px';
       document.body.appendChild(textarea);
@@ -258,30 +270,108 @@ const TextSelectionPanel = ({
   const handleExplain = async () => {
     if (isMobile && navigator.vibrate) navigator.vibrate(30);
     try {
-      // Generate a basic explanation
-      const words = selectedText.split(/\s+/);
-      const explanation = `This text contains ${words.length} words and discusses: "${selectedText.substring(0, 80)}...". Key concepts can be explored by selecting specific terms.`;
+      console.log('🎯 Explain triggered for text:', selectedText.substring(0, 50) + '...');
+      
+      // Use intelligent text processor to handle misspellings, truncated text, etc.
+      const result = await explainIntelligentText(selectedText);
+      
+      console.log('📚 Explanation received from:', result.source);
+      console.log('✨ Processed text:', result.processed);
+      console.log('✅ Explanation length:', result.explanation?.length);
+      
+      // Build a ChatGPT-style detailed explanation (only show explanation, no text corrections)
+      let formattedExplanation = `## ${result.title}\n\n`;
+      formattedExplanation += result.explanation;
+      
+      // Calculate stats from selected text
+      const textWords = selectedText.split(/\s+/).filter(w => w.trim().length > 0);
+      const sentences = selectedText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+      
+      console.log('✅ Setting explanation view with stats:', {
+        words: textWords.length,
+        sentences: sentences.length,
+        charCount: selectedText.length
+      });
       
       setExpandedView({ 
         type: 'explain', 
-        content: explanation
+        content: formattedExplanation,
+        stats: {
+          words: textWords.length,
+          sentences: sentences.length,
+          charCount: selectedText.length,
+          readTime: Math.ceil(textWords.length / 200)
+        }
       });
     } catch (err) {
-      console.error('Explain error:', err);
+      console.error('❌ Explain error:', err);
+      
+      // Final fallback
+      const words = selectedText.split(/\s+/).filter(w => w.length > 2);
+      const sentences = selectedText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+      const mainConcepts = words.slice(0, 3).join(' ') || 'Concept';
+      
+      const fallbackExplanation = `## ${mainConcepts}\n\nUnable to generate explanation at this time. Please try:\n• Selecting clearer text\n• Checking your internet connection\n• Simplifying your selection`;
+      
       setExpandedView({ 
         type: 'explain', 
-        content: 'Select text to get an explanation of its key concepts.' 
+        content: fallbackExplanation,
+        stats: {
+          words: words.length,
+          sentences: sentences.length,
+          charCount: selectedText.length,
+          readTime: Math.ceil(words.length / 200)
+        }
       });
     }
   };
 
   const handleTranslate = async () => {
     if (isMobile && navigator.vibrate) navigator.vibrate(30);
+    
+    // Get supported languages
+    const supportedLanguages = getSupportedLanguages();
+    
     setExpandedView({ 
       type: 'translate', 
       content: selectedText,
-      languages: ['Spanish', 'French', 'German', 'Chinese', 'Japanese']
+      languages: supportedLanguages
     });
+    
+    // Reset translation result and selected language
+    setTranslationResult(null);
+    setSelectedTargetLanguage(null);
+  };
+
+  // Perform actual translation when language is selected
+  const handleTranslateToLanguage = async (language) => {
+    if (isMobile && navigator.vibrate) navigator.vibrate(30);
+    
+    setSelectedTargetLanguage(language);
+    setTranslationLoading(true);
+    setTranslationResult(null);
+
+    try {
+      const result = await translateText(selectedText, language);
+      
+      setTranslationResult({
+        language: language,
+        translation: result.translation,
+        success: result.success,
+        source: result.source
+      });
+    } catch (error) {
+      console.error('❌ Translation failed:', error);
+      setTranslationResult({
+        language: language,
+        translation: selectedText,
+        success: false,
+        source: 'error',
+        error: error.message
+      });
+    } finally {
+      setTranslationLoading(false);
+    }
   };
 
   const handleReadAloud = () => {
@@ -995,29 +1085,205 @@ const TextSelectionPanel = ({
                 </div>
               )}
 
-              {expandedView.type === 'explain' && (
-                <div className="feature-content">
-                  <p className="feature-text">{expandedView.content}</p>
+              {expandedView && expandedView.type === 'explain' && (
+                <div className="feature-content explanation-panel" style={{ position: 'relative' }}>
+                  {copiedFeedback && (
+                    <div className="selection-panel-feedback" style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10001 }}>
+                      <div className="feedback-checkmark">✓</div>
+                      <div className="feedback-text">Copied!</div>
+                    </div>
+                  )}
+                  
+                  {/* Top Action Buttons - Copy and Save */}
+                  <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', justifyContent: 'space-between' }}>
+                    <button
+                      onClick={handleCopyClick}
+                      style={{
+                        padding: '6px 12px',
+                        background: 'transparent',
+                        border: '1px solid #3a4a54',
+                        color: '#e9edef',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#5a6a74';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#3a4a54';
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <FiCopy size={14} />
+                      Copy
+                    </button>
+                    <button
+                      onClick={() => {
+                        const element = document.createElement('a');
+                        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(expandedView.content));
+                        element.setAttribute('download', 'explanation.txt');
+                        element.style.display = 'none';
+                        document.body.appendChild(element);
+                        element.click();
+                        document.body.removeChild(element);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        background: 'transparent',
+                        border: '1px solid #3a4a54',
+                        color: '#e9edef',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#5a6a74';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#3a4a54';
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <FiDownload size={14} />
+                      Save
+                    </button>
+                  </div>
+
+                  {/* Explanation Content with ChatGPT-like formatting */}
+                  <div className="explanation-content-wrapper" style={{ minHeight: '100px', maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
+                    <div className="explanation-text" style={{ color: '#e9edef', lineHeight: '1.8', fontSize: '13px', whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
+                      {expandedView.content.split('\n').map((line, idx) => {
+                        const trimmedLine = line.trim();
+                        
+                        // Render H2 headers (##)
+                        if (trimmedLine.startsWith('## ')) {
+                          return (
+                            <div key={idx} style={{ margin: '16px 0 12px 0', fontSize: '15px', fontWeight: '600', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+                              {trimmedLine.replace('## ', '')}
+                            </div>
+                          );
+                        }
+                        
+                        // Render bullet points
+                        if (trimmedLine.startsWith('• ')) {
+                          return (
+                            <div key={idx} style={{ margin: '6px 0 6px 16px', color: '#c8d3db', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                              <span style={{ marginTop: '2px', minWidth: '6px' }}>•</span>
+                              <span>{trimmedLine.substring(2)}</span>
+                            </div>
+                          );
+                        }
+                        
+                        // Render bold text
+                        if (trimmedLine.startsWith('**') && trimmedLine.includes('**')) {
+                          const boldMatch = trimmedLine.match(/\*\*(.+?)\*\*/);
+                          if (boldMatch) {
+                            return (
+                              <p key={idx} style={{ margin: '8px 0', color: '#c8d3db' }}>
+                                <strong style={{ color: '#e9edef' }}>{boldMatch[1]}</strong>
+                                {trimmedLine.replace(/\*\*(.+?)\*\*/g, '')}
+                              </p>
+                            );
+                          }
+                        }
+                        
+                        // Render normal paragraphs
+                        if (trimmedLine.length > 0) {
+                          return (
+                            <p key={idx} style={{ margin: '8px 0', color: '#c8d3db', textAlign: 'justify' }}>
+                              {trimmedLine}
+                            </p>
+                          );
+                        }
+                        
+                        // Render empty lines as spacing
+                        return <div key={idx} style={{ height: '8px' }} />;
+                      })}
+                    </div>
+                  </div>
+
+
                 </div>
               )}
 
               {expandedView.type === 'translate' && (
-                <div className="translate-content">
-                  <div className="original-text">
-                    <label>Original</label>
-                    <p>{selectedText}</p>
-                  </div>
-                  <div className="language-list">
-                    <label>Translate to:</label>
-                    {expandedView.languages?.map((lang) => (
-                      <button
-                        key={lang}
-                        className="language-btn"
-                        onClick={() => handleCopyClick()}
+                <div className="translate-simple">
+                  {/* Content Area */}
+                  <div className="translate-simple-content">
+                    {/* Left Column - Original */}
+                    <div className="translate-simple-col">
+                      <div className="simple-col-label">Original</div>
+                      <div className="simple-text-display">
+                        <p>{selectedText}</p>
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="simple-divider"></div>
+
+                    {/* Right Column - Translation */}
+                    <div className="translate-simple-col">
+                      <select 
+                        className="language-selector-simple"
+                        value={selectedTargetLanguage || ''}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleTranslateToLanguage(e.target.value);
+                          }
+                        }}
+                        disabled={translationLoading}
                       >
-                        {lang}
-                      </button>
-                    ))}
+                        <option value="">Choose language...</option>
+                        {expandedView.languages?.map((lang) => (
+                          <option key={lang} value={lang}>{lang}</option>
+                        ))}
+                      </select>
+                      {translationResult ? (
+                        <div className="simple-text-display">
+                          <p>{translationResult.translation}</p>
+                          <div className="simple-actions">
+                            <button 
+                              className="simple-copy-btn"
+                              onClick={() => {
+                                navigator.clipboard.writeText(translationResult.translation);
+                                setCopiedFeedback(true);
+                                setTimeout(() => setCopiedFeedback(false), 2000);
+                              }}
+                              title="Copy translation"
+                            >
+                              <FiCopy size={14} />
+                            </button>
+                            <span className="simple-source-badge">{translationResult.source}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="simple-text-display simple-empty-state">
+                          {translationLoading ? (
+                            <div className="simple-loading">
+                              <span className="simple-spinner"></span>
+                              <p>Translating to {selectedTargetLanguage}...</p>
+                            </div>
+                          ) : (
+                            <p className="empty-text">Select a language to see translation</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

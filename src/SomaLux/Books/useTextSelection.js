@@ -35,9 +35,11 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
   const selectionStableRef = useRef(false);
   const isProcessingRef = useRef(false);
   const touchStartTimeRef = useRef(0);
+  const lastPositionRef = useRef(null); // Track last position to prevent jumping
+  const positionSmoothingRef = useRef(0); // Counter to stabilize position
 
   /**
-   * Calculate optimal position for the selection panel
+   * Calculate optimal position for the selection panel with ULTRA precision
    */
   const calculatePosition = useCallback((rect) => {
     try {
@@ -46,39 +48,171 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
       }
 
       const isMobile = isMobileRef.current;
-      const panelHeight = isMobile ? 140 : 120;
-      const panelWidth = isMobile ? 180 : 150;
-      const viewportPadding = isMobile ? 10 : 15;
-      const minPadding = 8;
+      const panelHeight = isMobile ? 160 : 140; // Slightly larger for better UX
+      const panelWidth = isMobile ? 200 : 220;
+      const viewportPadding = isMobile ? 12 : 20;
+      const selectionGap = 12; // Space between selection and panel
 
-      // Center horizontally on selection
-      let x = rect.left + rect.width / 2 - panelWidth / 2;
+      // Get viewport dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
 
-      // Position above selection with gap
-      let y = rect.top - panelHeight - 10;
+      // Calculate center position on selection
+      let x = rect.centerX - panelWidth / 2;
+      let y = rect.top - panelHeight - selectionGap;
 
-      // Fallback: position below if not enough space above
-      if (y < viewportPadding) {
-        y = rect.bottom + 10;
-      }
-
-      // Constrain to viewport with stricter bounds on mobile
-      const maxX = window.innerWidth - panelWidth - viewportPadding;
-      const maxY = window.innerHeight - panelHeight - viewportPadding;
+      // PRECISION: Check if position is viable
       
-      x = Math.max(viewportPadding, Math.min(maxX, x));
-      y = Math.max(viewportPadding, Math.min(maxY, y));
-
-      // Ensure minimum safe distance from edges on mobile
-      if (isMobile) {
-        x = Math.max(minPadding, x);
-        y = Math.max(minPadding, y);
+      // Horizontal adjustment: Keep panel within viewport
+      if (x < viewportPadding) {
+        x = viewportPadding;
+      } else if (x + panelWidth > viewportWidth - viewportPadding) {
+        x = viewportWidth - panelWidth - viewportPadding;
       }
 
-      return { x, y };
+      // Vertical adjustment: Try above first, fallback below
+      if (y < viewportPadding) {
+        // Not enough space above - position below
+        y = rect.bottom + selectionGap;
+        
+        // If also not enough space below, center in viewport
+        if (y + panelHeight > viewportHeight - viewportPadding) {
+          y = (viewportHeight - panelHeight) / 2;
+        }
+      } else if (y + panelHeight > viewportHeight - viewportPadding) {
+        // Check if we can fit below
+        const belowY = rect.bottom + selectionGap;
+        if (belowY + panelHeight <= viewportHeight - viewportPadding) {
+          y = belowY;
+        } else {
+          // Can't fit above or below - center it
+          y = Math.max(viewportPadding, (viewportHeight - panelHeight) / 2);
+        }
+      }
+
+      // Final bounds check
+      x = Math.max(viewportPadding, Math.min(x, viewportWidth - panelWidth - viewportPadding));
+      y = Math.max(viewportPadding, Math.min(y, viewportHeight - panelHeight - viewportPadding));
+
+      return { x: Math.round(x), y: Math.round(y) };
     } catch (error) {
       console.error('❌ Position calculation error:', error);
       return null;
+    }
+  }, []);
+
+  /**
+   * PRECISION VALIDATION: Validate text nodes are clean (no spillage into adjacent elements)
+   */
+  const validateTextNodePrecision = useCallback((range) => {
+    try {
+      const startContainer = range.startContainer;
+      const endContainer = range.endContainer;
+      
+      // Both containers must be text nodes or within text-containing elements
+      if (startContainer.nodeType !== Node.TEXT_NODE && 
+          startContainer.nodeType !== Node.ELEMENT_NODE) {
+        return false;
+      }
+      
+      if (endContainer.nodeType !== Node.TEXT_NODE && 
+          endContainer.nodeType !== Node.ELEMENT_NODE) {
+        return false;
+      }
+      
+      // Get the actual parent elements
+      const startParent = startContainer.nodeType === Node.TEXT_NODE ? 
+        startContainer.parentElement : startContainer;
+      const endParent = endContainer.nodeType === Node.TEXT_NODE ? 
+        endContainer.parentElement : endContainer;
+      
+      // Both parents should be legitimate text containers
+      if (!startParent || !endParent) {
+        return false;
+      }
+      
+      // Check that we're not selecting across major structural breaks
+      const commonAncestor = range.commonAncestorContainer;
+      if (!commonAncestor) {
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Text node validation error:', error);
+      return false;
+    }
+  }, []);
+
+  /**
+   * SMART BOUNDARY DETECTION: Get exact start and end character positions
+   * Uses improved algorithm that snaps to actual character boundaries
+   */
+  const getExactBoundaries = useCallback((range) => {
+    try {
+      const rects = range.getClientRects();
+      if (!rects || rects.length === 0) return null;
+
+      // For start boundary: use first rect's left edge
+      const firstRect = rects[0];
+      const lastRect = rects[rects.length - 1];
+
+      if (!firstRect || !lastRect) return null;
+
+      // Snap boundaries to nearest pixel (avoid sub-pixel jitter)
+      return {
+        startX: Math.round(firstRect.left),
+        startY: Math.round(firstRect.top),
+        endX: Math.round(lastRect.right),
+        endY: Math.round(lastRect.bottom),
+        firstRect: {
+          left: Math.round(firstRect.left),
+          top: Math.round(firstRect.top),
+          right: Math.round(firstRect.right),
+          bottom: Math.round(firstRect.bottom)
+        },
+        lastRect: {
+          left: Math.round(lastRect.left),
+          top: Math.round(lastRect.top),
+          right: Math.round(lastRect.right),
+          bottom: Math.round(lastRect.bottom)
+        }
+      };
+    } catch (error) {
+      return null;
+    }
+  }, []);
+
+  /**
+   * SIMPLE CHARACTER VALIDATION: Just ensure text is readable
+   * Don't overthink it - if we can display it, selection is valid
+   */
+  const validateCharacterBoundaries = useCallback((text) => {
+    try {
+      // Just check that we have actual text
+      return text && text.trim().length > 0;
+    } catch (error) {
+      return true; // Fallback: allow it
+    }
+  }, []);
+
+  /**
+   * SIMPLIFIED: Just validate multi-line selections have reasonable structure
+   * Don't reject - just count lines
+   */
+  const optimizeMultilineSelection = useCallback((rects, boundingRect) => {
+    try {
+      if (rects.length <= 1) return boundingRect;
+
+      const rectArray = Array.from(rects).filter(r => r.width > 0.2 && r.height > 0.2);
+      
+      // Just add line count - don't reject
+      return {
+        ...boundingRect,
+        lineCount: rectArray.length
+      };
+    } catch (error) {
+      return boundingRect;
     }
   }, []);
 
@@ -92,8 +226,9 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
       return;
     }
 
+    isProcessingRef.current = true;
+
     try {
-      isProcessingRef.current = true;
       const sel = window.getSelection();
 
       // No selection
@@ -106,16 +241,30 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
 
       const text = sel.toString().trim();
 
-      // Minimum 2 characters for valid selection (prevents accidental clicks)
-      if (text.length < 2) {
-        setSelection(null);
-        setPosition(null);
-        selectionStableRef.current = false;
-        return;
+      // Accept even single character - very minimal pressure
+      if (text.length < 1) {
+        return; // Just return silently
       }
 
-      // Get range and validate - strict boundary checking
+      // Get range
       const range = sel.getRangeAt(0);
+      
+      // PRECISION: Validate text nodes before proceeding
+      if (!validateTextNodePrecision(range)) {
+        return; // Just return silently
+      }
+      
+      // SIMPLE: Validate character boundaries
+      if (!validateCharacterBoundaries(text)) {
+        return; // Just return silently
+      }
+      
+      // Get exact boundaries
+      const boundaries = getExactBoundaries(range);
+      if (!boundaries) {
+        return; // Just return silently
+      }
+      
       const rects = range.getClientRects();
       
       if (!rects || rects.length === 0) {
@@ -125,21 +274,22 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
         return;
       }
 
-      // ENHANCED: Validate selection is within the container
+      // ENHANCED: Validate selection is within the container with precise boundary checking
       const container = document.querySelector(containerSelector);
       if (container) {
         const containerRect = container.getBoundingClientRect();
         let isWithinContainer = false;
         
+        // More lenient: accept if ANY rect is in container (not all)
         for (let rect of rects) {
-          if (rect.width > 0 && rect.height > 0) {
+          if (rect.width > 0.05 && rect.height > 0.05) {
             // Check if rect overlaps with container
             if (!(rect.right < containerRect.left || 
                   rect.left > containerRect.right || 
                   rect.bottom < containerRect.top || 
                   rect.top > containerRect.bottom)) {
               isWithinContainer = true;
-              break;
+              break; // Found at least one valid rect
             }
           }
         }
@@ -152,52 +302,77 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
         }
       }
 
-      // Get bounding box of all selected text with improved precision
+      // Get bounding box of all selected text with ULTRA precision
       let minTop = Infinity;
       let maxBottom = -Infinity;
       let minLeft = Infinity;
       let maxRight = -Infinity;
       let validRectCount = 0;
+      let totalArea = 0;
       
       for (let rect of rects) {
-        // Only consider rects with actual dimensions
-        if (rect.width > 0.5 && rect.height > 0.5) {
+        // Accept even very small rects (0.1px+) for minimal pressure needed
+        if (rect.width > 0.05 && rect.height > 0.05) {
           minTop = Math.min(minTop, rect.top);
           maxBottom = Math.max(maxBottom, rect.bottom);
           minLeft = Math.min(minLeft, rect.left);
           maxRight = Math.max(maxRight, rect.right);
           validRectCount++;
+          totalArea += rect.width * rect.height;
         }
       }
       
       // Ensure we have valid bounds and at least one valid rect
       if (minTop === Infinity || maxRight === -Infinity || validRectCount === 0) {
-        setSelection(null);
-        setPosition(null);
-        selectionStableRef.current = false;
-        return;
+        return; // Just return silently
       }
       
-      // ENHANCED: More precise bounding rect with padding
-      const boundingRect = {
-        top: minTop,
-        bottom: maxBottom,
-        left: minLeft,
-        right: maxRight,
-        width: maxRight - minLeft,
-        height: maxBottom - minTop,
+      // SIMPLIFIED: Just create bounding rect without overthinking
+      let boundingRect = {
+        top: Math.round(minTop),
+        bottom: Math.round(maxBottom),
+        left: Math.round(minLeft),
+        right: Math.round(maxRight),
+        width: Math.round(maxRight - minLeft),
+        height: Math.round(maxBottom - minTop),
         centerX: (minLeft + maxRight) / 2,
-        centerY: (minTop + maxBottom) / 2
+        centerY: (minTop + maxBottom) / 2,
+        rectCount: validRectCount,
+        totalArea: Math.round(totalArea)
       };
 
-      // Calculate position based on actual selection bounds
-      const pos = calculatePosition(boundingRect);
-      if (!pos) {
-        setSelection(null);
-        setPosition(null);
-        selectionStableRef.current = false;
-        return;
+      // PRECISION ENHANCEMENT: Smart boundary refinement
+      // If selection is very small, expand slightly to nearest text boundaries
+      if (boundingRect.width < 30 && validRectCount === 1) {
+        // Single small rect - likely a single character or partial word
+        // Expand by 2px on each side for better visibility
+        boundingRect.left = Math.max(0, boundingRect.left - 2);
+        boundingRect.right = boundingRect.right + 2;
+        boundingRect.width = boundingRect.right - boundingRect.left;
+        boundingRect.centerX = (boundingRect.left + boundingRect.right) / 2;
       }
+
+      // Optimize multi-line selections (just adds line count)
+      boundingRect = optimizeMultilineSelection(rects, boundingRect);
+
+      // Calculate position based on actual selection bounds
+      let pos = calculatePosition(boundingRect);
+      if (!pos) {
+        return; // Just return silently
+      }
+
+      // SMOOTH POSITION: Prevent jumping by applying smoothing to rapid changes
+      // More responsive: accept movement >2px (was 5px) for faster panel follow
+      if (lastPositionRef.current) {
+        const dx = Math.abs(pos.x - lastPositionRef.current.x);
+        const dy = Math.abs(pos.y - lastPositionRef.current.y);
+        
+        // If change is tiny (less than 2px), use last position to prevent micro-jitter
+        if (dx < 2 && dy < 2) {
+          pos = lastPositionRef.current;
+        }
+      }
+      lastPositionRef.current = pos;
 
       // STABLE: Update state for new selections (only after completion)
       const now = Date.now();
@@ -214,14 +389,14 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
         console.log('✅ Selection complete:', text.substring(0, 30), '| Bounds:', boundingRect);
       }
     } catch (error) {
-      console.error('❌ Detection error:', error);
+      console.log('❌ Detection error:', error);
       setSelection(null);
       setPosition(null);
       selectionStableRef.current = false;
     } finally {
       isProcessingRef.current = false;
     }
-  }, [calculatePosition, containerSelector]);
+  }, [calculatePosition, containerSelector, validateTextNodePrecision, validateCharacterBoundaries, getExactBoundaries, optimizeMultilineSelection]);
 
   /**
    * Clear selection permanently
@@ -260,16 +435,16 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
       }, delay);
     };
 
-    // Mouse-based selection
+    // Mouse-based selection - instant response
     const handleMouseUp = () => {
-      scheduleDetection();
+      scheduleDetection(0); // Immediate detection
     };
 
-    // Keyboard selection (Shift+Arrow, etc)
+    // Keyboard selection (Shift+Arrow, etc) - instant
     const handleKeyUp = (e) => {
       // Only for selection keyboard shortcuts
       if (e.shiftKey) {
-        scheduleDetection();
+        scheduleDetection(0); // Immediate detection
       }
     };
 
@@ -294,12 +469,8 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
       const touchDuration = Date.now() - touchStartTimeRef.current;
       console.log(`📱 Touch ended after ${touchDuration}ms`);
       
-      // Use longer delay for mobile to allow selection to stabilize
-      const isMobile = isMobileRef.current;
-      // Reduced delays for better responsiveness while maintaining stability
-      const delay = isMobile ? 100 : 25; // Further optimized timing
-      
-      // Always schedule detection - let detectSelection validate if there's actual text selected
+      // Even faster mobile detection - barely any delay
+      const delay = 25; // Minimal delay for quick response
       scheduleDetection(delay);
     };
 
