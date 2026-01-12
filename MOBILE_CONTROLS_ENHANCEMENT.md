@@ -7,9 +7,6 @@ Your mobile PDF reader has been enhanced with two key features:
 ### ✅ 1. **Mobile Top Bar Button Hide/Show Toggle**
 Users can now easily hide all control buttons in the mobile header with a single tap, and show them again with another tap. This provides a cleaner reading experience.
 
-### ✅ 2. **Pinch-to-Zoom Already Implemented**
-Pinch-to-zoom functionality was already present and fully functional in the mobile reader.
-
 ---
 
 ## Features Implemented
@@ -43,20 +40,6 @@ Pinch-to-zoom functionality was already present and fully functional in the mobi
 
 ---
 
-### Pinch-to-Zoom (Pre-existing Feature)
-
-Users can zoom the PDF content on mobile by:
-- **Pinch In**: Zoom out (minimum 60% of original size)
-- **Pinch Out**: Zoom in (maximum 200% of original size)
-- **Smooth Scaling**: Incremental zoom for smooth experience
-
-#### Desktop Equivalents
-- `Ctrl +` / `Cmd +`: Zoom in
-- `Ctrl -` / `Cmd -`: Zoom out
-- Works on desktop via zoom buttons
-- Mobile uses pinch gestures instead (zoom buttons hidden on mobile)
-
----
 
 ## Technical Implementation
 
@@ -128,8 +111,7 @@ This boolean state tracks whether mobile controls should be displayed.
 2. **Tap ⊕ button** → All secondary controls hide for cleaner view
 3. **Read PDF** → More screen space for content
 4. **Tap ⊖ button** → Controls reappear
-5. **Use pinch gesture** → Zoom in/out without buttons
-6. **Tap X button** → Close always available
+5. **Tap X button** → Close always available
 
 ### Responsive Behavior
 
@@ -139,26 +121,6 @@ This boolean state tracks whether mobile controls should be displayed.
 | 640-768px | Tablet | ✅ Yes | Secondary controls hidden |
 | 480-640px | Phone | ✅ Yes | Secondary controls hidden |
 | < 480px | Small Phone | ✅ Yes | Secondary controls hidden |
-
----
-
-## Zoom Behavior
-
-### Mobile Pinch-to-Zoom
-```javascript
-// Two-finger touch distance tracking
-- Initial touch: Calculate distance between fingers
-- Move fingers: Update scale based on distance change
-- Scale range: 0.6x (minimum) to 2.0x (maximum)
-- Smooth incremental zoom: No jumpy transitions
-```
-
-### Implementation Details
-- Uses `touchstart`, `touchmove`, `touchend` events
-- Calculates Euclidean distance between two fingers
-- Applies granular zoom factor (1 + diff/500)
-- Momentum scrolling enabled: `-webkit-overflow-scrolling: touch`
-- Touch-action set to `manipulation` for optimal performance
 
 ---
 
@@ -191,8 +153,6 @@ This boolean state tracks whether mobile controls should be displayed.
 - [x] Page indicator always visible
 - [x] Close button always visible
 - [x] Audio status indicator remains visible
-- [x] Pinch-to-zoom works on touch devices
-- [x] Zoom range enforced (0.6x - 2.0x)
 - [x] Desktop zoom buttons work (Ctrl +/-)
 - [x] No console errors or warnings
 - [x] CSS applies correctly across breakpoints
@@ -241,10 +201,9 @@ Potential improvements for future versions:
 
 1. **Auto-hide on idle**: Hide controls after 3 seconds of inactivity
 2. **Persistent preferences**: Save user's toggle preference to localStorage
-3. **Gesture customization**: Allow users to customize pinch gesture sensitivity
-4. **Animation transitions**: Add smooth fade-in/out when toggling
-5. **Mobile menu overlay**: Alternative hamburger menu for more options
-6. **Double-tap zoom**: Standard double-tap to zoom to fit width
+3. **Animation transitions**: Add smooth fade-in/out when toggling
+4. **Mobile menu overlay**: Alternative hamburger menu for more options
+5. **Double-tap zoom**: Standard double-tap to zoom to fit width
 
 ---
 
@@ -254,11 +213,6 @@ Potential improvements for future versions:
 - Check viewport width (must be ≤768px)
 - Clear browser cache
 - Check console for CSS errors
-
-### Pinch-to-zoom not working
-- Device must support touch events
-- Browser must allow `touch-action: manipulation`
-- PDF must be loaded from valid source
 
 ### Controls hidden and can't show
 - Look for ⊖ button in top-right area of header
@@ -271,7 +225,6 @@ Potential improvements for future versions:
 
 Your mobile PDF reader now has a professional, clean-reading interface with the ability to:
 - ✨ Hide secondary controls for distraction-free reading
-- 🔍 Pinch-to-zoom for flexible content viewing
 - 📱 Optimized mobile experience across all devices
 - ♿ Full accessibility and keyboard support
 

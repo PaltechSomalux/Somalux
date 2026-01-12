@@ -299,7 +299,7 @@ Close Button:     44x44px minimum
 - Verify all devices work correctly
 
 ### Long-term (Future)
-- Add mobile-specific features (swipe, pinch)
+- Add mobile-specific features (swipe)
 - Implement mobile annotation
 - Add mobile sharing button
 - Consider offline highlight storage

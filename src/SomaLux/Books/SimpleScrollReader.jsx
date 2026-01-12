@@ -10,9 +10,8 @@ import SummaryModal from './SummaryModal';
 import DownloadModal from './DownloadModal';
 import StatisticsModal from './StatisticsModal';
 import SettingsModal from './SettingsModal';
-import NoteModal from './NoteModal';
 import TextSelectionPanel from './TextSelectionPanel';
-import useTextSelection from './useTextSelection';
+import useWPSPrecisionSelectionPerfect from './useWPSPrecisionSelectionPerfect';
 import { generateSummaryDocument } from './utils/generateWordDoc';
 import './SimpleScrollReader.css';
 
@@ -50,9 +49,6 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const [showTOC, setShowTOC] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [audioCurrentPage, setAudioCurrentPage] = useState(1);
-  const [touchStartDistance, setTouchStartDistance] = useState(0);
-  const [visiblePages, setVisiblePages] = useState(new Set([1]));
-  const [loadedPages, setLoadedPages] = useState(new Set([1, 2, 3])); // Progressive page loading
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [extractedText, setExtractedText] = useState('');
@@ -67,25 +63,20 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [statisticsModalOpen, setStatisticsModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [bookmarksPageOpen, setBookmarksPageOpen] = useState(false);
   const [notes, setNotes] = useState(new Map());
   const [readingStartTime, setReadingStartTime] = useState(new Date());
   const [totalReadingTime, setTotalReadingTime] = useState(0);
   const [fontSize, setFontSize] = useState(16);
   const [theme, setTheme] = useState('dark');
-  const [mobileButtonsVisible, setMobileButtonsVisible] = useState(false);
-  const [pageFlipMode, setPageFlipMode] = useState(false);
-  const [autoFlipEnabled, setAutoFlipEnabled] = useState(false);
-  const [autoFlipSpeed, setAutoFlipSpeed] = useState(3); // seconds between page flips
-  
-  // Use custom hook for high-precision text selection
-  console.log('🔧 SimpleScrollReader: About to call useTextSelection hook');
-  const { selection, position, clearSelection, selectedText } = useTextSelection('.simple-scroll-reader');
-  console.log('🔧 SimpleScrollReader: useTextSelection hook returned', { selection, position });
+  const [mobileButtonsVisible, setMobileButtonsVisible] = useState(window.innerWidth > 768 ? true : false); // Show on desktop, hide on mobile by default
+
+  // Use perfect WPS-grade selection with uniform styling support (all colors/styles)
+  console.log('🔧 SimpleScrollReader: About to call useWPSPrecisionSelectionPerfect hook');
+  const { selection, position, clearSelection, isSelecting, lensData, bounds } = useWPSPrecisionSelectionPerfect('.simple-scroll-reader');
+  console.log('🔧 SimpleScrollReader: useWPSPrecisionSelectionPerfect hook returned', { selection, position, isSelecting });
   const containerRef = useRef(null);
   const scrollAreaRef = useRef(null);
-  const pageFlipContainerRef = useRef(null);
   const pageRefsMap = useRef({});
   const scaleRef = useRef(1.0);
   const audioRef = useRef(null);
@@ -94,12 +85,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const pausedPageRef = useRef(null);
   const pausedSentenceIndexRef = useRef(0);
   
-  // Swipe detection for page flip
-  const touchStartRef = useRef({ x: 0, y: 0 });
-  const touchEndRef = useRef({ x: 0, y: 0 });
-  
-  // Edge optimization: Track visible pages with ref to avoid re-renders
-  const visiblePagesRef = useRef(new Set([1]));
+  // Edge optimization: Scroll tracking
   const lastScrollTimeRef = useRef(0);
   const scrollRAFRef = useRef(null);
 
@@ -156,82 +142,9 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
     }
   }, []);
 
-  // Auto-adjust scale for mobile flip mode to fill entire screen
-  useEffect(() => {
-    if (!pageFlipMode || !numPages) return;
 
-    const adjustScaleForMobile = () => {
-      const isMobile = window.innerWidth < 768;
-      if (!isMobile) {
-        scaleRef.current = 1.0;
-        setScale(1.0);
-        return;
-      }
-
-      try {
-        const header = document.querySelector('.ssr-header');
-        
-        // Standard PDF page dimensions in points (8.5" x 11")
-        const PAGE_WIDTH = 612;
-        const PAGE_HEIGHT = 792;
-        
-        // Get available viewport
-        const viewportWidth = window.innerWidth;
-        let viewportHeight = window.innerHeight;
-        
-        // Subtract header if present
-        if (header) {
-          viewportHeight -= header.offsetHeight;
-        }
-        
-        // Validate dimensions
-        if (viewportWidth <= 0 || viewportHeight <= 0) {
-          setScale(1.0);
-          return;
-        }
-        
-        // Calculate responsive scale - fit page to viewport
-        const scaleByWidth = viewportWidth / PAGE_WIDTH;
-        const scaleByHeight = viewportHeight / PAGE_HEIGHT;
-        
-        // Use minimum to ensure full page fits perfectly
-        const optimalScale = Math.min(scaleByWidth, scaleByHeight);
-        
-        // Clamp between 0.5 and 2.5 for reasonable display
-        const finalScale = Math.max(0.5, Math.min(2.5, optimalScale));
-        
-        scaleRef.current = finalScale;
-        setScale(finalScale);
-      } catch (error) {
-        console.warn('Scale calculation error:', error);
-        setScale(1.0);
-      }
-    };
-
-    // Calculate immediately and on resize
-    adjustScaleForMobile();
-    window.addEventListener('resize', adjustScaleForMobile);
-    
-    return () => {
-      window.removeEventListener('resize', adjustScaleForMobile);
-    };
-  }, [pageFlipMode, numPages]);
 
   // Add or update note for current page
-  const addNote = (noteData) => {
-    const newNotes = new Map(notes);
-    newNotes.set(currentPage, {
-      text: typeof noteData === 'string' ? noteData : noteData.text,
-      category: typeof noteData === 'object' ? noteData.category : 'general',
-      color: typeof noteData === 'object' ? noteData.color : 'blue',
-      tags: typeof noteData === 'object' ? noteData.tags : [],
-      timestamp: new Date().toISOString(),
-      pageNumber: currentPage
-    });
-    setNotes(newNotes);
-    setNoteModalOpen(false);
-  };
-
   // Get note for current page
   const getCurrentPageNote = () => {
     return notes.get(currentPage);
@@ -254,65 +167,16 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   };
 
   const zoomIn = useCallback(() => {
-    scaleRef.current = Math.min(2.0, scaleRef.current + 0.05);
+    scaleRef.current = Math.min(3.0, scaleRef.current + 0.075);
     setScale(scaleRef.current);
   }, []);
   
   const zoomOut = useCallback(() => {
-    scaleRef.current = Math.max(0.6, scaleRef.current - 0.05);
+    scaleRef.current = Math.max(0.75, scaleRef.current - 0.075);
     setScale(scaleRef.current);
   }, []);
 
-  // Pinch zoom support - only on scroll area
-  useEffect(() => {
-    const handleTouchStart = (e) => {
-      if (e.touches.length === 2) {
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        setTouchStartDistance(distance);
-      }
-    };
-
-    const handleTouchMove = (e) => {
-      if (e.touches.length === 2 && touchStartDistance > 0) {
-        e.preventDefault();
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const diff = distance - touchStartDistance;
-
-        if (Math.abs(diff) > 2) {
-          // Smooth zoom: calculate incremental scale change based on touch distance
-          const zoomFactor = 1 + (diff / 500); // Granular zoom factor
-          scaleRef.current = Math.max(0.6, Math.min(2.0, scaleRef.current * zoomFactor));
-          setScale(scaleRef.current);
-          setTouchStartDistance(distance);
-        }
-      }
-    };
-
-    const handleTouchEnd = () => {
-      setTouchStartDistance(0);
-    };
-
-    const scrollArea = scrollAreaRef.current;
-    if (scrollArea) {
-      scrollArea.addEventListener('touchstart', handleTouchStart, { passive: false });
-      scrollArea.addEventListener('touchmove', handleTouchMove, { passive: false });
-      scrollArea.addEventListener('touchend', handleTouchEnd);
-    }
-
-    return () => {
-      if (scrollArea) {
-        scrollArea.removeEventListener('touchstart', handleTouchStart);
-        scrollArea.removeEventListener('touchmove', handleTouchMove);
-        scrollArea.removeEventListener('touchend', handleTouchEnd);
-      }
-    };
-  }, [touchStartDistance]);
-
-  // Ultra-optimized scroll handler - Edge-like smoothness
+  // Ultra-optimized scroll handler - tracks current page
   useEffect(() => {
     const handleScroll = () => {
       // Skip scroll updates during document loading to prevent flickering
@@ -331,10 +195,9 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
         
         const scrollTop = scrollAreaRef.current.scrollTop;
         const containerHeight = scrollAreaRef.current.clientHeight;
-        const visible = new Set();
         let currentPageFound = false;
 
-        // Only iterate visible pages + 1 buffer
+        // Find current page by checking which page is in viewport center
         for (let page = 1; page <= numPages; page++) {
           const pageElement = pageRefsMap.current[page];
           if (!pageElement) continue;
@@ -343,43 +206,10 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
           const elementTop = scrollTop + rect.top;
           const elementBottom = elementTop + rect.height;
           
-          // Calculate visible range with smaller buffer
-          const isVisible = elementBottom > scrollTop - 500 && elementTop < scrollTop + containerHeight + 500;
-          
-          if (isVisible) {
-            visible.add(page);
-            
-            // Update current page only if in viewport center
-            if (!currentPageFound && elementTop <= scrollTop + containerHeight / 2 && elementBottom >= scrollTop + containerHeight / 2) {
-              setCurrentPage(page);
-              currentPageFound = true;
-            }
-          }
-        }
-        
-        // Only update visible pages if changed
-        if (visible.size !== visiblePagesRef.current.size || 
-            ![...visible].every(p => visiblePagesRef.current.has(p))) {
-          visiblePagesRef.current = visible;
-          setVisiblePages(visible);
-        }
-
-        // Load more pages if approaching the end of loaded pages
-        const maxLoadedPage = Math.max(...loadedPages);
-        const visiblePages = [...visible];
-        if (visiblePages.length > 0) {
-          const maxVisiblePage = Math.max(...visiblePages);
-          // Load more pages when user gets within 5 pages of the end
-          if (maxVisiblePage > maxLoadedPage - 5 && maxLoadedPage < numPages) {
-            setLoadedPages(prev => {
-              const newLoaded = new Set(prev);
-              // Load more pages ahead to prevent stuttering
-              const pagesToAdd = Math.min(10, numPages - maxLoadedPage);
-              for (let i = 1; i <= pagesToAdd; i++) {
-                newLoaded.add(maxLoadedPage + i);
-              }
-              return newLoaded;
-            });
+          // Update current page only if in viewport center
+          if (!currentPageFound && elementTop <= scrollTop + containerHeight / 2 && elementBottom >= scrollTop + containerHeight / 2) {
+            setCurrentPage(page);
+            currentPageFound = true;
           }
         }
       });
@@ -398,52 +228,9 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
         cancelAnimationFrame(scrollRAFRef.current);
       }
     };
-  }, [numPages, isLoading, loadedPages]);
-
-  // Progressive page loading - load pages ahead of current viewport
-  useEffect(() => {
-    if (!numPages || isLoading) return;
-
-    // Load more pages quickly after initial render
-    const timeouts = [];
-    
-    // Wave 1: Load next 2 pages after 200ms
-    timeouts.push(setTimeout(() => {
-      setLoadedPages(prev => {
-        const newLoaded = new Set(prev);
-        for (let i = 4; i <= Math.min(5, numPages); i++) {
-          newLoaded.add(i);
-        }
-        return newLoaded;
-      });
-    }, 200));
-
-    // Wave 2: Load next batch after 500ms
-    timeouts.push(setTimeout(() => {
-      setLoadedPages(prev => {
-        const newLoaded = new Set(prev);
-        for (let i = 6; i <= Math.min(10, numPages); i++) {
-          newLoaded.add(i);
-        }
-        return newLoaded;
-      });
-    }, 500));
-
-    // Wave 3: Load next batch after 900ms
-    timeouts.push(setTimeout(() => {
-      setLoadedPages(prev => {
-        const newLoaded = new Set(prev);
-        for (let i = 11; i <= Math.min(20, numPages); i++) {
-          newLoaded.add(i);
-        }
-        return newLoaded;
-      });
-    }, 900));
-
-    return () => {
-      timeouts.forEach(t => clearTimeout(t));
-    };
   }, [numPages, isLoading]);
+
+
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -457,15 +244,6 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
           e.preventDefault();
           zoomOut();
         }
-      }
-      // Handle arrow keys for page navigation
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        goToNextPage();
-      }
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        goToPreviousPage();
       }
     };
 
@@ -500,133 +278,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
     return Array.from(bookmarks).sort((a, b) => a - b);
   };
 
-  // Page flip navigation - memoized to prevent re-renders
-  const goToPreviousPage = useCallback(() => {
-    setCurrentPage(prev => prev > 1 ? prev - 1 : prev);
-  }, []);
 
-  const goToNextPage = useCallback(() => {
-    setCurrentPage(prev => {
-      if (numPages && prev < numPages) {
-        return prev + 1;
-      } else if (numPages && prev >= numPages && autoFlipEnabled) {
-        setAutoFlipEnabled(false);
-      }
-      return prev;
-    });
-  }, [numPages, autoFlipEnabled]);
-
-  // Auto-flip effect
-  useEffect(() => {
-    if (!autoFlipEnabled || !pageFlipMode || !numPages) {
-      return;
-    }
-
-    // Stop auto-flip at the last page
-    if (currentPage >= numPages) {
-      setAutoFlipEnabled(false);
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setCurrentPage(prev => {
-        if (prev < numPages) {
-          return prev + 1;
-        } else {
-          // Stop auto-flip at the end
-          setAutoFlipEnabled(false);
-          return prev;
-        }
-      });
-    }, autoFlipSpeed * 1000);
-
-    return () => clearInterval(timer);
-  }, [autoFlipEnabled, pageFlipMode, numPages, autoFlipSpeed, currentPage]);
-
-  // Page flip mode: only respond to horizontal swipes when in flip mode
-  useEffect(() => {
-    if (!pageFlipMode) return; // Only attach listeners when in flip mode
-    
-    const handleTouchStart = (e) => {
-      e.stopPropagation();
-      touchStartRef.current = {
-        x: e.changedTouches[0].clientX,
-        y: e.changedTouches[0].clientY,
-        time: Date.now()
-      };
-    };
-
-    const handleTouchEnd = (e) => {
-      e.stopPropagation();
-      if (e.changedTouches.length === 0) return;
-      
-      touchEndRef.current = {
-        x: e.changedTouches[0].clientX,
-        y: e.changedTouches[0].clientY,
-        time: Date.now()
-      };
-
-      const diffX = touchStartRef.current.x - touchEndRef.current.x;
-      const timeDiff = touchEndRef.current.time - touchStartRef.current.time;
-      
-      if (timeDiff < 500 && Math.abs(diffX) > 50) {
-        e.preventDefault();
-        if (diffX > 0) {
-          goToNextPage();
-        } else {
-          goToPreviousPage();
-        }
-      }
-    };
-
-    const scrollArea = scrollAreaRef.current;
-    if (scrollArea) {
-      scrollArea.addEventListener('touchstart', handleTouchStart, { passive: false });
-      scrollArea.addEventListener('touchend', handleTouchEnd, { passive: false });
-    }
-
-    return () => {
-      if (scrollArea) {
-        scrollArea.removeEventListener('touchstart', handleTouchStart);
-        scrollArea.removeEventListener('touchend', handleTouchEnd);
-      }
-    };
-  }, [pageFlipMode, numPages, currentPage]);
-
-  // Removed auto wheel mode switching - prevents lag from constant state updates
-
-  // Handle mode switching with instant scroll position restoration
-  useEffect(() => {
-    if (pageFlipMode) {
-      // Switching TO flip mode - instant, no re-render needed
-      return;
-    }
-    
-    // Switching TO scroll mode - pre-render minimal pages
-    if (numPages) {
-      const pagesToLoad = new Set();
-      for (let i = Math.max(1, currentPage - 1); i <= Math.min(numPages, currentPage + 1); i++) {
-        pagesToLoad.add(i);
-      }
-      // Only update if actually changed
-      if (pagesToLoad.size !== visiblePagesRef.current.size) {
-        visiblePagesRef.current = pagesToLoad;
-        setVisiblePages(pagesToLoad);
-      }
-    }
-    
-    // Then restore scroll position on next frame
-    if (scrollAreaRef.current) {
-      const frame = requestAnimationFrame(() => {
-        const pageElement = pageRefsMap.current[currentPage];
-        if (pageElement && scrollAreaRef.current) {
-          const offset = pageElement.getBoundingClientRect().top - scrollAreaRef.current.getBoundingClientRect().top + scrollAreaRef.current.scrollTop;
-          scrollAreaRef.current.scrollTop = offset;
-        }
-      });
-      return () => cancelAnimationFrame(frame);
-    }
-  }, [pageFlipMode, currentPage, numPages]);
 
   // Open summary modal for a page
   const openSummary = (pageNumber) => {
@@ -873,16 +525,16 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
 
   // Copy selected text
   const copyText = async () => {
-    if (selectedText && selectedText.length > 0) {
+    if (selection && selection.text && selection.text.length > 0) {
       try {
-        await navigator.clipboard.writeText(selectedText);
+        await navigator.clipboard.writeText(selection.text);
         console.log('✅ Text copied to clipboard');
         // Panel stays open with feedback animation
       } catch (err) {
         console.error('❌ Failed to copy:', err);
         // Fallback
         const textarea = document.createElement('textarea');
-        textarea.value = selectedText;
+        textarea.value = selection.text;
         document.body.appendChild(textarea);
         textarea.select();
         try {
@@ -898,7 +550,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
 
   // Add highlight for selected text
   const addHighlight = (color) => {
-    if (!selectedText || selectedText.length === 0) return;
+    if (!selection || !selection.text || selection.text.length === 0) return;
 
     try {
       const sel = window.getSelection();
@@ -1005,7 +657,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
         }
       });
 
-      console.log(`✨ Highlighted: "${selectedText.substring(0, 30)}..." in ${color}`);
+      console.log(`✨ Highlighted: "${selection.text.substring(0, 30)}..." in ${color}`);
       sel.removeAllRanges();
     } catch (err) {
       console.error('❌ Highlight failed:', err);
@@ -1048,15 +700,6 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
             {/* Container for buttons that can be hidden/shown on mobile */}
             <div className={`ssr-mobile-controls-wrapper ${mobileButtonsVisible ? 'visible' : 'hidden'}`}>
             
-            {/* Flip/Scroll Mode Toggle Button */}
-            <button 
-              onClick={() => setPageFlipMode(!pageFlipMode)}
-              className={`ssr-icon-btn ${pageFlipMode ? 'active' : ''}`}
-              title={pageFlipMode ? 'Switch to continuous scroll' : 'Switch to page flip'}
-            >
-              {pageFlipMode ? '📑' : '📜'}
-            </button>
-            
             {/* Page indicator - hidden when panel is hidden */}
             {numPages && (
               <div className="ssr-page-indicator">
@@ -1087,15 +730,6 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
               title={bookmarks.has(currentPage) ? 'Remove bookmark' : 'Add bookmark'}
             >
               <FiBookmark size={18} fill={bookmarks.has(currentPage) ? 'currentColor' : 'none'} />
-            </button>
-
-            {/* Add Note button */}
-            <button 
-              onClick={() => setNoteModalOpen(true)} 
-              className={`ssr-icon-btn ${getCurrentPageNote() ? 'active' : ''}`}
-              title="Add or edit note"
-            >
-              <FiEdit3 size={18} />
             </button>
 
             {/* Settings button */}
@@ -1153,6 +787,9 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
             <button onClick={zoomOut} className="ssr-icon-btn ssr-zoom-btn" title="Zoom out (Ctrl + -)">
               <FiZoomOut size={18} />
             </button>
+            <div className="ssr-zoom-percentage" title="Current zoom level">
+              {Math.round((scale / 1.5) * 100)}%
+            </div>
             <button onClick={zoomIn} className="ssr-icon-btn ssr-zoom-btn" title="Zoom in (Ctrl + +)">
               <FiZoomIn size={18} />
             </button>
@@ -1248,7 +885,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
           )}
 
           {/* Scroll area - continuous pages */}
-          <div className="ssr-scroll-area" ref={scrollAreaRef}>
+          <div className="ssr-scroll-area simple-scroll-reader" ref={scrollAreaRef}>
             {!hasPdfSource ? (
               <div className="ssr-error" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '600px', gap: '20px', textAlign: 'center', padding: '20px' }}>
                 <div style={{ fontSize: '48px' }}>📄</div>
@@ -1294,60 +931,10 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                   </div>
                 }
               >
-                {/* Page Flip Mode - Always rendered, shown/hidden with CSS */}
-                <div className={`ssr-mode-container ssr-flip-mode ${pageFlipMode ? 'visible' : 'hidden'}`}>
-                  <div className="ssr-page-flip-container" ref={pageFlipContainerRef}>
-                    {numPages && (
-                      <div className="ssr-page-flip-wrapper">
-                        <div className="ssr-single-page">
-                          <Page
-                            pageNumber={currentPage}
-                            scale={scale}
-                            renderTextLayer={true}
-                            renderAnnotationLayer={false}
-                            loading=""
-                            onRenderError={(error) => {
-                              console.warn('PDF page render error:', error?.message || error);
-                              setPdfError(true);
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Scroll Mode - Always rendered, shown/hidden with CSS */}
-                <div className={`ssr-mode-container ssr-scroll-mode ${pageFlipMode ? 'hidden' : 'visible'}`}>
+                {/* Scroll Mode - Only continuous scrolling */}
+                <div className="ssr-scroll-area simple-scroll-reader" ref={scrollAreaRef}>
                   {numPages && Array.from({ length: numPages }, (_, idx) => {
                     const pageNum = idx + 1;
-                    // Only render loaded pages
-                    if (!loadedPages.has(pageNum)) {
-                      return (
-                        <div 
-                          key={pageNum} 
-                          className="ssr-page-placeholder"
-                          ref={(el) => {
-                            if (el) pageRefsMap.current[pageNum] = el;
-                          }}
-                          style={{ height: '800px' }}
-                        />
-                      );
-                    }
-                    
-                    // If visible, render the page; otherwise placeholder
-                    if (!visiblePages.has(pageNum)) {
-                      return (
-                        <div 
-                          key={pageNum} 
-                          className="ssr-page-placeholder"
-                          ref={(el) => {
-                            if (el) pageRefsMap.current[pageNum] = el;
-                          }}
-                          style={{ height: '800px' }}
-                        />
-                      );
-                    }
                     
                     return (
                       <div 
@@ -1430,15 +1017,6 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
           onClose={() => setSettingsModalOpen(false)}
         />
 
-        {/* Note Modal */}
-        <NoteModal
-          isOpen={noteModalOpen}
-          pageNumber={currentPage}
-          existingNote={getCurrentPageNote()}
-          onAddNote={addNote}
-          onClose={() => setNoteModalOpen(false)}
-        />
-
         {/* Bookmarks Page/Modal for Mobile */}
         {bookmarksPageOpen && (
           <div className="ssr-bookmarks-page-overlay">
@@ -1463,7 +1041,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                     {getBookmarkedPages().map((page, index) => (
                       <div
                         key={`bookmark-page-${page}`}
-                        className={`ssr-bookmarks-page-item ${currentPage === page ? 'active' : ''}`}
+                        className={`ssr-bookmarks-page-item ${currentPage === page ? 'active' : ''} ${notes.get(page) ? 'has-note' : ''}`}
                         style={{ animationDelay: `${index * 0.05}s` }}
                       >
                         <div 
@@ -1475,28 +1053,22 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                         >
                           <div className="ssr-bookmarks-page-item-number-box">
                             <span className="ssr-bookmarks-page-item-number">{page}</span>
+                            {notes.get(page) && (
+                              <span className="ssr-bookmarks-page-item-note-tick">✓</span>
+                            )}
                           </div>
                           <div className="ssr-bookmarks-page-item-details">
                             <div className="ssr-bookmarks-page-item-title">Page {page}</div>
                             {notes.get(page) && (
                               <div className="ssr-bookmarks-page-item-note-preview">
-                                {notes.get(page).substring(0, 35)}
+                                <span className="ssr-bookmarks-page-item-note-icon">📝</span>
+                                {notes.get(page).text ? notes.get(page).text.substring(0, 50) : notes.get(page).substring(0, 50)}
                               </div>
                             )}
                           </div>
                           {currentPage === page && <span className="ssr-bookmarks-page-item-reading">Reading</span>}
                         </div>
                         <div className="ssr-bookmarks-page-item-actions">
-                          <button
-                            className="ssr-bookmarks-page-action-btn ssr-bookmarks-page-note-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setNoteModalOpen(true);
-                            }}
-                            title={notes.get(page) ? 'Edit note' : 'Add note'}
-                          >
-                            📝
-                          </button>
                           <button
                             className="ssr-bookmarks-page-action-btn ssr-bookmarks-page-summary-btn"
                             onClick={(e) => {
@@ -1550,10 +1122,11 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
       {selection && position && (
         <TextSelectionPanel
           position={position}
-          selectedText={selectedText}
+          selectedText={selection.text}
           onCopy={copyText}
           onHighlight={addHighlight}
           onClose={clearSelection}
+          summaryModalOpen={summaryModalOpen}
         />
       )}
     </div>

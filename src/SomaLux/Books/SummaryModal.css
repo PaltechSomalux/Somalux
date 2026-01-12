@@ -9,6 +9,8 @@
   justify-content: center;
   z-index: 2000;
   padding: 16px;
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .summary-modal-content {
@@ -23,6 +25,7 @@
   max-height: 80vh;
   overflow: hidden;
   color: #e9edef;
+  contain: layout style paint;
 }
 
 /* Header */
@@ -174,10 +177,14 @@
 .summary-modal-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 16px;
   font-size: 14px;
   line-height: 1.6;
   color: #d1d5db;
+  overscroll-behavior: contain;
+  contain: content;
+  -webkit-overflow-scrolling: touch;
 }
 
 .summary-text p {

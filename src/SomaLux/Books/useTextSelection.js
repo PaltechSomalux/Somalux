@@ -83,8 +83,8 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
   }, []);
 
   /**
-   * Core selection detection - STABLE
-   * Only updates state if valid selection detected
+   * Core selection detection - ENHANCED FOR PRECISION
+   * Only updates state if valid selection detected within container
    */
   const detectSelection = useCallback(() => {
     // Prevent duplicate processing
@@ -125,36 +125,69 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
         return;
       }
 
-      // Get bounding box of all selected text
+      // ENHANCED: Validate selection is within the container
+      const container = document.querySelector(containerSelector);
+      if (container) {
+        const containerRect = container.getBoundingClientRect();
+        let isWithinContainer = false;
+        
+        for (let rect of rects) {
+          if (rect.width > 0 && rect.height > 0) {
+            // Check if rect overlaps with container
+            if (!(rect.right < containerRect.left || 
+                  rect.left > containerRect.right || 
+                  rect.bottom < containerRect.top || 
+                  rect.top > containerRect.bottom)) {
+              isWithinContainer = true;
+              break;
+            }
+          }
+        }
+        
+        if (!isWithinContainer) {
+          setSelection(null);
+          setPosition(null);
+          selectionStableRef.current = false;
+          return;
+        }
+      }
+
+      // Get bounding box of all selected text with improved precision
       let minTop = Infinity;
       let maxBottom = -Infinity;
       let minLeft = Infinity;
       let maxRight = -Infinity;
+      let validRectCount = 0;
       
       for (let rect of rects) {
-        if (rect.width > 0 && rect.height > 0) {
+        // Only consider rects with actual dimensions
+        if (rect.width > 0.5 && rect.height > 0.5) {
           minTop = Math.min(minTop, rect.top);
           maxBottom = Math.max(maxBottom, rect.bottom);
           minLeft = Math.min(minLeft, rect.left);
           maxRight = Math.max(maxRight, rect.right);
+          validRectCount++;
         }
       }
       
-      // Ensure we have valid bounds
-      if (minTop === Infinity || maxRight === -Infinity) {
+      // Ensure we have valid bounds and at least one valid rect
+      if (minTop === Infinity || maxRight === -Infinity || validRectCount === 0) {
         setSelection(null);
         setPosition(null);
         selectionStableRef.current = false;
         return;
       }
       
+      // ENHANCED: More precise bounding rect with padding
       const boundingRect = {
         top: minTop,
         bottom: maxBottom,
         left: minLeft,
         right: maxRight,
         width: maxRight - minLeft,
-        height: maxBottom - minTop
+        height: maxBottom - minTop,
+        centerX: (minLeft + maxRight) / 2,
+        centerY: (minTop + maxBottom) / 2
       };
 
       // Calculate position based on actual selection bounds
@@ -174,10 +207,11 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
           text,
           range,
           timestamp: now,
+          rects: boundingRect, // Store precise bounds
         });
         setPosition(pos);
         selectionStableRef.current = true;
-        console.log('✅ Selection complete:', text.substring(0, 30));
+        console.log('✅ Selection complete:', text.substring(0, 30), '| Bounds:', boundingRect);
       }
     } catch (error) {
       console.error('❌ Detection error:', error);
@@ -187,7 +221,7 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
     } finally {
       isProcessingRef.current = false;
     }
-  }, [calculatePosition]);
+  }, [calculatePosition, containerSelector]);
 
   /**
    * Clear selection permanently
@@ -252,7 +286,7 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
       // We'll allow selection either way
     };
 
-    // Touch selection (mobile) - FIXED: Always attempt detection
+    // Touch selection (mobile) - ENHANCED: Better precision for mobile
     const handleTouchEnd = () => {
       if (!touchStartedRef) return;
       touchStartedRef = false;
@@ -262,7 +296,8 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
       
       // Use longer delay for mobile to allow selection to stabilize
       const isMobile = isMobileRef.current;
-      const delay = isMobile ? 150 : 50; // Reduced from 200ms to 150ms for better responsiveness
+      // Reduced delays for better responsiveness while maintaining stability
+      const delay = isMobile ? 100 : 25; // Further optimized timing
       
       // Always schedule detection - let detectSelection validate if there's actual text selected
       scheduleDetection(delay);
@@ -270,23 +305,23 @@ const useTextSelection = (containerSelector = '.fast-reader-content') => {
 
     // Pointer events (hybrid devices)
     const handlePointerUp = () => {
-      scheduleDetection();
+      scheduleDetection(15); // Faster response for pointer
     };
 
-    // Selection change event for keyboard-based selection
+    // Selection change event for keyboard-based selection with immediate response
     const handleSelectionChange = () => {
-      // Debounce selection changes
+      // Immediate detection on selection change for better precision
       const now = Date.now();
-      if (now - lastDetectionTimeRef > 50) {
-        scheduleDetection(25);
+      if (now - lastDetectionTimeRef > 25) {
+        scheduleDetection(0); // No delay for selection change
       }
     };
 
     // Context menu for iOS long-press
     const handleContextMenu = () => {
       console.log('📋 Context menu detected (iOS long-press)');
-      // Delay detection to allow iOS context menu to complete
-      scheduleDetection(200); // Reduced from 250ms
+      // Faster detection for context menu
+      scheduleDetection(100); // Reduced from 200ms
     };
 
     // ATTACH TO DOCUMENT - Global listeners for all selection methods

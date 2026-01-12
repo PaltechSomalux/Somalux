@@ -382,70 +382,7 @@
   flex-wrap: wrap;
 }
 
-.highlight-btn {
-  width: 32px;
-  height: 32px;
-  border: 2px solid #e0e0e0;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 18px;
-  transition: all 0.15s ease;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.highlight-btn:hover {
-  border-color: #999;
-  transform: scale(1.05);
-}
-
-.highlight-btn.highlight-yellow {
-  color: #FFC107;
-}
-
-.highlight-btn.highlight-yellow:hover {
-  background: rgba(255, 193, 7, 0.1);
-  border-color: #FFC107;
-}
-
-.highlight-btn.highlight-green {
-  color: #4CAF50;
-}
-
-.highlight-btn.highlight-green:hover {
-  background: rgba(76, 175, 80, 0.1);
-  border-color: #4CAF50;
-}
-
-.highlight-btn.highlight-blue {
-  color: #2196F3;
-}
-
-.highlight-btn.highlight-blue:hover {
-  background: rgba(33, 150, 243, 0.1);
-  border-color: #2196F3;
-}
-
-.highlight-btn.highlight-pink {
-  color: #E91E63;
-}
-
-.highlight-btn.highlight-pink:hover {
-  background: rgba(233, 30, 99, 0.1);
-  border-color: #E91E63;
-}
-
-.highlight-btn.highlight-orange {
-  color: #FF9800;
-}
-
-.highlight-btn.highlight-orange:hover {
-  background: rgba(255, 152, 0, 0.1);
-  border-color: #FF9800;
-}
+/* Highlight button styles removed - using TextSelectionPanel highlight only */
 
 /* Copy feedback animation */
 @keyframes copyPulse {

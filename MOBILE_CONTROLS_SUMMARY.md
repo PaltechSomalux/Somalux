@@ -14,13 +14,6 @@ A simple `⊕` / `⊖` button that appears only on mobile devices (screen width 
 - Show controls again with a single tap
 - Always keep the close button and page indicator visible
 
-### 2. **Pinch-to-Zoom Support** (ENHANCED!)
-The existing pinch-to-zoom functionality is now fully optimized and well-documented:
-- Two-finger pinch gesture to zoom in/out
-- Smooth, responsive zoom behavior
-- Scale range: 60% to 200% of original size
-- Works seamlessly with other features
-
 ---
 
 ## 🔧 Technical Details
@@ -77,9 +70,8 @@ Option 2: Hide controls (tap ⊖)
 ### Mobile User Flow
 1. Open PDF on mobile → Controls visible by default
 2. Tap `⊕` → Controls hide (more reading space)
-3. Use pinch gesture → Zoom in/out naturally
-4. Tap `⊖` → Controls reappear when needed
-5. Tap `X` → Close reader anytime
+3. Tap `⊖` → Controls reappear when needed
+4. Tap `X` → Close reader anytime
 
 ### Desktop User Flow
 1. Open PDF on desktop → All controls visible (unchanged)
@@ -99,7 +91,7 @@ Option 2: Hide controls (tap ⊖)
 | **Performance Impact** | ✅ None | No CPU/GPU overhead |
 | **Browser Support** | ✅ Universal | All modern browsers |
 | **Accessibility** | ✅ Maintained | Screen reader friendly |
-| **Mobile Optimization** | ✅ Enhanced | Smooth pinch gestures |
+| **Mobile Optimization** | ✅ Enhanced | Better mobile UX |
 | **Documentation** | ✅ Complete | 4 comprehensive guides |
 
 ---
@@ -180,7 +172,6 @@ Beyond the requested features:
 ### For Readers
 - **Cleaner interface**: Hide controls when not needed
 - **More screen space**: ~15% more reading area on mobile
-- **Natural zooming**: Familiar pinch gesture
 - **Always accessible**: Close button never hidden
 
 ### For Developers
@@ -233,11 +224,10 @@ If you want to extend this further:
 You now have a **professional-grade mobile PDF reader** with:
 
 1. **Clean, minimal design** - Hide secondary controls for distraction-free reading
-2. **Intuitive touch controls** - Pinch-to-zoom just like any modern mobile app
-3. **Responsive layout** - Optimized for all screen sizes
-4. **Full accessibility** - Works with keyboard and screen readers
-5. **Excellent performance** - Zero overhead, smooth interactions
-6. **Complete documentation** - 4 comprehensive guides included
+2. **Responsive layout** - Optimized for all screen sizes
+3. **Full accessibility** - Works with keyboard and screen readers
+4. **Excellent performance** - Zero overhead, smooth interactions
+5. **Complete documentation** - 4 comprehensive guides included
 
 **Status: PRODUCTION READY ✅**
 

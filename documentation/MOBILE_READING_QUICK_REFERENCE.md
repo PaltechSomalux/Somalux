@@ -137,7 +137,6 @@ Tested & working on:
 ## Future Enhancements
 
 Possible additions:
-- Pinch-to-zoom for PDFs
 - Swipe gestures for navigation
 - Reading mode (simplified layout)
 - Night mode for comfortable evening reading

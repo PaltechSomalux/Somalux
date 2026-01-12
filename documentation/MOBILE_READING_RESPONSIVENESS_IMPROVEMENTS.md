@@ -232,12 +232,11 @@ All improvements are purely CSS-based. No JavaScript or component logic modifica
 
 ## Future Enhancement Opportunities
 
-1. **Pinch-to-Zoom**: Could be added to PDF containers
-2. **Gesture Controls**: Swipe for next/previous page
-3. **Dark Mode Toggle**: Mobile-optimized theme switcher
-4. **Reading Mode**: Simplified single-column view option
-5. **Annotation Tools**: Mobile-friendly highlighting
-6. **Night Mode**: Blue light reduction for evening reading
+1. **Gesture Controls**: Swipe for next/previous page
+2. **Dark Mode Toggle**: Mobile-optimized theme switcher
+3. **Reading Mode**: Simplified single-column view option
+4. **Annotation Tools**: Mobile-friendly highlighting
+5. **Night Mode**: Blue light reduction for evening reading
 
 ## Conclusion
 

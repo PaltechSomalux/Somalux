@@ -68,8 +68,8 @@ Much more space for content!
       │             │
       ▼             ▼
   ┌───────────┐  ┌──────────────┐
-  │ Tap ⊕     │  │ Use Pinch    │
-  │ to Hide   │  │ to Zoom      │
+  │ Tap ⊕     │  │ Read PDF     │
+  │ to Hide   │  │ Content      │
   │ Controls  │  │              │
   └─────┬─────┘  └──────┬───────┘
         │               │
@@ -118,46 +118,6 @@ Much more space for content!
 │         * = Shown when  │         │             │        │
 │           toggle is ON  │         │             │        │
 └─────────────────────────┴─────────┴─────────────┴────────┘
-```
-
----
-
-## Pinch-to-Zoom Gesture Guide
-
-### Zoom In (Zoom Out)
-```
-        Fingers apart (ZOOMING IN)
-        
-        👆      👆
-         \      /
-          \    /
-    ┌──────────────┐
-    │   PDF Page   │
-    │  Getting     │
-    │  LARGER      │
-    │              │
-    └──────────────┘
-        /    \
-       /      \
-      👆      👆
-      
-      Fingers together (ZOOMING OUT)
-```
-
-### Zoom Range
-```
-0.6x (minimum - very zoomed out)
-  ▲
-  │     ┌──────────────────────┐
-  │     │  Usable zoom range   │
-  │     │                      │
-  │     │  0.6x to 2.0x        │
-  │     │                      │
-  │     └──────────────────────┘
-  │
-  └─────────────────────────────► 2.0x (maximum - very zoomed in)
-
-1.0x = Original PDF size
 ```
 
 ---
@@ -214,7 +174,6 @@ SimpleScrollReader Component
 ├── Handlers
 │   ├── zoomIn()
 │   ├── zoomOut()
-│   ├── handlePinch() → adjusts scale
 │   ├── toggleBookmark()
 │   ├── toggleMobileButtons() → sets mobileButtonsVisible
 │   └── ... other handlers
@@ -230,7 +189,7 @@ SimpleScrollReader Component
     │           └─► Hide controls (display: none)
     │
     └── Content
-        └── Pinch events → zoom scale
+        └── Display PDF
 ```
 
 ---
@@ -310,65 +269,7 @@ MOBILE READER
 Benefits:
 - Can hide secondary controls
 - Tap ⊕ to see them again
-- Pinch-to-zoom works
 - Distraction-free reading ✨
-```
-
----
-
-## Zoom Level Indicator
-
-```
-Zoom Scale Progression
-
-0.6x  ┌─┐
-      │ │ ← Minimum
-      │ │    (very small)
-0.8x  │ │
-      │█│
-1.0x  │█│ ← Default (original size)
-      │█│
-1.2x  │█│
-      │█│
-1.5x  │█│
-      │█│ ← Commonly used
-2.0x  │█│ ← Maximum (very large)
-      └─┘
-      
-Colors indicate readability:
-🟢 = Good readability
-🟡 = Fair readability
-🔴 = Hard to read
-```
-
----
-
-## Touch Event Flow
-
-```
-User Pinch Gesture
-      │
-      ▼
-┌──────────────────┐
-│ touchstart       │
-│ Two fingers      │
-│ Calculate dist   │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│ touchmove        │ ← Fires multiple times
-│ Update distance  │
-│ Calculate zoom   │
-│ Apply scale      │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│ touchend         │
-│ Fingers lifted   │
-│ Lock new zoom    │
-└──────────────────┘
 ```
 
 ---
@@ -384,11 +285,6 @@ User Pinch Gesture
 │    - State: mobileButtonsVisible        │
 │    - Button: ⊕/⊖                       │
 │    - CSS: display: none                 │
-│                                         │
-│ ✅ Pinch-to-Zoom (Pre-existing)         │
-│    - Touch events tracked               │
-│    - Scale: 0.6x to 2.0x               │
-│    - Smooth zoom factor                 │
 │                                         │
 │ ✅ Responsive Design                    │
 │    - Toggle visible: ≤768px             │
@@ -409,22 +305,11 @@ Action              Result
 ──────────────────────────────
 Tap ⊕              Hide controls
 Tap ⊖              Show controls
-2-finger pinch in  Zoom OUT
-2-finger pinch out Zoom IN
 Ctrl/Cmd + +       Zoom IN (all devices)
 Ctrl/Cmd + -       Zoom OUT (all devices)
 Tap X              Close reader
 Tap any page       Jump to that page
 Long press         Select text
-
-
-📏 ZOOM LEVELS
-
-60%                Very zoomed out
-100% (default)     Original size
-200%               Very zoomed in
-Range:             0.6x to 2.0x
-Increment:         Smooth/Continuous
 ```
 
 ---

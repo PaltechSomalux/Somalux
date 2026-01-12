@@ -487,7 +487,6 @@ After v2.0 is stable:
 
 - [ ] Mobile annotations
 - [ ] Swipe gestures
-- [ ] Pinch zoom coordination
 - [ ] Mobile highlight export
 - [ ] Offline highlight storage
 - [ ] Mobile sharing button

@@ -17,6 +17,9 @@
   z-index: 10;
   font-size: 16px;
   line-height: 1.5;
+  /* PRECISION: Prevent selection spillage */
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .react-pdf__Page__textContent > span {
@@ -35,6 +38,8 @@
   display: inline;
   pointer-events: auto;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  /* PRECISION: Strict boundaries */
+  box-sizing: border-box;
 }
 
 .react-pdf__Page__textContent > span::selection {
@@ -46,6 +51,48 @@
 .react-pdf__Page__textContent > span::-moz-selection {
   background-color: rgba(59, 130, 246, 0.3);
   color: transparent;
+}
+
+/* PRECISION: Container strict boundaries for selection isolation */
+.simple-scroll-reader {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Prevent selection from leaking */
+  -webkit-user-select: text;
+  user-select: text;
+  /* Ensure children don't overflow */
+  contain: layout style;
+}
+
+.simple-scroll-reader .react-pdf__Page {
+  /* Strict containment for each page */
+  overflow: hidden;
+  position: relative;
+  margin: 0;
+  padding: 0;
+  /* Prevent text spillage between pages */
+  line-height: 1.5;
+}
+
+/* PRECISION: Prevent adjacent element selection */
+.simple-scroll-reader .react-pdf__Page::before,
+.simple-scroll-reader .react-pdf__Page::after {
+  content: '';
+  display: block;
+  height: 0;
+  overflow: hidden;
+  /* Creates boundary markers */
+}
+
+/* ISOLATION: Text must be purely within bounds */
+.react-pdf__Page__textContent::before,
+.react-pdf__Page__textContent::after {
+  content: '';
+  display: block;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .ssr-overlay {
@@ -170,7 +217,7 @@
 /* Close button positioned at top-right corner */
 .ssr-close-corner-btn {
   position: fixed;
-  top: 10px;
+  top: 0px;
   right: 0px;
   background: transparent;
   border: none;
@@ -232,6 +279,20 @@
 .ssr-icon-btn.active {
   color: #999999;
   border-radius: 4px;
+}
+
+/* Zoom percentage display */
+.ssr-zoom-percentage {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-light);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(12, 109, 88, 0.1);
+  border: 1px solid rgba(12, 109, 88, 0.2);
+  min-width: 40px;
+  text-align: center;
+  user-select: none;
 }
 
 /* Desktop bookmark button - show on desktop, hide on mobile */
@@ -415,25 +476,30 @@
 }
 
 .ssr-toc-item {
-  padding: 10px 12px;
+  padding: 12px 14px;
   font-size: 13px;
   color: var(--text-light);
   cursor: pointer;
   transition: all 0.2s ease;
   border-left: 3px solid transparent;
+  border-radius: 0 4px 4px 0;
+  margin-right: 8px;
 }
 
 .ssr-toc-item:hover {
-  background: rgba(12, 109, 88, 0.15);
+  background: rgba(12, 109, 88, 0.2);
   color: var(--text-dark);
-  border-left-color: rgba(12, 109, 88, 0.5);
+  border-left-color: rgba(12, 109, 88, 0.7);
+  padding-left: 16px;
 }
 
 .ssr-toc-item.active {
-  background: rgba(12, 109, 88, 0.25);
+  background: rgba(12, 109, 88, 0.3);
   color: #10b981;
   border-left-color: var(--primary);
   font-weight: 700;
+  padding-left: 16px;
+  box-shadow: inset -2px 0 8px rgba(12, 109, 88, 0.2);
 }
 
 .ssr-toc-page {
@@ -453,32 +519,33 @@
 
 /* TOC Sidebar - Toggleable like Edge */
 .ssr-toc-sidebar {
-  width: 200px;
+  width: 220px;
   background: linear-gradient(180deg, #0f1a1e, #0b1216);
-  border-right: 1px solid var(--border-color);
+  border-right: 2px solid rgba(12, 109, 88, 0.3);
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 20px);
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.5);
   transition: width 0.3s ease, opacity 0.3s ease;
   animation: slideInSidebar 0.3s ease;
 }
 
 .ssr-toc-header {
-  padding: 14px 12px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 16px 14px;
+  border-bottom: 2px solid rgba(12, 109, 88, 0.2);
   flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(12, 109, 88, 0.08), transparent);
 }
 
 .ssr-toc-header h3 {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text-dark);
+  color: #10b981;
   margin: 0;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .ssr-toc-list {
@@ -488,15 +555,16 @@
 }
 
 .ssr-toc-list::-webkit-scrollbar {
-  width: 7px;
+  width: 10px;
 }
 
 .ssr-toc-list::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(11, 18, 22, 0.5);
 }
 
 .ssr-toc-list::-webkit-scrollbar-thumb {
-  background: rgba(12, 109, 88, 0.35);
+  background: rgba(12, 109, 88, 0.6);
+  border-radius: 5px;
   border-radius: 4px;
 }
 
@@ -540,11 +608,12 @@
   flex: 1 1 auto;
   overflow-y: scroll;
   overflow-x: hidden;
-  background: var(--bg-dark);
+  background: linear-gradient(135deg, #0b1216 0%, #0f1a1e 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 0;
+  padding: 24px 12px;
+  gap: 12px;
   margin: 0;
   touch-action: pan-y;
   scroll-behavior: smooth;
@@ -559,40 +628,43 @@
   will-change: scroll-position;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(12, 109, 88, 0.5) transparent;
+
+  scrollbar-color: rgba(12, 109, 88, 0.6) rgba(11, 18, 22, 0.3);
 }
 .ssr-scroll-area::-webkit-scrollbar {
-  width: 8px;
+  width: 12px;
 }
 
 .ssr-scroll-area::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(11, 18, 22, 0.3);
+  border-radius: 6px;
 }
 
 .ssr-scroll-area::-webkit-scrollbar-thumb {
-  background: rgba(12, 109, 88, 0.5);
-  border-radius: 4px;
+  background: rgba(12, 109, 88, 0.6);
+  border-radius: 6px;
   border: 2px solid transparent;
   background-clip: padding-box;
+  transition: background 0.2s ease;
 }
 
 .ssr-scroll-area::-webkit-scrollbar-thumb:hover {
-  background: rgba(12, 109, 88, 0.8);
+  background: rgba(12, 109, 88, 0.9);
   background-clip: padding-box;
 }
 
 /* Page styling - GPU accelerated - Matches VS Code viewer dimensions */
 .ssr-page {
-  margin: 12px auto;
+  margin: 0 auto;
   padding: 0;
   display: block;
   background: #ffffff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  border: none;
-  border-radius: 2px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.7), 0 0 1px rgba(12, 109, 88, 0.2);
+  border: 1px solid rgba(12, 109, 88, 0.1);
+  border-radius: 4px;
   contain: layout style;
-  width: calc(100% - 32px);
-  max-width: 900px;
+  width: 100%;
+  max-width: 100%;
   height: auto;
   will-change: transform;
   transform: translate3d(0, 0, 0);
@@ -601,12 +673,12 @@
 }
 
 .ssr-page-placeholder {
-  margin: 12px auto;
+  margin: 0 auto;
   padding: 0;
   background: linear-gradient(90deg, #1a252b 0%, #213039 50%, #1a252b 100%);
   background-size: 200% 100%;
-  width: calc(100% - 32px);
-  max-width: 900px;
+  width: 100%;
+  max-width: 100%;
   height: 600px;
   display: block;
   animation: ssr-skeleton-loading 1.5s ease-in-out infinite;
@@ -626,10 +698,28 @@
   width: 100%;
   height: auto;
   display: block;
+  image-rendering: -webkit-optimize-contrast;
   image-rendering: high-quality;
   -webkit-image-rendering: optimizeQuality;
   image-rendering: crisp-edges;
   -ms-interpolation-mode: nearest-neighbor;
+  filter: none;
+}
+
+.ssr-page-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  background: linear-gradient(90deg, #1a252b 0%, #213039 50%, #1a252b 100%);
+  background-size: 200% 100%;
+  animation: ssr-skeleton-loading 1.5s ease-in-out infinite;
+  color: var(--text-light);
+  font-size: 14px;
+  border-radius: 2px;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Loading state */
@@ -703,7 +793,7 @@
   justify-content: center;
   height: auto;
   position: fixed;
-  top: 8px;
+  top: -2px;
   left: 0px;
   z-index: 1999;
 }
@@ -757,16 +847,14 @@
     display: none;
   }
 
-  /* Hide zoom buttons on mobile - use pinch-to-zoom instead */
+  /* Hide zoom buttons on mobile */
   .ssr-zoom-btn {
     display: none;
   }
 
-  /* Enable pinch-to-zoom on mobile */
-  .ssr-scroll-area {
-    touch-action: manipulation;
-    user-select: none;
-    -webkit-user-select: none;
+  /* Hide zoom percentage on mobile */
+  .ssr-zoom-percentage {
+    display: none;
   }
 
   /* Show mobile bookmark button on mobile */
@@ -865,6 +953,7 @@
 
   .ssr-scroll-area {
     padding: 8px 0;
+    gap: 1px;
   }
 
   /* Optimize PDF page display on tablet */
@@ -883,6 +972,29 @@
   .react-pdf__Page__canvas {
     width: 100% !important;
     height: auto !important;
+  }
+}
+
+/* Override for desktop screens larger than 1024px */
+@media (min-width: 1024px) {
+  .ssr-page {
+    max-width: 95vw !important;
+  }
+
+  .ssr-page-placeholder {
+    max-width: 95vw !important;
+  }
+
+  .ssr-page-loading {
+    max-width: 95vw !important;
+  }
+
+  .react-pdf__Page {
+    max-width: 95vw !important;
+  }
+
+  .react-pdf__Page__canvas {
+    width: 100% !important;
   }
 }
 
@@ -1469,11 +1581,12 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  padding: 8px 0;
 }
 
 .ssr-bookmarks-page-item {
-  padding: 12px 16px;
-  margin: 8px 12px;
+  padding: 14px 16px;
+  margin: 6px 10px;
   border-bottom: none;
   display: flex;
   align-items: center;
@@ -1486,6 +1599,21 @@
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
   animation: slideInItem 0.3s ease forwards;
   opacity: 0;
+}
+
+.ssr-bookmarks-page-item.has-note {
+  background: rgba(12, 109, 88, 0.06);
+  box-shadow: 0 0 0 1px rgba(12, 109, 88, 0.15), inset 0 0 0 1px rgba(12, 109, 88, 0.08);
+}
+
+.ssr-bookmarks-page-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.ssr-bookmarks-page-item.has-note:hover {
+  background: rgba(12, 109, 88, 0.1);
+  box-shadow: 0 0 0 1px rgba(12, 109, 88, 0.25), inset 0 0 0 1px rgba(12, 109, 88, 0.12);
 }
 
 @keyframes slideInItem {
@@ -1501,8 +1629,10 @@
 }
 
 .ssr-bookmarks-page-item.active {
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 1px rgba(12, 109, 88, 0.2), inset 0 0 0 1px rgba(12, 109, 88, 0.1);
+  border-left: 3px solid rgba(12, 109, 88, 0.5);
+  padding-left: 13px;
 }
 
 .ssr-bookmarks-page-item-left {
@@ -1526,6 +1656,25 @@
   justify-content: center;
   flex-shrink: 0;
   transition: all 0.2s ease;
+  position: relative;
+}
+
+.ssr-bookmarks-page-item-note-tick {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  background: #0c6d58;
+  color: white;
+  border: 2px solid var(--bg-dark);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(12, 109, 88, 0.4);
 }
 
 .ssr-bookmarks-page-item:active .ssr-bookmarks-page-item-number-box {
@@ -1542,7 +1691,7 @@
 .ssr-bookmarks-page-item-details {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
   flex: 1;
   min-width: 0;
 }
@@ -1550,25 +1699,37 @@
 .ssr-bookmarks-page-item-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-light);
+  color: var(--text-dark);
+  letter-spacing: 0.3px;
 }
 
 .ssr-bookmarks-page-item-note-preview {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.65);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.ssr-bookmarks-page-item-note-icon {
+  display: inline-flex;
+  font-size: 13px;
 }
 
 .ssr-bookmarks-page-item-reading {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.04);
-  padding: 4px 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 700;
+  background: rgba(12, 109, 88, 0.2);
+  padding: 5px 10px;
   border-radius: 6px;
   flex-shrink: 0;
+  border: 1px solid rgba(12, 109, 88, 0.3);
+  letter-spacing: 0.5px;
 }
 
 .ssr-bookmarks-page-item-actions {
@@ -1598,6 +1759,31 @@
 
 .ssr-bookmarks-page-note-btn {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  position: relative;
+}
+
+.ssr-bookmarks-page-note-btn.has-note {
+  box-shadow: 0 0 0 1px rgba(12, 109, 88, 0.4), inset 0 0 0 1px rgba(12, 109, 88, 0.2);
+  color: rgba(12, 109, 88, 0.9);
+  background: rgba(12, 109, 88, 0.08);
+}
+
+.ssr-bookmarks-page-note-btn .ssr-note-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  background: #0c6d58;
+  color: white;
+  border: 1.5px solid var(--bg-dark);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(12, 109, 88, 0.5);
 }
 
 .ssr-bookmarks-page-summary-btn {
@@ -1609,6 +1795,12 @@
   color: rgba(255, 107, 107, 0.75);
 }
 
+.ssr-bookmarks-page-remove-btn:hover {
+  background: rgba(255, 107, 107, 0.08);
+  color: rgba(255, 107, 107, 0.9);
+  box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.4), inset 0 0 0 1px rgba(255, 107, 107, 0.2);
+}
+
 .ssr-bookmarks-page-summary-btn:active {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.85);
@@ -1616,11 +1808,35 @@
   transform: scale(0.92);
 }
 
+.ssr-bookmarks-page-summary-btn:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
 .ssr-bookmarks-page-note-btn:active {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.85);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   transform: scale(0.92);
+}
+
+.ssr-bookmarks-page-note-btn.has-note:active {
+  background: rgba(12, 109, 88, 0.15);
+  color: rgba(12, 109, 88, 1);
+  box-shadow: 0 0 0 1px rgba(12, 109, 88, 0.6), inset 0 0 0 1px rgba(12, 109, 88, 0.3);
+  transform: scale(0.92);
+}
+
+.ssr-bookmarks-page-note-btn:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ssr-bookmarks-page-note-btn.has-note:hover {
+  color: rgba(12, 109, 88, 1);
+  background: rgba(12, 109, 88, 0.12);
+  box-shadow: 0 0 0 1px rgba(12, 109, 88, 0.35), inset 0 0 0 1px rgba(12, 109, 88, 0.15);
 }
 
 .ssr-bookmarks-page-remove-btn:active {
@@ -1677,10 +1893,10 @@
 
 .ssr-bookmarks-page-download-btn {
   width: 100%;
-  background: rgba(255, 255, 255, 0.04);
+  background: linear-gradient(135deg, rgba(12, 109, 88, 0.15), rgba(12, 109, 88, 0.08));
   border: none;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 0 0 1px rgba(12, 109, 88, 0.25), inset 0 0 0 1px rgba(12, 109, 88, 0.12);
+  color: rgba(12, 109, 88, 0.95);
   padding: 12px 16px;
   border-radius: 10px;
   font-size: 14px;
@@ -1693,9 +1909,15 @@
   gap: 8px;
 }
 
+.ssr-bookmarks-page-download-btn:hover {
+  background: linear-gradient(135deg, rgba(12, 109, 88, 0.2), rgba(12, 109, 88, 0.12));
+  box-shadow: 0 0 0 1px rgba(12, 109, 88, 0.35), inset 0 0 0 1px rgba(12, 109, 88, 0.18);
+  color: rgba(12, 109, 88, 1);
+}
+
 .ssr-bookmarks-page-download-btn:active {
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, rgba(12, 109, 88, 0.15), rgba(12, 109, 88, 0.08));
+  box-shadow: 0 0 0 1px rgba(12, 109, 88, 0.3), inset 0 0 0 1px rgba(12, 109, 88, 0.15);
   transform: scale(0.96);
 }
 
@@ -1717,403 +1939,3 @@
   background: rgba(12, 109, 88, 0.5);
 }
 
-/* Mode containers - MS Edge instant switching */
-.ssr-mode-container {
-  flex: 1;
-  display: none;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  will-change: auto;
-  contain: layout style;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  opacity: 0;
-}
-
-.ssr-mode-container.hidden {
-  display: none !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  opacity: 0 !important;
-}
-
-.ssr-mode-container.visible {
-  display: flex !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-  opacity: 1 !important;
-}
-
-.ssr-flip-mode {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #0b1216;
-  align-items: stretch;
-  justify-content: stretch;
-}
-
-.ssr-scroll-mode {
-  position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scroll-behavior: auto;
-  padding: 0;
-  flex-direction: column;
-  align-items: center;
-  background: #0b1216;
-  background-color: var(--bg-dark);
-  -webkit-overflow-scrolling: touch;
-  display: flex;
-}
-
-.ssr-page-flip-container {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: stretch;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
-  position: relative;
-  flex: 1;
-}
-
-.ssr-page-flip-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: stretch;
-  width: 100%;
-  height: 100%;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-}
-
-.ssr-single-page {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  margin: 0;
-  padding: 0;
-  background: #0b1216;
-  position: relative;
-  flex: 1;
-}
-
-.ssr-single-page .react-pdf__Document {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: stretch;
-  justify-content: flex-start;
-  margin: 0;
-  padding: 0;
-  flex: 1;
-  flex-direction: column;
-}
-
-.ssr-single-page .react-pdf__Page {
-  margin: 0 !important;
-  padding: 0 !important;
-  height: 100% !important;
-  width: 90vw !important;
-  max-width: 750px !important;
-  max-height: none !important;
-  flex: none !important;
-  align-self: center !important;
-}
-
-.ssr-single-page .react-pdf__Page canvas {
-  max-width: 100% !important;
-  height: 100% !important;
-  width: 100% !important;
-  display: block !important;
-}
-
-.ssr-page-flip-nav {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  padding: 15px 20px;
-  background: rgba(15, 23, 42, 0.8);
-  border-radius: 8px;
-  border: 1px solid rgba(59, 130, 246, 0.2);
-}
-
-.ssr-flip-nav-btn {
-  background: rgba(12, 109, 88, 0.2);
-  border: 1px solid rgba(12, 109, 88, 0.3);
-  color: #0c6d58;
-  border-radius: 6px;
-  padding: 10px 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  font-size: 16px;
-  min-width: 44px;
-  min-height: 44px;
-}
-
-.ssr-flip-nav-btn:hover:not(:disabled) {
-  background: rgba(12, 109, 88, 0.4);
-  border-color: rgba(12, 109, 88, 0.6);
-  color: #00FF00;
-  box-shadow: 0 0 8px rgba(12, 109, 88, 0.3);
-}
-
-.ssr-flip-nav-btn:active:not(:disabled) {
-  transform: scale(0.95);
-  background: rgba(12, 109, 88, 0.5);
-}
-
-.ssr-flip-nav-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.ssr-flip-page-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  color: #e9edef;
-  min-width: 80px;
-  justify-content: center;
-  font-weight: 500;
-}
-
-.ssr-flip-sep {
-  color: #8696a0;
-}
-
-/* Auto-flip controls */
-.ssr-auto-flip-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-  padding: 15px 20px;
-  background: rgba(15, 23, 42, 0.8);
-  border-radius: 8px;
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  flex-wrap: wrap;
-}
-
-.ssr-auto-flip-btn {
-  background: rgba(59, 130, 246, 0.2);
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  color: #3b82f6;
-  border-radius: 6px;
-  padding: 10px 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  font-size: 14px;
-  font-weight: 500;
-  min-height: 44px;
-  white-space: nowrap;
-}
-
-.ssr-auto-flip-btn:hover {
-  background: rgba(59, 130, 246, 0.35);
-  border-color: rgba(59, 130, 246, 0.6);
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
-}
-
-.ssr-auto-flip-btn:active {
-  transform: scale(0.95);
-  background: rgba(59, 130, 246, 0.5);
-}
-
-.ssr-auto-flip-btn.active {
-  background: rgba(12, 109, 88, 0.4);
-  border-color: rgba(12, 109, 88, 0.6);
-  color: #0c6d58;
-  box-shadow: 0 0 12px rgba(12, 109, 88, 0.4);
-}
-
-.ssr-auto-flip-btn.active:hover {
-  background: rgba(12, 109, 88, 0.5);
-  border-color: rgba(12, 109, 88, 0.8);
-}
-
-.ssr-speed-control {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.ssr-speed-label {
-  color: #e9edef;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.ssr-speed-select {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #e9edef;
-  border-radius: 6px;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s ease;
-  min-height: 36px;
-}
-
-.ssr-speed-select:hover:not(:disabled) {
-  border-color: rgba(59, 130, 246, 0.6);
-  background: rgba(15, 23, 42, 0.8);
-}
-
-.ssr-speed-select:focus {
-  outline: none;
-  border-color: rgba(59, 130, 246, 0.8);
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
-}
-
-.ssr-speed-select:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.ssr-speed-select option {
-  background: #0b1216;
-  color: #e9edef;
-}
-
-/* Responsive adjustments for page flip mode */
-@media (max-width: 768px) {
-  .ssr-page-flip-container {
-    padding: 0;
-  }
-
-  .ssr-page-flip-wrapper {
-    gap: 0;
-  }
-
-  .ssr-single-page {
-    height: 100%;
-  }
-
-  .ssr-page-flip-nav {
-    gap: 15px;
-    padding: 12px 15px;
-  }
-
-  .ssr-flip-nav-btn {
-    padding: 8px 10px;
-    min-width: 40px;
-    min-height: 40px;
-  }
-
-  .ssr-flip-page-info {
-    font-size: 14px;
-  }
-
-  .ssr-auto-flip-controls {
-    gap: 12px;
-    padding: 12px 15px;
-  }
-
-  .ssr-auto-flip-btn {
-    padding: 8px 12px;
-    font-size: 13px;
-  }
-
-  .ssr-speed-select {
-    padding: 6px 10px;
-    font-size: 12px;
-    min-height: 34px;
-  }
-
-  .ssr-speed-label {
-    font-size: 13px;
-  }
-}
-
-@media (max-width: 480px) {
-  .ssr-page-flip-container {
-    padding: 0;
-  }
-
-  .ssr-page-flip-wrapper {
-    gap: 0;
-  }
-
-  .ssr-single-page {
-    height: 100%;
-  }
-
-  .ssr-page-flip-nav {
-    gap: 10px;
-    padding: 10px 12px;
-    flex-wrap: wrap;
-  }
-
-  .ssr-flip-nav-btn {
-    padding: 6px 8px;
-    min-width: 36px;
-    min-height: 36px;
-  }
-
-  .ssr-flip-nav-btn svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  .ssr-flip-page-info {
-    font-size: 13px;
-    min-width: 70px;
-  }
-
-  .ssr-auto-flip-controls {
-    gap: 10px;
-    padding: 10px 12px;
-    flex-wrap: wrap;
-  }
-
-  .ssr-auto-flip-btn {
-    padding: 6px 10px;
-    font-size: 12px;
-    min-height: 36px;
-  }
-
-  .ssr-speed-control {
-    gap: 6px;
-    width: 100%;
-  }
-
-  .ssr-speed-label {
-    font-size: 12px;
-  }
-
-  .ssr-speed-select {
-    padding: 6px 8px;
-    font-size: 11px;
-    min-height: 32px;
-    flex: 1;
-    min-width: 60px;
-  }
-}

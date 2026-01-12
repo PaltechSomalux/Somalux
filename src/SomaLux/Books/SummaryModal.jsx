@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FiX, FiCopy, FiDownload } from 'react-icons/fi';
 import { generateSummary, generateKeyPoints, getTextStats } from './utils/summarizeText';
 import './SummaryModal.css';
@@ -7,6 +7,16 @@ const SummaryModal = ({ isOpen, pageNumber, pageText, title, onClose }) => {
   const [summaryLength, setSummaryLength] = useState(5);
   const [viewMode, setViewMode] = useState('summary'); // 'summary' or 'keypoints'
   const [copied, setCopied] = useState(false);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = 'unset';
+      };
+    }
+  }, [isOpen]);
 
   const summary = useMemo(() => {
     if (!pageText) return '';
