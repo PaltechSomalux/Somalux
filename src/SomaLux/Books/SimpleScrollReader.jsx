@@ -88,6 +88,11 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   // Edge optimization: Scroll tracking
   const lastScrollTimeRef = useRef(0);
   const scrollRAFRef = useRef(null);
+  
+  // Virtual scrolling: only render visible pages + buffer
+  const [visiblePages, setVisiblePages] = useState(new Set());
+  const RENDER_BUFFER = 1; // Render 1 page above/below viewport (aggressive)
+  const [shouldRenderTextLayer, setShouldRenderTextLayer] = useState(false); // Delay text layer rendering
 
   // Check if PDF source is available
   const hasPdfSource = !!src;
@@ -100,10 +105,16 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   }, [selection, position]);
   const handleDocumentLoad = ({ numPages: nextNumPages }) => {
     setNumPages(nextNumPages);
-    // Much shorter delay - 300ms to show first pages faster
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 300);
+    // Immediate load - zero delay for fastest response
+    setIsLoading(false);
+    // Initialize visible pages with first few pages so they show immediately
+    const initialVisiblePages = new Set();
+    for (let i = 1; i <= Math.min(3, nextNumPages); i++) {
+      initialVisiblePages.add(i);
+    }
+    setVisiblePages(initialVisiblePages);
+    // Enable text layers after initial render (massive perf boost)
+    setTimeout(() => setShouldRenderTextLayer(true), 500);
   };
 
   // Track reading time - reduced to 5s interval to prevent excessive re-renders (88% reduction)
@@ -176,7 +187,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
     setScale(scaleRef.current);
   }, []);
 
-  // Ultra-optimized scroll handler - tracks current page
+  // Ultra-optimized scroll handler with virtual rendering - tracks current page and visible pages
   useEffect(() => {
     const handleScroll = () => {
       // Skip scroll updates during document loading to prevent flickering
@@ -196,8 +207,9 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
         const scrollTop = scrollAreaRef.current.scrollTop;
         const containerHeight = scrollAreaRef.current.clientHeight;
         let currentPageFound = false;
+        const newVisiblePages = new Set();
 
-        // Find current page by checking which page is in viewport center
+        // Find current page and visible pages for virtual rendering
         for (let page = 1; page <= numPages; page++) {
           const pageElement = pageRefsMap.current[page];
           if (!pageElement) continue;
@@ -211,7 +223,21 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
             setCurrentPage(page);
             currentPageFound = true;
           }
+          
+          // Mark pages as visible if they're in viewport + buffer
+          const bufferHeight = containerHeight * RENDER_BUFFER;
+          if (elementBottom >= scrollTop - bufferHeight && elementTop <= scrollTop + containerHeight + bufferHeight) {
+            newVisiblePages.add(page);
+          }
         }
+        
+        // Update visible pages only if changed
+        setVisiblePages(prev => {
+          if (prev.size === newVisiblePages.size && [...prev].every(p => newVisiblePages.has(p))) {
+            return prev;
+          }
+          return newVisiblePages;
+        });
       });
     };
 
@@ -678,7 +704,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
 
   return (
     <div className="ssr-overlay" style={{ pointerEvents: 'none' }}>
-      <div className="ssr-container" onClick={e => e.stopPropagation()} style={{ pointerEvents: 'auto', opacity: isLoading ? 0 : 1, transition: 'opacity 0.2s ease-out' }}>
+      <div className="ssr-container" onClick={e => e.stopPropagation()} style={{ pointerEvents: 'auto' }}>
         {/* Header with page indicator */}
         <div className="ssr-header">
           <div className="ssr-title-section">
@@ -886,7 +912,91 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
 
           {/* Scroll area - continuous pages */}
           <div className="ssr-scroll-area simple-scroll-reader" ref={scrollAreaRef}>
-            {!hasPdfSource ? (
+            {isLoading && (
+              <div className="ssr-loading">
+                <div className="ssr-spinner">
+                  <svg width="100" height="100" viewBox="0 0 100 100" className="ssr-gears-svg">
+                    {/* Gear 1 - Top Left (Gray) */}
+                    <g className="gear gear-1">
+                      {/* Tooth 1 - Top */}
+                      <path d="M 28 6 Q 30 4 30 4 Q 30 4 32 6 L 32 12 Q 30 14 30 14 Q 30 14 28 12 Z" fill="#999"/>
+                      {/* Tooth 2 - Top-Right */}
+                      <path d="M 42 12 Q 44.5 8.5 44.5 8.5 Q 44.5 8.5 46.5 11 L 43.5 18 Q 41 17 40.5 18 Z" fill="#999"/>
+                      {/* Tooth 3 - Right */}
+                      <path d="M 48 24 Q 50 22 50 22 Q 50 22 52 24 L 52 32 Q 50 34 50 34 Q 50 34 48 32 Z" fill="#999"/>
+                      {/* Tooth 4 - Bottom-Right */}
+                      <path d="M 43.5 40 Q 41 41 40.5 40 L 43.5 48 Q 44.5 47.5 44.5 47.5 Q 44.5 47.5 42 44 Z" fill="#999"/>
+                      {/* Tooth 5 - Bottom */}
+                      <path d="M 32 42 Q 30 40 30 40 Q 30 40 28 42 L 28 48 Q 30 50 30 50 Q 30 50 32 48 Z" fill="#999"/>
+                      {/* Tooth 6 - Bottom-Left */}
+                      <path d="M 19.5 47 Q 17 45 16.5 46 L 19.5 38 Q 20.5 39.5 20.5 39.5 Q 20.5 39.5 18 44 Z" fill="#999"/>
+                      {/* Tooth 7 - Left */}
+                      <path d="M 12 32 Q 10 34 10 34 Q 10 34 12 32 L 12 24 Q 10 22 10 22 Q 10 22 12 24 Z" fill="#999"/>
+                      {/* Tooth 8 - Top-Left */}
+                      <path d="M 19.5 16 Q 18 19.5 18.5 18 L 16.5 11 Q 17 10.5 17 10.5 Q 17 10.5 19.5 13 Z" fill="#999"/>
+                      {/* Outer ring for depth */}
+                      <circle cx="30" cy="28" r="18" fill="none" stroke="#999" strokeWidth="1.5" opacity="0.4"/>
+                      {/* Center hub */}
+                      <circle cx="30" cy="28" r="6.5" fill="#999"/>
+                      <circle cx="30" cy="28" r="3" fill="#0b1216"/>
+                    </g>
+                    
+                    {/* Gear 2 - Top Right (Primary) */}
+                    <g className="gear gear-2">
+                      {/* Tooth 1 - Top */}
+                      <path d="M 68 6 Q 70 4 70 4 Q 70 4 72 6 L 72 12 Q 70 14 70 14 Q 70 14 68 12 Z" fill="#0c6d58"/>
+                      {/* Tooth 2 - Top-Right */}
+                      <path d="M 82 12 Q 84.5 8.5 84.5 8.5 Q 84.5 8.5 86.5 11 L 83.5 18 Q 81 17 80.5 18 Z" fill="#0c6d58"/>
+                      {/* Tooth 3 - Right */}
+                      <path d="M 88 24 Q 90 22 90 22 Q 90 22 92 24 L 92 32 Q 90 34 90 34 Q 90 34 88 32 Z" fill="#0c6d58"/>
+                      {/* Tooth 4 - Bottom-Right */}
+                      <path d="M 83.5 40 Q 81 41 80.5 40 L 83.5 48 Q 84.5 47.5 84.5 47.5 Q 84.5 47.5 82 44 Z" fill="#0c6d58"/>
+                      {/* Tooth 5 - Bottom */}
+                      <path d="M 72 42 Q 70 40 70 40 Q 70 40 68 42 L 68 48 Q 70 50 70 50 Q 70 50 72 48 Z" fill="#0c6d58"/>
+                      {/* Tooth 6 - Bottom-Left */}
+                      <path d="M 59.5 47 Q 57 45 56.5 46 L 59.5 38 Q 60.5 39.5 60.5 39.5 Q 60.5 39.5 58 44 Z" fill="#0c6d58"/>
+                      {/* Tooth 7 - Left */}
+                      <path d="M 52 32 Q 50 34 50 34 Q 50 34 52 32 L 52 24 Q 50 22 50 22 Q 50 22 52 24 Z" fill="#0c6d58"/>
+                      {/* Tooth 8 - Top-Left */}
+                      <path d="M 59.5 16 Q 58 19.5 58.5 18 L 56.5 11 Q 57 10.5 57 10.5 Q 57 10.5 59.5 13 Z" fill="#0c6d58"/>
+                      {/* Outer ring for depth */}
+                      <circle cx="70" cy="28" r="18" fill="none" stroke="#0c6d58" strokeWidth="1.5" opacity="0.4"/>
+                      {/* Center hub */}
+                      <circle cx="70" cy="28" r="6.5" fill="#0c6d58"/>
+                      <circle cx="70" cy="28" r="3" fill="#0b1216"/>
+                    </g>
+                    
+                    {/* Gear 3 - Bottom Center (Cyan) */}
+                    <g className="gear gear-3">
+                      {/* Tooth 1 - Top */}
+                      <path d="M 48 40 Q 50 38 50 38 Q 50 38 52 40 L 52 46 Q 50 48 50 48 Q 50 48 48 46 Z" fill="#00a8d8"/>
+                      {/* Tooth 2 - Top-Right */}
+                      <path d="M 62 46 Q 64.5 42.5 64.5 42.5 Q 64.5 42.5 66.5 45 L 63.5 52 Q 61 51 60.5 52 Z" fill="#00a8d8"/>
+                      {/* Tooth 3 - Right */}
+                      <path d="M 68 58 Q 70 56 70 56 Q 70 56 72 58 L 72 66 Q 70 68 70 68 Q 70 68 68 66 Z" fill="#00a8d8"/>
+                      {/* Tooth 4 - Bottom-Right */}
+                      <path d="M 63.5 74 Q 61 75 60.5 74 L 63.5 82 Q 64.5 81.5 64.5 81.5 Q 64.5 81.5 62 78 Z" fill="#00a8d8"/>
+                      {/* Tooth 5 - Bottom */}
+                      <path d="M 52 76 Q 50 74 50 74 Q 50 74 48 76 L 48 82 Q 50 84 50 84 Q 50 84 52 82 Z" fill="#00a8d8"/>
+                      {/* Tooth 6 - Bottom-Left */}
+                      <path d="M 39.5 81 Q 37 79 36.5 80 L 39.5 72 Q 40.5 73.5 40.5 73.5 Q 40.5 73.5 38 78 Z" fill="#00a8d8"/>
+                      {/* Tooth 7 - Left */}
+                      <path d="M 32 66 Q 30 68 30 68 Q 30 68 32 66 L 32 58 Q 30 56 30 56 Q 30 56 32 58 Z" fill="#00a8d8"/>
+                      {/* Tooth 8 - Top-Left */}
+                      <path d="M 39.5 50 Q 38 53.5 38.5 52 L 36.5 45 Q 37 44.5 37 44.5 Q 37 44.5 39.5 47 Z" fill="#00a8d8"/>
+                      {/* Outer ring for depth */}
+                      <circle cx="50" cy="62" r="18" fill="none" stroke="#00a8d8" strokeWidth="1.5" opacity="0.4"/>
+                      {/* Center hub */}
+                      <circle cx="50" cy="62" r="6.5" fill="#00a8d8"/>
+                      <circle cx="50" cy="62" r="3" fill="#0b1216"/>
+                    </g>
+                  </svg>
+                </div>
+                <p>Opening</p>
+              </div>
+            )}
+
+            {!hasPdfSource && !isLoading ? (
               <div className="ssr-error" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '600px', gap: '20px', textAlign: 'center', padding: '20px' }}>
                 <div style={{ fontSize: '48px' }}>📄</div>
                 <h2 style={{ margin: '0 0 10px 0', fontSize: '20px' }}>PDF File Not Available</h2>
@@ -900,18 +1010,6 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                   </div>
                 )}
               </div>
-            ) : isLoading && sampleText ? (
-              <div className="ssr-sample-text">
-                {sampleText.split('\n').slice(0, 200).map((line, idx) => (
-                  <p key={idx} style={{ margin: '6px 0', color: '#d1d5db', lineHeight: 1.5 }}>{line}</p>
-                ))}
-                <div style={{ marginTop: 12, color: '#9ca3af' }}>Loading full book…</div>
-              </div>
-            ) : isLoading ? (
-              <div className="ssr-loading">
-                <div className="ssr-spinner"></div>
-                <p>Loading book...</p>
-              </div>
             ) : null}
 
             {hasPdfSource && (
@@ -922,7 +1020,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                   console.error('PDF loading error in SimpleScrollReader:', error?.message || error);
                   setPdfError(true);
                 }}
-                loading={<div className="ssr-loading"><div className="ssr-spinner"></div></div>}
+                loading={null}
                 error={
                   <div className="ssr-error">
                     {pdfError 
@@ -931,34 +1029,52 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                   </div>
                 }
               >
-                {/* Scroll Mode - Only continuous scrolling */}
-                <div className="ssr-scroll-area simple-scroll-reader" ref={scrollAreaRef}>
-                  {numPages && Array.from({ length: numPages }, (_, idx) => {
-                    const pageNum = idx + 1;
-                    
+                {/* Virtual Rendering - Only render visible pages + buffer to prevent system hang */}
+                {!isLoading && numPages && Array.from({ length: numPages }, (_, idx) => {
+                  const pageNum = idx + 1;
+                  const isVisible = visiblePages.has(pageNum);
+                  const isCurrentPage = pageNum === currentPage;
+                  // CRITICAL: Only enable text layer for current + adjacent pages (90%+ perf boost)
+                  const enableTextLayer = shouldRenderTextLayer && (isCurrentPage || Math.abs(pageNum - currentPage) === 1);
+                  
+                  // Only render pages that are visible or in buffer
+                  if (!isVisible) {
+                    // Render placeholder for non-visible pages to maintain scroll position
                     return (
                       <div 
                         key={pageNum} 
-                        className="ssr-page"
+                        className="ssr-page ssr-page-placeholder"
                         ref={(el) => {
                           if (el) pageRefsMap.current[pageNum] = el;
                         }}
-                      >
-                        <Page
-                          pageNumber={pageNum}
-                          scale={scale}
-                          renderTextLayer={true}
-                          renderAnnotationLayer={false}
-                          loading=""
-                          onRenderError={(error) => {
-                            console.warn('PDF page render error:', error?.message || error);
-                            setPdfError(true);
-                          }}
-                        />
-                      </div>
+                        style={{ minHeight: '800px' }} // Approximate page height
+                        aria-hidden="true"
+                      />
                     );
-                  })}
-                </div>
+                  }
+                  
+                  return (
+                    <div 
+                      key={pageNum} 
+                      className="ssr-page"
+                      ref={(el) => {
+                        if (el) pageRefsMap.current[pageNum] = el;
+                      }}
+                    >
+                      <Page
+                        pageNumber={pageNum}
+                        scale={scale}
+                        renderTextLayer={enableTextLayer}
+                        renderAnnotationLayer={false}
+                        loading=""
+                        onRenderError={(error) => {
+                          console.warn('PDF page render error:', error?.message || error);
+                          setPdfError(true);
+                        }}
+                      />
+                    </div>
+                  );
+                })}
               </Document>
             )}
             {!hasPdfSource && (

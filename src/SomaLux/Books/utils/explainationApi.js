@@ -179,12 +179,26 @@ const fetchFromBackendAPI = async (searchTerm) => {
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      console.warn(`⚠️ Backend API returned status ${response.status}`);
+      return null;
     }
     
-    const data = await response.json();
+    // Check if response is HTML (error page)
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('text/html')) {
+      console.error('❌ Backend returned HTML instead of JSON - backend may be down');
+      return null;
+    }
     
-    if (data.explanation) {
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error('❌ Failed to parse JSON response from backend:', parseError);
+      return null;
+    }
+    
+    if (data && data.explanation) {
       console.log('✅ Backend API data received');
       const result = {
         title: data.title || searchTerm,
@@ -196,7 +210,7 @@ const fetchFromBackendAPI = async (searchTerm) => {
       return result;
     }
     
-    throw new Error('No explanation from backend');
+    return null;
   } catch (error) {
     console.error('❌ Backend API error:', error);
     return null;
@@ -220,12 +234,26 @@ const fetchFromGoogleKnowledgeGraph = async (searchTerm) => {
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      console.warn(`⚠️ Knowledge Graph API returned status ${response.status}`);
+      return null;
     }
     
-    const data = await response.json();
+    // Check if response is HTML (error page)
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('text/html')) {
+      console.error('❌ Backend returned HTML instead of JSON - backend may be down');
+      return null;
+    }
     
-    if (data.description) {
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error('❌ Failed to parse JSON response from Knowledge Graph API:', parseError);
+      return null;
+    }
+    
+    if (data && data.description) {
       console.log('✅ Google Knowledge Graph data received');
       return {
         title: data.title || searchTerm,
@@ -235,7 +263,7 @@ const fetchFromGoogleKnowledgeGraph = async (searchTerm) => {
       };
     }
     
-    throw new Error('No results from Google Knowledge Graph');
+    return null;
   } catch (error) {
     console.error('❌ Google Knowledge Graph error:', error);
     return null;
