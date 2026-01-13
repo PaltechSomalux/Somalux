@@ -13,6 +13,7 @@ import {
 import TextSelectionPanel from './TextSelectionPanel';
 import useTextSelection from './useTextSelection';
 import { fetchPDFOptimized, initializePDFCache, prefetchAdjacentPDFs } from './utils/pdfCacheManager';
+import useMobileZoomGestures from './hooks/useMobileZoomGestures';
 import './FastReader.css';
 
 // Verify worker is configured (set in pdfConfig.js at startup)
@@ -27,6 +28,7 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.2);
+  const [mobileScale, setMobileScale] = useState(1.0); // Separate mobile zoom state
   const zoomTimeoutRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +63,9 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
   
   // Use custom hook for high-precision text selection
   const { selection, position, clearSelection, selectedText } = useTextSelection('.fast-reader-content');
+  
+  // PDF container ref for mobile gestures
+  const pdfContainerRef = useRef(null);
   
   // Lazy load pages: only render current page +/- 1
   const [visiblePages, setVisiblePages] = useState(new Set([1]));
@@ -112,21 +117,51 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
     }
   }, [pageNumber, src, numPages]);
 
-  const zoomIn = () => {
+  const zoomIn = useCallback(() => {
     requestAnimationFrame(() => {
-      setScale(s => Math.min(3.0, s + 0.1));
+      setScale(s => Math.min(5.0, s + 0.1));
     });
-  };
-  const zoomOut = () => {
+  }, []);
+
+  const zoomOut = useCallback(() => {
     requestAnimationFrame(() => {
-      setScale(s => Math.max(0.5, s - 0.1));
+      setScale(s => Math.max(0.25, s - 0.1));
     });
-  };
-  const resetZoom = () => {
+  }, []);
+
+  const resetZoom = useCallback(() => {
     requestAnimationFrame(() => {
       setScale(1.0);
     });
-  };
+  }, []);
+
+  // Mobile-specific zoom functions
+  const mobileZoomIn = useCallback(() => {
+    requestAnimationFrame(() => {
+      setMobileScale(s => Math.min(5.0, s + 0.1));
+    });
+  }, []);
+
+  const mobileZoomOut = useCallback(() => {
+    requestAnimationFrame(() => {
+      setMobileScale(s => Math.max(0.25, s - 0.1));
+    });
+  }, []);
+
+  const mobileResetZoom = useCallback(() => {
+    requestAnimationFrame(() => {
+      setMobileScale(1.0);
+    });
+  }, []);
+
+  // Initialize mobile zoom gestures hook - defined after zoom functions
+  const { isMobileDevice } = useMobileZoomGestures(
+    pdfContainerRef,
+    mobileZoomIn,
+    mobileZoomOut,
+    mobileResetZoom,
+    mobileScale
+  );
 
   const addHighlight = (color) => {
     if (selectedText && selectedText.length > 0) {
@@ -236,6 +271,44 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
           </div>
 
           <div className="fast-reader-controls">
+            {/* Mobile Zoom Controls - Inside button panel */}
+            {isMobileDevice && (
+              <>
+                <button
+                  className={`fast-btn ${mobileScale <= 0.25 ? 'disabled' : ''}`}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); mobileZoomOut?.(); }}
+                  disabled={mobileScale <= 0.25}
+                  title="Zoom Out"
+                  aria-label="Zoom out"
+                >
+                  −
+                </button>
+
+                <span className="zoom-display">{Math.round(mobileScale * 100)}%</span>
+
+                <button
+                  className={`fast-btn ${mobileScale >= 5.0 ? 'disabled' : ''}`}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); mobileZoomIn?.(); }}
+                  disabled={mobileScale >= 5.0}
+                  title="Zoom In"
+                  aria-label="Zoom in"
+                >
+                  +
+                </button>
+
+                {Math.round(mobileScale * 100) !== 100 && (
+                  <button
+                    className="fast-btn"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); mobileResetZoom?.(); }}
+                    title="Reset Zoom"
+                    aria-label="Reset zoom to 100%"
+                  >
+                    Reset
+                  </button>
+                )}
+              </>
+            )}
+
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
               className="fast-btn"
@@ -255,7 +328,7 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
         </div>
 
         {/* PDF Content - No watermarks, no extra layers */}
-        <div className={`fast-reader-content ${isFullscreen ? 'fullscreen' : ''}`}>
+        <div className={`fast-reader-content ${isFullscreen ? 'fullscreen' : ''}`} ref={pdfContainerRef}>
           {isLoading && (
             <div className="fast-loading">
               <div className="fast-spinner"></div>
@@ -263,25 +336,38 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
             </div>
           )}
 
-          <Document
-            file={src}
-            onLoadSuccess={handleDocumentLoad}
-            loading={<div className="fast-loading"><div className="fast-spinner"></div></div>}
-            error={<div className="fast-error">Failed to load PDF</div>}
+          <div
+            style={isMobileDevice ? {
+              transform: `scale(${mobileScale})`,
+              transformOrigin: 'top center',
+              transition: 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+              willChange: 'transform',
+              width: '100%',
+              pointerEvents: 'auto',
+              backfaceVisibility: 'hidden',
+              perspective: '1000px'
+            } : {}}
           >
+            <Document
+              file={src}
+              onLoadSuccess={handleDocumentLoad}
+              loading={<div className="fast-loading"><div className="fast-spinner"></div></div>}
+              error={<div className="fast-error">Failed to load PDF</div>}
+            >
             {/* Only render visible pages to save memory */}
             {numPages && Array.from(visiblePages).sort((a, b) => a - b).map(page => (
               <div key={page} className={`fast-page-wrapper ${page === pageNumber ? 'current' : ''}`}>
                 <Page
                   pageNumber={page}
-                  scale={scale}
+                  scale={isMobileDevice ? 1 : scale}
                   renderTextLayer={true}
                   renderAnnotationLayer={false}
                   canvasBackground="white"
                 />
               </div>
             ))}
-          </Document>
+            </Document>
+          </div>
         </div>
 
         {/* Minimal footer */}
@@ -334,6 +420,10 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
             onClose={clearSelection}
           />
         )}
+
+        {/* Mobile Zoom Controls - Only visible on mobile (≤ 768px) */}
+        {/* NOTE: Zoom controls moved to header */}
+
       </div>
     </div>
   );

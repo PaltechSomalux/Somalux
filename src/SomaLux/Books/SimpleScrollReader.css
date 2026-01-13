@@ -531,6 +531,15 @@
   height: 100%;
 }
 
+/* Content area - scrollable horizontally when zoomed on mobile */
+.ssr-main-content > div:not(.ssr-toc-sidebar) {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
 /* TOC Sidebar - Toggleable like Edge */
 .ssr-toc-sidebar {
   width: 220px;
@@ -621,7 +630,7 @@
 .ssr-scroll-area {
   flex: 1 1 auto;
   overflow-y: scroll;
-  overflow-x: hidden;
+  overflow-x: auto;
   background: linear-gradient(135deg, #0b1216 0%, #0f1a1e 100%);
   display: flex;
   flex-direction: column;
@@ -629,7 +638,7 @@
   padding: 24px 12px;
   gap: 12px;
   margin: 0;
-  touch-action: pan-y;
+  touch-action: pan-y pan-x;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

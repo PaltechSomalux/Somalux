@@ -720,13 +720,7 @@ const TextSelectionPanel = ({
     if (summaryModalOpen || (expandedView && expandedView.type === 'summarize')) {
       return;
     }
-    // Only allow drag from header when in explanation view
-    if (expandedView && expandedView.type === 'explain') {
-      if (!e.target.closest('.expanded-header')) {
-        return; // No drag from content area
-      }
-    }
-    // Only drag from the header area, not from buttons
+    // Only drag from the header area or drag handle, not from buttons
     if (e.target.closest('button') || e.target.closest('.action-btn') || e.target.closest('.icon-btn')) {
       return;
     }
@@ -735,6 +729,25 @@ const TextSelectionPanel = ({
       x: e.clientX - adjustedPos.x,
       y: e.clientY - adjustedPos.y,
     };
+  };
+
+  const handleTouchStart = (e) => {
+    // Disable dragging when summary modal is open or when summary panel is expanded with summarize view
+    if (summaryModalOpen || (expandedView && expandedView.type === 'summarize')) {
+      return;
+    }
+    // Only drag from the header area or drag handle, not from buttons
+    if (e.target.closest('button') || e.target.closest('.action-btn') || e.target.closest('.icon-btn')) {
+      return;
+    }
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      setIsDragging(true);
+      dragPosRef.current = {
+        x: touch.clientX - adjustedPos.x,
+        y: touch.clientY - adjustedPos.y,
+      };
+    }
   };
 
   useEffect(() => {
@@ -766,7 +779,45 @@ const TextSelectionPanel = ({
       });
     };
 
+    const handleTouchMove = (e) => {
+      if (e.touches.length === 1) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        
+        if (dragRAFRef.current) {
+          cancelAnimationFrame(dragRAFRef.current);
+        }
+
+        dragRAFRef.current = requestAnimationFrame(() => {
+          const newX = touch.clientX - dragPosRef.current.x;
+          const newY = touch.clientY - dragPosRef.current.y;
+
+          // Keep panel within viewport bounds
+          const rect = panelRef.current?.getBoundingClientRect();
+          if (rect) {
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+
+            const constrainedX = Math.max(0, Math.min(newX, viewportWidth - rect.width));
+            const constrainedY = Math.max(0, Math.min(newY, viewportHeight - rect.height));
+
+            setAdjustedPos({
+              x: constrainedX,
+              y: constrainedY,
+            });
+          }
+        });
+      }
+    };
+
     const handleMouseUp = () => {
+      setIsDragging(false);
+      if (dragRAFRef.current) {
+        cancelAnimationFrame(dragRAFRef.current);
+      }
+    };
+
+    const handleTouchEnd = () => {
       setIsDragging(false);
       if (dragRAFRef.current) {
         cancelAnimationFrame(dragRAFRef.current);
@@ -775,10 +826,14 @@ const TextSelectionPanel = ({
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
     
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
       if (dragRAFRef.current) {
         cancelAnimationFrame(dragRAFRef.current);
       }
@@ -803,6 +858,7 @@ const TextSelectionPanel = ({
           }}
           onClick={(e) => e.stopPropagation()}
           onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
         >
           <div className="selection-panel-content expanded-content">
             {/* Header with back button */}
@@ -1992,6 +2048,7 @@ const TextSelectionPanel = ({
         }}
         onClick={(e) => e.stopPropagation()}
         onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
       >
         <div className="selection-panel-content">
           {copiedFeedback ? (

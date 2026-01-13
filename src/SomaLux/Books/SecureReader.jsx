@@ -1,5 +1,5 @@
 // SecureReader.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -20,6 +20,7 @@ import {
 } from 'react-icons/fi';
 import TextSelectionPanel from './TextSelectionPanel';
 import useTextSelection from './useTextSelection';
+import useMobileZoomGestures from './hooks/useMobileZoomGestures';
 import './SecureReader.css'; // Import CSS file
 
 // Verify worker is configured (set in pdfConfig.js at startup)
@@ -44,6 +45,7 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
+  const [mobileScale, setMobileScale] = useState(1.0); // Separate mobile zoom state
   const zoomTimeoutRef = useRef(null);
   const [rotation, setRotation] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -58,6 +60,9 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
   console.log('🔧 SecureReader: About to call useTextSelection hook');
   const { selection, position, clearSelection, selectedText } = useTextSelection('.pdf-container');
   console.log('🔧 SecureReader: useTextSelection hook returned', { selection, position });
+
+  // PDF container ref for mobile gestures
+  const pdfContainerRef = useRef(null);
 
   // Debug: Monitor selection state
   useEffect(() => {
@@ -167,21 +172,51 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
     setPageNumber(prev => (numPages ? Math.min(numPages, prev + 1) : prev + 1));
   };
 
-  const zoomIn = () => {
+  const zoomIn = useCallback(() => {
     requestAnimationFrame(() => {
-      setScale(s => Math.min(3.0, s + 0.1));
+      setScale(s => Math.min(5.0, s + 0.1));
     });
-  };
-  const zoomOut = () => {
+  }, []);
+
+  const zoomOut = useCallback(() => {
     requestAnimationFrame(() => {
-      setScale(s => Math.max(0.5, s - 0.1));
+      setScale(s => Math.max(0.25, s - 0.1));
     });
-  };
-  const resetZoom = () => {
+  }, []);
+
+  const resetZoom = useCallback(() => {
     requestAnimationFrame(() => {
       setScale(1.0);
     });
-  };
+  }, []);
+
+  // Mobile-specific zoom functions
+  const mobileZoomIn = useCallback(() => {
+    requestAnimationFrame(() => {
+      setMobileScale(s => Math.min(5.0, s + 0.1));
+    });
+  }, []);
+
+  const mobileZoomOut = useCallback(() => {
+    requestAnimationFrame(() => {
+      setMobileScale(s => Math.max(0.25, s - 0.1));
+    });
+  }, []);
+
+  const mobileResetZoom = useCallback(() => {
+    requestAnimationFrame(() => {
+      setMobileScale(1.0);
+    });
+  }, []);
+
+  // Initialize mobile zoom gestures hook - defined after zoom functions
+  const { isMobileDevice } = useMobileZoomGestures(
+    pdfContainerRef,
+    mobileZoomIn,
+    mobileZoomOut,
+    mobileResetZoom,
+    mobileScale
+  );
 
   const toggleFullscreen = () => {
     setIsFullscreen(v => !v);
@@ -301,6 +336,41 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
           </div>
 
           <div className="button-group">
+            {/* Mobile Zoom Controls - Inside button panel */}
+            {isMobileDevice && (
+              <>
+                <button
+                  className={`icon-button ${mobileScale <= 0.25 ? 'disabled' : ''}`}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); mobileZoomOut?.(); }}
+                  disabled={mobileScale <= 0.25}
+                  title="Zoom Out"
+                >
+                  −
+                </button>
+
+                <span className="zoom-display-secure">{Math.round(mobileScale * 100)}%</span>
+
+                <button
+                  className={`icon-button ${mobileScale >= 5.0 ? 'disabled' : ''}`}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); mobileZoomIn?.(); }}
+                  disabled={mobileScale >= 5.0}
+                  title="Zoom In"
+                >
+                  +
+                </button>
+
+                {Math.round(mobileScale * 100) !== 100 && (
+                  <button
+                    className="icon-button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); mobileResetZoom?.(); }}
+                    title="Reset Zoom"
+                  >
+                    ↺
+                  </button>
+                )}
+              </>
+            )}
+
             <button
               className="icon-button"
               onClick={toggleFullscreen}
@@ -362,7 +432,7 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
         </div>
 
         <div className="content-area">
-          <div className={pdfContainerClasses}>
+          <div className={pdfContainerClasses} ref={pdfContainerRef}>
             {/* Visible watermark overlay */}
             <div className="watermark-overlay">
               <div className="watermark-text">
@@ -371,17 +441,29 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
             </div>
 
             {/* PDF content */}
-            <Document
-              file={src}
-              onLoadSuccess={handleDocumentLoad}
-              onError={(error) => {
-                console.error('PDF loading error in SecureReader:', error?.message || error);
-                setPdfError(true);
-              }}
-              loading={
-                <div className="loading-text">Loading book pages...</div>
-              }
+            <div
+              style={isMobileDevice ? {
+                transform: `scale(${mobileScale})`,
+                transformOrigin: 'top center',
+                transition: 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                willChange: 'transform',
+                width: '100%',
+                pointerEvents: 'auto',
+                backfaceVisibility: 'hidden',
+                perspective: '1000px'
+              } : {}}
             >
+              <Document
+                file={src}
+                onLoadSuccess={handleDocumentLoad}
+                onError={(error) => {
+                  console.error('PDF loading error in SecureReader:', error?.message || error);
+                  setPdfError(true);
+                }}
+                loading={
+                  <div className="loading-text">Loading book pages...</div>
+                }
+              >
               {pdfError ? (
                 <div className="loading-text" style={{ color: '#ff6b6b', padding: '20px' }}>
                   ❌ Failed to load PDF. Please refresh the page or try again later.
@@ -394,7 +476,7 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
                   >
                     <Page
                       pageNumber={idx + 1}
-                      scale={scale}
+                      scale={isMobileDevice ? 1 : scale}
                       rotate={rotation}
                       renderTextLayer={true}
                       renderAnnotationLayer={false}
@@ -408,7 +490,7 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
                 : (
                   <Page
                     pageNumber={pageNumber}
-                    scale={scale}
+                    scale={isMobileDevice ? 1 : scale}
                     rotate={rotation}
                     renderTextLayer={true}
                     renderAnnotationLayer={false}
@@ -418,10 +500,9 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
                     }}
                   />
                 )}
-            </Document>
-          </div>
-
-          <div className="reader-footer">
+              </Document>
+            </div>
+            
             <span>
               {scrollMode
                 ? numPages
@@ -462,6 +543,9 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
             onClose={clearSelection}
           />
         )}
+
+        {/* Mobile Zoom Controls - Only visible on mobile (≤ 768px) */}
+        {/* Mobile Zoom Controls moved to header */}
       </div>
     </div>
   );

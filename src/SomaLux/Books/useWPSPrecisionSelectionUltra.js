@@ -485,7 +485,12 @@ const useWPSPrecisionSelectionUltra = (containerSelector = '.simple-scroll-reade
   // Event listeners
   useEffect(() => {
     const container = document.querySelector(containerSelector);
-    if (!container) return;
+    if (!container) {
+      console.warn('⚠️ Selection container not found:', containerSelector);
+      return;
+    }
+
+    console.log('✅ Ultra selection listeners attached to:', containerSelector);
 
     let completionTimeout = null;
 
@@ -503,11 +508,20 @@ const useWPSPrecisionSelectionUltra = (containerSelector = '.simple-scroll-reade
     };
 
     const handleTouchStart = () => {
+      console.log('👆 Touch start - isMobile:', isMobileRef.current);
       selectionInProgressRef.current = true;
       setIsSelecting(true);
     };
 
+    const handleTouchMove = () => {
+      // Update selection during touch drag
+      if (selectionInProgressRef.current) {
+        detectPreciseSelection();
+      }
+    };
+
     const handleTouchEnd = () => {
+      console.log('👆 Touch end');
       selectionInProgressRef.current = false;
       if (completionTimeout) clearTimeout(completionTimeout);
       completionTimeout = setTimeout(() => {
@@ -534,6 +548,7 @@ const useWPSPrecisionSelectionUltra = (containerSelector = '.simple-scroll-reade
     container.addEventListener('mousedown', handleMouseDown, true);
     container.addEventListener('mouseup', handleMouseUp, true);
     container.addEventListener('touchstart', handleTouchStart, true);
+    container.addEventListener('touchmove', handleTouchMove, true);
     container.addEventListener('touchend', handleTouchEnd, true);
     container.addEventListener('keyup', handleKeyUp, true);
     container.addEventListener('contextmenu', handleContextMenu, true);
@@ -543,6 +558,7 @@ const useWPSPrecisionSelectionUltra = (containerSelector = '.simple-scroll-reade
       container.removeEventListener('mousedown', handleMouseDown, true);
       container.removeEventListener('mouseup', handleMouseUp, true);
       container.removeEventListener('touchstart', handleTouchStart, true);
+      container.removeEventListener('touchmove', handleTouchMove, true);
       container.removeEventListener('touchend', handleTouchEnd, true);
       container.removeEventListener('keyup', handleKeyUp, true);
       container.removeEventListener('contextmenu', handleContextMenu, true);

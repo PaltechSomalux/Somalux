@@ -13,6 +13,8 @@ import SettingsModal from './SettingsModal';
 import TextSelectionPanel from './TextSelectionPanel';
 import useWPSPrecisionSelectionPerfect from './useWPSPrecisionSelectionPerfect';
 import { generateSummaryDocument } from './utils/generateWordDoc';
+import useMobileZoomGestures from './hooks/useMobileZoomGestures';
+import usePanGesture from './hooks/usePanGesture';
 import './SimpleScrollReader.css';
 
 // Verify worker is configured (set in pdfConfig.js at startup)
@@ -44,6 +46,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
 
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1.0);
+  const [mobileScale, setMobileScale] = useState(1.0); // Separate mobile zoom state
   const zoomTimeoutRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [pdfError, setPdfError] = useState(!simpleReaderWorkerReady);
@@ -78,6 +81,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   console.log('🔧 SimpleScrollReader: useWPSPrecisionSelectionPerfect hook returned', { selection, position, isSelecting });
   const containerRef = useRef(null);
   const scrollAreaRef = useRef(null);
+  const contentAreaRef = useRef(null);
   const pageRefsMap = useRef({});
   const scaleRef = useRef(1.0);
   const audioRef = useRef(null);
@@ -180,13 +184,13 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
 
   const zoomIn = useCallback(() => {
     requestAnimationFrame(() => {
-      setScale(s => Math.min(3.0, s + 0.1));
+      setScale(s => Math.min(5.0, s + 0.1));
     });
   }, []);
-  
+
   const zoomOut = useCallback(() => {
     requestAnimationFrame(() => {
-      setScale(s => Math.max(0.5, s - 0.1));
+      setScale(s => Math.max(0.25, s - 0.1));
     });
   }, []);
 
@@ -195,6 +199,37 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
       setScale(1.0);
     });
   }, []);
+
+  // Mobile-specific zoom functions
+  const mobileZoomIn = useCallback(() => {
+    setMobileScale(s => Math.min(5.0, s + 0.1));
+  }, []);
+
+  const mobileZoomOut = useCallback(() => {
+    setMobileScale(s => Math.max(0.25, s - 0.1));
+  }, []);
+
+  const mobileResetZoom = useCallback(() => {
+    setMobileScale(1.0);
+  }, []);
+
+  // Direct zoom function for smooth pinch gestures
+  const mobileSetZoom = useCallback((scale) => {
+    setMobileScale(Math.max(0.25, Math.min(5.0, scale)));
+  }, []);
+
+  // Initialize mobile zoom gestures hook - defined after zoom functions
+  const { isMobileDevice } = useMobileZoomGestures(
+    scrollAreaRef,
+    mobileZoomIn,
+    mobileZoomOut,
+    mobileResetZoom,
+    mobileSetZoom,
+    mobileScale
+  );
+
+  // Pan gesture hook for zoomed content - allows swiping to see full content when zoomed
+  usePanGesture(contentAreaRef, isMobileDevice && mobileScale > 1.2);
 
   // Ultra-optimized scroll handler with virtual rendering - tracks current page and visible pages
   useEffect(() => {
@@ -841,6 +876,41 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                     <option value={1.5}>1.5x</option>
                   </select>
                 </div>
+
+                {/* Mobile Zoom Controls - After speed control */}
+                {isMobileDevice && (
+                  <>
+                    <button 
+                      onClick={() => mobileZoomOut?.()} 
+                      className={`ssr-icon-btn ${mobileScale <= 0.25 ? 'disabled' : ''}`}
+                      disabled={mobileScale <= 0.25}
+                      title="Zoom Out"
+                    >
+                      −
+                    </button>
+
+                    <span className="ssr-zoom-display">{Math.round(mobileScale * 100)}%</span>
+
+                    <button 
+                      onClick={() => mobileZoomIn?.()} 
+                      className={`ssr-icon-btn ${mobileScale >= 5.0 ? 'disabled' : ''}`}
+                      disabled={mobileScale >= 5.0}
+                      title="Zoom In"
+                    >
+                      +
+                    </button>
+
+                    {Math.round(mobileScale * 100) !== 100 && (
+                      <button
+                        onClick={() => mobileResetZoom?.()}
+                        className="ssr-icon-btn"
+                        title="Reset Zoom"
+                      >
+                        ↺
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             )}
             </div>
@@ -935,7 +1005,10 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
           )}
 
           {/* Scroll area - continuous pages */}
-          <div className="ssr-scroll-area simple-scroll-reader" ref={scrollAreaRef}>
+          <div className="ssr-scroll-area simple-scroll-reader" ref={(el) => {
+            scrollAreaRef.current = el;
+            contentAreaRef.current = el;
+          }}>
             {isLoading && (
               <div className="ssr-loading">
                 <div className="ssr-spinner">
@@ -1037,36 +1110,51 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
             ) : null}
 
             {hasPdfSource && (
-              <Document
-                file={src}
-                onLoadSuccess={handleDocumentLoad}
-                onError={(error) => {
-                  console.error('PDF loading error in SimpleScrollReader:', error?.message || error);
-                  setPdfError(true);
-                }}
-                loading={null}
-                error={
-                  <div className="ssr-error">
-                    {pdfError 
-                      ? '❌ Failed to load PDF. The file may be corrupted or inaccessible. Please refresh and try again.'
-                      : 'Failed to load PDF. The file may be corrupted or inaccessible.'}
-                  </div>
-                }
+              <div
+                style={isMobileDevice ? {
+                  transform: `scale(${mobileScale})`,
+                  transformOrigin: 'top left',
+                  transition: 'transform 0.08s linear',
+                  willChange: 'transform',
+                  width: '100%',
+                  height: 'auto',
+                  display: 'inline-block',
+                  transformBox: 'fill-box',
+                  pointerEvents: 'auto',
+                  backfaceVisibility: 'hidden',
+                  perspective: '1000px'
+                } : {}}
               >
-                {/* Virtual Rendering - Only render visible pages + buffer to prevent system hang */}
-                {!isLoading && numPages && Array.from({ length: numPages }, (_, idx) => {
-                  const pageNum = idx + 1;
-                  const isVisible = visiblePages.has(pageNum);
-                  const isCurrentPage = pageNum === currentPage;
-                  // CRITICAL: Only enable text layer for current + adjacent pages (90%+ perf boost)
-                  const enableTextLayer = shouldRenderTextLayer && (isCurrentPage || Math.abs(pageNum - currentPage) === 1);
-                  
-                  // Only render pages that are visible or in buffer
-                  if (!isVisible) {
-                    // Render placeholder for non-visible pages to maintain scroll position
-                    return (
-                      <div 
-                        key={pageNum} 
+                <Document
+                  file={src}
+                  onLoadSuccess={handleDocumentLoad}
+                  onError={(error) => {
+                    console.error('PDF loading error in SimpleScrollReader:', error?.message || error);
+                    setPdfError(true);
+                  }}
+                  loading={null}
+                  error={
+                    <div className="ssr-error">
+                      {pdfError 
+                        ? '❌ Failed to load PDF. The file may be corrupted or inaccessible. Please refresh and try again.'
+                        : 'Failed to load PDF. The file may be corrupted or inaccessible.'}
+                    </div>
+                  }
+                >
+                  {/* Virtual Rendering - Only render visible pages + buffer to prevent system hang */}
+                  {!isLoading && numPages && Array.from({ length: numPages }, (_, idx) => {
+                    const pageNum = idx + 1;
+                    const isVisible = visiblePages.has(pageNum);
+                    const isCurrentPage = pageNum === currentPage;
+                    // CRITICAL: Only enable text layer for current + adjacent pages (90%+ perf boost)
+                    const enableTextLayer = shouldRenderTextLayer && (isCurrentPage || Math.abs(pageNum - currentPage) === 1);
+                    
+                    // Only render pages that are visible or in buffer
+                    if (!isVisible) {
+                      // Render placeholder for non-visible pages to maintain scroll position
+                      return (
+                        <div 
+                          key={pageNum} 
                         className="ssr-page ssr-page-placeholder"
                         ref={(el) => {
                           if (el) pageRefsMap.current[pageNum] = el;
@@ -1087,7 +1175,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                     >
                       <Page
                         pageNumber={pageNum}
-                        scale={scale}
+                        scale={isMobileDevice ? 1 : scale}
                         renderTextLayer={enableTextLayer}
                         renderAnnotationLayer={false}
                         loading=""
@@ -1100,6 +1188,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                   );
                 })}
               </Document>
+              </div>
             )}
             {!hasPdfSource && (
               <div className="ssr-error">
@@ -1269,6 +1358,9 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
           summaryModalOpen={summaryModalOpen}
         />
       )}
+
+      {/* Mobile Zoom Controls - Only visible on mobile (≤ 768px) */}
+      {/* Mobile Zoom Controls moved to header */}
     </div>
   );
 };
