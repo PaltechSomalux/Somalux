@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import { FiX, FiZoomIn, FiZoomOut, FiList, FiDownload, FiBarChart2, FiSettings, FiEdit3, FiBookmark, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiX, FiList, FiDownload, FiBarChart2, FiSettings, FiEdit3, FiBookmark, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { PDFDocument } from 'pdf-lib';
 import saveAs from 'file-saver';
 import SummaryModal from './SummaryModal';
@@ -44,6 +44,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
 
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1.0);
+  const zoomTimeoutRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [pdfError, setPdfError] = useState(!simpleReaderWorkerReady);
   const [showTOC, setShowTOC] = useState(true);
@@ -178,13 +179,21 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   };
 
   const zoomIn = useCallback(() => {
-    scaleRef.current = Math.min(3.0, scaleRef.current + 0.075);
-    setScale(scaleRef.current);
+    requestAnimationFrame(() => {
+      setScale(s => Math.min(3.0, s + 0.1));
+    });
   }, []);
   
   const zoomOut = useCallback(() => {
-    scaleRef.current = Math.max(0.75, scaleRef.current - 0.075);
-    setScale(scaleRef.current);
+    requestAnimationFrame(() => {
+      setScale(s => Math.max(0.5, s - 0.1));
+    });
+  }, []);
+
+  const resetZoom = useCallback(() => {
+    requestAnimationFrame(() => {
+      setScale(1.0);
+    });
   }, []);
 
   // Ultra-optimized scroll handler with virtual rendering - tracks current page and visible pages
@@ -258,24 +267,49 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
 
 
 
-  // Handle keyboard shortcuts
+  // Handle keyboard shortcuts - MS Edge style zooming
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.ctrlKey || e.metaKey) {
         if (e.key === '+' || e.key === '=') {
           e.preventDefault();
+          e.stopPropagation();
           zoomIn();
-        }
-        if (e.key === '-') {
+        } else if (e.key === '-') {
           e.preventDefault();
+          e.stopPropagation();
+          zoomOut();
+        } else if (e.key === '0') {
+          e.preventDefault();
+          e.stopPropagation();
+          resetZoom();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [zoomIn, zoomOut, resetZoom]);
+
+  // Handle mouse wheel zooming - MS Edge style (Ctrl + scroll)
+  useEffect(() => {
+    const handleWheel = (e) => {
+      if ((e.ctrlKey || e.metaKey) && scrollAreaRef.current && e.target.closest('.ssr-container')) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Zoom in on scroll up, out on scroll down
+        if (e.deltaY < 0) {
+          zoomIn();
+        } else if (e.deltaY > 0) {
           zoomOut();
         }
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+    window.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    return () => window.removeEventListener('wheel', handleWheel, { capture: true });
+  }, [zoomIn, zoomOut]);
 
   // Jump to page
   const jumpToPage = (page) => {
@@ -809,16 +843,6 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
                 </div>
               </div>
             )}
-            
-            <button onClick={zoomOut} className="ssr-icon-btn ssr-zoom-btn" title="Zoom out (Ctrl + -)">
-              <FiZoomOut size={18} />
-            </button>
-            <div className="ssr-zoom-percentage" title="Current zoom level">
-              {Math.round((scale / 1.5) * 100)}%
-            </div>
-            <button onClick={zoomIn} className="ssr-icon-btn ssr-zoom-btn" title="Zoom in (Ctrl + +)">
-              <FiZoomIn size={18} />
-            </button>
             </div>
           </div>
 

@@ -7,8 +7,6 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiX,
-  FiZoomIn,
-  FiZoomOut,
   FiMaximize2,
   FiMinimize2,
 } from 'react-icons/fi';
@@ -29,6 +27,7 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.2);
+  const zoomTimeoutRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [highlights, setHighlights] = useState([]);
@@ -113,8 +112,21 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
     }
   }, [pageNumber, src, numPages]);
 
-  const zoomIn = () => setScale(s => Math.min(2.5, s + 0.2));
-  const zoomOut = () => setScale(s => Math.max(0.8, s - 0.2));
+  const zoomIn = () => {
+    requestAnimationFrame(() => {
+      setScale(s => Math.min(3.0, s + 0.1));
+    });
+  };
+  const zoomOut = () => {
+    requestAnimationFrame(() => {
+      setScale(s => Math.max(0.5, s - 0.1));
+    });
+  };
+  const resetZoom = () => {
+    requestAnimationFrame(() => {
+      setScale(1.0);
+    });
+  };
 
   const addHighlight = (color) => {
     if (selectedText && selectedText.length > 0) {
@@ -151,6 +163,29 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
   };
 
   const handleKeyDown = useCallback((e) => {
+    // MS Edge style zooming
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        e.stopPropagation();
+        zoomIn();
+        return;
+      }
+      if (e.key === '-') {
+        e.preventDefault();
+        e.stopPropagation();
+        zoomOut();
+        return;
+      }
+      if (e.key === '0') {
+        e.preventDefault();
+        e.stopPropagation();
+        resetZoom();
+        return;
+      }
+    }
+
+    // Navigation shortcuts
     if (e.key === 'ArrowRight' || e.key === ' ') goNext();
     else if (e.key === 'ArrowLeft') goPrev();
     else if (e.key === 'Escape') {
@@ -160,7 +195,30 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
         onClose();
       }
     }
-  }, [numPages, pageNumber, position, clearSelection, onClose]);
+  }, [numPages, pageNumber, position, clearSelection, onClose, zoomIn, zoomOut, resetZoom]);
+
+  // Handle mouse wheel zooming - MS Edge style (Ctrl + scroll)
+  useEffect(() => {
+    const handleWheel = (e) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+        const container = document.querySelector('.fast-reader-container');
+        if (container && e.target.closest('.fast-reader-container')) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Zoom in on scroll up, out on scroll down
+          if (e.deltaY < 0) {
+            zoomIn();
+          } else if (e.deltaY > 0) {
+            zoomOut();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    return () => window.removeEventListener('wheel', handleWheel, { capture: true });
+  }, [zoomIn, zoomOut]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -178,22 +236,6 @@ const FastReader = ({ src, title, author, onClose, userId, bookId }) => {
           </div>
 
           <div className="fast-reader-controls">
-            <button
-              onClick={zoomOut}
-              className="fast-btn"
-              title="Zoom out (Ctrl + -)"
-            >
-              <FiZoomOut size={18} />
-            </button>
-            
-            <button
-              onClick={zoomIn}
-              className="fast-btn"
-              title="Zoom in (Ctrl + +)"
-            >
-              <FiZoomIn size={18} />
-            </button>
-
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
               className="fast-btn"

@@ -171,6 +171,8 @@
   contain: layout style paint;
   will-change: transform;
   transform: translate3d(0, 0, 0); /* GPU acceleration */
+  backface-visibility: hidden;
+  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fast-page-wrapper.current {
@@ -196,6 +198,7 @@
   margin: 0 auto;
   contain: layout style paint;
   will-change: transform;
+  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1);
 }
 }
 

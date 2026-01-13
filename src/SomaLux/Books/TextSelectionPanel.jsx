@@ -26,7 +26,6 @@ import {
 } from 'react-icons/fi';
 import { FaFilePdf, FaFileWord } from 'react-icons/fa';
 import { generateSummary, generateKeyPoints, getTextStats } from './utils/summarizeText';
-import { fetchExplanation } from './utils/explainationApi';
 import { explainIntelligentText } from './utils/intelligentTextProcessor';
 import { translateText, getSupportedLanguages } from './utils/translationApi';
 import { saveAs } from 'file-saver';
@@ -73,6 +72,9 @@ const TextSelectionPanel = ({
   const [showSaveOptions, setShowSaveOptions] = useState(false); // Toggle save options menu
   const [showEditSummarySaveOptions, setShowEditSummarySaveOptions] = useState(false); // Toggle edit summary save options
   const [isSavingFormat, setIsSavingFormat] = useState(null); // Track which format is being saved
+  const [isStreamingExplanation, setIsStreamingExplanation] = useState(false); // Track if explanation is being streamed
+  const [isStreamingPaused, setIsStreamingPaused] = useState(false); // Track if streaming is paused
+  const streamingControlRef = useRef({ isPaused: false, shouldCancel: false, streamPromiseResolve: null }); // Control streaming
   const saveOptionsRef = useRef(null); // Ref for main save options dropdown
   const editSaveSaveOptionsRef = useRef(null); // Ref for edit summary save options dropdown
   
@@ -272,7 +274,30 @@ const TextSelectionPanel = ({
     try {
       console.log('🎯 Explain triggered for text:', selectedText.substring(0, 50) + '...');
       
-      // Use intelligent text processor to handle misspellings, truncated text, etc.
+      // Calculate stats from selected text
+      const textWords = selectedText.split(/\s+/).filter(w => w.trim().length > 0);
+      const sentences = selectedText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+      
+      // Reset streaming controls
+      streamingControlRef.current = { isPaused: false, shouldCancel: false, streamPromiseResolve: null };
+      setIsStreamingExplanation(true);
+      setIsStreamingPaused(false);
+      
+      // Show panel immediately with loading state
+      setExpandedView({ 
+        type: 'explain', 
+        content: '⟳',
+        source: '',
+        fullContent: '',
+        stats: {
+          words: textWords.length,
+          sentences: sentences.length,
+          charCount: selectedText.length,
+          readTime: Math.ceil(textWords.length / 200)
+        }
+      });
+      
+      // Fetch explanation in background
       const result = await explainIntelligentText(selectedText);
       
       console.log('📚 Explanation received from:', result.source);
@@ -283,19 +308,18 @@ const TextSelectionPanel = ({
       let formattedExplanation = `## ${result.title}\n\n`;
       formattedExplanation += result.explanation;
       
-      // Calculate stats from selected text
-      const textWords = selectedText.split(/\s+/).filter(w => w.trim().length > 0);
-      const sentences = selectedText.split(/[.!?]+/).filter(s => s.trim().length > 0);
-      
-      console.log('✅ Setting explanation view with stats:', {
+      console.log('✅ Starting stream with stats:', {
         words: textWords.length,
         sentences: sentences.length,
         charCount: selectedText.length
       });
       
+      // Show initial header
       setExpandedView({ 
         type: 'explain', 
-        content: formattedExplanation,
+        content: `## ${result.title}\n\n`,
+        source: result.source,
+        fullContent: formattedExplanation,
         stats: {
           words: textWords.length,
           sentences: sentences.length,
@@ -303,8 +327,43 @@ const TextSelectionPanel = ({
           readTime: Math.ceil(textWords.length / 200)
         }
       });
+      
+      // Stream the explanation content character by character (skip header)
+      let displayedContent = `## ${result.title}\n\n`;
+      const streamSpeed = 15; // milliseconds between each character
+      const explanationStart = displayedContent.length;
+      
+      for (let i = explanationStart; i < formattedExplanation.length; i++) {
+        // Check if streaming should be cancelled
+        if (streamingControlRef.current.shouldCancel) {
+          setIsStreamingExplanation(false);
+          setIsStreamingPaused(false);
+          return;
+        }
+        
+        // Handle pause
+        while (streamingControlRef.current.isPaused) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        displayedContent += formattedExplanation[i];
+        
+        setExpandedView(prev => ({
+          ...prev,
+          content: displayedContent,
+          fullContent: formattedExplanation
+        }));
+        
+        // Use a promise-based delay to allow React to update
+        await new Promise(resolve => setTimeout(resolve, streamSpeed));
+      }
+      
+      setIsStreamingExplanation(false);
+      setIsStreamingPaused(false);
     } catch (err) {
       console.error('❌ Explain error:', err);
+      setIsStreamingExplanation(false);
+      setIsStreamingPaused(false);
       
       // Final fallback
       const words = selectedText.split(/\s+/).filter(w => w.length > 2);
@@ -660,6 +719,12 @@ const TextSelectionPanel = ({
     // Disable dragging when summary modal is open or when summary panel is expanded with summarize view
     if (summaryModalOpen || (expandedView && expandedView.type === 'summarize')) {
       return;
+    }
+    // Only allow drag from header when in explanation view
+    if (expandedView && expandedView.type === 'explain') {
+      if (!e.target.closest('.expanded-header')) {
+        return; // No drag from content area
+      }
     }
     // Only drag from the header area, not from buttons
     if (e.target.closest('button') || e.target.closest('.action-btn') || e.target.closest('.icon-btn')) {
@@ -1095,7 +1160,7 @@ const TextSelectionPanel = ({
                   )}
                   
                   {/* Top Action Buttons - Copy and Save */}
-                  <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', justifyContent: 'space-between' }}>
+                  <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                     <button
                       onClick={handleCopyClick}
                       style={{
@@ -1125,6 +1190,74 @@ const TextSelectionPanel = ({
                       <FiCopy size={14} />
                       Copy
                     </button>
+                    {isStreamingExplanation && (
+                      <>
+                        <button
+                          onClick={() => {
+                            streamingControlRef.current.isPaused = !streamingControlRef.current.isPaused;
+                            setIsStreamingPaused(!isStreamingPaused);
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            background: 'transparent',
+                            border: '1px solid #3a4a54',
+                            color: '#e9edef',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#5a6a74';
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#3a4a54';
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          {isStreamingPaused ? '▶' : '⏸'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            streamingControlRef.current.shouldCancel = true;
+                            setIsStreamingExplanation(false);
+                            setIsStreamingPaused(false);
+                            handleExplain(); // Restart
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            background: 'transparent',
+                            border: '1px solid #3a4a54',
+                            color: '#e9edef',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#5a6a74';
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#3a4a54';
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          ↻
+                        </button>
+                      </>
+                    )}
                     <button
                       onClick={() => {
                         const element = document.createElement('a');
@@ -1165,15 +1298,15 @@ const TextSelectionPanel = ({
                   </div>
 
                   {/* Explanation Content with ChatGPT-like formatting */}
-                  <div className="explanation-content-wrapper" style={{ minHeight: '100px', maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
-                    <div className="explanation-text" style={{ color: '#e9edef', lineHeight: '1.8', fontSize: '13px', whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
+                  <div className="explanation-content-wrapper" style={{ minHeight: '100px', maxHeight: '400px', overflowY: 'auto', paddingRight: '8px', paddingTop: '8px', paddingBottom: '0px', scrollbarWidth: 'none', msOverflowStyle: 'none', userSelect: 'auto', WebkitUserSelect: 'auto' }} onScroll={(e) => { e.currentTarget.style.scrollbarWidth = 'none'; }}>
+                    <div className="explanation-text" style={{ color: '#b0b8c0', lineHeight: '1.9', fontSize: '13px', whiteSpace: 'pre-wrap', wordWrap: 'break-word', letterSpacing: '0.3px' }}>
                       {expandedView.content.split('\n').map((line, idx) => {
                         const trimmedLine = line.trim();
                         
                         // Render H2 headers (##)
                         if (trimmedLine.startsWith('## ')) {
                           return (
-                            <div key={idx} style={{ margin: '16px 0 12px 0', fontSize: '15px', fontWeight: '600', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+                            <div key={idx} style={{ margin: '2px 0 0px 0', fontSize: '15px', fontWeight: '600', color: '#d0d8e0', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '3px', letterSpacing: '0.3px' }}>
                               {trimmedLine.replace('## ', '')}
                             </div>
                           );
@@ -1182,7 +1315,7 @@ const TextSelectionPanel = ({
                         // Render bullet points
                         if (trimmedLine.startsWith('• ')) {
                           return (
-                            <div key={idx} style={{ margin: '6px 0 6px 16px', color: '#c8d3db', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                            <div key={idx} style={{ margin: '6px 0 6px 16px', color: '#a8b0b8', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                               <span style={{ marginTop: '2px', minWidth: '6px' }}>•</span>
                               <span>{trimmedLine.substring(2)}</span>
                             </div>
@@ -1194,8 +1327,8 @@ const TextSelectionPanel = ({
                           const boldMatch = trimmedLine.match(/\*\*(.+?)\*\*/);
                           if (boldMatch) {
                             return (
-                              <p key={idx} style={{ margin: '8px 0', color: '#c8d3db' }}>
-                                <strong style={{ color: '#e9edef' }}>{boldMatch[1]}</strong>
+                              <p key={idx} style={{ margin: '8px 0', color: '#a8b0b8' }}>
+                                <strong style={{ color: '#d0d8e0' }}>{boldMatch[1]}</strong>
                                 {trimmedLine.replace(/\*\*(.+?)\*\*/g, '')}
                               </p>
                             );
@@ -1205,7 +1338,7 @@ const TextSelectionPanel = ({
                         // Render normal paragraphs
                         if (trimmedLine.length > 0) {
                           return (
-                            <p key={idx} style={{ margin: '8px 0', color: '#c8d3db', textAlign: 'justify' }}>
+                            <p key={idx} style={{ margin: '8px 0', color: '#a8b0b8', textAlign: 'justify', lineHeight: '1.9' }}>
                               {trimmedLine}
                             </p>
                           );
@@ -1214,6 +1347,13 @@ const TextSelectionPanel = ({
                         // Render empty lines as spacing
                         return <div key={idx} style={{ height: '8px' }} />;
                       })}
+                    </div>
+                    <div style={{ marginTop: '2px', paddingTop: '2px', paddingBottom: '0px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+                      {expandedView.source && (
+                        <div style={{ fontSize: '11px', color: '#7a8490', fontStyle: 'italic' }}>
+                          Source: {expandedView.source}
+                        </div>
+                      )}
                     </div>
                   </div>
 

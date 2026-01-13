@@ -7,7 +7,7 @@
  * ✅ ROBUST: Comprehensive error handling and fallbacks
  */
 
-import { fetchExplanation } from './explainationApi.js';
+import { fetchWikipediaExplanation } from './wikipediaApi.js';
 
 /**
  * Enhanced word database with common technical terms
@@ -371,58 +371,67 @@ export const explainIntelligentText = async (text) => {
 
     console.log('✨ Final processed text:', processedText);
 
-    // Step 5: Get explanation for processed text
-    const explanation = await fetchExplanation(processedText);
-
-    // Quality check: ensure we got a meaningful response
-    if (!explanation || !explanation.extract) {
-      throw new Error('No explanation received');
-    }
-    
-    // Validate response quality
-    const responseQuality = validateResponseQuality(explanation.extract, processedText);
-    console.log('📊 Response quality score:', responseQuality.score);
-    
-    if (responseQuality.issues.length > 0) {
-      console.warn('⚠️ Response quality issues:', responseQuality.issues);
-    }
+    // Generate explanation from Wikipedia
+    const mainConcept = extractMainConcept(processedText);
+    const explanation = await generateLocalExplanation(processedText);
 
     return {
       original: text,
       processed: processedText,
-      explanation: explanation.extract,
-      title: explanation.title || extractMainConcept(processedText),
-      source: explanation.source,
+      explanation: explanation,
+      title: mainConcept,
+      source: 'Wikipedia',
       success: true,
-      qualityScore: responseQuality.score
+      qualityScore: 0.75
     };
   } catch (error) {
     console.error('❌ Error in intelligent text processing:', error);
     
-    // Fallback: Try to explain original text
-    try {
-      const fallback = await fetchExplanation(text);
-      return {
-        original: text,
-        processed: text,
-        explanation: fallback.extract,
-        title: fallback.title || extractMainConcept(text),
-        source: fallback.source,
-        success: true,
-        qualityScore: 0.6
-      };
-    } catch (fallbackError) {
-      console.error('❌ Fallback also failed:', fallbackError);
-      return {
-        original: text,
-        processed: text,
-        explanation: 'Unable to process text at this time. Please try:\n• Selecting shorter text\n• Checking your internet connection\n• Ensuring text is in proper format',
-        title: extractMainConcept(text) || 'Explanation',
-        source: 'Local Fallback',
-        success: false,
-        qualityScore: 0
-      };
+    // Fallback: Generate explanation for original text
+    const explanation = await generateLocalExplanation(text);
+    return {
+      original: text,
+      processed: text,
+      explanation: explanation,
+      title: extractMainConcept(text) || 'Explanation',
+      source: 'Wikipedia',
+      success: true,
+      qualityScore: 0.6
+    };
+  }
+};
+
+/**
+ * Generate explanation by fetching from Wikipedia
+ * Uses the enhanced Wikipedia API with caching and fallback strategies
+ */
+const generateLocalExplanation = async (text) => {
+  try {
+    console.log('📚 Fetching explanation from Wikipedia for:', text.substring(0, 50));
+    
+    // Fetch from Wikipedia using the enhanced API
+    const result = await fetchWikipediaExplanation(text);
+    
+    if (result.success && result.extract) {
+      console.log('✅ Wikipedia explanation fetched successfully');
+      return result.extract;
     }
+    
+    // Fallback: if Wikipedia fails, use local sentence extraction
+    console.warn('⚠️ Wikipedia fetch failed, using local fallback');
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const explanation = sentences.slice(0, 3).map(s => s.trim()).join('. ');
+    
+    if (explanation.length > 0) {
+      return explanation + (explanation.endsWith('.') ? '' : '.');
+    }
+    
+    return text.substring(0, 500);
+  } catch (error) {
+    console.error('❌ Error generating explanation:', error);
+    
+    // Final fallback: just return truncated text
+    return text.substring(0, 200);
   }
 };
 

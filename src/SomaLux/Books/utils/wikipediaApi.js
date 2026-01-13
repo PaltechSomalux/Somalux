@@ -1,7 +1,43 @@
 /**
- * Wikipedia API Module
- * Handles fetching explanations and summaries from Wikipedia
+ * Wikipedia API Module - Enhanced Version
+ * Handles fetching explanations and summaries from Wikipedia with improved accuracy
+ * 
+ * ✅ Features:
+ * - Multiple fallback strategies for robustness
+ * - Smart term extraction with context awareness
+ * - Local caching to reduce API calls
+ * - Better error handling and disambiguation
+ * - Validation of content quality
+ * - Timeout protection for all requests
  */
+
+// Cache management
+const WIKIPEDIA_CACHE = {};
+const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
+const API_TIMEOUT = 8000; // 8 seconds
+
+/**
+ * Get cached result if available and not expired
+ */
+const getCachedResult = (key) => {
+  const cached = WIKIPEDIA_CACHE[key];
+  if (cached && Date.now() - cached.timestamp < CACHE_EXPIRY) {
+    console.log('💾 Cache hit for:', key);
+    return cached.data;
+  }
+  if (cached) delete WIKIPEDIA_CACHE[key];
+  return null;
+};
+
+/**
+ * Save result to cache
+ */
+const setCacheResult = (key, data) => {
+  WIKIPEDIA_CACHE[key] = {
+    data,
+    timestamp: Date.now()
+  };
+};
 
 /**
  * Extract key terms from text (handling multi-line selections)
@@ -25,7 +61,7 @@ const extractKeyTerms = (text) => {
     // Split into words
     const words = cleanText.split(/\s+/).filter(w => w.length > 2);
     
-    // Common words to filter out
+    // Common words to filter out (stop words)
     const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'your', 'my', 'our', 'their', 'his', 'her', 'its', 'that', 'this', 'these', 'those', 'with', 'from', 'as', 'by', 'com', 'org', 'net'];
     
     // Filter out common words
@@ -52,7 +88,191 @@ const extractKeyTerms = (text) => {
 };
 
 /**
- * Fetch a summary/explanation from Wikipedia
+ * Fetch using REST API (most accurate and fast)
+ */
+const fetchWithRestApi = async (keyTerm) => {
+  try {
+    const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(keyTerm)}`;
+    
+    console.log('🌐 REST API request for:', keyTerm);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    
+    const response = await fetch(wikiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'SomaLux/2.0'
+      },
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      console.warn(`⚠️ REST API status ${response.status}`);
+      return { success: false };
+    }
+    
+    const data = await response.json();
+    
+    if (!data.extract || data.extract.trim().length < 50) {
+      console.warn('⚠️ Extract too short or missing');
+      return { success: false };
+    }
+    
+    console.log('✅ REST API successful');
+    
+    return {
+      title: data.title || keyTerm,
+      extract: data.extract.substring(0, 1500), // More content for better explanation
+      success: true,
+      source: 'REST API',
+      url: data.content_urls?.desktop?.page || null,
+      image: data.thumbnail?.source || null
+    };
+  } catch (error) {
+    console.error('❌ REST API error:', error.message);
+    return { success: false };
+  }
+};
+
+/**
+ * Fetch using Query API (fallback strategy 1)
+ */
+const fetchWithQueryApi = async (searchTerm) => {
+  try {
+    console.log('📚 Trying Wikipedia query API for:', searchTerm);
+    
+    const keyTerm = extractKeyTerms(searchTerm);
+    const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(keyTerm)}&prop=extracts|pageimages|info&pithumbsize=300&inprop=url&explaintext=true&format=json&origin=*`;
+    
+    console.log('🔍 Query API request');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    
+    const response = await fetch(wikiUrl, {
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const pages = data.query?.pages || {};
+    const pageId = Object.keys(pages)[0];
+    
+    if (!pageId || pageId === '-1') {
+      console.warn('⚠️ Page not found in query API');
+      return { success: false };
+    }
+    
+    const page = pages[pageId];
+    
+    if (!page.extract || page.extract.trim().length < 50) {
+      console.warn('⚠️ No valid extract in query response');
+      return { success: false };
+    }
+    
+    console.log('✅ Query API successful');
+    
+    return {
+      title: page.title || keyTerm,
+      extract: page.extract.substring(0, 1500),
+      success: true,
+      source: 'Query API',
+      url: page.fullurl || null,
+      image: page.pageimage || null
+    };
+  } catch (error) {
+    console.error('❌ Query API error:', error.message);
+    return { success: false };
+  }
+};
+
+/**
+ * Fetch using Search fallback (fallback strategy 2)
+ * Tries to get the best matching article
+ */
+const fetchWithSearchFallback = async (searchTerm) => {
+  try {
+    console.log('🔎 Using search fallback for:', searchTerm);
+    
+    const keyTerm = extractKeyTerms(searchTerm);
+    const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(keyTerm)}&srlimit=1&format=json&origin=*`;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    
+    const response = await fetch(wikiUrl, {
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      return { success: false };
+    }
+    
+    const data = await response.json();
+    const results = data.query?.search || [];
+    
+    if (results.length === 0) {
+      console.warn('⚠️ No search results found');
+      return { success: false };
+    }
+    
+    const bestMatch = results[0];
+    
+    // Now fetch the full content of the best match
+    const contentUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(bestMatch.title)}&prop=extracts|info|pageimages&pithumbsize=300&inprop=url&explaintext=true&format=json&origin=*`;
+    
+    const contentResponse = await fetch(contentUrl, {
+      signal: controller.signal
+    });
+    
+    if (!contentResponse.ok) {
+      return { success: false };
+    }
+    
+    const contentData = await contentResponse.json();
+    const pages = contentData.query?.pages || {};
+    const pageId = Object.keys(pages)[0];
+    
+    if (!pageId) {
+      return { success: false };
+    }
+    
+    const page = pages[pageId];
+    
+    if (!page.extract || page.extract.trim().length < 50) {
+      console.warn('⚠️ No valid extract from search result');
+      return { success: false };
+    }
+    
+    console.log('✅ Search fallback successful');
+    
+    return {
+      title: page.title || bestMatch.title,
+      extract: page.extract.substring(0, 1500),
+      success: true,
+      source: 'Search Fallback',
+      url: page.fullurl || null,
+      image: page.pageimage || null
+    };
+  } catch (error) {
+    console.error('❌ Search fallback error:', error.message);
+    return { success: false };
+  }
+};
+
+/**
+ * Fetch a summary/explanation from Wikipedia with multiple fallback strategies
  * @param {string} searchTerm - The term to search for
  * @returns {Promise<Object>} - Object containing title and extract
  */
@@ -64,92 +284,42 @@ export const fetchWikipediaExplanation = async (searchTerm) => {
     const keyTerm = extractKeyTerms(searchTerm);
     console.log('🔍 Extracted key term:', keyTerm);
     
-    // Use Wikipedia REST API endpoint - simpler and more reliable
-    const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(keyTerm)}`;
+    // Check cache first
+    const cacheKey = keyTerm.toLowerCase();
+    const cached = getCachedResult(cacheKey);
+    if (cached) return cached;
     
-    console.log('🌐 Requesting URL:', wikiUrl);
-    
-    const response = await fetch(wikiUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'SomaLux/1.0'
-      }
-    });
-    
-    console.log('📡 Response status:', response.status);
-    
-    if (!response.ok) {
-      console.warn('⚠️ REST API failed, trying query API...');
-      return await fetchWithQueryApi(keyTerm);
+    // Try REST API first (most reliable)
+    let result = await fetchWithRestApi(keyTerm);
+    if (result.success) {
+      setCacheResult(cacheKey, result);
+      return result;
     }
     
-    const data = await response.json();
-    
-    console.log('✅ Wikipedia data received');
-    
-    if (data.extract) {
-      // Get more content - up to 1000 characters for better explanation
-      const extract = data.extract.substring(0, 1000);
-      
-      return {
-        title: data.title || keyTerm,
-        extract: extract,
-        success: true,
-        source: 'REST API'
-      };
-    } else {
-      console.warn('⚠️ No extract in REST response, trying query API...');
-      return await fetchWithQueryApi(keyTerm);
+    // Fallback to query API
+    console.log('📚 REST API failed, trying Query API...');
+    result = await fetchWithQueryApi(keyTerm);
+    if (result.success) {
+      setCacheResult(cacheKey, result);
+      return result;
     }
+    
+    // Last resort: try search for disambiguation or related articles
+    console.log('📚 Query API failed, trying search fallback...');
+    result = await fetchWithSearchFallback(keyTerm);
+    if (result.success) {
+      setCacheResult(cacheKey, result);
+      return result;
+    }
+    
+    return {
+      title: keyTerm,
+      extract: null,
+      success: false,
+      error: 'Unable to fetch from Wikipedia'
+    };
   } catch (error) {
     console.error('❌ Wikipedia API error:', error);
-    return await fetchWithQueryApi(searchTerm);
-  }
-};
-
-/**
- * Fallback: Use Wikipedia query API
- */
-const fetchWithQueryApi = async (searchTerm) => {
-  try {
-    console.log('📚 Trying Wikipedia query API for:', searchTerm);
-    
-    const keyTerm = extractKeyTerms(searchTerm);
-    const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(keyTerm)}&prop=extracts&explaintext=true&format=json&origin=*`;
-    
-    console.log('🌐 Query API URL:', wikiUrl);
-    
-    const response = await fetch(wikiUrl);
-    
-    console.log('📡 Query API Response status:', response.status);
-    
-    if (!response.ok) {
-      throw new Error('Query API HTTP error');
-    }
-    
-    const data = await response.json();
-    const pages = data.query?.pages || {};
-    const pageId = Object.keys(pages)[0];
-    
-    if (pageId && pages[pageId]?.extract) {
-      const page = pages[pageId];
-      const extract = page.extract.substring(0, 1000);
-      
-      console.log('✅ Query API data received');
-      
-      return {
-        title: page.title || keyTerm,
-        extract: extract,
-        success: true,
-        source: 'Query API'
-      };
-    }
-    
-    console.warn('⚠️ No extract in query response');
-    throw new Error('No extract found');
-  } catch (error) {
-    console.error('❌ Query API error:', error);
     return {
       title: searchTerm,
       extract: null,
@@ -169,14 +339,20 @@ export const fetchWikipediaPage = async (searchTerm) => {
     console.log('📄 Fetching Wikipedia page for:', searchTerm);
     
     const keyTerm = extractKeyTerms(searchTerm);
-    const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(keyTerm)}&prop=extracts|info&inprop=url&explaintext=true&format=json&origin=*`;
+    const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(keyTerm)}&prop=extracts|info|pageimages&pithumbsize=500&inprop=url&explaintext=true&format=json&origin=*`;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
     
     const response = await fetch(wikiUrl, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
-      }
+      },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -190,6 +366,10 @@ export const fetchWikipediaPage = async (searchTerm) => {
     }
     
     const pageId = Object.keys(pages)[0];
+    if (pageId === '-1') {
+      throw new Error('Page does not exist');
+    }
+    
     const page = pages[pageId];
     
     console.log('✅ Page data received');
@@ -198,6 +378,7 @@ export const fetchWikipediaPage = async (searchTerm) => {
       title: page.title,
       extract: page.extract || '',
       url: page.fullurl || `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`,
+      image: page.pageimage || null,
       success: true
     };
   } catch (error) {
@@ -222,12 +403,18 @@ export const searchWikipedia = async (searchTerm, limit = 5) => {
     const keyTerm = extractKeyTerms(searchTerm);
     const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(keyTerm)}&srlimit=${limit}&format=json&origin=*`;
     
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    
     const response = await fetch(wikiUrl, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
-      }
+      },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -266,4 +453,15 @@ export const getWikipediaDefinition = async (searchTerm) => {
     console.error('❌ Definition fetch error:', error);
     return `Unable to fetch definition for "${searchTerm}"`;
   }
+};
+
+/**
+ * Clear the Wikipedia cache (useful for testing or manual refresh)
+ */
+export const clearWikipediaCache = () => {
+  const count = Object.keys(WIKIPEDIA_CACHE).length;
+  Object.keys(WIKIPEDIA_CACHE).forEach(key => {
+    delete WIKIPEDIA_CACHE[key];
+  });
+  console.log(`🗑️ Cleared ${count} cached Wikipedia entries`);
 };

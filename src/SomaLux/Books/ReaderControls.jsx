@@ -9,8 +9,6 @@ import {
   FiFile,
   FiSun,
   FiCheckCircle,
-  FiZoomIn,
-  FiZoomOut,
 } from 'react-icons/fi';
 
 const ReaderControls = ({
@@ -81,38 +79,6 @@ const ReaderControls = ({
           }}
         >
           {scrollMode ? <FiFile size={14} /> : <FiAlignJustify size={14} />}
-        </button>
-        <button
-          onClick={zoomOut}
-          title="Zoom out"
-          style={{
-            border: 'none',
-            background: 'rgba(15,23,42,0.9)',
-            color: '#e2e8f0',
-            borderRadius: 999,
-            padding: '4px 8px',
-            display: 'flex',
-            alignItems: 'center',
-            cursor: 'pointer',
-          }}
-        >
-          <FiZoomOut size={14} />
-        </button>
-        <button
-          onClick={zoomIn}
-          title="Zoom in"
-          style={{
-            border: 'none',
-            background: 'rgba(15,23,42,0.9)',
-            color: '#e2e8f0',
-            borderRadius: 999,
-            padding: '4px 8px',
-            display: 'flex',
-            alignItems: 'center',
-            cursor: 'pointer',
-          }}
-        >
-          <FiZoomIn size={14} />
         </button>
         <button
           onClick={rotate}

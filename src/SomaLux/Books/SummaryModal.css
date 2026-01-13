@@ -185,6 +185,14 @@
   overscroll-behavior: contain;
   contain: content;
   -webkit-overflow-scrolling: touch;
+  /* Hide scrollbar while keeping scroll functionality */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.summary-modal-body::-webkit-scrollbar {
+  display: none;
 }
 
 .summary-text p {

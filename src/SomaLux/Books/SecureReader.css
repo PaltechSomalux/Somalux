@@ -149,6 +149,13 @@
   padding-right: 16px;
   position: relative;
   background: #020617;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Pages zoom uniformly together */
+.pdf-page-container {
+  backface-visibility: hidden;
 }
 
 .pdf-container.fullscreen {
@@ -232,6 +239,8 @@
 
 .pdf-page-container {
   margin-bottom: 24px;
+  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
 }
 
 /* Enable text selection in the PDF viewer */
@@ -240,6 +249,8 @@
   position: relative;
   display: inline-block;
   margin: 0 auto;
+  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: contents;
 }
 
 /* Ensure PDF pages are centered */

@@ -1,5 +1,5 @@
 // SecureReader.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -8,8 +8,6 @@ import { API_URL } from '../../config';
 import {
   FiChevronLeft,
   FiChevronRight,
-  FiZoomIn,
-  FiZoomOut,
   FiX,
   FiMaximize2,
   FiMinimize2,
@@ -46,6 +44,7 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
+  const zoomTimeoutRef = useRef(null);
   const [rotation, setRotation] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [scrollMode, setScrollMode] = useState(false);
@@ -95,7 +94,29 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
       const isModifier =
         e.ctrlKey || e.metaKey || e.altKey || e.shiftKey;
 
-      // If S, P, or G is pressed with ANY modifier key, block it
+      // MS Edge style zooming - Ctrl/Cmd + +/- and scroll
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+        if (e.key === '+' || e.key === '=') {
+          e.preventDefault();
+          e.stopPropagation();
+          zoomIn();
+          return;
+        }
+        if (e.key === '-') {
+          e.preventDefault();
+          e.stopPropagation();
+          zoomOut();
+          return;
+        }
+        if (e.key === '0') {
+          e.preventDefault();
+          e.stopPropagation();
+          resetZoom();
+          return;
+        }
+      }
+
+      // If S, P, or G is pressed with ANY modifier key (except zoom keys handled above), block it
       if (isModifier && ['s', 'p', 'g'].includes(key)) {
         e.preventDefault();
         e.stopPropagation();
@@ -108,7 +129,30 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
     return () => {
       window.removeEventListener("keydown", onKeyDown, { capture: true });
     };
-  }, []);
+  }, [zoomIn, zoomOut, resetZoom]);
+
+  // Handle mouse wheel zooming - MS Edge style (Ctrl + scroll)
+  useEffect(() => {
+    const handleWheel = (e) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+        const pdfContainer = document.querySelector('.pdf-container');
+        if (pdfContainer && e.target.closest('.pdf-container')) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Zoom in on scroll up, out on scroll down
+          if (e.deltaY < 0) {
+            zoomIn();
+          } else if (e.deltaY > 0) {
+            zoomOut();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    return () => window.removeEventListener('wheel', handleWheel, { capture: true });
+  }, [zoomIn, zoomOut]);
 
   const handleDocumentLoad = ({ numPages: nextNumPages }) => {
     setNumPages(nextNumPages || 1);
@@ -123,8 +167,21 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
     setPageNumber(prev => (numPages ? Math.min(numPages, prev + 1) : prev + 1));
   };
 
-  const zoomIn = () => setScale(s => Math.min(2.0, s + 0.1));
-  const zoomOut = () => setScale(s => Math.max(0.6, s - 0.1));
+  const zoomIn = () => {
+    requestAnimationFrame(() => {
+      setScale(s => Math.min(3.0, s + 0.1));
+    });
+  };
+  const zoomOut = () => {
+    requestAnimationFrame(() => {
+      setScale(s => Math.max(0.5, s - 0.1));
+    });
+  };
+  const resetZoom = () => {
+    requestAnimationFrame(() => {
+      setScale(1.0);
+    });
+  };
 
   const toggleFullscreen = () => {
     setIsFullscreen(v => !v);
@@ -262,22 +319,6 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
             
             <button
               className="icon-button"
-              onClick={zoomOut}
-              title="Zoom out"
-            >
-              <FiZoomOut size={14} />
-            </button>
-            
-            <button
-              className="icon-button"
-              onClick={zoomIn}
-              title="Zoom in"
-            >
-              <FiZoomIn size={14} />
-            </button>
-            
-            <button
-              className="icon-button"
               onClick={rotate}
               title="Rotate 90°"
             >
@@ -347,7 +388,10 @@ const SecureReader = ({ src, title, author, onClose, userId, bookId, pages, sess
                 </div>
               ) : scrollMode && numPages
                 ? Array.from({ length: numPages }, (_, idx) => (
-                  <div key={idx + 1} className="pdf-page-container">
+                  <div 
+                    key={idx + 1} 
+                    className="pdf-page-container"
+                  >
                     <Page
                       pageNumber={idx + 1}
                       scale={scale}

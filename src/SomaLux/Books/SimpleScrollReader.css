@@ -73,6 +73,20 @@
   padding: 0;
   /* Prevent text spillage between pages */
   line-height: 1.5;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Pages zoom together as a unit */
+.ssr-page {
+  backface-visibility: hidden;
+  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.simple-scroll-reader .react-pdf__Page {
+  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: contents;
 }
 
 /* PRECISION: Prevent adjacent element selection */
