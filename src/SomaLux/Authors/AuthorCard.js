@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   FaUserEdit,
   FaHeart,
@@ -28,18 +28,102 @@ export const AuthorCard = ({
   hoverRating,
   onHoverRating
 }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  // Generate a unique color based on author name
+  const getAvatarColor = (name) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#6C5CE7', '#A29BFE', '#FF7675', '#F0A500', '#00C9A7'];
+    return colors[Math.abs(hash % colors.length)];
+  };
+
+  const authorInitials = author.name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+    setImageError(false);
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoaded(false);
+  };
+
   return (
     <div className="author-card" onClick={() => onAuthorClick(author)}>
       <div className="author-photo">
-        <img
-          src={author.photo}
-          alt={author.name}
-          onError={(e) => onImageError(e, author, { allowDbLookup: false })}
-        />
+        {author.photo && !imageError ? (
+          <>
+            <img
+              src={author.photo}
+              alt={author.name}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              style={{
+                display: imageLoaded ? 'block' : 'none',
+                width: '140px',
+                height: '140px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '3px solid var(--primary)',
+                boxShadow: '0 4px 12px rgba(0, 168, 132, 0.3)'
+              }}
+            />
+            {!imageLoaded && (
+              <div 
+                style={{
+                  width: '140px',
+                  height: '140px',
+                  borderRadius: '50%',
+                  backgroundColor: '#1f2c33',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.9em',
+                  color: '#8696a0',
+                  border: '3px solid var(--primary)',
+                  boxShadow: '0 4px 12px rgba(0, 168, 132, 0.3)'
+                }}
+              >
+                Loading...
+              </div>
+            )}
+          </>
+        ) : imageError || !author.photo ? (
+          <div 
+            style={{
+              display: 'flex',
+              backgroundColor: getAvatarColor(author.name),
+              width: '140px',
+              height: '140px',
+              borderRadius: '50%',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '3em',
+              fontWeight: 'bold',
+              color: 'white',
+              border: '3px solid var(--primary)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+            }}
+          >
+            {authorInitials}
+          </div>
+        ) : null}
+
         <div className="author-badge">
           <FaBookOpen /> {author.booksPublished} books
         </div>
       </div>
+
       <div className="author-info">
         <h3>{author.name}</h3>
         <p className="nationality">{author.nationality}</p>

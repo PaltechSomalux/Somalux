@@ -1010,86 +1010,72 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
             contentAreaRef.current = el;
           }}>
             {isLoading && (
-              <div className="ssr-loading">
-                <div className="ssr-spinner">
-                  <svg width="100" height="100" viewBox="0 0 100 100" className="ssr-gears-svg">
-                    {/* Gear 1 - Top Left (Gray) */}
-                    <g className="gear gear-1">
-                      {/* Tooth 1 - Top */}
-                      <path d="M 28 6 Q 30 4 30 4 Q 30 4 32 6 L 32 12 Q 30 14 30 14 Q 30 14 28 12 Z" fill="#999"/>
-                      {/* Tooth 2 - Top-Right */}
-                      <path d="M 42 12 Q 44.5 8.5 44.5 8.5 Q 44.5 8.5 46.5 11 L 43.5 18 Q 41 17 40.5 18 Z" fill="#999"/>
-                      {/* Tooth 3 - Right */}
-                      <path d="M 48 24 Q 50 22 50 22 Q 50 22 52 24 L 52 32 Q 50 34 50 34 Q 50 34 48 32 Z" fill="#999"/>
-                      {/* Tooth 4 - Bottom-Right */}
-                      <path d="M 43.5 40 Q 41 41 40.5 40 L 43.5 48 Q 44.5 47.5 44.5 47.5 Q 44.5 47.5 42 44 Z" fill="#999"/>
-                      {/* Tooth 5 - Bottom */}
-                      <path d="M 32 42 Q 30 40 30 40 Q 30 40 28 42 L 28 48 Q 30 50 30 50 Q 30 50 32 48 Z" fill="#999"/>
-                      {/* Tooth 6 - Bottom-Left */}
-                      <path d="M 19.5 47 Q 17 45 16.5 46 L 19.5 38 Q 20.5 39.5 20.5 39.5 Q 20.5 39.5 18 44 Z" fill="#999"/>
-                      {/* Tooth 7 - Left */}
-                      <path d="M 12 32 Q 10 34 10 34 Q 10 34 12 32 L 12 24 Q 10 22 10 22 Q 10 22 12 24 Z" fill="#999"/>
-                      {/* Tooth 8 - Top-Left */}
-                      <path d="M 19.5 16 Q 18 19.5 18.5 18 L 16.5 11 Q 17 10.5 17 10.5 Q 17 10.5 19.5 13 Z" fill="#999"/>
-                      {/* Outer ring for depth */}
-                      <circle cx="30" cy="28" r="18" fill="none" stroke="#999" strokeWidth="1.5" opacity="0.4"/>
-                      {/* Center hub */}
-                      <circle cx="30" cy="28" r="6.5" fill="#999"/>
-                      <circle cx="30" cy="28" r="3" fill="#0b1216"/>
-                    </g>
-                    
-                    {/* Gear 2 - Top Right (Primary) */}
-                    <g className="gear gear-2">
-                      {/* Tooth 1 - Top */}
-                      <path d="M 68 6 Q 70 4 70 4 Q 70 4 72 6 L 72 12 Q 70 14 70 14 Q 70 14 68 12 Z" fill="#0c6d58"/>
-                      {/* Tooth 2 - Top-Right */}
-                      <path d="M 82 12 Q 84.5 8.5 84.5 8.5 Q 84.5 8.5 86.5 11 L 83.5 18 Q 81 17 80.5 18 Z" fill="#0c6d58"/>
-                      {/* Tooth 3 - Right */}
-                      <path d="M 88 24 Q 90 22 90 22 Q 90 22 92 24 L 92 32 Q 90 34 90 34 Q 90 34 88 32 Z" fill="#0c6d58"/>
-                      {/* Tooth 4 - Bottom-Right */}
-                      <path d="M 83.5 40 Q 81 41 80.5 40 L 83.5 48 Q 84.5 47.5 84.5 47.5 Q 84.5 47.5 82 44 Z" fill="#0c6d58"/>
-                      {/* Tooth 5 - Bottom */}
-                      <path d="M 72 42 Q 70 40 70 40 Q 70 40 68 42 L 68 48 Q 70 50 70 50 Q 70 50 72 48 Z" fill="#0c6d58"/>
-                      {/* Tooth 6 - Bottom-Left */}
-                      <path d="M 59.5 47 Q 57 45 56.5 46 L 59.5 38 Q 60.5 39.5 60.5 39.5 Q 60.5 39.5 58 44 Z" fill="#0c6d58"/>
-                      {/* Tooth 7 - Left */}
-                      <path d="M 52 32 Q 50 34 50 34 Q 50 34 52 32 L 52 24 Q 50 22 50 22 Q 50 22 52 24 Z" fill="#0c6d58"/>
-                      {/* Tooth 8 - Top-Left */}
-                      <path d="M 59.5 16 Q 58 19.5 58.5 18 L 56.5 11 Q 57 10.5 57 10.5 Q 57 10.5 59.5 13 Z" fill="#0c6d58"/>
-                      {/* Outer ring for depth */}
-                      <circle cx="70" cy="28" r="18" fill="none" stroke="#0c6d58" strokeWidth="1.5" opacity="0.4"/>
-                      {/* Center hub */}
-                      <circle cx="70" cy="28" r="6.5" fill="#0c6d58"/>
-                      <circle cx="70" cy="28" r="3" fill="#0b1216"/>
-                    </g>
-                    
-                    {/* Gear 3 - Bottom Center (Cyan) */}
-                    <g className="gear gear-3">
-                      {/* Tooth 1 - Top */}
-                      <path d="M 48 40 Q 50 38 50 38 Q 50 38 52 40 L 52 46 Q 50 48 50 48 Q 50 48 48 46 Z" fill="#00a8d8"/>
-                      {/* Tooth 2 - Top-Right */}
-                      <path d="M 62 46 Q 64.5 42.5 64.5 42.5 Q 64.5 42.5 66.5 45 L 63.5 52 Q 61 51 60.5 52 Z" fill="#00a8d8"/>
-                      {/* Tooth 3 - Right */}
-                      <path d="M 68 58 Q 70 56 70 56 Q 70 56 72 58 L 72 66 Q 70 68 70 68 Q 70 68 68 66 Z" fill="#00a8d8"/>
-                      {/* Tooth 4 - Bottom-Right */}
-                      <path d="M 63.5 74 Q 61 75 60.5 74 L 63.5 82 Q 64.5 81.5 64.5 81.5 Q 64.5 81.5 62 78 Z" fill="#00a8d8"/>
-                      {/* Tooth 5 - Bottom */}
-                      <path d="M 52 76 Q 50 74 50 74 Q 50 74 48 76 L 48 82 Q 50 84 50 84 Q 50 84 52 82 Z" fill="#00a8d8"/>
-                      {/* Tooth 6 - Bottom-Left */}
-                      <path d="M 39.5 81 Q 37 79 36.5 80 L 39.5 72 Q 40.5 73.5 40.5 73.5 Q 40.5 73.5 38 78 Z" fill="#00a8d8"/>
-                      {/* Tooth 7 - Left */}
-                      <path d="M 32 66 Q 30 68 30 68 Q 30 68 32 66 L 32 58 Q 30 56 30 56 Q 30 56 32 58 Z" fill="#00a8d8"/>
-                      {/* Tooth 8 - Top-Left */}
-                      <path d="M 39.5 50 Q 38 53.5 38.5 52 L 36.5 45 Q 37 44.5 37 44.5 Q 37 44.5 39.5 47 Z" fill="#00a8d8"/>
-                      {/* Outer ring for depth */}
-                      <circle cx="50" cy="62" r="18" fill="none" stroke="#00a8d8" strokeWidth="1.5" opacity="0.4"/>
-                      {/* Center hub */}
-                      <circle cx="50" cy="62" r="6.5" fill="#00a8d8"/>
-                      <circle cx="50" cy="62" r="3" fill="#0b1216"/>
-                    </g>
-                  </svg>
+              <div className="ssr-loading premium-loader-container">
+                <div className="premium-loader-wrapper">
+                  
+                  {/* Galaxy background with nebula */}
+                  <div className="galaxy-nebula"></div>
+
+                  {/* Twinkling stars background - Night Sky Realistic */}
+                  <div className="stars-field">
+                    <div className="star star-1"></div>
+                    <div className="star star-2"></div>
+                    <div className="star star-3"></div>
+                    <div className="star star-4"></div>
+                    <div className="star star-5"></div>
+                    <div className="star star-6"></div>
+                    <div className="star star-7"></div>
+                    <div className="star star-8"></div>
+                    <div className="star star-9"></div>
+                    <div className="star star-10"></div>
+                    <div className="star star-11"></div>
+                    <div className="star star-12"></div>
+                    <div className="star star-13"></div>
+                    <div className="star star-14"></div>
+                    <div className="star star-15"></div>
+                    <div className="star star-16"></div>
+                    <div className="star star-17"></div>
+                    <div className="star star-18"></div>
+                    <div className="star star-19"></div>
+                    <div className="star star-20"></div>
+                  </div>
+
+                  {/* Central sun */}
+                  <div className="sun-container">
+                    <div className="sun-core"></div>
+                    <div className="sun-glow"></div>
+                    <div className="sun-rays"></div>
+                  </div>
+
+                  {/* Orbital rings - like planetary orbits */}
+                  <div className="orbits">
+                    <div className="orbit orbit-1"></div>
+                    <div className="orbit orbit-2"></div>
+                    <div className="orbit orbit-3"></div>
+                  </div>
+
+                  {/* Orbiting planets */}
+                  <div className="planets">
+                    <div className="planet planet-1">
+                      <div className="planet-core"></div>
+                    </div>
+                    <div className="planet planet-2">
+                      <div className="planet-core"></div>
+                    </div>
+                    <div className="planet planet-3">
+                      <div className="planet-core"></div>
+                    </div>
+                  </div>
+
+                  {/* Cosmic dust particles */}
+                  <div className="cosmic-dust">
+                    <div className="dust-particle dust-1"></div>
+                    <div className="dust-particle dust-2"></div>
+                    <div className="dust-particle dust-3"></div>
+                    <div className="dust-particle dust-4"></div>
+                    <div className="dust-particle dust-5"></div>
+                  </div>
                 </div>
-                <p>Opening</p>
               </div>
             )}
 

@@ -176,8 +176,8 @@
 
 .author-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.5rem;
   margin-bottom: 1.5rem;
   width: 100%;
   box-sizing: border-box;
@@ -185,31 +185,34 @@
 
 @media (max-width: 768px) {
   .author-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 0.8rem;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.2rem;
   }
 }
 
 @media (max-width: 480px) {
   .author-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.8rem;
     padding: 0 0.25rem;
   }
 }
 
 .author-card {
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 0.7rem;
+  border-radius: 12px;
+  padding: 1.2rem 0.8rem 0.8rem 0.8rem;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
   box-sizing: border-box;
   overflow: visible;
   background-color: var(--bg-dark);
   color: var(--text-dark);
-  max-height: 240px;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .author-info {
@@ -229,44 +232,60 @@
 .author-photo {
   position: relative;
   text-align: center;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.8rem;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .author-photo img {
-  width: 70px;
-  height: 70px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--bg-dark);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  border: 3px solid var(--primary);
+  box-shadow: 0 4px 12px rgba(0, 168, 132, 0.3);
+}
+
+.author-avatar-fallback {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 3px solid var(--primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .author-photo .author-badge {
   position: absolute;
-  bottom: -5px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--bg-dark);
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.7rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  bottom: 5px;
+  right: 5px;
+  background: var(--primary);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 168, 132, 0.4);
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   white-space: nowrap;
-  color: var(--text-dark);
+  color: white;
+  border: 1px solid var(--primary-hover);
 }
 
 .author-info h3 {
-  font-size: 0.9rem;
-  margin: 0.3rem 0 0.2rem 0;
+  font-size: 1rem;
+  margin: 0 0 0.3rem 0;
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  font-weight: 600;
   color: var(--text-dark);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .author-info .nationality {

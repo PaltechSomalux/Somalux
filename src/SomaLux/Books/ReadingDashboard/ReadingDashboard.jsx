@@ -639,7 +639,9 @@ const ReadingDashboard = () => {
                     
                     <div className="book-info">
                       <h3 className="book-title">{book.title}</h3>
-                      <p className="book-author">by {book.author}</p>
+                      <p className="book-author">
+                        {book.author && book.author.trim() ? `by ${book.author.trim()}` : 'by Unknown Author'}
+                      </p>
                       
                       <div className="book-meta">
                         {book.genre && (

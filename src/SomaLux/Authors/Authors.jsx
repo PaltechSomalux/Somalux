@@ -2,6 +2,7 @@
 import { API_URL } from '../../config';
 import { supabase } from '../Books/supabaseClient';
 import { FaSearch } from 'react-icons/fa';
+import { fetchAuthorImages } from '../Books/utils/wikipediaApi';
 import { AuthorCard } from './AuthorCard';
 import { AuthorModal } from './AuthorModal';
 import { AdBanner } from '../Ads/AdBanner';
@@ -132,7 +133,7 @@ export const Authors = () => {
     (async () => {
       try {
         // ⚡ CHECK CACHE FIRST - instant load from localStorage
-        const cacheKey = 'authors_list_cache_v2';
+        const cacheKey = 'authors_list_cache_v6'; // Bumped to v6 - force fresh OpenLibrary image fetch
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           try {
@@ -157,7 +158,6 @@ export const Authors = () => {
         const { data: rows, error } = await supabase
           .from('books')
           .select('author, cover_image_url, rating, rating_count')
-          .neq('author', null)
           .limit(1000);
 
         if (error) {
@@ -237,6 +237,36 @@ export const Authors = () => {
           
           setAuthors(list);
           setIsLoading(false); // 🚀 Mark ready immediately!
+          
+          // 🖼️ Fetch author images from Wikipedia in parallel (non-blocking)
+          console.log('🔍 Fetching author images from Wikipedia...');
+          const authorNames = list.map(a => a.name);
+          fetchAuthorImages(authorNames)
+            .then((imageMap) => {
+              console.log('✅ Wikipedia images fetched:', imageMap);
+              // Update authors with fetched images
+              const updatedList = list.map(author => ({
+                ...author,
+                photo: imageMap[author.name] || author.photo // Use Wikipedia image if found
+              }));
+              
+              if (mounted) {
+                setAuthors(updatedList);
+                // Update cache with new images
+                try {
+                  localStorage.setItem(cacheKey, JSON.stringify({
+                    data: updatedList,
+                    timestamp: Date.now()
+                  }));
+                } catch (e) {
+                  console.warn('Failed to update cache:', e);
+                }
+              }
+            })
+            .catch(error => {
+              console.warn('⚠️ Failed to fetch author images:', error);
+              // Continue with existing images
+            });
           
           // ⚡ Enrich authors in BACKGROUND (doesn't block UI)
           (async () => {

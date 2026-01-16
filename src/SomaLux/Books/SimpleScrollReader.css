@@ -820,6 +820,319 @@
   }
 }
 
+/* ============================================
+   MORPHING SHAPE LOADER ANIMATIONS
+   ============================================ */
+
+.morphing-shape-group {
+  transform-origin: 50px 50px;
+}
+
+.morphing-shape {
+  animation: morph-shape 4s ease-in-out infinite;
+  filter: drop-shadow(0 2px 6px rgba(0, 168, 216, 0.2));
+}
+
+@keyframes morph-shape {
+  0% {
+    d: path('M 50 20 C 35 20 25 30 25 45 C 25 60 35 70 50 70 C 65 70 75 60 75 45 C 75 30 65 20 50 20 Z');
+  }
+  33% {
+    d: path('M 30 25 L 70 25 Q 75 25 75 30 L 75 70 Q 75 75 70 75 L 30 75 Q 25 75 25 70 L 25 30 Q 25 25 30 25 Z');
+  }
+  66% {
+    d: path('M 50 15 L 61 40 L 88 40 L 68 58 L 79 83 L 50 65 L 21 83 L 32 58 L 12 40 L 39 40 Z');
+  }
+  100% {
+    d: path('M 50 20 C 35 20 25 30 25 45 C 25 60 35 70 50 70 C 65 70 75 60 75 45 C 75 30 65 20 50 20 Z');
+  }
+}
+
+.morphing-ring {
+  animation: rotate-ring 3s linear infinite;
+  opacity: 0.8;
+}
+
+@keyframes rotate-ring {
+  from {
+    transform: rotate(0deg);
+    transform-origin: 50px 50px;
+  }
+  to {
+    transform: rotate(360deg);
+    transform-origin: 50px 50px;
+  }
+}
+
+/* ============================================
+   PREMIUM LOADER STYLES
+   ============================================ */
+
+.premium-loader-wrapper {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.premium-loader-orb {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.orb-core {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #a855f7 0deg,
+    #06b6d4 90deg,
+    #ec4899 180deg,
+    #3b82f6 270deg,
+    #a855f7 360deg
+  );
+  animation: orb-pulse 2.5s ease-in-out infinite, orb-rotate 6s linear infinite;
+  filter: drop-shadow(0 0 25px rgba(236, 72, 153, 0.6)) drop-shadow(inset 0 0 20px rgba(168, 85, 247, 0.3));
+  will-change: transform;
+}
+
+.orb-glow {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(0, 168, 216, 0.4) 0%,
+    rgba(0, 168, 216, 0.2) 50%,
+    transparent 100%
+  );
+  animation: orb-glow-pulse 2.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes orb-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes orb-glow-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+}
+
+.premium-loader-rings {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border-style: solid;
+  will-change: transform, opacity;
+}
+
+.ring-1 {
+  width: 140px;
+  height: 140px;
+  border-width: 2px;
+  border-color: rgba(0, 168, 216, 0.3) transparent rgba(0, 168, 216, 0.3) transparent;
+  animation: rotate-clockwise 4s linear infinite;
+}
+
+.ring-2 {
+  width: 100px;
+  height: 100px;
+  border-width: 2px;
+  border-color: transparent rgba(0, 61, 130, 0.4) transparent rgba(0, 61, 130, 0.4);
+  animation: rotate-counterclockwise 3s linear infinite;
+}
+
+.ring-3 {
+  width: 80px;
+  height: 80px;
+  border-width: 1.5px;
+  border-color: rgba(0, 168, 216, 0.5) rgba(0, 61, 130, 0.5);
+  animation: rotate-clockwise 2s linear infinite, pulse-opacity 1.5s ease-in-out infinite;
+}
+
+@keyframes rotate-clockwise {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rotate-counterclockwise {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes pulse-opacity {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00a8d8, #003d82);
+  filter: drop-shadow(0 0 4px rgba(0, 168, 216, 0.6));
+  will-change: transform, opacity;
+}
+
+.particle-1 {
+  animation: float-particle-1 3s ease-in-out infinite;
+}
+
+@keyframes float-particle-1 {
+  0% {
+    transform: translate(0, -50px) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(25px, -60px) scale(0.8);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(0, -50px) scale(1);
+    opacity: 1;
+  }
+}
+
+.particle-2 {
+  animation: float-particle-2 3.5s ease-in-out infinite;
+}
+
+@keyframes float-particle-2 {
+  0% {
+    transform: translate(50px, 0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(65px, 25px) scale(0.7);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(50px, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+.particle-3 {
+  animation: float-particle-3 3.2s ease-in-out infinite;
+}
+
+@keyframes float-particle-3 {
+  0% {
+    transform: translate(0, 50px) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-25px, 65px) scale(0.8);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(0, 50px) scale(1);
+    opacity: 1;
+  }
+}
+
+.particle-4 {
+  animation: float-particle-4 3.8s ease-in-out infinite;
+}
+
+@keyframes float-particle-4 {
+  0% {
+    transform: translate(-50px, 0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-70px, -20px) scale(0.7);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(-50px, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+.premium-loader-text {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin: 0;
+  color: #e9edef;
+  animation: text-fade 2s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes text-fade {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .ssr-error {
   color: #ef4444;
   font-size: 16px;
@@ -2009,5 +2322,580 @@
 
 .ssr-bookmarks-page-content::-webkit-scrollbar-thumb:hover {
   background: rgba(12, 109, 88, 0.5);
+}
+
+/* ============================================
+   GALAXY LOADER - COSMIC ANIMATION STYLES
+   ============================================ */
+
+.premium-loader-container {
+  /* Layout */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 60vh;
+  
+  /* Deep night sky - ultra dark */
+  background: radial-gradient(ellipse at 50% 50%, #0a0e27 0%, #020508 50%, #000000 100%);
+  
+  /* Spacing */
+  padding: 40px 20px;
+  color: #8696a0;
+  gap: 30px;
+  
+  /* Smooth transitions */
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Deep space nebula clouds - very subtle */
+.premium-loader-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(ellipse at 25% 30%, rgba(100, 50, 150, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 75% 70%, rgba(30, 100, 150, 0.06) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, rgba(150, 50, 100, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+  animation: none;
+}
+
+.premium-loader-wrapper {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+/* GALAXY NEBULA EFFECT - Subtle clouds */
+.galaxy-nebula {
+  position: absolute;
+  width: 250px;
+  height: 250px;
+  border-radius: 50%;
+  background: 
+    radial-gradient(circle at 40% 40%, rgba(100, 50, 150, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 60% 60%, rgba(80, 40, 120, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(50, 100, 150, 0.08) 0%, transparent 60%);
+  animation: nebula-spin 25s linear infinite;
+  filter: blur(25px);
+}
+
+@keyframes nebula-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* TWINKLING STARS FIELD - Night Sky Realistic */
+.stars-field {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: #ffffff;
+  animation: twinkle 3s ease-in-out infinite;
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+/* Vary star sizes and colors naturally */
+.star-1 { top: 8%; left: 5%; width: 1.5px; height: 1.5px; background: #ffffff; animation: twinkle 2.8s ease-in-out infinite; }
+.star-2 { top: 12%; left: 18%; width: 1px; height: 1px; background: #e6f0ff; animation: twinkle 3.2s ease-in-out infinite 0.3s; }
+.star-3 { top: 6%; left: 35%; width: 2px; height: 2px; background: #fffacd; animation: twinkle 2.6s ease-in-out infinite 0.1s; }
+.star-4 { top: 15%; left: 52%; width: 1px; height: 1px; background: #ffffff; animation: twinkle 3.4s ease-in-out infinite 0.5s; }
+.star-5 { top: 22%; left: 72%; width: 1.5px; height: 1.5px; background: #cce5ff; animation: twinkle 2.9s ease-in-out infinite 0.2s; }
+.star-6 { top: 18%; left: 88%; width: 1px; height: 1px; background: #ffffff; animation: twinkle 3.1s ease-in-out infinite 0.4s; }
+.star-7 { top: 35%; left: 8%; width: 1.5px; height: 1.5px; background: #fffacd; animation: twinkle 2.7s ease-in-out infinite 0.6s; }
+.star-8 { top: 42%; left: 25%; width: 1px; height: 1px; background: #ffffff; animation: twinkle 3.3s ease-in-out infinite 0.3s; }
+.star-9 { top: 38%; left: 42%; width: 2px; height: 2px; background: #e6f0ff; animation: twinkle 2.8s ease-in-out infinite 0.1s; }
+.star-10 { top: 48%; left: 65%; width: 1.5px; height: 1.5px; background: #ffffff; animation: twinkle 3.2s ease-in-out infinite 0.5s; }
+.star-11 { top: 55%; left: 12%; width: 1px; height: 1px; background: #e6f0ff; animation: twinkle 2.9s ease-in-out infinite 0.2s; }
+.star-12 { top: 62%; left: 35%; width: 1.5px; height: 1.5px; background: #fffacd; animation: twinkle 3.1s ease-in-out infinite 0.4s; }
+.star-13 { top: 58%; left: 58%; width: 1px; height: 1px; background: #ffffff; animation: twinkle 2.7s ease-in-out infinite 0.6s; }
+.star-14 { top: 68%; left: 78%; width: 1.5px; height: 1.5px; background: #cce5ff; animation: twinkle 3.3s ease-in-out infinite 0.3s; }
+.star-15 { top: 72%; left: 22%; width: 1px; height: 1px; background: #ffffff; animation: twinkle 2.8s ease-in-out infinite 0.1s; }
+.star-16 { top: 78%; left: 48%; width: 1.5px; height: 1.5px; background: #e6f0ff; animation: twinkle 3.2s ease-in-out infinite 0.5s; }
+.star-17 { top: 82%; left: 15%; width: 1px; height: 1px; background: #fffacd; animation: twinkle 2.9s ease-in-out infinite 0.2s; }
+.star-18 { top: 88%; left: 68%; width: 1.5px; height: 1.5px; background: #ffffff; animation: twinkle 3.1s ease-in-out infinite 0.4s; }
+.star-19 { top: 92%; left: 42%; width: 1px; height: 1px; background: #cce5ff; animation: twinkle 2.7s ease-in-out infinite 0.6s; }
+.star-20 { top: 85%; left: 85%; width: 1px; height: 1px; background: #ffffff; animation: twinkle 3.3s ease-in-out infinite 0.3s; }
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* CENTRAL SUN */
+.sun-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Sun core - hot yellow/orange */
+.sun-core {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffd700 0%, #ffb700 50%, #ff8c00 100%);
+  animation: sun-pulse 1.8s ease-in-out infinite;
+  box-shadow: 
+    0 0 20px rgba(255, 215, 0, 0.8),
+    0 0 40px rgba(255, 140, 0, 0.5),
+    inset 0 0 20px rgba(255, 255, 255, 0.3);
+  will-change: transform;
+}
+
+/* Sun outer glow */
+.sun-glow {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 215, 0, 0.4) 0%,
+    rgba(255, 140, 0, 0.2) 50%,
+    transparent 100%
+  );
+  animation: sun-glow-expand 2s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Sun rays - dynamic effect */
+.sun-rays {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 215, 0, 0.3) 0deg,
+    transparent 30deg,
+    transparent 150deg,
+    rgba(255, 140, 0, 0.2) 180deg,
+    transparent 210deg,
+    transparent 330deg,
+    rgba(255, 215, 0, 0.3) 360deg
+  );
+  animation: sun-rotate 4s linear infinite;
+}
+
+@keyframes sun-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes sun-glow-expand {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.1;
+  }
+}
+
+@keyframes sun-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ORBITAL PATHS (RINGS) */
+.orbits {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.orbit {
+  position: absolute;
+  border-radius: 50%;
+  border-style: solid;
+  opacity: 0.3;
+}
+
+/* Orbit 1 - Inner orbit */
+.orbit-1 {
+  width: 100px;
+  height: 100px;
+  border-width: 1px;
+  border-color: rgba(6, 182, 212, 0.5);
+}
+
+/* Orbit 2 - Middle orbit */
+.orbit-2 {
+  width: 150px;
+  height: 150px;
+  border-width: 1px;
+  border-color: rgba(147, 51, 234, 0.4);
+}
+
+/* Orbit 3 - Outer orbit */
+.orbit-3 {
+  width: 200px;
+  height: 200px;
+  border-width: 1px;
+  border-color: rgba(236, 72, 153, 0.3);
+}
+
+/* ORBITING PLANETS */
+.planets {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.planet {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+}
+
+/* Planet 1 - Inner orbit, fast */
+.planet-1 {
+  animation: orbit-1 8s linear infinite;
+}
+
+@keyframes orbit-1 {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg) translateX(50px) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg) translateX(50px) rotate(-360deg);
+  }
+}
+
+/* Planet 2 - Middle orbit, medium */
+.planet-2 {
+  animation: orbit-2 12s linear infinite;
+}
+
+@keyframes orbit-2 {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg) translateX(75px) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg) translateX(75px) rotate(-360deg);
+  }
+}
+
+/* Planet 3 - Outer orbit, slow */
+.planet-3 {
+  animation: orbit-3 16s linear infinite;
+}
+
+@keyframes orbit-3 {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg) translateX(100px) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg) translateX(100px) rotate(-360deg);
+  }
+}
+
+.planet-core {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 6px rgba(0, 200, 255, 0.8));
+}
+
+/* Planet 1 color - cyan */
+.planet-1 .planet-core {
+  background: linear-gradient(135deg, #00d4ff, #0099cc);
+}
+
+/* Planet 2 color - purple */
+.planet-2 .planet-core {
+  background: linear-gradient(135deg, #9333ea, #6b21a8);
+}
+
+/* Planet 3 color - pink */
+.planet-3 .planet-core {
+  background: linear-gradient(135deg, #ff00ff, #cc00ff);
+}
+
+/* COSMIC DUST PARTICLES */
+.cosmic-dust {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.dust-particle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.6;
+  will-change: transform, opacity;
+}
+
+.dust-1 {
+  width: 3px;
+  height: 3px;
+  background: rgba(147, 51, 234, 0.8);
+  top: 20%;
+  left: 30%;
+  animation: dust-float-1 4s ease-in-out infinite;
+  filter: drop-shadow(0 0 2px rgba(147, 51, 234, 0.6));
+}
+
+.dust-2 {
+  width: 2px;
+  height: 2px;
+  background: rgba(236, 72, 153, 0.8);
+  top: 70%;
+  right: 25%;
+  animation: dust-float-2 5s ease-in-out infinite;
+  filter: drop-shadow(0 0 2px rgba(236, 72, 153, 0.6));
+}
+
+.dust-3 {
+  width: 2.5px;
+  height: 2.5px;
+  background: rgba(6, 182, 212, 0.8);
+  bottom: 25%;
+  left: 20%;
+  animation: dust-float-3 4.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 2px rgba(6, 182, 212, 0.6));
+}
+
+.dust-4 {
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 140, 0, 0.8);
+  top: 35%;
+  right: 15%;
+  animation: dust-float-4 5.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 2px rgba(255, 140, 0, 0.6));
+}
+
+.dust-5 {
+  width: 3px;
+  height: 3px;
+  background: rgba(100, 200, 255, 0.8);
+  bottom: 30%;
+  right: 30%;
+  animation: dust-float-5 6s ease-in-out infinite;
+  filter: drop-shadow(0 0 2px rgba(100, 200, 255, 0.6));
+}
+
+@keyframes dust-float-1 {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translate(15px, -15px);
+    opacity: 0.8;
+  }
+}
+
+@keyframes dust-float-2 {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(-20px, 15px);
+    opacity: 0.9;
+  }
+}
+
+@keyframes dust-float-3 {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translate(18px, 12px);
+    opacity: 0.8;
+  }
+}
+
+@keyframes dust-float-4 {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-15px, -18px);
+    opacity: 0.8;
+  }
+}
+
+@keyframes dust-float-5 {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(12px, 20px);
+    opacity: 0.9;
+  }
+}
+
+/* RESPONSIVE DESIGN */
+@media (max-width: 768px) {
+  .premium-loader-container {
+    min-height: 50vh;
+    padding: 30px 15px;
+    gap: 25px;
+  }
+  
+  .premium-loader-wrapper {
+    width: 180px;
+    height: 180px;
+  }
+  
+  .galaxy-nebula {
+    width: 200px;
+    height: 200px;
+  }
+  
+  .sun-core {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .sun-glow {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .sun-rays {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .orbit-1 {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .orbit-2 {
+    width: 120px;
+    height: 120px;
+  }
+  
+  .orbit-3 {
+    width: 160px;
+    height: 160px;
+  }
+  
+  .planet-core {
+    width: 9px;
+    height: 9px;
+  }
+}
+
+@media (max-width: 480px) {
+  .premium-loader-container {
+    min-height: 40vh;
+    padding: 20px 10px;
+    gap: 20px;
+  }
+  
+  .premium-loader-wrapper {
+    width: 140px;
+    height: 140px;
+  }
+  
+  .galaxy-nebula {
+    width: 160px;
+    height: 160px;
+  }
+  
+  .sun-core {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .sun-glow {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .sun-rays {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .orbit-1 {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .orbit-2 {
+    width: 90px;
+    height: 90px;
+  }
+  
+  .orbit-3 {
+    width: 120px;
+    height: 120px;
+  }
+  
+  .planet-core {
+    width: 7px;
+    height: 7px;
+  }
+}
+
+/* DARK MODE SUPPORT */
+:root {
+  --cosmic-bg-1: #000814;
+  --cosmic-bg-2: #001233;
+  --cosmic-bg-3: #001d3d;
+}
+
+.premium-loader-container {
+  background: linear-gradient(
+    135deg,
+    var(--cosmic-bg-1) 0%,
+    var(--cosmic-bg-2) 25%,
+    var(--cosmic-bg-3) 50%,
+    var(--cosmic-bg-1) 100%
+  );
 }
 

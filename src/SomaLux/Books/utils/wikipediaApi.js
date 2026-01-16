@@ -1,9 +1,10 @@
 /**
  * Wikipedia API Module - Enhanced Version
- * Handles fetching explanations and summaries from Wikipedia with improved accuracy
+ * Handles fetching explanations, summaries, and author images from Wikipedia
  * 
  * ✅ Features:
- * - Multiple fallback strategies for robustness
+ * - Multiple image source strategies (Wikipedia, Commons, wikidata)
+ * - Robust author image fetching with multiple fallbacks
  * - Smart term extraction with context awareness
  * - Local caching to reduce API calls
  * - Better error handling and disambiguation
@@ -15,6 +16,7 @@
 const WIKIPEDIA_CACHE = {};
 const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 const API_TIMEOUT = 8000; // 8 seconds
+const IMAGE_FETCH_TIMEOUT = 5000; // 5 seconds for image fetches
 
 /**
  * Get cached result if available and not expired
@@ -456,12 +458,222 @@ export const getWikipediaDefinition = async (searchTerm) => {
 };
 
 /**
- * Clear the Wikipedia cache (useful for testing or manual refresh)
+ * Fetch author image from Wikipedia with multiple strategies
+ * @param {string} authorName - The author name to search for
+ * @returns {Promise<string|null>} - URL of author image or null if not found
+ */
+/**
+ * Fetch author image from multiple sources - OpenLibrary first
+ */
+export const fetchAuthorImage = async (authorName) => {
+  if (!authorName || authorName.trim().length < 2) return null;
+
+  const cacheKey = `author_image_${authorName.toLowerCase()}`;
+  const cached = getCachedResult(cacheKey);
+  if (cached !== undefined) {
+    console.log(`💾 [${authorName}] From cache`);
+    return cached;
+  }
+
+  try {
+    console.log(`🔍 [${authorName}] Fetching...`);
+
+    // Strategy 1: Open Library API (has author photos built-in)
+    let imageUrl = await fetchFromOpenLibrary(authorName);
+    if (imageUrl) {
+      console.log(`✅ [${authorName}] OpenLibrary`);
+      setCacheResult(cacheKey, imageUrl);
+      return imageUrl;
+    }
+
+    // Strategy 2: Gravatar search
+    imageUrl = await fetchFromGravatar(authorName);
+    if (imageUrl) {
+      console.log(`✅ [${authorName}] Gravatar`);
+      setCacheResult(cacheKey, imageUrl);
+      return imageUrl;
+    }
+
+    // Strategy 3: Direct Wikipedia thumbnail
+    imageUrl = await fetchWikipediaDirectImage(authorName);
+    if (imageUrl) {
+      console.log(`✅ [${authorName}] Wikipedia Direct`);
+      setCacheResult(cacheKey, imageUrl);
+      return imageUrl;
+    }
+
+    console.log(`⚠️ [${authorName}] No image found`);
+    setCacheResult(cacheKey, null);
+    return null;
+  } catch (error) {
+    console.error(`❌ [${authorName}] Error:`, error.message);
+    setCacheResult(cacheKey, null);
+    return null;
+  }
+};
+
+/**
+ * Fetch author image from Open Library (reliable and has photos)
+ */
+const fetchFromOpenLibrary = async (authorName) => {
+  try {
+    console.log(`  📚 [OpenLibrary] Searching: ${authorName}`);
+    
+    // Search for authors by name
+    const searchUrl = `https://openlibrary.org/search/authors.json?q=${encodeURIComponent(authorName)}&limit=10`;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT);
+
+    const response = await fetch(searchUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.log(`    ⚠️ Search failed`);
+      return null;
+    }
+
+    const data = await response.json();
+    const docs = data.docs || [];
+
+    console.log(`    Found ${docs.length} results`);
+
+    // Look for an author with a photo
+    for (let i = 0; i < docs.length; i++) {
+      const doc = docs[i];
+      
+      if (doc.has_remote_image) {
+        // Use the Open Library image URL
+        const imageUrl = `https://covers.openlibrary.org/a/id/${doc.id}-M.jpg`;
+        console.log(`    ✓ Image from result ${i + 1}`);
+        return imageUrl;
+      }
+    }
+
+    console.log(`    ℹ️ No images found`);
+    return null;
+  } catch (error) {
+    console.log(`  ⚠️ Error: ${error.message}`);
+    return null;
+  }
+};
+
+/**
+ * Fetch from Gravatar (fallback)
+ */
+const fetchFromGravatar = async (authorName) => {
+  try {
+    console.log(`  👤 [Gravatar] Searching: ${authorName}`);
+    
+    // Gravatar search is limited, so just try the hash of the name
+    const nameHash = authorName.toLowerCase().trim();
+    // Note: Gravatar would need email, so this is more limited
+    
+    return null;
+  } catch (error) {
+    return null;
+  }
+};
+
+/**
+ * Fetch Wikipedia image directly with simpler approach
+ */
+const fetchWikipediaDirectImage = async (authorName) => {
+  try {
+    console.log(`  📖 [Wikipedia] Direct search: ${authorName}`);
+    
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(authorName)}&srnamespace=0&srlimit=5&format=json`;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT);
+
+    const response = await fetch(searchUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.log(`    ⚠️ Search failed`);
+      return null;
+    }
+
+    const data = await response.json();
+    const results = data.query?.search || [];
+
+    if (results.length === 0) {
+      console.log(`    ℹ️ No results`);
+      return null;
+    }
+
+    // Get the first result's image
+    const pageTitle = results[0].title;
+    const imageUrl = await getWikipediaPageImageDirect(pageTitle);
+    
+    if (imageUrl) {
+      console.log(`    ✓ Image from first result`);
+      return imageUrl;
+    }
+
+    return null;
+  } catch (error) {
+    console.log(`  ⚠️ Error: ${error.message}`);
+    return null;
+  }
+};
+
+/**
+ * Get Wikipedia page image directly
+ */
+const getWikipediaPageImageDirect = async (pageTitle) => {
+  try {
+    const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(pageTitle)}&prop=pageimages&piprop=thumbnail&pithumbsize=600&format=json`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT);
+
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const pages = data.query?.pages || {};
+    const page = Object.values(pages)[0];
+
+    if (page?.thumbnail?.source) {
+      // Ensure HTTPS
+      let imageUrl = page.thumbnail.source;
+      if (imageUrl.startsWith('http://')) {
+        imageUrl = 'https://' + imageUrl.substring(7);
+      }
+      return imageUrl;
+    }
+
+    return null;
+  } catch (error) {
+    console.log(`Error getting Wikipedia image: ${error.message}`);
+    return null;
+  }
+};
+
+/**
+ * Fetch multiple author images in parallel
+ */
+export const fetchAuthorImages = async (authorNames) => {
+  const results = {};
+  
+  const promises = authorNames.map(async (name) => {
+    const imageUrl = await fetchAuthorImage(name);
+    results[name] = imageUrl;
+  });
+
+  await Promise.all(promises);
+  return results;
+};
+
+/**
+ * Clear the Wikipedia cache
  */
 export const clearWikipediaCache = () => {
   const count = Object.keys(WIKIPEDIA_CACHE).length;
-  Object.keys(WIKIPEDIA_CACHE).forEach(key => {
-    delete WIKIPEDIA_CACHE[key];
-  });
-  console.log(`🗑️ Cleared ${count} cached Wikipedia entries`);
+  Object.keys(WIKIPEDIA_CACHE).forEach(key => delete WIKIPEDIA_CACHE[key]);
+  console.log(`🗑️ Cleared ${count} cache entries`);
 };

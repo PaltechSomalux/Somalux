@@ -200,6 +200,170 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
             showToast({ type: 'info', message: 'Could not auto-extract cover. You can upload one manually.' });
           }
         }
+
+        // Also extract author and title metadata
+        try {
+          let author = '';
+          let title = '';
+          
+          // Try to get PDF metadata
+          try {
+            const metadata = await pdfDoc.getMetadata().catch(() => null);
+            if (metadata && metadata.info) {
+              author = (metadata.info.Author || metadata.info.author || '').trim();
+              title = (metadata.info.Title || metadata.info.title || '').trim();
+            }
+          } catch (e) {
+            console.warn('Could not extract PDF metadata:', e);
+          }
+          
+          // If we couldn't get author from metadata, try to extract from text
+          if (!author && pdfDoc.numPages > 0) {
+            try {
+              // Get first 5 pages for comprehensive extraction
+              let pageText = '';
+              const pagesToCheck = Math.min(5, pdfDoc.numPages);
+              
+              for (let i = 1; i <= pagesToCheck; i++) {
+                try {
+                  const page = await pdfDoc.getPage(i);
+                  const textContent = await page.getTextContent();
+                  pageText += ' ' + textContent.items.map(item => item.str).join(' ');
+                } catch (e) {
+                  console.warn(`Could not extract text from page ${i}`);
+                }
+              }
+              
+              // Normalize whitespace
+              pageText = pageText.replace(/\s+/g, ' ').trim();
+              
+              // Split into lines for better pattern matching
+              const lines = pageText.split(/[\n\r]+/).map(l => l.trim()).filter(l => l.length > 0);
+              
+              // Helper function to validate author names
+              const isValidAuthorName = (name) => {
+                if (!name) return false;
+                if (name.length < 3) return false;
+                if (/^\d+$/.test(name)) return false;
+                if (!/^[A-Z]/.test(name)) return false;
+                if ((name.match(/[,;]/g) || []).length > 2) return false;
+                return true;
+              };
+              
+              // Helper function to clean author names
+              const cleanAuthorName = (name) => {
+                if (!name) return '';
+                name = name.replace(/\s+/g, ' ').trim();
+                name = name.replace(/[.,;:!?]+$/, '').trim();
+                if (name.includes(',')) {
+                  const parts = name.split(',').map(p => p.trim());
+                  if (parts.length === 2) {
+                    name = `${parts[1]} ${parts[0]}`.trim();
+                  }
+                }
+                if (name.length > 100) {
+                  name = name.split(/[,;]/)[0].trim();
+                }
+                return name;
+              };
+              
+              // Pattern 1: Explicit "Author:" or "Authors:" label
+              if (!author) {
+                const match = pageText.match(/\bauthors?:\s*([A-Z][A-Za-z\s\-'.&,]+?)(?=\n|;|©|\d{4}|ISBN|Edition|$)/i);
+                if (match && isValidAuthorName(match[1])) {
+                  author = cleanAuthorName(match[1]);
+                }
+              }
+              
+              // Pattern 2: "by Author Name" format
+              if (!author) {
+                const match = pageText.match(/\bby\s+([A-Z][A-Za-z\s\-'.&,]+?)(?=\n|\.|;|,\s*\d{4}|©|ISBN|$)/i);
+                if (match && isValidAuthorName(match[1])) {
+                  author = cleanAuthorName(match[1]);
+                }
+              }
+              
+              // Pattern 3: Look in title pages (usually lines near top)
+              if (!author && lines.length > 0) {
+                for (let i = 0; i < Math.min(20, lines.length); i++) {
+                  const line = lines[i];
+                  const nameMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})$/);
+                  if (nameMatch && isValidAuthorName(nameMatch[1]) && nameMatch[1].length > 4) {
+                    if (!/^(Chapter|Introduction|Foreword|Preface|Contents|Index|Appendix|Bibliography)$/i.test(nameMatch[1])) {
+                      author = cleanAuthorName(nameMatch[1]);
+                      break;
+                    }
+                  }
+                }
+              }
+              
+              // Pattern 4: "Written by", "Authored by", "Compiled by", etc.
+              if (!author) {
+                const match = pageText.match(/(?:written|authored|compiled|created|edited)\s+by\s+([A-Z][A-Za-z\s\-'.&,]+?)(?=\n|;|,\s*\d{4}|©|$)/i);
+                if (match && isValidAuthorName(match[1])) {
+                  author = cleanAuthorName(match[1]);
+                }
+              }
+              
+              // Pattern 5: Name before year or edition indicators
+              if (!author) {
+                const match = pageText.match(/([A-Z][A-Za-z\s\-'.&]+?)\s+(?:Edition|©\s*\d{4}|\d{4}|ISBN)/);
+                if (match && isValidAuthorName(match[1])) {
+                  author = cleanAuthorName(match[1]);
+                }
+              }
+              
+              // Pattern 6: University/Organization authors
+              if (!author) {
+                const match = pageText.match(/([A-Z][A-Za-z\s\-'.&]*(?:University|Institute|College|Department|Laboratory|Press))/);
+                if (match && isValidAuthorName(match[1])) {
+                  author = cleanAuthorName(match[1]);
+                }
+              }
+              
+              // Pattern 7: Multiple author format
+              if (!author) {
+                const match = pageText.match(/([A-Z][A-Za-z\s\-'.]+?)\s+(?:and|,)\s+([A-Z][A-Za-z\s\-'.]+?)(?=\n|;|,\s*\d{4}|©|$)/);
+                if (match && isValidAuthorName(match[1])) {
+                  author = cleanAuthorName(match[1]);
+                }
+              }
+              
+              // Pattern 8: ALL CAPS names (older books)
+              if (!author) {
+                const allCapsLines = lines.filter(l => /^[A-Z\s\-'.&]+$/.test(l) && l.length > 3);
+                for (const line of allCapsLines) {
+                  if (isValidAuthorName(line)) {
+                    const name = line.split(/\s+/).map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+                    if (isValidAuthorName(name)) {
+                      author = cleanAuthorName(name);
+                      break;
+                    }
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn('Could not extract text from PDF:', e);
+            }
+          }
+          
+          // Update form with extracted data if not already filled
+          if (author || title) {
+            setBookForm(prev => ({
+              ...prev,
+              author: author || prev.author,
+              title: title || prev.title || (pdf?.name?.replace(/\.[^/.]+$/, '') || '')
+            }));
+          } else if (!bookForm.title) {
+            // At least set title from filename
+            setBookForm(prev => ({
+              ...prev,
+              title: pdf?.name?.replace(/\.[^/.]+$/, '') || ''
+            }));
+          }
+        } catch (e) {
+          console.warn('Error extracting PDF metadata:', e);
+        }
       } catch (error) {
         console.error('Error extracting cover from PDF:', error);
         // Don't show error toast - this is optional, user can upload manual cover

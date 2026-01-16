@@ -1,0 +1,209 @@
+/**
+ * MorphingShapeLoader Component Styles
+ * 
+ * Smooth morphing shape animation with SVG path transitions.
+ * Features gradient fill, rotating ring, and fluid shape morphing.
+ */
+
+/* ============================================
+   CONTAINER & LAYOUT STYLES
+   ============================================ */
+
+.morphing-loader-container {
+  /* Primary Layout */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 60vh;
+  
+  /* Background: Dark gradient for visual depth */
+  background: linear-gradient(135deg, #0b1216 0%, #0f1a1e 100%);
+  
+  /* Spacing */
+  padding: 40px 20px;
+  
+  /* Text colors */
+  color: #8696a0;
+  gap: 20px;
+}
+
+/* ============================================
+   SPINNER CONTAINER
+   ============================================ */
+
+.morphing-loader-spinner {
+  /* SVG Container Sizing */
+  width: 100px;
+  height: 100px;
+  
+  /* Centering Content */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================
+   SVG STYLING
+   ============================================ */
+
+.morphing-svg {
+  /* Drop shadow for 3D depth effect */
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+  
+  /* Smooth animations */
+  will-change: filter;
+}
+
+/* ============================================
+   MORPHING SHAPE ANIMATION
+   ============================================ */
+
+.morphing-shape-group {
+  transform-origin: 50px 50px;
+}
+
+/**
+ * Main morphing shape
+ * Transitions between 4 states:
+ * 1. Circle (0%)
+ * 2. Rounded Square (33%)
+ * 3. Star/Angular (66%)
+ * 4. Back to Circle (100%)
+ * 
+ * Duration: 4 seconds
+ * Timing: ease-in-out for smooth transitions
+ */
+.morphing-shape {
+  animation: morph-shape 4s ease-in-out infinite;
+  filter: drop-shadow(0 2px 6px rgba(0, 168, 216, 0.2));
+}
+
+@keyframes morph-shape {
+  /* State 1: Perfect Circle */
+  0% {
+    d: path('M 50 20 C 35 20 25 30 25 45 C 25 60 35 70 50 70 C 65 70 75 60 75 45 C 75 30 65 20 50 20 Z');
+  }
+  
+  /* State 2: Rounded Square */
+  33% {
+    d: path('M 30 25 L 70 25 Q 75 25 75 30 L 75 70 Q 75 75 70 75 L 30 75 Q 25 75 25 70 L 25 30 Q 25 25 30 25 Z');
+  }
+  
+  /* State 3: Angular Star */
+  66% {
+    d: path('M 50 15 L 61 40 L 88 40 L 68 58 L 79 83 L 50 65 L 21 83 L 32 58 L 12 40 L 39 40 Z');
+  }
+  
+  /* State 4: Back to Circle */
+  100% {
+    d: path('M 50 20 C 35 20 25 30 25 45 C 25 60 35 70 50 70 C 65 70 75 60 75 45 C 75 30 65 20 50 20 Z');
+  }
+}
+
+/* ============================================
+   ROTATING RING ANIMATION
+   ============================================ */
+
+/**
+ * Rotating ring around the morphing shape
+ * Provides constant motion while shape morphs
+ * Duration: 3 seconds (different from shape morph for visual interest)
+ */
+.morphing-ring {
+  animation: rotate-ring 3s linear infinite;
+  opacity: 0.8;
+}
+
+@keyframes rotate-ring {
+  from {
+    transform: rotate(0deg);
+    transform-origin: 50px 50px;
+  }
+  to {
+    transform: rotate(360deg);
+    transform-origin: 50px 50px;
+  }
+}
+
+/* ============================================
+   TEXT STYLING
+   ============================================ */
+
+.morphing-loader-text {
+  /* Typography */
+  font-size: 16px;
+  font-weight: 500;
+  
+  /* Spacing */
+  margin: 0;
+  
+  /* Color: Light text for dark background */
+  color: #e9edef;
+  
+  /* Subtle animation */
+  animation: pulse-text 2s ease-in-out infinite;
+}
+
+/**
+ * Pulse animation for text
+ * Opacity fades in and out for subtle effect
+ */
+@keyframes pulse-text {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+@media (max-width: 768px) {
+  .morphing-loader-container {
+    min-height: 50vh;
+    padding: 30px 15px;
+  }
+  
+  .morphing-loader-text {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .morphing-loader-container {
+    min-height: 40vh;
+    padding: 20px 10px;
+  }
+  
+  .morphing-loader-spinner {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+/* ============================================
+   DARK MODE SUPPORT (CSS VARIABLES)
+   ============================================ */
+
+:root {
+  --text-dark: #e9edef;
+  --text-light: #8696a0;
+  --bg-primary: #0b1216;
+  --bg-secondary: #0f1a1e;
+}
+
+.morphing-loader-container {
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  color: var(--text-light);
+}
+
+.morphing-loader-text {
+  color: var(--text-dark);
+}
