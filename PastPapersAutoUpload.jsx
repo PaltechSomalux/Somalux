@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { FiUpload, FiFolderPlus, FiPlay, FiRefreshCw, FiCheck, FiX, FiClock, FiAlertCircle } from 'react-icons/fi';
+import { FiUpload, FiFolderPlus, FiPlay, FiRefreshCw, FiCheck, FiX, FiClock, FiAlertCircle, FiPause } from 'react-icons/fi';
+import { getUniversitiesForDropdown } from './src/SomaLux/Books/Admin/pastPapersApi';
 
 const API_BASE = 'http://localhost:5000';
 
 const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
   const [papersDirectory, setPapersDirectory] = useState('');
+  const [selectedUniversityId, setSelectedUniversityId] = useState('');
+  const [universities, setUniversities] = useState([]);
+  const [loadingUniversities, setLoadingUniversities] = useState(false);
   const [currentProcess, setCurrentProcess] = useState(null);
   const [processes, setProcesses] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -123,9 +127,38 @@ const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch universities on mount
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        console.log('🔄 [PastPapersAutoUpload] Fetching universities...');
+        setLoadingUniversities(true);
+        const data = await getUniversitiesForDropdown();
+        console.log('✅ [PastPapersAutoUpload] Universities fetched:', data);
+        if (Array.isArray(data)) {
+          setUniversities(data);
+          console.log('✅ [PastPapersAutoUpload] Universities set in state:', data.length, 'items');
+        } else {
+          console.warn('⚠️ [PastPapersAutoUpload] Data is not an array:', data);
+        }
+      } catch (err) {
+        console.error('❌ [PastPapersAutoUpload] Failed to fetch universities:', err);
+      } finally {
+        setLoadingUniversities(false);
+      }
+    };
+    
+    fetchUniversities();
+  }, []);
+
   const startUpload = async () => {
     if (!papersDirectory.trim()) {
       setError('Please enter a valid directory path');
+      return;
+    }
+
+    if (!selectedUniversityId) {
+      setError('Please select a university');
       return;
     }
 
@@ -144,6 +177,7 @@ const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
         },
         body: JSON.stringify({
           papersDirectory,
+          universityId: selectedUniversityId,
           uploadedBy: userProfile?.id || userProfile?.uid || userProfile?.user_id || null,
           asSubmission: !!asSubmission
         })
@@ -293,6 +327,8 @@ const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
         Scan folders for PDFs, extract past paper details using OCR, and upload automatically
       </div>
 
+      {console.log('📍 [RENDER] PastPapersAutoUpload rendering. Universities loaded:', universities.length, 'items')}
+
       {/* Resume Banner */}
       {incompleteProcess && !currentProcess && (
         <div style={{
@@ -345,7 +381,38 @@ const PastPapersAutoUpload = ({ userProfile, asSubmission = false }) => {
             Your uploads will be sent for admin review. They will appear to others after approval.
           </div>
         )}
-        <label className="label">Papers Directory Path</label>
+        
+        {console.log('📍 [RENDER DROPDOWN] About to render university dropdown. Universities:', universities.length, 'Loading:', loadingUniversities)}
+        <label className="label">Select University</label>
+        <select
+          className="select"
+          value={selectedUniversityId}
+          onChange={(e) => setSelectedUniversityId(e.target.value)}
+          disabled={loading || loadingUniversities || (currentProcess && currentProcess.status === 'running')}
+          style={{
+            backgroundColor: '#1f2c33',
+            color: '#ffffff',
+            border: '1px solid #333',
+            borderRadius: '8px',
+            padding: '10px 12px',
+            width: '100%',
+            outline: 'none',
+            cursor: 'pointer'
+          }}
+        >
+          <option value="">-- Select University --</option>
+          {universities.map(uni => (
+            <option key={uni.id} value={uni.id}>
+              {uni.name}
+            </option>
+          ))}
+        </select>
+
+        <div style={{ color: '#8696a0', fontSize: '12px', marginTop: '5px' }}>
+          {loadingUniversities ? 'Loading universities...' : 'Choose the university for these past papers'}
+        </div>
+
+        <label className="label" style={{ marginTop: '15px' }}>Papers Directory Path</label>
         <input
           className="input"
           type="text"

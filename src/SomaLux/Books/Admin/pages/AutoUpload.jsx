@@ -1096,6 +1096,8 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
   const [duplicatesCount, setDuplicatesCount] = useState(0);
   const [university, setUniversity] = useState('');
   const [faculty, setFaculty] = useState('');
+  const [customFaculty, setCustomFaculty] = useState('');
+  const [useCustomFaculty, setUseCustomFaculty] = useState(false);
   const [universities, setUniversities] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const [showOverride, setShowOverride] = useState(false);
@@ -1197,6 +1199,33 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
     loadUniversities();
     checkForIncompletePastPapersUpload();
   }, []);
+
+  // Load faculties when university is selected
+  useEffect(() => {
+    const loadFaculties = async () => {
+      if (university) {
+        try {
+          console.log('🔄 Loading faculties for university:', university);
+          const facs = await getFacultiesByUniversity(university);
+          console.log('✅ Faculties loaded:', facs);
+          setFaculties(facs || []);
+          // Reset faculty selection when university changes
+          setFaculty('');
+          setCustomFaculty('');
+          setUseCustomFaculty(false);
+        } catch (error) {
+          console.error('❌ Failed to load faculties:', error);
+          setFaculties([]);
+        }
+      } else {
+        setFaculties([]);
+        setFaculty('');
+        setCustomFaculty('');
+        setUseCustomFaculty(false);
+      }
+    };
+    loadFaculties();
+  }, [university]);
 
   // Auto-resume incomplete past papers upload
   useEffect(() => {
@@ -1392,6 +1421,11 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
   const uploadFiles = async () => {
     if (selectedFiles.length === 0) {
       internalShowToast('No files selected', 'error');
+      return;
+    }
+
+    if (!university) {
+      internalShowToast('❌ Please select a university first', 'error');
       return;
     }
 
@@ -1704,11 +1738,11 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
           return null;
         };
         
-        // Faculty priority: extracted > Google Search > Semantic detection > code guessing > 'Unknown'
-        let selectedFaculty = faculty || extractedMetadata?.faculty;
+        // Faculty priority: user selection > extracted > Google Search > Semantic detection > code guessing > 'Unknown'
+        let selectedFaculty = useCustomFaculty ? customFaculty : (faculty || extractedMetadata?.faculty);
         
-        // Try Google Search if faculty not found from PDF extraction
-        if (!selectedFaculty && selectedUniversity && unit_code) {
+        // Try Google Search if faculty not selected by user and not found from PDF extraction
+        if (!faculty && !customFaculty && !selectedFaculty && selectedUniversity && unit_code) {
           try {
             // Get university name from the universities list
             const universityObj = universities.find(u => u.id === selectedUniversity);
@@ -1728,8 +1762,8 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
           }
         }
         
-        // Fallback: Try Egerton strict detection (exact match only)
-        if (!selectedFaculty && unit_name) {
+        // Fallback: Try Egerton strict detection (exact match only) - only if faculty not manually selected
+        if (!faculty && !customFaculty && !selectedFaculty && unit_name) {
           const unitPrefix = unit_name.replace(/\d+/g, '').toUpperCase().trim();
           selectedFaculty = detectEgertonFaculty(unitPrefix);
           
@@ -1738,8 +1772,8 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
           }
         }
         
-        // Fallback: Try to guess faculty from unit code/name
-        if (!selectedFaculty && unit_name) {
+        // Fallback: Try to guess faculty from unit code/name - only if faculty not manually selected
+        if (!faculty && !customFaculty && !selectedFaculty && unit_name) {
           selectedFaculty = guessFacultyFromUnitCode(unit_code, unit_name);
           if (selectedFaculty) {
             console.log('🎯 Guessed faculty from unit code:', selectedFaculty);
@@ -1925,6 +1959,9 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
       setUploadProgress({ current: 0, total: 0 });
       setUniversity('');
       setFaculty('');
+      setCustomFaculty('');
+      setUseCustomFaculty(false);
+      setFaculties([]);
       setExtractedMetadata(null);
       setShowOverride(false);
     }, 2000);
@@ -1974,6 +2011,9 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
     setFailedCount(0);
     setUniversity('');
     setFaculty('');
+    setCustomFaculty('');
+    setUseCustomFaculty(false);
+    setFaculties([]);
     setExtractedMetadata(null);
     setShowOverride(false);
     if (folderInputRef.current) {
@@ -2179,6 +2219,286 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
         </>
       ) : (
         <>
+          {/* University Selection */}
+          <div style={{
+            background: '#0b141a',
+            border: '1px solid #1f2c33',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            padding: '16px'
+          }}>
+            <label style={{ color: '#e9edef', fontSize: '13px', fontWeight: '500', marginBottom: '8px', display: 'block' }}>
+              Select University 🏫 {university ? '✓' : ''}
+            </label>
+            <select
+              value={university}
+              onChange={(e) => setUniversity(e.target.value)}
+              disabled={uploading}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                background: '#1f2c33',
+                color: '#ffffff',
+                border: university ? '2px solid #00a884' : '1px solid #374151',
+                borderRadius: '6px',
+                fontSize: '13px',
+                cursor: 'pointer',
+                outline: 'none',
+                marginBottom: '8px',
+                fontWeight: university ? '600' : '400'
+              }}
+            >
+              <option value="">-- Select University --</option>
+              {universities.map(uni => (
+                <option key={uni.id} value={uni.id}>
+                  {uni.name}
+                </option>
+              ))}
+            </select>
+            <p style={{ color: '#8696a0', fontSize: '12px', margin: '0' }}>
+              {universities.length === 0 ? 'Loading universities...' : 'Choose which university these past papers belong to'}
+            </p>
+
+            {/* Faculty Selection */}
+            {university && (
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #1f2c33' }}>
+                <label style={{ color: '#e9edef', fontSize: '13px', fontWeight: '500', marginBottom: '8px', display: 'block' }}>
+                  Select Faculty 🏢 {faculty || customFaculty ? '✓' : ''}
+                </label>
+                {!useCustomFaculty ? (
+                  <select
+                    value={faculty}
+                    onChange={(e) => setFaculty(e.target.value)}
+                    disabled={uploading || faculties.length === 0}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      background: '#1f2c33',
+                      color: '#ffffff',
+                      border: faculty ? '2px solid #00a884' : '1px solid #374151',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      marginBottom: '8px',
+                      fontWeight: faculty ? '600' : '400'
+                    }}
+                  >
+                    <option value="">
+                      {faculties.length === 0 ? 'No faculties available' : 'Select Faculty (Optional)'}
+                    </option>
+                    {faculties.map(fac => (
+                      <option key={fac} value={fac}>
+                        {fac}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="e.g., Engineering, Business, Arts"
+                    value={customFaculty}
+                    onChange={(e) => setCustomFaculty(e.target.value)}
+                    disabled={uploading}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      background: '#1f2c33',
+                      color: '#ffffff',
+                      border: customFaculty ? '2px solid #00a884' : '1px solid #374151',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      outline: 'none',
+                      marginBottom: '8px',
+                      fontWeight: customFaculty ? '600' : '400',
+                      transition: 'border-color 0.2s ease'
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = '#00a884')}
+                    onBlur={(e) => (e.target.style.borderColor = customFaculty ? '#00a884' : '#374151')}
+                  />
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                  <input
+                    type="checkbox"
+                    id="custom-faculty-toggle"
+                    checked={useCustomFaculty}
+                    onChange={(e) => {
+                      setUseCustomFaculty(e.target.checked);
+                      if (!e.target.checked) {
+                        setCustomFaculty('');
+                      }
+                    }}
+                    style={{
+                      cursor: 'pointer',
+                      width: '16px',
+                      height: '16px',
+                      accentColor: '#00a884'
+                    }}
+                    disabled={uploading}
+                  />
+                  <label htmlFor="custom-faculty-toggle" style={{ color: '#8696a0', fontSize: '12px', cursor: 'pointer', margin: '0' }}>
+                    Enter custom faculty name
+                  </label>
+                </div>
+                <p style={{ color: '#8696a0', fontSize: '12px', margin: '0' }}>
+                  {faculties.length === 0 ? 'Loading faculties...' : 'Choose faculty for papers (auto-detected if not selected)'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Extracted Metadata Display Section */}
+          {selectedFiles.length > 0 && extractedMetadata && (
+            <div style={{
+              background: '#0b141a',
+              border: '1px solid #00a884',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              padding: '16px'
+            }}>
+              <div style={{ color: '#e9edef', fontSize: '13px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                📋 Extracted Metadata (OCR)
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '12px'
+              }}>
+                {/* Unit Code */}
+                <div>
+                  <label style={{ color: '#8696a0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
+                    Unit Code
+                  </label>
+                  <div style={{
+                    background: '#1f2c33',
+                    border: extractedMetadata.unitCode ? '1px solid #00a884' : '1px solid #374151',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    color: extractedMetadata.unitCode ? '#00a884' : '#8696a0',
+                    fontSize: '13px',
+                    fontWeight: extractedMetadata.unitCode ? '600' : '400',
+                    minHeight: '32px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    {extractedMetadata.unitCode || '—'}
+                  </div>
+                </div>
+
+                {/* Unit Name */}
+                <div>
+                  <label style={{ color: '#8696a0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
+                    Unit Name
+                  </label>
+                  <div style={{
+                    background: '#1f2c33',
+                    border: extractedMetadata.unitName ? '1px solid #00a884' : '1px solid #374151',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    color: extractedMetadata.unitName ? '#00a884' : '#8696a0',
+                    fontSize: '13px',
+                    fontWeight: extractedMetadata.unitName ? '600' : '400',
+                    minHeight: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    wordBreak: 'break-word'
+                  }}>
+                    {extractedMetadata.unitName || '—'}
+                  </div>
+                </div>
+
+                {/* Year */}
+                <div>
+                  <label style={{ color: '#8696a0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
+                    Year
+                  </label>
+                  <div style={{
+                    background: '#1f2c33',
+                    border: extractedMetadata.year ? '1px solid #00a884' : '1px solid #374151',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    color: extractedMetadata.year ? '#00a884' : '#8696a0',
+                    fontSize: '13px',
+                    fontWeight: extractedMetadata.year ? '600' : '400',
+                    minHeight: '32px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    {extractedMetadata.year || '—'}
+                  </div>
+                </div>
+
+                {/* Semester */}
+                <div>
+                  <label style={{ color: '#8696a0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
+                    Semester
+                  </label>
+                  <div style={{
+                    background: '#1f2c33',
+                    border: extractedMetadata.semester ? '1px solid #00a884' : '1px solid #374151',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    color: extractedMetadata.semester ? '#00a884' : '#8696a0',
+                    fontSize: '13px',
+                    fontWeight: extractedMetadata.semester ? '600' : '400',
+                    minHeight: '32px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    {extractedMetadata.semester || '—'}
+                  </div>
+                </div>
+
+                {/* Exam Type */}
+                <div>
+                  <label style={{ color: '#8696a0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
+                    Exam Type
+                  </label>
+                  <div style={{
+                    background: '#1f2c33',
+                    border: extractedMetadata.examType ? '1px solid #00a884' : '1px solid #374151',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    color: extractedMetadata.examType ? '#00a884' : '#8696a0',
+                    fontSize: '13px',
+                    fontWeight: extractedMetadata.examType ? '600' : '400',
+                    minHeight: '32px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    {extractedMetadata.examType || '—'}
+                  </div>
+                </div>
+
+                {/* Source */}
+                <div>
+                  <label style={{ color: '#8696a0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
+                    Source
+                  </label>
+                  <div style={{
+                    background: '#1f2c33',
+                    border: '1px solid #374151',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    color: extractedMetadata.source === 'text' ? '#00d4aa' : '#ffa500',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    minHeight: '32px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    {extractedMetadata.source === 'text' ? '📄 PDF Text' : '📝 Filename'}
+                  </div>
+                </div>
+              </div>
+
+              <p style={{ color: '#8696a0', fontSize: '11px', margin: '12px 0 0 0' }}>
+                ℹ️ Green fields = Successfully extracted from PDF. Orange = Extracted from filename. Click upload to use these values.
+              </p>
+            </div>
+          )}
+
           {/* File List */}
           <div style={{
             background: '#0b141a',

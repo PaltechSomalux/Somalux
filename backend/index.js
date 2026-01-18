@@ -8,10 +8,13 @@ import { getAdminEmails } from './routes/adminNotifications.js';
 import { WebSocketServer } from "ws";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import path from "path";
+import https from "https";
+import http from "http";
 import pkg from 'agora-token';
 const { RtcTokenBuilder, RtcRole } = pkg;
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
+import puppeteer from 'puppeteer';
 import {
   getReadingStats,
   getReadingActivity,
@@ -27,6 +30,7 @@ import { sendSignOutReasonEmail } from './routes/adminNotifications.js';
 import adsApiV2 from './routes/adsApiV2.js';
 import { createRankingRoutes } from './routes/rankings.js';
 import featureFlagsRouter from './routes/featureFlags.js';
+import pastPapersDownloaderRoutes from './routes/pastPapersDownloaderRoutes.js';
 
 
 // Express Setup MUST be before any app.use/app.post calls
@@ -38,6 +42,9 @@ app.use(express.static('public')); // Serve static files from public folder (for
 
 // Feature Flags Routes
 app.use(featureFlagsRouter);
+
+// Past Papers Downloader Routes
+app.use('/api/elib/pastpapers', pastPapersDownloaderRoutes);
 
 // FCM topic management - DISABLED (Firebase not used)
 app.post('/subscribe-topic', async (req, res) => {
@@ -1213,143 +1220,11 @@ app.get('/api/elib/bulk-upload/processes', async (req, res) => {
 });
 
 // ==================== PAST PAPERS BULK UPLOAD ====================
+// Using Auto-Download endpoints below instead
 
 const bulkUploadPastPapersProcesses = new Map();
-
-app.post('/api/elib/bulk-upload-pastpapers/start', async (req, res) => {
-  console.log(`📨 [PAST-PAPERS-BULK-UPLOAD-START] Request received at ${new Date().toISOString()}`);
-
-  if (!supabaseAdmin) {
-    console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-START] Supabase not configured`);
-    return res.status(500).json({ error: 'Supabase not configured on server' });
-  }
-
-  try {
-    const { papersDirectory, uploadedBy, asSubmission } = req.body;
-    const actorEmail = req.headers['x-actor-email'] || 'admin';
-    const actorName = req.headers['x-actor-name'] || 'Unknown';
-
-    console.log(`📂 [PAST-PAPERS-BULK-UPLOAD-START] Directory: ${papersDirectory}`);
-    console.log(`👤 [PAST-PAPERS-BULK-UPLOAD-START] Uploader: ${uploadedBy || 'null'}`);
-    console.log(`📋 [PAST-PAPERS-BULK-UPLOAD-START] AsSubmission: ${asSubmission}`);
-
-    if (!papersDirectory?.trim()) {
-      console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-START] No directory provided`);
-      return res.status(400).json({ error: 'Directory path is required' });
-    }
-
-    // Validate directory exists
-    const path = require('path');
-    const fs = require('fs');
-    const normalizedPath = path.normalize(papersDirectory);
-    
-    try {
-      const stat = fs.statSync(normalizedPath);
-      if (!stat.isDirectory()) {
-        console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-START] Path is not a directory: ${normalizedPath}`);
-        return res.status(400).json({ error: 'Path is not a directory' });
-      }
-      console.log(`✅ [PAST-PAPERS-BULK-UPLOAD-START] Directory exists and is accessible`);
-    } catch (e) {
-      console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-START] Directory access error:`, e.message);
-      return res.status(400).json({ error: `Directory not found or not accessible: ${e.message}` });
-    }
-
-    const processId = crypto.randomUUID();
-
-    // Create process tracking object
-    const stopFlag = { stopped: false };
-    const process = {
-      id: processId,
-      status: 'running',
-      papersDirectory,
-      uploadedBy,
-      asSubmission,
-      startedAt: new Date().toISOString(),
-      completedAt: null,
-      startedByEmail: actorEmail,
-      startedByName: actorName,
-      stats: {
-        total: 0,
-        processed: 0,
-        successful: 0,
-        failed: 0,
-        skipped: 0
-      },
-      stopFlag
-    };
-
-    bulkUploadPastPapersProcesses.set(processId, process);
-    console.log(`🔑 [PAST-PAPERS-BULK-UPLOAD-START] Process ID: ${processId}`);
-
-    // Start background upload
-    console.log(`🚀 [PAST-PAPERS-BULK-UPLOAD-START] Starting background upload process`);
-    
-    (async () => {
-      try {
-        console.log(`📋 [PAST-PAPERS-BULK-UPLOAD-${processId}] Calling bulkUploadPastPapers...`);
-        const { bulkUploadPastPapers } = await import('./scripts/bulkUploadPastPapers.js');
-        
-        const stats = await bulkUploadPastPapers({
-          papersDirectory,
-          supabaseUrl: process.env.SUPABASE_URL,
-          supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-          uploadedBy,
-          asSubmission,
-          onProgress: (data) => {
-            // Update process stats
-            if (data.stats) {
-              process.stats = { ...data.stats };
-            }
-          },
-          stopFlag
-        });
-
-        console.log(`✅ [PAST-PAPERS-BULK-UPLOAD-${processId}] Upload completed:`, stats);
-        process.status = 'completed';
-        process.completedAt = new Date().toISOString();
-        process.stats = stats;
-
-        // Notify admin
-        if (actorEmail && actorEmail !== 'admin') {
-          try {
-            await sendEmail({
-              to: actorEmail,
-              subject: `Past Papers Bulk Upload Complete`,
-              html: buildBrandedEmailHtml(`
-                <h2>Upload Complete</h2>
-                <p>Your bulk upload of past papers has completed.</p>
-                <ul>
-                  <li>Total: ${stats.total}</li>
-                  <li>Successful: ${stats.successful}</li>
-                  <li>Failed: ${stats.failed}</li>
-                  <li>Skipped: ${stats.skipped}</li>
-                </ul>
-              `)
-            });
-          } catch (emailErr) {
-            console.warn(`⚠️ Failed to send email to ${actorEmail}:`, emailErr.message);
-          }
-        }
-
-      } catch (error) {
-        console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-${processId}] Error:`, error.message);
-        process.status = 'failed';
-        process.error = error.message;
-        process.completedAt = new Date().toISOString();
-      }
-    })();
-
-    console.log(`✅ [PAST-PAPERS-BULK-UPLOAD-START] Response sent with processId: ${processId}`);
-    res.json({ ok: true, processId });
-
-  } catch (error) {
-    console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-START] Exception caught:`, error.message);
-    res.status(500).json({ error: error.message || 'Failed to start bulk upload' });
-  }
-});
-
-app.get('/api/elib/bulk-upload-pastpapers/status/:processId', async (req, res) => {
+// Endpoint removed - using new auto-download endpoints instead
+/*app.get('/api/elib/bulk-upload-pastpapers/status/:processId', async (req, res) => {
   try {
     const { processId } = req.params;
     const process = bulkUploadPastPapersProcesses.get(processId);
@@ -1496,6 +1371,1981 @@ app.get('/api/elib/bulk-upload-pastpapers/processes', async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ error: error.message || 'Failed to list processes' });
+  }
+});
+*/
+
+// === PAST PAPERS BULK UPLOAD ENDPOINTS ===
+
+// POST /api/elib/bulk-upload-pastpapers/start - Start uploading past papers from folder
+// COMMENTED OUT: This conflicts with URL-based download endpoint. Use lazy-loaded URL endpoint instead.
+/*
+app.post('/api/elib/bulk-upload-pastpapers/start', async (req, res) => {
+  try {
+    const { papersDirectory, universityId, uploadedBy, asSubmission } = req.body;
+
+    if (!papersDirectory?.trim()) {
+      return res.status(400).json({ ok: false, error: 'Papers directory path is required' });
+    }
+
+    // Validate directory exists
+    try {
+      const normalizedPath = path.resolve(papersDirectory);
+      const stats = fs.statSync(normalizedPath);
+      if (!stats.isDirectory()) {
+        return res.status(400).json({ ok: false, error: 'Provided path is not a directory' });
+      }
+    } catch (e) {
+      return res.status(400).json({ ok: false, error: `Directory not accessible: ${e.message}` });
+    }
+
+    const processId = crypto.randomUUID();
+    const stopFlag = { stopped: false };
+
+    const uploadProcess = {
+      id: processId,
+      status: 'running',
+      papersDirectory,
+      universityId,
+      uploadedBy,
+      asSubmission: !!asSubmission,
+      startedAt: new Date().toISOString(),
+      completedAt: null,
+      stats: {
+        total: 0,
+        processed: 0,
+        successful: 0,
+        failed: 0,
+        skipped: 0
+      },
+      stopFlag
+    };
+
+    bulkUploadPastPapersProcesses.set(processId, uploadProcess);
+    console.log(`📂 [PAST-PAPERS-BULK-UPLOAD-${processId}] Started from directory: ${papersDirectory}`);
+
+    // Start background upload process
+    (async () => {
+      try {
+        const { bulkUploadPastPapers } = await import('./scripts/bulkUploadPastPapers.js');
+        
+        const stats = await bulkUploadPastPapers({
+          papersDirectory,
+          universityId,
+          supabaseUrl: process.env.SUPABASE_URL,
+          supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+          uploadedBy,
+          asSubmission,
+          onProgress: (data) => {
+            if (data.stats) {
+              uploadProcess.stats = { ...data.stats };
+            }
+          },
+          stopFlag
+        });
+
+        uploadProcess.status = 'completed';
+        uploadProcess.completedAt = new Date().toISOString();
+        uploadProcess.stats = stats;
+        console.log(`✅ [PAST-PAPERS-BULK-UPLOAD-${processId}] Completed:`, stats);
+
+      } catch (error) {
+        console.error(`❌ [PAST-PAPERS-BULK-UPLOAD-${processId}] Error:`, error.message);
+        uploadProcess.status = 'failed';
+        uploadProcess.completedAt = new Date().toISOString();
+        uploadProcess.error = error.message;
+      }
+    })();
+
+    res.json({ ok: true, processId, process: uploadProcess });
+
+  } catch (error) {
+    console.error('❌ Error starting bulk upload:', error.message);
+    res.status(500).json({ ok: false, error: error.message || 'Failed to start upload' });
+  }
+});
+*/
+
+// GET /api/elib/bulk-upload-pastpapers/status/:processId
+// COMMENTED OUT: Related to directory-based upload endpoint
+/*
+app.get('/api/elib/bulk-upload-pastpapers/status/:processId', async (req, res) => {
+  try {
+    const { processId } = req.params;
+    const process = bulkUploadPastPapersProcesses.get(processId);
+
+    if (!process) {
+      return res.status(404).json({ ok: false, error: 'Process not found' });
+    }
+
+    const { stopFlag, ...safeProcess } = process;
+    res.json({ ok: true, process: safeProcess });
+
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message || 'Failed to get status' });
+  }
+});
+*/
+
+// GET /api/elib/bulk-upload-pastpapers/processes
+// COMMENTED OUT: Related to directory-based upload endpoint
+/*
+app.get('/api/elib/bulk-upload-pastpapers/processes', async (req, res) => {
+  try {
+    const processes = Array.from(bulkUploadPastPapersProcesses.values())
+      .map(p => {
+        const { stopFlag, ...rest } = p;
+        return rest;
+      })
+      .sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt))
+      .slice(0, 20);
+
+    res.json({ ok: true, processes });
+
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message || 'Failed to list processes' });
+  }
+});
+*/
+
+// POST /api/elib/bulk-upload-pastpapers/stop/:processId
+// COMMENTED OUT: Related to directory-based upload endpoint
+/*
+app.post('/api/elib/bulk-upload-pastpapers/stop/:processId', async (req, res) => {
+  try {
+    const { processId } = req.params;
+    const process = bulkUploadPastPapersProcesses.get(processId);
+
+    if (!process) {
+      return res.status(404).json({ ok: false, error: 'Process not found' });
+    }
+
+    if (process.status === 'running') {
+      process.stopFlag.stopped = true;
+      process.status = 'stopped';
+    }
+
+    const { stopFlag, ...safeProcess } = process;
+    res.json({ ok: true, process: safeProcess });
+
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message || 'Failed to stop process' });
+  }
+});
+*/
+
+// === DSpace Structured Browse Endpoints ===
+// Follow exact DSpace navigation: Communities → Items → PDFs
+
+// GET /api/elib/dspace/communities - List all communities from home page
+app.get('/api/elib/dspace/communities', async (req, res) => {
+  try {
+    const baseUrl = 'https://pastpapers.ku.ac.ke';
+    
+    // Fetch home page
+    const homeHtml = await new Promise((resolve, reject) => {
+      https.get(baseUrl, {
+        timeout: 15000,
+        rejectUnauthorized: false,
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      }, (response) => {
+        let html = '';
+        response.on('data', chunk => html += chunk);
+        response.on('end', () => resolve(html));
+      }).on('error', reject);
+    });
+
+    // Extract community links: <a href="/handle/123456789/4547">Community Name [21]</a>
+    const communityRegex = /href=["']\/handle\/(\d+\/\d+)["']>([^<]+)\s*\[(\d+)\]/gi;
+    const communities = [];
+    let match;
+    
+    while ((match = communityRegex.exec(homeHtml)) !== null) {
+      const [, handle, name, itemCount] = match;
+      communities.push({
+        handle,
+        name: name.trim(),
+        itemCount: parseInt(itemCount),
+        url: `${baseUrl}/handle/${handle}`
+      });
+    }
+
+    console.log(`📚 [DSPACE] Found ${communities.length} communities`);
+    res.json({ ok: true, communities });
+  } catch (error) {
+    console.error('[DSPACE] Error fetching communities:', error.message);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Helper function to extract clean unit code from filename
+const extractUnitCode = (filename) => {
+  if (!filename) return 'Unknown';
+  
+  // Try to extract unit code patterns like "UCU 104", "EAE 301", etc.
+  const patterns = [
+    // Pattern 1: Code-Space-Number (e.g., "UCU 104")
+    /([A-Z]{2,4}\s*\d{2,4})/,
+    // Pattern 2: Code+Number without space (e.g., "UCU104")
+    /([A-Z]{2,4}\d{2,4})/,
+    // Pattern 3: Code-Number-Text (e.g., "UCU110 Communication")
+    /^([A-Z]{2,4}\d{2,4})/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = filename.match(pattern);
+    if (match) {
+      // Clean up the match - ensure space between code and number
+      let code = match[1].trim();
+      code = code.replace(/([A-Z]+)(\d+)/, '$1 $2'); // Add space if missing
+      return code;
+    }
+  }
+  
+  // Fallback: return first 20 chars
+  return filename.substring(0, 20).trim();
+};
+
+// GET /api/elib/dspace/community-items?handle=123456789/4547 - List items in community (ALL PAGES)
+app.get('/api/elib/dspace/community-items', async (req, res) => {
+  try {
+    const { handle } = req.query;
+    if (!handle) return res.status(400).json({ ok: false, error: 'Community handle required' });
+
+    const baseUrl = 'https://pastpapers.ku.ac.ke';
+    const items = [];
+    const seenHandles = new Set();
+    let offset = 0;
+    const initialLimit = 100;
+    let actualPageSize = null;
+    let hasMore = true;
+    let pageCount = 0;
+    const MAX_PAGES = 10000; // Allow up to 10,000 pages (~1M items) - practically unlimited
+
+    while (hasMore && pageCount < MAX_PAGES) {
+      pageCount++;
+      const currentLimit = actualPageSize || initialLimit;
+      const communityUrl = `${baseUrl}/handle/${handle}?offset=${offset}&limit=${currentLimit}`;
+      
+      console.log(`📄 [DSPACE] Fetching page ${pageCount} (offset=${offset}, limit=${currentLimit}, total items: ${items.length})...`);
+      console.log(`🔗 [DSPACE] URL: ${communityUrl}`);
+
+      // Fetch community page with pagination
+      const communityHtml = await new Promise((resolve, reject) => {
+        https.get(communityUrl, {
+          timeout: 15000,
+          rejectUnauthorized: false,
+          headers: { 
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'text/html,application/xhtml+xml',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Cache-Control': 'no-cache'
+          },
+          followRedirect: true
+        }, (response) => {
+          let html = '';
+          response.on('data', chunk => html += chunk);
+          response.on('end', () => {
+            console.log(`📥 [DSPACE] Response size: ${html.length} bytes`);
+            resolve(html);
+          });
+        }).on('error', reject);
+      });
+
+      // Extract item links using multiple patterns to handle different DSpace HTML structures
+      let pageItemCount = 0;
+      const pageItems = new Set();
+
+      console.log(`🔍 [DSPACE] Searching for items with multiple regex patterns...`);
+      
+      // Try multiple regex patterns
+      const patternDefs = [
+        { name: 'Pattern 1: href with quotes', pattern: /href=["']([^"']*\/handle\/(\d+\/\d+)[^"']*?)["'][^>]*>([^<]+)<\/a>/g },
+        { name: 'Pattern 2: Simple handle link', pattern: /\/handle\/(\d+\/\d+)['"]\s*[^>]*>([^<]{0,100})<\/a>/g },
+        { name: 'Pattern 3: Handle with any class', pattern: /href=["']([^"']*handle[^"']*(\d+\/\d+)[^"']*?)["'][^>]*title=["']([^"']+)["']/g },
+        { name: 'Pattern 4: Data attribute', pattern: /data-[^=]*=["'].*?\/handle\/(\d+\/\d+)["'][^>]*>([^<]{0,100})<\/a>/g }
+      ];
+      
+      let bestPatternMatch = null;
+      
+      for (const patternDef of patternDefs) {
+        const tmpMatches = [];
+        let match;
+        let count = 0;
+        // Create a new regex instance for each iteration to reset lastIndex
+        const regex = new RegExp(patternDef.pattern.source, patternDef.pattern.flags);
+        
+        while ((match = regex.exec(communityHtml)) !== null) {
+          count++;
+          let handle, name;
+          if (match[2]) {
+            handle = match[2];
+            name = match[match.length - 1];
+          } else if (match[1]) {
+            handle = match[1];
+            name = match[2];
+          }
+          
+          if (handle && !seenHandles.has(handle) && handle !== handle) {
+            tmpMatches.push({ handle, name: (name || 'Unknown').trim().substring(0, 50) });
+          }
+        }
+        
+        if (count > 0) {
+          console.log(`  ${patternDef.name}: Found ${count} matches, ${tmpMatches.length} new items`);
+          if (tmpMatches.length > bestPatternMatch?.matches?.length || !bestPatternMatch) {
+            bestPatternMatch = { pattern: patternDef.name, matches: tmpMatches, count };
+          }
+        }
+      }
+      
+      if (bestPatternMatch && bestPatternMatch.matches.length > 0) {
+        console.log(`✅ [DSPACE] Best match: ${bestPatternMatch.pattern} (${bestPatternMatch.matches.length} items):`);
+        
+        for (const item of bestPatternMatch.matches) {
+          seenHandles.add(item.handle);
+          pageItems.add(item.handle);
+          const cleanName = extractUnitCode(item.name);
+          items.push({
+            handle: item.handle,
+            name: cleanName,
+            url: `${baseUrl}/handle/${item.handle}`
+          });
+          pageItemCount++;
+        }
+        
+        bestPatternMatch.matches.slice(0, 5).forEach(item => {
+          const cleanName = extractUnitCode(item.name);
+          console.log(`   - ${item.handle}: ${cleanName}`);
+        });
+        if (bestPatternMatch.matches.length > 5) {
+          console.log(`   ... and ${bestPatternMatch.matches.length - 5} more`);
+        }
+      } else {
+        console.log(`⚠️  [DSPACE] NO REGEX PATTERNS MATCHED`);
+        const handleCount = (communityHtml.match(/\/handle\/\d+\/\d+/g) || []).length;
+        console.log(`📝 [DSPACE] HTML contains ${handleCount} handle references, but none matched our patterns`);
+        
+        const sampleMatch = communityHtml.match(/\/handle\/\d+\/\d+[^>]{0,200}>/);
+        if (sampleMatch) {
+          console.log(`📋 [DSPACE] Sample: ${sampleMatch[0].substring(0, 150)}`);
+        }
+      }
+
+      console.log(`✅ [DSPACE] Page ${pageCount}: Found ${pageItemCount} new items (Total: ${items.length})`);
+
+      // Auto-detect actual page size from first page
+      if (actualPageSize === null && pageItemCount > 0) {
+        actualPageSize = pageItemCount;
+        console.log(`📊 [DSPACE] Detected page size: ${actualPageSize} items per page`);
+      }
+
+      // Continue pagination if we got items on this page
+      if (pageItemCount > 0) {
+        // We got items, so increment offset for next page
+        offset += pageItemCount; // Increment by actual count, not limit
+        // Continue to next page (we'll stop when we get 0 items)
+      } else {
+        // No items on this page = we've reached the end
+        hasMore = false;
+        console.log(`✅ [DSPACE] Pagination complete: Reached end of results`);
+      }
+    }
+
+    if (pageCount >= MAX_PAGES) {
+      console.warn(`⚠️  [DSPACE] Reached maximum page limit (${MAX_PAGES}), but there may be more items. Found ${items.length} items so far.`);
+    }
+
+    console.log(`📄 [DSPACE] Found ${items.length} total items in community ${handle}`);
+    res.json({ ok: true, items });
+  } catch (error) {
+    console.error('[DSPACE] Error fetching community items:', error.message);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// GET /api/elib/dspace/item-pdfs?handle=123456789/10275 - Get PDF download links from item
+app.get('/api/elib/dspace/item-pdfs', async (req, res) => {
+  try {
+    const { handle } = req.query;
+    if (!handle) return res.status(400).json({ ok: false, error: 'Item handle required' });
+
+    const baseUrl = 'https://pastpapers.ku.ac.ke';
+    const itemUrl = `${baseUrl}/handle/${handle}`;
+
+    // Fetch item page
+    const itemHtml = await new Promise((resolve, reject) => {
+      https.get(itemUrl, {
+        timeout: 15000,
+        rejectUnauthorized: false,
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      }, (response) => {
+        let html = '';
+        response.on('data', chunk => html += chunk);
+        response.on('end', () => resolve(html));
+      }).on('error', reject);
+    });
+
+    // Extract PDF bitstream URLs
+    const pdfRegex = /href=["']([^"']*\/bitstream\/handle\/[^"']*\.pdf[^"']*)["']/gi;
+    const pdfs = [];
+    let match;
+    const seenUrls = new Set();
+
+    while ((match = pdfRegex.exec(itemHtml)) !== null) {
+      let pdfUrl = match[1];
+      
+      // Decode HTML entities
+      pdfUrl = pdfUrl.replace(/&amp;/g, '&')
+                     .replace(/&lt;/g, '<')
+                     .replace(/&gt;/g, '>')
+                     .replace(/&quot;/g, '"');
+
+      if (!pdfUrl.startsWith('http')) {
+        pdfUrl = baseUrl + pdfUrl;
+      }
+
+      // Avoid duplicates
+      if (!seenUrls.has(pdfUrl)) {
+        seenUrls.add(pdfUrl);
+        
+        // Extract filename from URL
+        const urlObj = new URL(pdfUrl);
+        let filename = urlObj.pathname.split('/').pop();
+        filename = decodeURIComponent(filename) || 'document.pdf';
+
+        pdfs.push({
+          url: pdfUrl,
+          filename,
+          size: urlObj.searchParams.get('sequence')
+        });
+      }
+    }
+
+    console.log(`📎 [DSPACE] Found ${pdfs.length} PDF(s) in item ${handle}`);
+    res.json({ ok: true, pdfs });
+  } catch (error) {
+    console.error('[DSPACE] Error fetching item PDFs:', error.message);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// === Auto-Download from URL Endpoints ===
+const autoDownloadProcesses = new Map();
+
+// POST /api/elib/bulk-upload-pastpapers/start - START URL-BASED DOWNLOAD
+app.post('/api/elib/bulk-upload-pastpapers/start', async (req, res) => {
+  try {
+    const { sourceUrl, userId, advancedOptions, asSubmission } = req.body;
+
+    if (!sourceUrl?.trim()) {
+      return res.status(400).json({ ok: false, error: 'Source URL is required' });
+    }
+
+    // Validate URL
+    try {
+      new URL(sourceUrl);
+    } catch {
+      return res.status(400).json({ ok: false, error: 'Invalid URL format' });
+    }
+
+    const processId = crypto.randomUUID();
+    const stopFlag = { stopped: false };
+
+    const downloadProcess = {
+      id: processId,
+      status: 'running',
+      sourceUrl,
+      userId,
+      asSubmission: asSubmission || false,
+      startedAt: new Date().toISOString(),
+      completedAt: null,
+      stats: {
+        total: 0,
+        processed: 0,
+        successful: 0,
+        failed: 0,
+        skipped: 0
+      },
+      stopFlag,
+      files: []
+    };
+
+    autoDownloadProcesses.set(processId, downloadProcess);
+    console.log(`📥 [AUTO-DOWNLOAD-${processId}] Started bulk download from: ${sourceUrl}`);
+
+    // Start background download process
+    (async () => {
+      try {
+        // Create downloads directory if it doesn't exist
+        const downloadDir = path.join(process.cwd(), 'public', 'downloads');
+        if (!fs.existsSync(downloadDir)) {
+          fs.mkdirSync(downloadDir, { recursive: true });
+        }
+
+        console.log(`📥 [AUTO-DOWNLOAD-${processId}] Fetching webpage...`);
+        
+        // Fetch the webpage HTML using Puppeteer for JavaScript rendering
+        let pageHtml = '';
+        let browser;
+        
+        try {
+          // Try using Puppeteer first (for JavaScript-rendered content)
+          browser = await puppeteer.launch({
+            headless: 'new',
+            args: [
+              '--no-sandbox',
+              '--disable-setuid-sandbox',
+              '--disable-dev-shm-usage',
+              '--disable-gpu'
+            ]
+          });
+          
+          const page = await browser.newPage();
+          page.setDefaultNavigationTimeout(45000);
+          page.setDefaultTimeout(45000);
+          
+          // Set a user agent to avoid blocking
+          await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+          
+          console.log(`⏳ [AUTO-DOWNLOAD-${processId}] Navigating to ${sourceUrl}...`);
+          await page.goto(sourceUrl, { waitUntil: 'networkidle2', timeout: 45000 });
+          
+          // Extra wait for dynamic content - wait for any lazy-loaded elements
+          console.log(`⏳ [AUTO-DOWNLOAD-${processId}] Waiting for dynamic content to load...`);
+          await page.waitForTimeout(3000); // Wait 3 seconds for AJAX/dynamic content
+          
+          // Also try scrolling to trigger lazy loading
+          await page.evaluate(() => {
+            window.scrollBy(0, window.innerHeight);
+          });
+          await page.waitForTimeout(1000);
+          
+          pageHtml = await page.content();
+          
+          // Log HTML size for debugging
+          console.log(`📊 [AUTO-DOWNLOAD-${processId}] HTML size: ${pageHtml.length} characters`);
+          
+          // Log a sample of the HTML to see what we're getting
+          if (pageHtml.includes('bitstream')) {
+            console.log(`✓ [AUTO-DOWNLOAD-${processId}] Found 'bitstream' in HTML`);
+          } else {
+            console.log(`✗ [AUTO-DOWNLOAD-${processId}] No 'bitstream' found in HTML - links may be loaded via AJAX`);
+          }
+          
+          await browser.close();
+          
+          console.log(`✅ [AUTO-DOWNLOAD-${processId}] Successfully fetched with Puppeteer`);
+        } catch (puppeteerError) {
+          console.warn(`⚠️  [AUTO-DOWNLOAD-${processId}] Puppeteer failed, falling back to HTTP:`, puppeteerError.message);
+          
+          // Close browser if it's still open
+          if (browser) {
+            try { await browser.close(); } catch (e) { }
+          }
+          
+          // Fallback to simple HTTP request
+          pageHtml = await new Promise((resolve, reject) => {
+            const protocol = sourceUrl.startsWith('https') ? https : http;
+            const options = { 
+              timeout: 30000,
+              rejectUnauthorized: false,
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+              }
+            };
+            protocol.get(sourceUrl, options, (response) => {
+              if (response.statusCode !== 200) {
+                reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+                return;
+              }
+              let html = '';
+              response.on('data', chunk => html += chunk);
+              response.on('end', () => resolve(html));
+            }).on('error', reject);
+          });
+          
+          console.log(`✅ [AUTO-DOWNLOAD-${processId}] Successfully fetched with HTTP fallback`);
+        }
+
+        console.log(`📄 [AUTO-DOWNLOAD-${processId}] Parsing HTML for PDF links...`);
+        
+        // Parse HTML and find all PDF links using multiple regex patterns
+        let pdfLinks = [];
+        
+        // Pattern 1: href="..." or href='...' (standard links)
+        const pattern1 = /href=["']([^"']*\.pdf[^"']*?)["']/gi;
+        let match;
+        while ((match = pattern1.exec(pageHtml)) !== null) {
+          pdfLinks.push(match[1]);
+        }
+        
+        // Pattern 2: Bitstream format - /bitstream/handle/... with PDF (with or without query params)
+        const pattern2 = /\/bitstream\/handle\/[^\s"'<>&]*\.pdf[^\s"'<>&]*/gi;
+        while ((match = pattern2.exec(pageHtml)) !== null) {
+          pdfLinks.push(match[0]);
+        }
+        
+        // Pattern 3: data-href="..." (for JavaScript frameworks)
+        const pattern3 = /data-href=["']([^"']*\.pdf[^"']*?)["']/gi;
+        while ((match = pattern3.exec(pageHtml)) !== null) {
+          pdfLinks.push(match[1]);
+        }
+        
+        // Pattern 4: Other data attributes (data-url, data-pdf, etc)
+        const pattern4 = /(?:href|data-url|data-pdf|url)\s*=\s*["']([^"']*?\.pdf[^"']*?)["']/gi;
+        while ((match = pattern4.exec(pageHtml)) !== null) {
+          pdfLinks.push(match[1]);
+        }
+        
+        // Pattern 5: Direct https://...pdf links with query params
+        const pattern5 = /(https?:\/\/[^\s"'<>]*\.pdf[^\s"'<>]*)/gi;
+        while ((match = pattern5.exec(pageHtml)) !== null) {
+          let url = match[1];
+          // Clean up common HTML entity encodings
+          url = url.replace(/&quot;/g, '').replace(/&amp;/g, '&');
+          pdfLinks.push(url);
+        }
+        
+        // Pattern 6: Look for bitstream links without leading slash
+        const pattern6 = /bitstream\/handle\/[^\s"'<>&]*\.pdf[^\s"'<>&]*/gi;
+        while ((match = pattern6.exec(pageHtml)) !== null) {
+          pdfLinks.push(match[0]);
+        }
+        
+        // Pattern 7: DSpace bitstream with query parameters explicitly
+        const pattern7 = /(bitstream\/handle\/[^\s"'<>]*\?[^\s"'<>]*)/gi;
+        while ((match = pattern7.exec(pageHtml)) !== null) {
+          pdfLinks.push(match[1]);
+        }
+
+        // Remove duplicates
+        pdfLinks = [...new Set(pdfLinks)];
+        
+        // Filter out invalid entries (too short, not actually URLs)
+        pdfLinks = pdfLinks.filter(link => link && link.length > 5 && !link.includes('<') && !link.includes('>'));
+        
+        // Clean up and convert URLs
+        const baseUrlObj = new URL(sourceUrl);
+        const baseUrl = `${baseUrlObj.protocol}//${baseUrlObj.host}`;
+        pdfLinks = pdfLinks.map(link => {
+          // Clean up the URL
+          link = link.split(/['"]/)[0].trim(); // Remove trailing quotes
+          link = link.split(/[\s&lt;&gt;]/)[0]; // Remove trailing whitespace or HTML entities
+          
+          // Decode URL-encoded characters
+          try {
+            link = decodeURIComponent(link);
+          } catch (e) {
+            // If decoding fails, use original
+          }
+          
+          if (link.startsWith('http')) return link;
+          if (link.startsWith('/bitstream')) return baseUrl + link;
+          if (link.startsWith('bitstream')) return baseUrl + '/' + link;
+          if (link.startsWith('/')) return baseUrl + link;
+          if (link.startsWith('./')) return baseUrl + '/' + link.substring(2);
+          if (link.startsWith('../')) return baseUrl + '/' + link;
+          return baseUrl + '/' + link;
+        });
+        
+        // Additional validation - make sure all links are valid URLs
+        pdfLinks = pdfLinks.filter(link => {
+          try {
+            new URL(link);
+            return true;
+          } catch (e) {
+            return false;
+          }
+        });
+
+        // If no direct PDF links found, try to extract DSpace item handles from the page
+        if (pdfLinks.length === 0) {
+          console.log(`📋 [AUTO-DOWNLOAD-${processId}] No direct PDF links found, checking for DSpace items...`);
+          
+          // Check if this is a DSpace community/collection URL
+          const handlePattern = /\/handle\/(\d+\/\d+)(\/[^?]*)?(\?.+)?/;
+          const handleMatch = sourceUrl.match(handlePattern);
+          
+          if (handleMatch) {
+            const communityHandle = handleMatch[1];
+            const additionalPath = handleMatch[2] || ''; // e.g., /recent-submissions
+            const sourceUrlObj = new URL(sourceUrl);
+            const dspaceBaseUrl = `${sourceUrlObj.protocol}//${sourceUrlObj.host}`;
+            
+            console.log(`🔗 [AUTO-DOWNLOAD-${processId}] Detected DSpace community: ${communityHandle}`);
+            if (additionalPath) {
+              console.log(`🔗 [AUTO-DOWNLOAD-${processId}] Additional path: ${additionalPath}`);
+            }
+            console.log(`📄 [AUTO-DOWNLOAD-${processId}] Using paginated endpoint to fetch ALL items...`);
+            
+            // Helper function to extract clean unit code from filename
+            const extractUnitCode = (filename) => {
+              if (!filename) return 'Unknown';
+              
+              // Try to extract unit code patterns like "UCU 104", "EAE 301", etc.
+              const patterns = [
+                // Pattern 1: Code-Space-Number (e.g., "UCU 104")
+                /([A-Z]{2,4}\s*\d{2,4})/,
+                // Pattern 2: Code+Number without space (e.g., "UCU104")
+                /([A-Z]{2,4}\d{2,4})/,
+                // Pattern 3: Code-Number-Text (e.g., "UCU110 Communication")
+                /^([A-Z]{2,4}\d{2,4})/,
+              ];
+              
+              for (const pattern of patterns) {
+                const match = filename.match(pattern);
+                if (match) {
+                  // Clean up the match - ensure space between code and number
+                  let code = match[1].trim();
+                  code = code.replace(/([A-Z]+)(\d+)/, '$1 $2'); // Add space if missing
+                  return code;
+                }
+              }
+              
+              // Fallback: return first 20 chars
+              return filename.substring(0, 20).trim();
+            };
+            
+            try {
+              // Fetch all items from community with pagination
+              let allItems = [];
+              let offset = 0;
+              let hasMore = true;
+              let pageCount = 0;
+              const MAX_PAGES = 10000;
+              
+              while (hasMore && pageCount < MAX_PAGES) {
+                pageCount++;
+                const limit = 20; // DSpace default page size
+                const basePath = additionalPath ? `/handle/${communityHandle}${additionalPath}` : `/handle/${communityHandle}`;
+                const communityUrl = `${dspaceBaseUrl}${basePath}?offset=${offset}&limit=${limit}`;
+                
+                console.log(`  📄 [AUTO-DOWNLOAD-${processId}] Fetching page ${pageCount} (offset=${offset}, total items so far: ${allItems.length})...`);
+                console.log(`  🔗 URL: ${communityUrl}`);
+                
+                const communityHtml = await new Promise((resolve, reject) => {
+                  const protocol = communityUrl.startsWith('https') ? https : http;
+                  protocol.get(communityUrl, {
+                    timeout: 15000,
+                    rejectUnauthorized: false,
+                    headers: { 
+                      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                      'Accept': 'text/html,application/xhtml+xml',
+                      'Accept-Language': 'en-US,en;q=0.9',
+                      'Cache-Control': 'no-cache'
+                    },
+                    followRedirect: true
+                  }, (response) => {
+                    let html = '';
+                    response.on('data', chunk => html += chunk);
+                    response.on('end', () => {
+                      console.log(`  📥 Response size: ${html.length} bytes`);
+                      resolve(html);
+                    });
+                  }).on('error', reject);
+                });
+                
+                // Extract item handles from this page - simple, direct approach
+                let pageItemCount = 0;
+                const seenHandles = new Set(allItems.map(i => i.handle));
+                
+                // Extract all handle references from the page
+                // Format: /handle/XXXXX/XXXXX with some text nearby
+                const handleRegex = /\/handle\/(\d+\/\d+)['"]\s*[^>]*>([^<]{0,100})<\/a>/g;
+                let match;
+                const pageItems = [];
+                
+                while ((match = handleRegex.exec(communityHtml)) !== null) {
+                  const handle = match[1];
+                  const text = (match[2] || 'Unknown').trim().substring(0, 50);
+                  
+                  // Only add if we haven't seen this handle before and it's not the community itself
+                  if (handle && !seenHandles.has(handle) && handle !== communityHandle) {
+                    pageItems.push({ handle, name: text });
+                    seenHandles.add(handle);
+                  }
+                }
+                
+                // Add items to allItems
+                for (const item of pageItems) {
+                  const cleanName = extractUnitCode(item.name);
+                  allItems.push({ handle: item.handle, name: cleanName });
+                  pageItemCount++;
+                }
+                
+                console.log(`  ✅ Page ${pageCount}: Found ${pageItemCount} new items (Total: ${allItems.length})`);
+                if (pageItems.length > 0) {
+                  pageItems.slice(0, 3).forEach(item => {
+                    const cleanName = extractUnitCode(item.name);
+                    console.log(`     - ${item.handle}: ${cleanName}`);
+                  });
+                  if (pageItems.length > 3) {
+                    console.log(`     ... and ${pageItems.length - 3} more`);
+                  }
+                }
+                
+                // Continue pagination if we got items on this page
+                if (pageItemCount > 0) {
+                  offset += limit; // Move to next page
+                } else {
+                  hasMore = false; // No items = end of results
+                  console.log(`  ✅ Pagination complete: Reached end of results`);
+                }
+              }
+              
+              if (pageCount >= MAX_PAGES) {
+                console.warn(`⚠️  [AUTO-DOWNLOAD-${processId}] Reached maximum page limit (${MAX_PAGES}), but there may be more items. Found ${allItems.length} items so far.`);
+              }
+              
+              console.log(`🔗 [AUTO-DOWNLOAD-${processId}] Found ${allItems.length} DSpace item(s) across all pages`);
+              
+              if (allItems.length > 0) {
+                // For each item handle, fetch the item page and extract PDF link
+                console.log(`📥 [AUTO-DOWNLOAD-${processId}] Fetching PDF links from ${allItems.length} items...`);
+                
+                for (const item of allItems) {
+                  if (stopFlag.stopped) break;
+                  
+                  try {
+                    const itemUrl = dspaceBaseUrl + '/handle/' + item.handle;
+                    console.log(`  📄 Fetching item: ${item.handle}`);
+                    
+                    // Fetch item HTML
+                    const itemHtml = await new Promise((resolve, reject) => {
+                      const protocol = itemUrl.startsWith('https') ? https : http;
+                      const options = {
+                        timeout: 10000,
+                        rejectUnauthorized: false,
+                        headers: {
+                          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+                        }
+                      };
+                      protocol.get(itemUrl, options, (response) => {
+                        if (response.statusCode !== 200) {
+                          reject(new Error(`HTTP ${response.statusCode}`));
+                          return;
+                        }
+                        let html = '';
+                        response.on('data', chunk => html += chunk);
+                        response.on('end', () => resolve(html));
+                      }).on('error', reject);
+                    });
+                    
+                    // Extract PDF bitstream URLs from item HTML - multiple patterns
+                    const extractedUrls = new Set();
+                    
+                    console.log(`  📝 Analyzing item HTML (${itemHtml.length} bytes) for PDF links...`);
+                    
+                    // Pattern 1: Meta tag citation_pdf_url (most reliable)
+                    const metaPattern = /name=["']citation_pdf_url["']\s+content=["']([^"']+)["']/i;
+                    let metaMatch = metaPattern.exec(itemHtml);
+                    let foundByMeta = 0;
+                    if (metaMatch) {
+                      let pdfUrl = metaMatch[1].trim();
+                      foundByMeta++;
+                      console.log(`    [Meta] Found: ${pdfUrl}`);
+                      
+                      // Ensure absolute URL
+                      if (!pdfUrl.startsWith('http')) {
+                        pdfUrl = dspaceBaseUrl + (pdfUrl.startsWith('/') ? '' : '/') + pdfUrl;
+                      }
+                      
+                      try {
+                        new URL(pdfUrl);
+                        extractedUrls.add(pdfUrl);
+                      } catch (e) {
+                        console.log(`    ⚠️  Invalid URL from meta: ${pdfUrl}`);
+                      }
+                    }
+                    
+                    // Pattern 2: Download button href (with HTML entity decoding)
+                    const downloadPattern = /href=["']([^"']*?\.pdf[^"']*)["']/gi;
+                    let match;
+                    let foundByPattern2 = 0;
+                    while ((match = downloadPattern.exec(itemHtml)) !== null) {
+                      let pdfUrl = match[1].trim();
+                      foundByPattern2++;
+                      
+                      // Decode HTML entities
+                      pdfUrl = pdfUrl.replace(/&amp;/g, '&')
+                                     .replace(/&lt;/g, '<')
+                                     .replace(/&gt;/g, '>')
+                                     .replace(/&quot;/g, '"')
+                                     .replace(/&#x27;/g, "'")
+                                     .replace(/&#x2F;/g, '/');
+                      
+                      console.log(`    [Download] Found: ${pdfUrl.substring(0, 100)}...`);
+                      
+                      // Ensure absolute URL
+                      if (!pdfUrl.startsWith('http')) {
+                        pdfUrl = dspaceBaseUrl + (pdfUrl.startsWith('/') ? '' : '/') + pdfUrl;
+                      }
+                      
+                      // Ensure sequence parameters
+                      if (!pdfUrl.includes('sequence') && !pdfUrl.includes('?')) {
+                        pdfUrl += '?sequence=1&isAllowed=y';
+                      } else if (!pdfUrl.includes('sequence') && pdfUrl.includes('?')) {
+                        pdfUrl += '&sequence=1&isAllowed=y';
+                      }
+                      
+                      try {
+                        new URL(pdfUrl);
+                        extractedUrls.add(pdfUrl);
+                      } catch (e) {
+                        console.log(`    ⚠️  Invalid URL: ${pdfUrl}`);
+                      }
+                    }
+                    
+                    // Pattern 3: bitstream in href with handle pattern
+                    const bitstreamPattern = /href=["']([^"']*bitstream[^"']*\.pdf[^"']*)["']/gi;
+                    let foundByPattern3 = 0;
+                    while ((match = bitstreamPattern.exec(itemHtml)) !== null) {
+                      let pdfUrl = match[1].trim();
+                      foundByPattern3++;
+                      
+                      // Decode HTML entities
+                      pdfUrl = pdfUrl.replace(/&amp;/g, '&')
+                                     .replace(/&lt;/g, '<')
+                                     .replace(/&gt;/g, '>')
+                                     .replace(/&quot;/g, '"');
+                      
+                      console.log(`    [Bitstream] Found: ${pdfUrl.substring(0, 100)}...`);
+                      
+                      if (!pdfUrl.startsWith('http')) {
+                        pdfUrl = dspaceBaseUrl + (pdfUrl.startsWith('/') ? '' : '/') + pdfUrl;
+                      }
+                      
+                      if (!pdfUrl.includes('sequence')) {
+                        pdfUrl += (pdfUrl.includes('?') ? '&' : '?') + 'sequence=1&isAllowed=y';
+                      }
+                      
+                      try {
+                        new URL(pdfUrl);
+                        extractedUrls.add(pdfUrl);
+                      } catch (e) {
+                        console.log(`    ⚠️  Invalid URL: ${pdfUrl}`);
+                      }
+                    }
+                    
+                    console.log(`  ✅ Found ${extractedUrls.size} unique PDF URL(s) in item ${item.handle}`);
+                    console.log(`     Patterns matched - Meta: ${foundByMeta}, Download: ${foundByPattern2}, Bitstream: ${foundByPattern3}`);
+                    
+                    extractedUrls.forEach(url => {
+                      console.log(`     Adding: ${url.substring(0, 100)}...`);
+                      pdfLinks.push(url);
+                    });
+                  } catch (err) {
+                    console.warn(`  ⚠️  Error processing item ${item.handle}:`, err.message);
+                  }
+                  
+                  // Remove duplicates after adding item PDFs
+                  pdfLinks = [...new Set(pdfLinks)];
+                }
+              }
+            } catch (apiErr) {
+              console.warn(`⚠️  [AUTO-DOWNLOAD-${processId}] Error fetching DSpace items:`, apiErr.message);
+            }
+          }
+        }
+
+        downloadProcess.stats.total = pdfLinks.length;
+        console.log(`📚 [AUTO-DOWNLOAD-${processId}] Found ${pdfLinks.length} PDF(s)`);
+
+        if (pdfLinks.length === 0) {
+          console.warn(`⚠️  [AUTO-DOWNLOAD-${processId}] No PDF links found on the page`);
+          downloadProcess.status = 'completed';
+          downloadProcess.completedAt = new Date().toISOString();
+          return;
+        }
+
+        // Validate URLs and collect download info (no actual download to server)
+        console.log(`📚 [AUTO-DOWNLOAD-${processId}] Found ${pdfLinks.length} PDF URL(s), removing duplicates...`);
+        
+        // Remove duplicate URLs (case-insensitive)
+        const uniqueUrls = new Map();
+        for (const url of pdfLinks) {
+          const normalized = url.toLowerCase();
+          if (!uniqueUrls.has(normalized)) {
+            uniqueUrls.set(normalized, url);
+          }
+        }
+        pdfLinks = Array.from(uniqueUrls.values());
+        
+        console.log(`📚 [AUTO-DOWNLOAD-${processId}] After deduplication: ${pdfLinks.length} unique PDF(s)`);
+        
+        const downloadWithLimit = async () => {
+          const MAX_PARALLEL_VALIDATION = 3;
+          let index = 0;
+
+          const validateOne = async () => {
+            if (stopFlag.stopped) return;
+            if (index >= pdfLinks.length) return;
+
+            const linkIndex = index++;
+            const pdfUrl = pdfLinks[linkIndex];
+            
+            try {
+              console.log(`✓ [AUTO-DOWNLOAD-${processId}] Validating (${linkIndex + 1}/${pdfLinks.length}): ${pdfUrl.substring(0, 80)}...`);
+              
+              // Try both HEAD and GET requests - some servers block HEAD
+              await new Promise((resolve, reject) => {
+                const protocol = pdfUrl.startsWith('https') ? https : http;
+                let requestComplete = false;
+                
+                const timeout = setTimeout(() => {
+                  if (!requestComplete) {
+                    reject(new Error('Timeout'));
+                  }
+                }, 10000);
+
+                const options = {
+                  timeout: 10000,
+                  rejectUnauthorized: false,
+                  method: 'HEAD',
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'application/pdf, */*',
+                    'Accept-Encoding': 'gzip, deflate',
+                    'Referer': 'https://pastpapers.ku.ac.ke/',
+                    'Connection': 'close'
+                  }
+                };
+
+                const req = protocol.request(pdfUrl, options, (response) => {
+                  requestComplete = true;
+                  clearTimeout(timeout);
+                  
+                  const statusCode = response.statusCode;
+                  const contentLength = parseInt(response.headers['content-length'] || '0', 10);
+                  const contentType = response.headers['content-type'] || '';
+                  
+                  console.log(`  [HEAD] Status: ${statusCode}, Size: ${contentLength}, Type: ${contentType.substring(0, 40)}`);
+                  
+                  response.destroy();
+                  
+                  // HEAD failed - try GET with range request
+                  if (statusCode >= 400 || statusCode === 405) {
+                    console.log(`  [HEAD failed - trying GET]`);
+                    
+                    const getOptions = Object.assign({}, options, {
+                      method: 'GET',
+                      headers: Object.assign({}, options.headers, {
+                        'Range': 'bytes=0-5000' // Just get first 5KB to verify it's a real PDF
+                      })
+                    });
+                    
+                    const getReq = protocol.request(pdfUrl, getOptions, (getRes) => {
+                      requestComplete = true;
+                      const getStatusCode = getRes.statusCode;
+                      let dataReceived = 0;
+                      let pdfSignatureFound = false;
+                      
+                      getRes.on('data', (chunk) => {
+                        dataReceived += chunk.length;
+                        // Check for PDF signature: %PDF
+                        if (!pdfSignatureFound && chunk.includes(Buffer.from('%PDF'))) {
+                          pdfSignatureFound = true;
+                          console.log(`  ✅ [GET] Confirmed PDF (${dataReceived} bytes received)`);
+                        }
+                      });
+                      
+                      getRes.on('end', () => {
+                        if ((getStatusCode === 200 || getStatusCode === 206) && dataReceived > 0) {
+                          console.log(`  ✅ [GET] Valid (${getStatusCode}): received ${dataReceived} bytes`);
+                          resolve();
+                        } else {
+                          reject(new Error(`GET returned ${getStatusCode} with ${dataReceived} bytes`));
+                        }
+                      });
+                      
+                      getRes.on('error', reject);
+                    });
+                    
+                    getReq.on('timeout', () => {
+                      getReq.abort();
+                      reject(new Error('GET request timeout'));
+                    });
+                    
+                    getReq.on('error', reject);
+                    getReq.end();
+                    return;
+                  }
+                  
+                  // HEAD succeeded
+                  if (statusCode >= 200 && statusCode < 300) {
+                    if (contentLength > 0) {
+                      if (contentLength < 1000) {
+                        console.warn(`  ⚠️  Suspiciously small: ${contentLength} bytes (may be error page)`);
+                        // Still allow it - let download endpoint handle it
+                      }
+                      console.log(`  ✅ Valid (${statusCode}, ${contentLength} bytes)`);
+                      resolve();
+                    } else {
+                      console.log(`  ✅ Valid (${statusCode}, size unknown)`);
+                      resolve();
+                    }
+                  } else {
+                    reject(new Error(`HTTP ${statusCode}`));
+                  }
+                });
+
+                req.on('timeout', () => {
+                  if (!requestComplete) {
+                    req.abort();
+                    reject(new Error('Request timeout'));
+                  }
+                });
+
+                req.on('error', (err) => {
+                  if (!requestComplete) {
+                    reject(err);
+                  }
+                });
+
+                req.end();
+              });
+
+              downloadProcess.stats.successful++;
+              downloadProcess.stats.processed++;
+              
+              // Extract filename from URL
+              const urlParts = pdfUrl.split('/');
+              let filename = urlParts[urlParts.length - 1];
+              // Remove query parameters for filename
+              filename = filename.split('?')[0];
+              // URL decode the filename
+              try {
+                filename = decodeURIComponent(filename);
+              } catch (e) {
+                // If decode fails, use as-is
+              }
+              
+              downloadProcess.files.push({ 
+                filename, 
+                url: pdfUrl, 
+                status: 'ready',
+                downloadUrl: `http://localhost:5000/api/elib/download-pdf?url=${encodeURIComponent(pdfUrl)}&filename=${encodeURIComponent(filename)}`
+              });
+              console.log(`✅ [AUTO-DOWNLOAD-${processId}] Ready: ${filename}`);
+
+            } catch (err) {
+              downloadProcess.stats.failed++;
+              downloadProcess.stats.processed++;
+              downloadProcess.files.push({ 
+                url: pdfUrl, 
+                status: 'failed', 
+                error: err.message,
+                filename: `paper_${linkIndex}.pdf`
+              });
+              console.warn(`❌ [AUTO-DOWNLOAD-${processId}] Failed to validate ${pdfUrl}: ${err.message}`);
+            }
+
+            // Continue with next file
+            await validateOne();
+          };
+
+          // Start parallel validation
+          const promises = Array(Math.min(MAX_PARALLEL_VALIDATION, pdfLinks.length))
+            .fill(null)
+            .map(() => validateOne());
+          await Promise.all(promises);
+        };
+
+        await downloadWithLimit();
+
+        downloadProcess.status = 'completed';
+        downloadProcess.completedAt = new Date().toISOString();
+        console.log(`✅ [AUTO-DOWNLOAD-${processId}] Bulk download completed: ${downloadProcess.stats.successful}/${downloadProcess.stats.total} successful`);
+
+        // Auto-cleanup after 24 hours
+        setTimeout(() => {
+          autoDownloadProcesses.delete(processId);
+        }, 86400000);
+
+      } catch (err) {
+        console.error(`❌ [AUTO-DOWNLOAD-${processId}] Error:`, err.message);
+        downloadProcess.status = 'failed';
+        downloadProcess.error = err.message;
+        downloadProcess.completedAt = new Date().toISOString();
+      }
+    })();
+
+    res.json({ ok: true, process: downloadProcess });
+
+  } catch (error) {
+    console.error('❌ [AUTO-DOWNLOAD-START] Error:', error);
+    res.status(500).json({ ok: false, error: error.message || 'Failed to start download' });
+  }
+});
+
+// GET /api/elib/bulk-upload-pastpapers/processes - GET ALL DOWNLOAD PROCESSES
+app.get('/api/elib/bulk-upload-pastpapers/processes', (req, res) => {
+  try {
+    const processes = Array.from(autoDownloadProcesses.values())
+      .map(p => {
+        const { stopFlag, ...rest } = p;
+        return rest;
+      })
+      .sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt))
+      .slice(0, 20);
+
+    res.json({ ok: true, processes });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message || 'Failed to list processes' });
+  }
+});
+
+// GET /api/elib/bulk-upload-pastpapers/status/:processId - GET DOWNLOAD STATUS
+app.get('/api/elib/bulk-upload-pastpapers/status/:processId', (req, res) => {
+  try {
+    const { processId } = req.params;
+    const process = autoDownloadProcesses.get(processId);
+
+    if (!process) {
+      return res.status(404).json({ ok: false, error: 'Process not found' });
+    }
+
+    // Don't expose stopFlag
+    const { stopFlag, ...safeProcess } = process;
+    res.json({ ok: true, process: safeProcess });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// POST /api/elib/bulk-upload-pastpapers/pause/:processId - PAUSE DOWNLOAD
+app.post('/api/elib/bulk-upload-pastpapers/pause/:processId', (req, res) => {
+  try {
+    const { processId } = req.params;
+    const process = autoDownloadProcesses.get(processId);
+
+    if (!process) {
+      return res.status(404).json({ ok: false, error: 'Process not found' });
+    }
+
+    process.status = 'paused';
+    res.json({ ok: true, message: 'Download paused' });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// POST /api/elib/bulk-upload-pastpapers/resume/:processId - RESUME DOWNLOAD
+app.post('/api/elib/bulk-upload-pastpapers/resume/:processId', (req, res) => {
+  try {
+    const { processId } = req.params;
+    const process = autoDownloadProcesses.get(processId);
+
+    if (!process) {
+      return res.status(404).json({ ok: false, error: 'Process not found' });
+    }
+
+    process.status = 'running';
+    res.json({ ok: true, message: 'Download resumed' });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// POST /api/elib/bulk-upload-pastpapers/stop/:processId - STOP DOWNLOAD
+app.post('/api/elib/bulk-upload-pastpapers/stop/:processId', (req, res) => {
+  try {
+    const { processId } = req.params;
+    const process = autoDownloadProcesses.get(processId);
+
+    if (!process) {
+      return res.status(404).json({ ok: false, error: 'Process not found' });
+    }
+
+    process.status = 'stopped';
+    if (process.stopFlag) process.stopFlag.stopped = true;
+    autoDownloadProcesses.delete(processId);
+
+    res.json({ ok: true, message: 'Download stopped' });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// GET /api/elib/download-pdf - DOWNLOAD PDF TO BROWSER WITH BETTER HANDLING
+app.get('/api/elib/download-pdf', async (req, res) => {
+  try {
+    const { url, filename } = req.query;
+    
+    if (!url) {
+      return res.status(400).json({ ok: false, error: 'URL is required' });
+    }
+
+    // Decode the URL
+    let pdfUrl;
+    try {
+      pdfUrl = decodeURIComponent(url);
+    } catch (e) {
+      pdfUrl = url;
+    }
+
+    // Validate it's actually a URL
+    try {
+      new URL(pdfUrl);
+    } catch (e) {
+      return res.status(400).json({ ok: false, error: 'Invalid URL format' });
+    }
+
+    // Set response headers for download
+    let downloadFilename = filename ? decodeURIComponent(filename) : 'document.pdf';
+    // Clean filename
+    downloadFilename = downloadFilename.replace(/[<>:"|?*]/g, '').trim();
+    if (!downloadFilename) downloadFilename = 'document.pdf';
+
+    console.log(`[PDF-DOWNLOAD-START] Downloading: ${downloadFilename} from ${pdfUrl.substring(0, 100)}...`);
+
+    // Stream the PDF directly from source with better error handling
+    const protocol = pdfUrl.startsWith('https') ? https : http;
+    
+    let timeoutHandle;
+    let responseSent = false;
+    let bytesReceived = 0;
+    let expectedSize = 0;
+
+    const options = {
+      timeout: 180000, // 3 minutes for slow servers
+      rejectUnauthorized: false,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/pdf,application/octet-stream,*/*',
+        'Accept-Encoding': 'identity',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Referer': pdfUrl.substring(0, pdfUrl.lastIndexOf('/') + 1),
+        'DNT': '1',
+        'Connection': 'keep-alive'
+      }
+    };
+
+    // Set content disposition first
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+
+
+    let requestHandle;
+    let downloadAttempt = 0;
+    
+    const downloadWithRetry = (retryCount = 0) => {
+      downloadAttempt++;
+      console.log(`[PDF-DOWNLOAD] Attempt ${downloadAttempt}: ${downloadFilename} from ${pdfUrl.substring(0, 80)}...`);
+      
+      requestHandle = protocol.get(pdfUrl, options, (response) => {
+        // Clear timeout once we get a response
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+
+        const statusCode = response.statusCode;
+        const contentType = response.headers['content-type'];
+        const contentLength = parseInt(response.headers['content-length'] || '0', 10);
+        
+        console.log(`[PDF-DOWNLOAD] Attempt ${downloadAttempt}: Status ${statusCode} | Type: ${contentType} | Size: ${contentLength} bytes`);
+
+        // Handle redirects (301, 302, 303, 307, 308)
+        if (statusCode >= 300 && statusCode < 400 && response.headers.location) {
+          console.log(`[PDF-DOWNLOAD] Redirect (${statusCode}) to: ${response.headers.location}`);
+          if (!responseSent) {
+            response.destroy();
+            let redirectUrl = response.headers.location;
+            // Make redirect URL absolute if needed
+            if (!redirectUrl.startsWith('http')) {
+              redirectUrl = baseUrl + redirectUrl;
+            }
+            pdfUrl = redirectUrl;
+            downloadWithRetry(0);
+            responseSent = true;
+          }
+          return;
+        }
+
+        // Accept 200, 206 (partial content)
+        if (statusCode !== 200 && statusCode !== 206) {
+          console.warn(`[PDF-DOWNLOAD] Bad status ${statusCode} - trying fallback`);
+          if (!responseSent) {
+            response.destroy();
+            
+            // Fallback 1: Try with sequence params
+            if (!pdfUrl.includes('sequence=') && retryCount < 1) {
+              const newUrl = pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'sequence=1&isAllowed=y';
+              console.log(`[PDF-DOWNLOAD] Fallback 1: Trying with sequence params`);
+              pdfUrl = newUrl;
+              downloadWithRetry(retryCount + 1);
+              responseSent = true;
+              return;
+            }
+            
+            // Fallback 2: Try with forceAuth parameter
+            if (!pdfUrl.includes('forceAuth') && retryCount < 2) {
+              const newUrl = pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'forceAuth=y';
+              console.log(`[PDF-DOWNLOAD] Fallback 2: Trying with forceAuth param`);
+              pdfUrl = newUrl;
+              downloadWithRetry(retryCount + 1);
+              responseSent = true;
+              return;
+            }
+            
+            // All fallbacks exhausted
+            res.status(statusCode || 500).setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ 
+              ok: false, 
+              error: `Source server returned HTTP ${statusCode} after fallbacks`,
+              filename: downloadFilename,
+              attemptedUrl: pdfUrl
+            }));
+            responseSent = true;
+          }
+          return;
+        }
+
+        // Success - stream the PDF
+        if (!responseSent) {
+          const isPDF = !contentType || contentType.includes('application/pdf') || contentType.includes('application/octet-stream');
+          res.setHeader('Content-Type', isPDF ? 'application/pdf' : (contentType || 'application/pdf'));
+
+          if (contentLength > 0) {
+            res.setHeader('Content-Length', contentLength);
+          }
+
+          console.log(`[PDF-DOWNLOAD] 📥 Streaming ${downloadFilename} (${contentLength} bytes)...`);
+          
+          response.on('error', (err) => {
+            console.error(`[PDF-DOWNLOAD] Response stream error: ${err.message}`);
+            if (!responseSent) {
+              res.status(500).end();
+              responseSent = true;
+            }
+          });
+
+          response.on('end', () => {
+            console.log(`[PDF-DOWNLOAD] ✅ Complete: ${downloadFilename}`);
+          });
+
+          response.pipe(res);
+          responseSent = true;
+        }
+      });
+
+      timeoutHandle = setTimeout(() => {
+        if (!responseSent) {
+          console.error(`[PDF-DOWNLOAD] Timeout (attempt ${downloadAttempt})`);
+          if (requestHandle) requestHandle.destroy();
+          
+          if (retryCount < 2) {
+            console.log(`[PDF-DOWNLOAD] Retrying... (${retryCount + 1}/2)`);
+            downloadWithRetry(retryCount + 1);
+          } else {
+            res.status(504).setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ 
+              ok: false, 
+              error: 'Download timeout',
+              filename: downloadFilename
+            }));
+            responseSent = true;
+          }
+        }
+      }, 180000);
+
+      requestHandle.on('error', (err) => {
+        console.error(`[PDF-DOWNLOAD] Request error (${downloadAttempt}): ${err.message}`);
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+        
+        if (!responseSent) {
+          if (retryCount < 2) {
+            console.log(`[PDF-DOWNLOAD] Retrying after error...`);
+            downloadWithRetry(retryCount + 1);
+          } else {
+            res.status(502).setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ 
+              ok: false, 
+              error: `Failed after ${downloadAttempt} attempts: ${err.message}`,
+              filename: downloadFilename
+            }));
+            responseSent = true;
+          }
+        }
+      });
+    };
+
+    downloadWithRetry();
+
+    // Handle client disconnect
+    res.on('close', () => {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      if (requestHandle) requestHandle.destroy();
+      console.log(`[PDF-DOWNLOAD] Client disconnected for ${downloadFilename}`);
+    });
+
+  } catch (error) {
+    console.error('❌ [PDF-DOWNLOAD] Error:', error);
+    if (!res.headersSent) {
+      res.status(500).setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ 
+        ok: false, 
+        error: error.message || 'Failed to download PDF' 
+      }));
+    }
+  }
+});
+
+// === DOWNLOAD FOLDER MANAGEMENT ENDPOINTS ===
+
+// GET /api/elib/download-folders - LIST AVAILABLE FOLDERS
+app.get('/api/elib/download-folders', async (req, res) => {
+  try {
+    // Default folders
+    const defaultFolders = [
+      { name: 'Downloads', path: 'Downloads', size: 0 },
+      { name: 'Documents', path: 'Documents', size: 0 },
+      { name: 'Books', path: 'Books', size: 0 },
+      { name: 'Past Papers', path: 'Past Papers', size: 0 },
+      { name: 'Research', path: 'Research', size: 0 }
+    ];
+
+    // Try to get user's folder preferences if authenticated
+    let userFolders = [];
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader && supabaseAdmin) {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+        
+        if (user && !error) {
+          // Get user's custom folders from localStorage-like storage (in preferences table if exists)
+          const { data: prefs } = await supabaseAdmin
+            .from('user_preferences')
+            .select('download_folders')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (prefs?.download_folders) {
+            userFolders = prefs.download_folders;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch user folders:', err.message);
+    }
+
+    const allFolders = [...defaultFolders, ...userFolders];
+    
+    res.json({ 
+      ok: true, 
+      folders: allFolders,
+      defaultFolder: 'Downloads'
+    });
+  } catch (error) {
+    console.error('Error listing folders:', error);
+    res.status(500).json({ ok: false, error: error.message || 'Failed to list folders' });
+  }
+});
+
+// POST /api/elib/download-folders - CREATE NEW FOLDER
+app.post('/api/elib/download-folders', async (req, res) => {
+  try {
+    const { folderName, parentFolder } = req.body;
+
+    if (!folderName || !folderName.trim()) {
+      return res.status(400).json({ ok: false, error: 'Folder name is required' });
+    }
+
+    // Validate folder name (no special characters)
+    const sanitizedName = folderName.trim().replace(/[<>:"|?*]/g, '');
+    if (!sanitizedName) {
+      return res.status(400).json({ ok: false, error: 'Invalid folder name' });
+    }
+
+    // Create folder path (virtual path for storage reference)
+    const basePath = parentFolder || 'Downloads';
+    const folderPath = `${basePath}/${sanitizedName}`;
+
+    // Get user's Downloads directory
+    const userDownloadsDir = path.join(
+      process.env.USERPROFILE || process.env.HOME || os.homedir(),
+      'Downloads'
+    );
+
+    // Build the full file system path
+    let fullFolderPath = userDownloadsDir;
+    if (basePath !== 'Downloads') {
+      // If parent is a subfolder, append it
+      const subPath = basePath.replace(/^Downloads\//i, '');
+      fullFolderPath = path.join(userDownloadsDir, subPath);
+    }
+    fullFolderPath = path.join(fullFolderPath, sanitizedName);
+
+    console.log(`📁 Creating folder: ${fullFolderPath}`);
+
+    // Create the folder on disk
+    try {
+      fs.mkdirSync(fullFolderPath, { recursive: true });
+      console.log(`✅ Folder created successfully: ${fullFolderPath}`);
+    } catch (fsError) {
+      console.warn(`⚠️  Could not create physical folder: ${fsError.message}`);
+      // Continue anyway - folder is still saved in localStorage
+    }
+
+    // Return success response
+    res.json({
+      ok: true,
+      folderPath,
+      fullPath: fullFolderPath,
+      folder: {
+        name: sanitizedName,
+        path: folderPath,
+        size: 0,
+        created: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    res.status(500).json({ ok: false, error: error.message || 'Failed to create folder' });
+  }
+});
+
+// DELETE /api/elib/download-folders - DELETE FOLDER FROM DISK AND STORAGE
+app.delete('/api/elib/download-folders', async (req, res) => {
+  try {
+    const { folderPath } = req.body;
+
+    if (!folderPath || !folderPath.trim()) {
+      return res.status(400).json({ ok: false, error: 'Folder path is required' });
+    }
+
+    // Get user's Downloads directory
+    const userDownloadsDir = path.join(
+      process.env.USERPROFILE || process.env.HOME || os.homedir(),
+      'Downloads'
+    );
+
+    // Build the full file system path
+    let fullFolderPath = userDownloadsDir;
+    const normalizedPath = folderPath.trim();
+    
+    if (normalizedPath && normalizedPath !== 'Downloads') {
+      // If folder is a subfolder, append it
+      const subPath = normalizedPath.replace(/^Downloads\//i, '');
+      fullFolderPath = path.join(userDownloadsDir, subPath);
+    } else if (normalizedPath === 'Downloads') {
+      // Can't delete Downloads folder itself
+      return res.status(400).json({ ok: false, error: 'Cannot delete Downloads folder' });
+    }
+
+    console.log(`🗑️  Deleting folder: ${fullFolderPath}`);
+
+    // Check if folder exists
+    if (!fs.existsSync(fullFolderPath)) {
+      console.warn(`⚠️  Folder not found on disk: ${fullFolderPath}`);
+      return res.json({
+        ok: true,
+        message: 'Folder already deleted or not found',
+        folderPath: normalizedPath
+      });
+    }
+
+    // Delete the folder and all contents recursively
+    try {
+      // Use fs.rmSync if available (Node 14.14+), otherwise use fallback
+      if (fs.rmSync) {
+        console.log(`🗑️  Using fs.rmSync to delete: ${fullFolderPath}`);
+        fs.rmSync(fullFolderPath, { recursive: true, force: true });
+      } else {
+        // Fallback for older Node versions
+        console.log(`🗑️  Using fallback recursive deletion for: ${fullFolderPath}`);
+        const removeDir = (dirPath) => {
+          if (fs.existsSync(dirPath)) {
+            fs.readdirSync(dirPath).forEach(file => {
+              const currentPath = path.join(dirPath, file);
+              if (fs.lstatSync(currentPath).isDirectory()) {
+                removeDir(currentPath);
+              } else {
+                fs.unlinkSync(currentPath);
+              }
+            });
+            fs.rmdirSync(dirPath);
+          }
+        };
+        removeDir(fullFolderPath);
+      }
+      
+      console.log(`✅ [DELETE-FOLDER] Folder deleted successfully: ${fullFolderPath}`);
+      
+      res.json({
+        ok: true,
+        message: 'Folder deleted successfully',
+        folderPath: normalizedPath,
+        fullPath: fullFolderPath
+      });
+    } catch (fsError) {
+      console.error(`❌ [DELETE-FOLDER] Error deleting folder: ${fsError.message}`);
+      return res.status(500).json({
+        ok: false,
+        error: `Failed to delete folder: ${fsError.message}`
+      });
+    }
+  } catch (error) {
+    console.error('Error in delete folder endpoint:', error);
+    res.status(500).json({ ok: false, error: error.message || 'Failed to delete folder' });
+  }
+});
+
+// POST /api/elib/download-folders/validate - VALIDATE FOLDER PATH
+app.post('/api/elib/download-folders/validate', async (req, res) => {
+  try {
+    const { folderPath } = req.body;
+
+    if (!folderPath || !folderPath.trim()) {
+      return res.status(400).json({ ok: false, error: 'Folder path is required' });
+    }
+
+    // Basic validation - check if path is safe
+    const path = folderPath.trim();
+    const invalidChars = /[<>"|?*]/g;
+    
+    if (invalidChars.test(path)) {
+      return res.json({ ok: false, error: 'Invalid characters in path' });
+    }
+
+    // Path is valid
+    res.json({ ok: true, folderPath: path });
+  } catch (error) {
+    console.error('Error validating folder:', error);
+    res.status(500).json({ ok: false, error: error.message || 'Failed to validate folder' });
+  }
+});
+
+// POST /api/elib/download-file-to-folder - DOWNLOAD AND SAVE FILE TO SPECIFIC FOLDER
+app.post('/api/elib/download-file-to-folder', async (req, res) => {
+  try {
+    const { fileUrl, folderPath, filename } = req.body;
+
+    if (!fileUrl || !folderPath || !filename) {
+      return res.status(400).json({ ok: false, error: 'fileUrl, folderPath, and filename are required' });
+    }
+
+    console.log(`📥 [FILE-DOWNLOAD] Received request - folderPath: "${folderPath}", filename: "${filename}"`);
+
+    // Get user's Downloads directory
+    const userDownloadsDir = path.join(
+      process.env.USERPROFILE || process.env.HOME || os.homedir(),
+      'Downloads'
+    );
+
+    // Build the full file system path
+    let fullFolderPath = userDownloadsDir;
+    if (folderPath && folderPath !== 'Downloads') {
+      // If folder is a subfolder, append it
+      const subPath = folderPath.replace(/^Downloads\//i, '');
+      fullFolderPath = path.join(userDownloadsDir, subPath);
+    }
+
+    console.log(`📥 [FILE-DOWNLOAD] Full folder path: "${fullFolderPath}"`);
+
+    // Ensure folder exists
+    if (!fs.existsSync(fullFolderPath)) {
+      fs.mkdirSync(fullFolderPath, { recursive: true });
+    }
+
+    // Clean filename
+    const cleanFilename = filename.replace(/[<>:"|?*]/g, '').trim() || 'download.pdf';
+    const fullFilePath = path.join(fullFolderPath, cleanFilename);
+
+    console.log(`📥 [FILE-DOWNLOAD] Saving to: ${fullFilePath}`);
+
+    // Decode the URL
+    let decodedUrl = decodeURIComponent(fileUrl);
+    
+    // Validate it's actually a URL
+    try {
+      new URL(decodedUrl);
+    } catch (e) {
+      return res.status(400).json({ ok: false, error: 'Invalid URL format' });
+    }
+
+    // Download the file from the source
+    const protocol = decodedUrl.startsWith('https') ? https : http;
+    
+    return new Promise((resolve) => {
+      protocol.get(decodedUrl, {
+        timeout: 180000,
+        rejectUnauthorized: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/pdf,application/octet-stream,*/*',
+          'Accept-Encoding': 'identity',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      }, (response) => {
+        if (response.statusCode >= 400) {
+          console.error(`❌ Failed to download file: HTTP ${response.statusCode}`);
+          resolve(res.status(response.statusCode).json({ 
+            ok: false, 
+            error: `HTTP ${response.statusCode}: ${response.statusMessage}` 
+          }));
+          return;
+        }
+
+        // Create write stream
+        const writeStream = fs.createWriteStream(fullFilePath);
+        let bytesWritten = 0;
+
+        response.on('data', (chunk) => {
+          bytesWritten += chunk.length;
+        });
+
+        response.pipe(writeStream);
+
+        writeStream.on('finish', () => {
+          console.log(`✅ [FILE-DOWNLOAD] Saved ${bytesWritten} bytes to: ${fullFilePath}`);
+          resolve(res.json({
+            ok: true,
+            message: 'File saved successfully',
+            folderPath: fullFolderPath,
+            fullPath: fullFilePath,
+            filename: cleanFilename,
+            bytes: bytesWritten
+          }));
+        });
+
+        writeStream.on('error', (err) => {
+          console.error(`❌ Error writing file: ${err.message}`);
+          fs.unlink(fullFilePath, () => {}); // Clean up partial file
+          resolve(res.status(500).json({ ok: false, error: `Failed to write file: ${err.message}` }));
+        });
+
+        response.on('error', (err) => {
+          console.error(`❌ Error downloading file: ${err.message}`);
+          writeStream.destroy();
+          fs.unlink(fullFilePath, () => {}); // Clean up partial file
+          resolve(res.status(500).json({ ok: false, error: `Download failed: ${err.message}` }));
+        });
+      }).on('error', (err) => {
+        console.error(`❌ Request error: ${err.message}`);
+        resolve(res.status(500).json({ ok: false, error: `Request failed: ${err.message}` }));
+      });
+    });
+  } catch (error) {
+    console.error('Error in download-file-to-folder:', error);
+    res.status(500).json({ ok: false, error: error.message || 'Failed to download file' });
+  }
+});
+
+// GET /api/elib/download-folders/preferences - GET USER FOLDER PREFERENCES
+app.get('/api/elib/download-folders/preferences', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !supabaseAdmin) {
+      return res.json({
+        ok: true,
+        preferences: {
+          defaultFolder: 'Downloads',
+          folders: [],
+          selectedFolder: 'Downloads'
+        }
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.json({
+        ok: true,
+        preferences: {
+          defaultFolder: 'Downloads',
+          folders: [],
+          selectedFolder: 'Downloads'
+        }
+      });
+    }
+
+    // Get user's preferences
+    const { data: prefs, error: prefError } = await supabaseAdmin
+      .from('user_preferences')
+      .select('download_folders, selected_download_folder')
+      .eq('user_id', user.id)
+      .single();
+
+    if (prefError || !prefs) {
+      return res.json({
+        ok: true,
+        preferences: {
+          defaultFolder: 'Downloads',
+          folders: [],
+          selectedFolder: 'Downloads',
+          userId: user.id
+        }
+      });
+    }
+
+    res.json({
+      ok: true,
+      preferences: {
+        defaultFolder: 'Downloads',
+        folders: prefs.download_folders || [],
+        selectedFolder: prefs.selected_download_folder || 'Downloads',
+        userId: user.id
+      }
+    });
+  } catch (error) {
+    console.error('Error getting folder preferences:', error);
+    res.status(500).json({ ok: false, error: error.message || 'Failed to get preferences' });
+  }
+});
+
+// POST /api/elib/download-folders/preferences - SAVE USER FOLDER PREFERENCES
+app.post('/api/elib/download-folders/preferences', async (req, res) => {
+  try {
+    const { defaultFolder, folders, selectedFolder } = req.body;
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !supabaseAdmin) {
+      return res.status(401).json({ ok: false, error: 'Not authenticated' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ ok: false, error: 'Authentication failed' });
+    }
+
+    // Update or create user preferences
+    const { error: upsertError } = await supabaseAdmin
+      .from('user_preferences')
+      .upsert(
+        {
+          user_id: user.id,
+          download_folders: folders || [],
+          selected_download_folder: selectedFolder || 'Downloads',
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'user_id' }
+      );
+
+    if (upsertError) {
+      console.error('Error saving preferences:', upsertError);
+      return res.status(500).json({ ok: false, error: 'Failed to save preferences' });
+    }
+
+    res.json({
+      ok: true,
+      message: 'Folder preferences saved successfully',
+      selectedFolder: selectedFolder || 'Downloads'
+    });
+  } catch (error) {
+    console.error('Error saving folder preferences:', error);
+    res.status(500).json({ ok: false, error: error.message || 'Failed to save preferences' });
   }
 });
 

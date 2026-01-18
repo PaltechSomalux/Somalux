@@ -143,8 +143,14 @@ export async function createUniversitySubmission({ metadata, coverFile }) {
     cover_image_url = uploaded.publicUrl;
   }
   
-  // Prepare payload for universities_submissions table
-  // This table accepts pending submissions without unique constraint conflicts
+  // Get current user ID
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    throw new Error('Must be authenticated to upload a university');
+  }
+  
+  // Prepare payload for universities table (directly)
+  // Universities are immediately published and visible
   const { name, description, website_url, location, established, student_count } = metadata;
   const payload = {
     name: name.trim(),
@@ -154,24 +160,22 @@ export async function createUniversitySubmission({ metadata, coverFile }) {
     established: established || null,
     student_count: student_count || 0,
     cover_image_url,
-    status: 'pending' // CRITICAL: All submissions start as pending
+    status: 'approved', // Published immediately
+    uploaded_by: user.id
   };
   
   const { data, error } = await supabase
-    .from('universities_submissions')
+    .from('universities')
     .insert(payload)
     .select('*')
     .single();
   
   if (error) {
-    console.error('University submission error:', error);
-    throw new Error(error.message || 'Failed to submit university for approval');
+    console.error('University upload error:', error);
+    throw new Error(error.message || 'Failed to upload university');
   }
   
-  console.log('University submitted for approval:', data);
-  try { clearUniversitiesCache(); } catch (e) {}
-  return data;
-  
+  console.log('University uploaded successfully:', data);
   try { clearUniversitiesCache(); } catch (e) {}
   return data;
 }

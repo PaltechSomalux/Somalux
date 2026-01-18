@@ -243,6 +243,15 @@ export const BookPanel = ({ demoMode = false }) => {
   const [showDetailsDropdown, setShowDetailsDropdown] = useState(false);
   const detailsRef = useRef(null);
 
+  // Admin notification state
+  const [pendingSubmissions, setPendingSubmissions] = useState(0);
+
+  // Bulk download selection state
+  const [selectedBooksForDownload, setSelectedBooksForDownload] = useState(new Set());
+  const [selectAllBooks, setSelectAllBooks] = useState(false);
+  const [bulkDownloadMode, setBulkDownloadMode] = useState(false);
+  const [downloadingBooks, setDownloadingBooks] = useState({});
+
   const CACHE_TTL_MS = 5 * 60 * 1000;
 
   // Rewards: load daily login bonus and current points once user is known
@@ -1188,6 +1197,63 @@ export const BookPanel = ({ demoMode = false }) => {
     } catch (error) {
       console.error('Failed to load user data:', error);
     }
+  };
+
+  // Bulk download functions
+  const toggleBookSelection = (bookId) => {
+    const newSelected = new Set(selectedBooksForDownload);
+    if (newSelected.has(bookId)) {
+      newSelected.delete(bookId);
+    } else {
+      newSelected.add(bookId);
+    }
+    setSelectedBooksForDownload(newSelected);
+    setSelectAllBooks(newSelected.size === displayedBooks.length && displayedBooks.length > 0);
+  };
+
+  const toggleSelectAllBooks = () => {
+    if (selectAllBooks) {
+      setSelectedBooksForDownload(new Set());
+      setSelectAllBooks(false);
+    } else {
+      const allIds = new Set(displayedBooks.map(b => b.id));
+      setSelectedBooksForDownload(allIds);
+      setSelectAllBooks(true);
+    }
+  };
+
+  const downloadSelectedBooks = async () => {
+    if (selectedBooksForDownload.size === 0) return;
+
+    const booksToDownload = displayedBooks.filter(b => selectedBooksForDownload.has(b.id));
+    
+    for (const book of booksToDownload) {
+      // Use the existing Download component logic
+      setDownloadingBooks(prev => ({ ...prev, [book.id]: true }));
+      
+      try {
+        // Create a temporary download element
+        const link = document.createElement('a');
+        link.href = book.downloadUrl;
+        link.download = `${book.title.replace(/\s+/g, '_')}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (error) {
+        console.error(`Failed to download ${book.title}:`, error);
+      } finally {
+        setDownloadingBooks(prev => ({ ...prev, [book.id]: false }));
+      }
+
+      // Add delay between downloads to avoid browser overload
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  };
+
+  const cancelBulkDownload = () => {
+    setSelectedBooksForDownload(new Set());
+    setSelectAllBooks(false);
+    setBulkDownloadMode(false);
   };
 
   // Load like counts for all books
@@ -2894,22 +2960,53 @@ export const BookPanel = ({ demoMode = false }) => {
                       transition={{ duration: 0.22 }}
                       layout
                     >
-                      <div
-                        className="book-cardBKP"
-                        onClick={() => viewBookDetails(book)}
-                        onMouseEnter={() => prefetchResource(book.downloadUrl)}
-                        onFocus={() => prefetchResource(book.downloadUrl)}
-                        tabIndex={0}
-                      >
-                        <div className="badge-containerBKP">
-                          {book.trending && (
-                            <span className="trending-badgeBKP">
-                              <FiTrendingUp size={12} /> Trending
-                            </span>
-                          )}
+                    <div
+                      className="book-cardBKP"
+                      onClick={() => bulkDownloadMode ? toggleBookSelection(book.id) : viewBookDetails(book)}
+                      onMouseEnter={() => prefetchResource(book.downloadUrl)}
+                      onFocus={() => prefetchResource(book.downloadUrl)}
+                      tabIndex={0}
+                      style={{ position: 'relative' }}
+                    >
+                      {/* Bulk Selection Checkbox */}
+                      {bulkDownloadMode && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '8px',
+                          left: '8px',
+                          zIndex: 10,
+                          background: 'rgba(0, 0, 0, 0.7)',
+                          padding: '8px',
+                          borderRadius: '8px',
+                          border: selectedBooksForDownload.has(book.id) ? '3px solid #00a884' : '3px solid #374151',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedBooksForDownload.has(book.id)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              toggleBookSelection(book.id);
+                            }}
+                            style={{ cursor: 'pointer', width: '22px', height: '22px', accentColor: '#00a884' }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
                         </div>
+                      )}
 
-                        <img src={book.bookImage} alt={book.title} className="book-coverBKP" loading="lazy" decoding="async" />
+                      <div className="badge-containerBKP">
+                        {book.trending && (
+                          <span className="trending-badgeBKP">
+                            <FiTrendingUp size={12} /> Trending
+                          </span>
+                        )}
+                      </div>
+
+                      <img src={book.bookImage} alt={book.title} className="book-coverBKP" loading="lazy" decoding="async" />
 
                         <div className="card-contentBKP">
                           <h3 className="book-titleBKP">{book.title}</h3>

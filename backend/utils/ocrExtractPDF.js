@@ -1,10 +1,47 @@
 import 'dotenv/config';
 import Tesseract from 'tesseract.js';
 import { createCanvas } from 'canvas';
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.js';
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 /**
- * Extract text from a single PDF page using OCR
+ * Extract text directly from PDF using PDF.js (works with searchable PDFs)
+ * @param {Buffer} pdfBuffer - PDF file buffer
+ * @param {number} pageNum - Page number to extract (1-indexed)
+ * @returns {Promise<string>} Extracted text
+ */
+export async function extractTextFromPDFPageDirect(pdfBuffer, pageNum = 1) {
+  try {
+    console.log(`📖 [PDF.js] Extracting text from page ${pageNum}...`);
+    
+    // Load PDF document
+    const pdfDoc = await pdfjs.getDocument({ data: pdfBuffer }).promise;
+    
+    if (pageNum > pdfDoc.numPages) {
+      console.warn(`⚠️ [PDF.js] Page ${pageNum} exceeds document pages (${pdfDoc.numPages})`);
+      return '';
+    }
+    
+    // Get the page
+    const page = await pdfDoc.getPage(pageNum);
+    
+    // Extract text content from page
+    const textContent = await page.getTextContent();
+    
+    // Combine text items into a single string
+    const text = textContent.items
+      .map(item => item.str)
+      .join(' ');
+    
+    console.log(`✅ [PDF.js] Extracted ${text.length} characters from page ${pageNum}`);
+    return text;
+  } catch (error) {
+    console.error(`❌ [PDF.js] Failed to extract page ${pageNum}:`, error.message);
+    return '';
+  }
+}
+
+/**
+ * Extract text from a single PDF page using OCR (for scanned documents)
  * @param {Buffer} pdfBuffer - PDF file buffer
  * @param {number} pageNum - Page number to extract (1-indexed)
  * @returns {Promise<string>} Extracted text
@@ -62,8 +99,8 @@ export async function extractTextFromPDFPage(pdfBuffer, pageNum = 1) {
 }
 
 /**
- * Extract structured past paper details from OCR text
- * @param {string} text - Raw text from OCR
+ * Extract structured past paper details from PDF text
+ * @param {string} text - Raw text from PDF
  * @returns {object} Extracted details
  */
 export function parsePastPaperDetails(text) {
@@ -77,135 +114,229 @@ export function parsePastPaperDetails(text) {
     confidence: {}
   };
 
-  // Common exam type patterns
+  if (!text || text.trim().length === 0) {
+    return details;
+  }
+
+  // Split into lines for processing
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const fullText = text.toUpperCase();
+
+  // ========== EXAM TYPE EXTRACTION ==========
   const examTypePatterns = [
-    { pattern: /supplementary|supp|re-exam/i, value: 'Supplementary' },
-    { pattern: /cat|continuous assessment|test/i, value: 'CAT' },
-    { pattern: /mock|practice|sample/i, value: 'Mock' },
-    { pattern: /main|final|end.*exam/i, value: 'Main' }
+    { pattern: /SUPPLEMENTARY|SUPP|RE[\-\s]?EXAM|MAKEUP|RETAKE/i, value: 'Supplementary' },
+    { pattern: /\bCAT\b|CONTINUOUS\s+ASSESSMENT|CAT\s+\d|CONTINUOUS.*TEST/i, value: 'CAT' },
+    { pattern: /MOCK|PRACTICE|SAMPLE|TRIAL|DUMMY/i, value: 'Mock' },
+    { pattern: /MAIN|FINAL|END[\s\-]?OF[\s\-]?SEMESTER|MAJOR\s+EXAM|ORDINARY/i, value: 'Main' }
   ];
 
-  // Semester patterns
-  const semesterPatterns = [
-    { pattern: /semester\s*[:\-]?\s*1|first|sem\s*1/i, value: '1' },
-    { pattern: /semester\s*[:\-]?\s*2|second|sem\s*2/i, value: '2' },
-    { pattern: /semester\s*[:\-]?\s*3|third|sem\s*3/i, value: '3' }
-  ];
-
-  // Extract exam type
   for (const { pattern, value } of examTypePatterns) {
     if (pattern.test(text)) {
       details.exam_type = value;
-      details.confidence.exam_type = 0.8;
+      details.confidence.exam_type = 0.9;
       break;
     }
   }
 
-  // Extract semester
+  // ========== YEAR EXTRACTION ==========
+  // Look for years in various contexts
+  const yearMatches = text.match(/(?:20|19)\d{2}/g);
+  if (yearMatches && yearMatches.length > 0) {
+    // Find the most likely year (usually the most recent one)
+    const validYears = yearMatches
+      .map(y => parseInt(y))
+      .filter(y => y >= 1990 && y <= new Date().getFullYear() + 1)
+      .sort((a, b) => b - a);
+    
+    if (validYears.length > 0) {
+      details.year = validYears[0];
+      details.confidence.year = 0.95;
+    }
+  }
+
+  // ========== SEMESTER EXTRACTION ==========
+  const semesterPatterns = [
+    { pattern: /SEMESTER\s*[:\-]?\s*1|FIRST|SEM\s*1|\bI\b(?:\s+SEMESTER)?/i, value: '1' },
+    { pattern: /SEMESTER\s*[:\-]?\s*2|SECOND|SEM\s*2|\bII\b(?:\s+SEMESTER)?/i, value: '2' },
+    { pattern: /SEMESTER\s*[:\-]?\s*3|THIRD|SEM\s*3|\bIII\b(?:\s+SEMESTER)?/i, value: '3' }
+  ];
+
   for (const { pattern, value } of semesterPatterns) {
     if (pattern.test(text)) {
       details.semester = value;
-      details.confidence.semester = 0.7;
+      details.confidence.semester = 0.85;
       break;
     }
   }
 
-  // Extract year (4-digit numbers)
-  const yearMatch = text.match(/(?:20|19)\d{2}|\b\d{4}\b/);
-  if (yearMatch) {
-    const year = parseInt(yearMatch[0]);
-    if (year >= 1990 && year <= new Date().getFullYear() + 1) {
-      details.year = year;
-      details.confidence.year = 0.9;
+  // ========== UNIT CODE EXTRACTION ==========
+  // Extract PREFIX (like UCU, APL, EAE) as unit_name and NUMBER as unit_code
+  // Pattern examples: "UCU 101: DEVELOPMENT STUDIES", "APL 808", "EAE 301"
+  const unitCodePatterns = [
+    // Pattern 1: "PREFIX NUMBER: DESCRIPTION" (e.g., "UCU 101: DEVELOPMENT STUDIES")
+    /\b([A-Z]{2,4})\s+(\d{2,4})\s*:/,
+    
+    // Pattern 2: "PREFIX NUMBER - DESCRIPTION"
+    /\b([A-Z]{2,4})\s+(\d{2,4})\s*[\-–]/,
+    
+    // Pattern 3: Just "PREFIX NUMBER"
+    /\b([A-Z]{2,4})\s+(\d{2,4})\b/,
+    
+    // Pattern 4: "PREFIXNUMBER" (no space)
+    /\b([A-Z]{2,4})(\d{2,4})\b/
+  ];
+
+  for (const pattern of unitCodePatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      // Extract PREFIX as unit_name (e.g., "UCU", "APL")
+      details.unit_name = match[1].toUpperCase(); // Just the prefix
+      details.confidence.unit_name = 0.95; // Very high confidence
+      
+      // Extract NUMBER as unit_code (e.g., "101", "808")
+      details.unit_code = match[2]; // Just the number
+      details.confidence.unit_code = 0.95; // Very high confidence
+      break;
     }
   }
 
-  // Extract unit code (usually alphanumeric, 4-10 chars, may contain spaces)
-  // Pattern: "CODE 101", "BIO101", "CHEM-201", etc.
-  const unitCodeMatch = text.match(/\b([A-Z]{2,4}\s*\d{2,4})\b/i);
-  if (unitCodeMatch) {
-    details.unit_code = unitCodeMatch[1].replace(/\s+/g, ' ').trim();
-    details.confidence.unit_code = 0.85;
-  }
+  // ========== FACULTY/DEPARTMENT EXTRACTION ==========
+  const facultyPatterns = [
+    /(?:faculty|department|school)\s*(?:of|:)?\s*([A-Za-z\s&\-]+?)(?:\n|,|;|$)/i,
+    /(?:faculty|department|school)\s*[:\-]?\s*([A-Za-z\s&\-]+?)(?:$)/im
+  ];
 
-  // Extract unit name (first long line that looks like a title)
-  const lines = text.split('\n').filter(l => l.trim().length > 5);
-  for (const line of lines) {
-    const trimmed = line.trim();
-    // Look for lines that are 15-100 chars, start with capital, likely to be titles
-    if (trimmed.length > 15 && trimmed.length < 100 && /^[A-Z]/.test(trimmed)) {
-      // Skip lines that look like instructions or metadata
-      if (!/^(INSTRUCTIONS|NAME|REG\.|STUDENT|DATE|TIME|DURATION)/i.test(trimmed)) {
-        details.unit_name = trimmed;
-        details.confidence.unit_name = 0.6; // Lower confidence for names
+  for (const pattern of facultyPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      let faculty = match[1].trim();
+      // Clean up - remove common artifacts
+      faculty = faculty.replace(/^(of|the|a)\s+/i, '');
+      faculty = faculty.replace(/^faculty\s+/i, ''); // Remove "faculty" prefix
+      
+      // Only accept if it's a meaningful faculty name
+      // Reject generic words and phrases that are not real faculties
+      const rejectPatterns = /^(UNIVERSITY|EXAMINATION|VIRTUAL|DIGITAL|OPEN|LEARNING|SCHOOL|EDUCATION|ACADEMIC|VIRTUAL AND OPEN LEARNING|DIGITAL SCHOOL|OF VIRTUAL)$/i;
+      // Also reject if contains too many common words (indicates it's a description, not a faculty)
+      const commonWordCount = (faculty.match(/\b(VIRTUAL|DIGITAL|OPEN|LEARNING|SCHOOL|EDUCATION)\b/gi) || []).length;
+      
+      if (faculty.length > 5 && faculty.length < 80 && !rejectPatterns.test(faculty) && commonWordCount <= 1 && /[A-Za-z]{5,}/.test(faculty)) {
+        details.faculty = faculty;
+        details.confidence.faculty = 0.8;
         break;
       }
     }
   }
 
-  // Extract faculty/department (often appears after "department:", "school:", etc.)
-  const facultyMatch = text.match(/(?:department|faculty|school|subject)\s*[:\-]?\s*([A-Za-z\s&]+?)(?:\n|$)/i);
-  if (facultyMatch) {
-    details.faculty = facultyMatch[1].trim();
-    details.confidence.faculty = 0.75;
+  // ========== UNIT NAME EXTRACTION ==========
+  // IMPORTANT: unit_name should ONLY be the PREFIX (e.g., "UCU", "APL")
+  // extracted from the "PREFIX NUMBER" pattern earlier
+  // Do NOT try to extract course names from PDF content, as they are often questions/instructions
+  // Only try if unit_name is still not set
+  if (!details.unit_name) {
+    console.warn(`⚠️ [PARSE] Could not extract PREFIX NUMBER from text, unit_name will be empty`);
   }
 
   return details;
 }
 
 /**
- * Main function to extract past paper details from scanned PDF
+ * Main function to extract past paper details from PDF (tries direct text extraction first, then OCR)
  * @param {Buffer} pdfBuffer - PDF file buffer
  * @param {string} fileName - Original filename for fallback
  * @returns {Promise<object>} Extracted details
  */
 export async function extractPastPaperDetailsFromScannedPDF(pdfBuffer, fileName = '') {
   try {
-    console.log(`\n📄 [PAST-PAPER-OCR] Processing: ${fileName || 'unknown'}`);
+    console.log(`\n📄 [PAST-PAPER-EXTRACT] Processing: ${fileName || 'unknown'}`);
     
     // Load PDF to check page count
     const pdfDoc = await pdfjs.getDocument({ data: pdfBuffer }).promise;
     const pageCount = pdfDoc.numPages;
-    console.log(`📖 [PAST-PAPER-OCR] PDF has ${pageCount} pages`);
+    console.log(`📖 [PAST-PAPER-EXTRACT] PDF has ${pageCount} pages`);
 
-    // Extract text from first page (usually contains title/metadata)
+    // ========== STRATEGY 1: Try direct text extraction (for searchable PDFs) ==========
+    console.log(`🔄 [PAST-PAPER-EXTRACT] Attempting direct PDF text extraction...`);
     let extractedText = '';
-    try {
-      extractedText = await extractTextFromPDFPage(pdfBuffer, 1);
-    } catch (err) {
-      console.warn(`⚠️ [PAST-PAPER-OCR] Could not OCR page 1:`, err.message);
-    }
-
-    // If first page didn't work, try second page
-    if (!extractedText && pageCount > 1) {
+    
+    // Try to extract from first 5 pages (more aggressive)
+    for (let page = 1; page <= Math.min(5, pageCount); page++) {
       try {
-        console.log(`🔄 [PAST-PAPER-OCR] Trying page 2...`);
-        extractedText = await extractTextFromPDFPage(pdfBuffer, 2);
+        const pageText = await extractTextFromPDFPageDirect(pdfBuffer, page);
+        if (pageText && pageText.trim().length > 30) { // Lower threshold to 30 chars
+          extractedText += ' ' + pageText; // Accumulate text from multiple pages
+          console.log(`✅ [PAST-PAPER-EXTRACT] Extracted ${pageText.length} chars from page ${page}`);
+          // Continue to get more text from more pages if available
+          if (extractedText.length > 500) break; // Stop if we have enough text
+        }
       } catch (err) {
-        console.warn(`⚠️ [PAST-PAPER-OCR] Could not OCR page 2:`, err.message);
+        console.warn(`⚠️ [PAST-PAPER-EXTRACT] Could not extract from page ${page}: ${err.message}`);
       }
     }
 
-    // Parse the extracted text
-    const details = parsePastPaperDetails(extractedText);
+    // ========== STRATEGY 2: Fall back to OCR if direct extraction failed ==========
+    if (!extractedText || extractedText.trim().length < 50) {
+      console.log(`⚠️ [PAST-PAPER-EXTRACT] Direct extraction insufficient, trying OCR...`);
+      try {
+        extractedText = await extractTextFromPDFPage(pdfBuffer, 1);
+      } catch (err) {
+        console.warn(`⚠️ [PAST-PAPER-EXTRACT] Could not OCR page 1:`, err.message);
+      }
 
-    // Fallback: extract from filename if OCR failed
-    if (!details.unit_code && fileName) {
-      const fileNameDetails = parseFileNameForPastPaper(fileName);
-      // Merge with OCR results, preferring OCR if available
-      Object.keys(fileNameDetails).forEach(key => {
-        if (!details[key] && fileNameDetails[key]) {
-          details[key] = fileNameDetails[key];
-          details.confidence[key] = (details.confidence[key] || 0) + 0.1; // Lower confidence for filename parsing
+      // If first page failed, try second page
+      if (!extractedText && pageCount > 1) {
+        try {
+          console.log(`🔄 [PAST-PAPER-EXTRACT] Trying OCR on page 2...`);
+          extractedText = await extractTextFromPDFPage(pdfBuffer, 2);
+        } catch (err) {
+          console.warn(`⚠️ [PAST-PAPER-EXTRACT] Could not OCR page 2:`, err.message);
         }
-      });
+      }
     }
 
-    console.log(`✅ [PAST-PAPER-OCR] Extraction complete:`, details);
+    // ========== PARSE EXTRACTED TEXT ==========
+    const details = parsePastPaperDetails(extractedText);
+
+    // ========== FALLBACK: Extract from filename ONLY for unit_code if missing ==========
+    // IMPORTANT: DO NOT use filename for unit_name - only extract from PDF content
+    if ((!details.unit_code) && fileName) {
+      console.log(`📝 [PAST-PAPER-EXTRACT] Attempting filename parsing for missing unit_code...`);
+      const fileNameDetails = parseFileNameForPastPaper(fileName);
+      
+      // ONLY merge unit_code from filename, NEVER unit_name
+      if (fileNameDetails.unit_code && !details.unit_code) {
+        details.unit_code = fileNameDetails.unit_code;
+        if (!details.confidence.unit_code) {
+          details.confidence.unit_code = 0.6; // Lower confidence for filename parsing
+        }
+        console.log(`📝 [PAST-PAPER-EXTRACT] Extracted unit_code from filename: ${details.unit_code}`);
+      }
+      
+      // Only extract year from filename if PDF extraction failed
+      if (!details.year && fileNameDetails.year) {
+        details.year = fileNameDetails.year;
+        if (!details.confidence.year) {
+          details.confidence.year = 0.5; // Lower confidence
+        }
+      }
+    }
+
+    console.log(`✅ [PAST-PAPER-EXTRACT] Extraction complete:`, {
+      unit_code: details.unit_code,
+      unit_name: details.unit_name,
+      unit_name_length: details.unit_name ? details.unit_name.length : 0,
+      unit_name_from: details.unit_name ? 'PDF_CONTENT' : 'NOT_FOUND',
+      faculty: details.faculty,
+      year: details.year,
+      semester: details.semester,
+      exam_type: details.exam_type,
+      confidence: details.confidence
+    });
+    
     return details;
 
   } catch (error) {
-    console.error(`❌ [PAST-PAPER-OCR] Failed to extract details:`, error.message);
+    console.error(`❌ [PAST-PAPER-EXTRACT] Failed to extract details:`, error.message);
     // Return empty details with error flag
     return {
       unit_code: null,
@@ -222,10 +353,11 @@ export async function extractPastPaperDetailsFromScannedPDF(pdfBuffer, fileName 
 
 /**
  * Parse filename for past paper details (fallback method)
+ * Extract PREFIX as unit_name and NUMBER as unit_code
  * Expected formats:
- *   - "MENT130_Management_2023_1_Main.pdf"
- *   - "BIO101-Biology-2022-2.pdf"
- *   - "CHEM 201 Organic Chemistry 2021.pdf"
+ *   - "UCU101-2018-06-18.pdf"
+ *   - "APL808_2019.pdf"
+ *   - "EAE301-Introduction-2021.pdf"
  */
 export function parseFileNameForPastPaper(fileName) {
   const details = {
@@ -240,16 +372,21 @@ export function parseFileNameForPastPaper(fileName) {
   // Remove extension
   const baseName = fileName.replace(/\.[^/.]+$/, '');
 
-  // Try to extract unit code (e.g., "MENT130", "BIO 101")
-  const unitCodeMatch = baseName.match(/^([A-Z]{2,4}[\s\-]?\d{2,4})/i);
-  if (unitCodeMatch) {
-    details.unit_code = unitCodeMatch[1].replace(/\s+/g, ' ').trim();
+  // Extract PREFIX and NUMBER (e.g., "UCU" and "101" from "UCU101")
+  // Patterns: "UCU 101", "UCU101", "UCU-101"
+  const codeMatch = baseName.match(/^([A-Z]{2,4})\s*[\-]?\s*(\d{2,4})/i);
+  if (codeMatch) {
+    details.unit_name = codeMatch[1].toUpperCase(); // PREFIX (e.g., "UCU")
+    details.unit_code = codeMatch[2]; // NUMBER (e.g., "101")
   }
 
   // Try to extract year
   const yearMatch = baseName.match(/(?:20|19)\d{2}/);
   if (yearMatch) {
-    details.year = parseInt(yearMatch[0]);
+    const year = parseInt(yearMatch[0]);
+    if (year >= 1990 && year <= new Date().getFullYear() + 1) {
+      details.year = year;
+    }
   }
 
   // Try to extract semester
@@ -260,17 +397,8 @@ export function parseFileNameForPastPaper(fileName) {
 
   // Try to extract exam type
   if (/supplementary|supp/i.test(baseName)) details.exam_type = 'Supplementary';
-  else if (/cat/i.test(baseName)) details.exam_type = 'CAT';
+  else if (/\bcat\b/i.test(baseName)) details.exam_type = 'CAT';
   else if (/mock/i.test(baseName)) details.exam_type = 'Mock';
-
-  // Extract unit name (text between code and year)
-  if (details.unit_code && details.year) {
-    const pattern = new RegExp(`${details.unit_code}[_\\-\\s]+(.+?)${details.year}`, 'i');
-    const match = baseName.match(pattern);
-    if (match) {
-      details.unit_name = match[1].replace(/[_\-]/g, ' ').trim();
-    }
-  }
 
   return details;
 }

@@ -3,6 +3,7 @@ import { fetchUniversities, deleteUniversity, updateUniversity } from '../campus
 import { getUniversityImages, deleteUniversityImage } from '../universityPrefillApi';
 import { getPastPaperCountByUniversity } from '../pastPapersApi';
 import { useAdminUI } from '../AdminUIContext';
+import { formatNumber } from '../../../PastPapers/formatNumber';
 
 const UniversitiesManagement = ({ userProfile }) => {
   const [loading, setLoading] = useState(true);
@@ -154,11 +155,11 @@ const UniversitiesManagement = ({ userProfile }) => {
         {!loading && rows.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', marginBottom: '12px' }}>
             <div style={{ background: '#1a2332', border: '1px solid #2a3f56', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
-              <div style={{ color: '#34B7F1', fontSize: '1.2rem', fontWeight: '600' }}>{rows.reduce((sum, r) => sum + (r.views || 0), 0)}</div>
+              <div style={{ color: '#34B7F1', fontSize: '1.2rem', fontWeight: '600' }}>{formatNumber(rows.reduce((sum, r) => sum + (r.views || 0), 0))}</div>
               <div>Total Views</div>
             </div>
             <div style={{ background: '#1a2332', border: '1px solid #2a3f56', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
-              <div style={{ color: '#E74C3C', fontSize: '1.2rem', fontWeight: '600' }}>{rows.reduce((sum, r) => sum + (r.likes_count || 0), 0)}</div>
+              <div style={{ color: '#E74C3C', fontSize: '1.2rem', fontWeight: '600' }}>{formatNumber(rows.reduce((sum, r) => sum + (r.likes_count || 0), 0))}</div>
               <div>Total Likes</div>
             </div>
             <div style={{ background: '#1a2332', border: '1px solid #2a3f56', borderRadius: '6px', padding: '8px 12px', color: '#8696a0', fontSize: '0.85rem' }}>
@@ -222,9 +223,9 @@ const UniversitiesManagement = ({ userProfile }) => {
                     ) : (row.established || '—')}
                   </td>
                   <td>{row.student_count?.toLocaleString() || '—'}</td>
-                  <td style={{ fontWeight: '500', color: '#00a884' }}>{row.views || 0}</td>
-                  <td style={{ fontWeight: '500', color: '#E74C3C' }}>{row.likes_count || 0}</td>
-                  <td style={{ fontWeight: '500', color: '#66BB6A' }}>{paperCounts[row.id] || 0}</td>
+                  <td style={{ fontWeight: '500', color: '#00a884' }}>{formatNumber(row.views || 0)}</td>
+                  <td style={{ fontWeight: '500', color: '#E74C3C' }}>{formatNumber(row.likes_count || 0)}</td>
+                  <td style={{ fontWeight: '500', color: '#66BB6A' }}>{formatNumber(paperCounts[row.id] || 0)}</td>
                   <td>
                     {editingId === row.id ? (
                       <div style={{ display: 'flex', gap: '4px', flexDirection: 'column' }}>

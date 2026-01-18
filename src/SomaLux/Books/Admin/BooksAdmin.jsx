@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, Navigate, useNavigate, useLocation, Link } from
 import { 
   FiBarChart2, FiBookOpen, FiUpload, FiFolder,
   FiSettings, FiUsers, FiChevronLeft, FiChevronRight,
-  FiRefreshCw, FiGrid, FiSearch, FiHardDrive, FiCheck, FiClock
+  FiRefreshCw, FiGrid, FiSearch, FiHardDrive, FiCheck, FiClock, FiDownload
 } from 'react-icons/fi';
 import { MdAdminPanelSettings } from "react-icons/md";
 import { BiSpeaker } from 'react-icons/bi';
@@ -27,6 +27,7 @@ const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const ContentManagement = React.lazy(() => import('./pages/ContentManagement'));
 const Upload = React.lazy(() => import('./pages/Upload'));
 const AutoUpload = React.lazy(() => import('./pages/AutoUpload'));
+const PastPapersAutoDownload = React.lazy(() => import('../../PastPapersDownloader/PastPapersAutoDownload'));
 const Categories = React.lazy(() => import('./pages/Categories'));
 const Submissions = React.lazy(() => import('./pages/Submissions'));
 const Settings = React.lazy(() => import('./pages/Settings'));
@@ -208,6 +209,10 @@ export const BooksAdmin = () => {
                   <FiRefreshCw /> <span className="nav-label">Auto Upload</span>
                 </NavLink>
 
+                <NavLink to="/books/admin/auto-download" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                  <FiDownload /> <span className="nav-label">Auto Download</span>
+                </NavLink>
+
                 <NavLink to="/books/admin/categories" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                   <FiFolder /> <span className="nav-label">Categories</span>
                 </NavLink>
@@ -304,6 +309,12 @@ export const BooksAdmin = () => {
             </NavLink>
           )}
 
+          {canAccessContentFeatures && (
+            <NavLink to="/books/admin/auto-download" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiDownload /> <span>Auto Download</span>
+            </NavLink>
+          )}
+
           <NavLink to="/books/admin/upload-history" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
             <FiClock /> <span>Upload History</span>
           </NavLink>
@@ -384,6 +395,7 @@ export const BooksAdmin = () => {
                 {canAccessContentFeatures && (
                   <>
                     <Route path="auto-upload" element={<AutoUpload userProfile={userProfile} />} />
+                    <Route path="auto-download" element={<PastPapersAutoDownload userProfile={userProfile} />} />
                     <Route path="categories" element={<Categories />} />
                   </>
                 )}

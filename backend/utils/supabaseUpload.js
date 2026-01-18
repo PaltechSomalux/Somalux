@@ -258,13 +258,20 @@ export async function uploadPastPaperToSupabase({
     const nowIso = new Date().toISOString();
     const paperRecord = {
       id: paperId,
-      title: details.unit_name || `${details.unit_code || 'Past Paper'} - ${details.year || 'Unknown'}`,
+      // IMPORTANT: Only use unit_name if it came from PDF content extraction (confidence >= 0.85)
+      title: (details.unit_name && (details.confidence.unit_name || 0) >= 0.85)
+        ? details.unit_name 
+        : (details.unit_code ? `${details.unit_code} - ${details.year || 'Unknown'}` : 'Past Paper'),
       university_id: details.university_id || null,
-      subject: details.faculty || '',
-      course_code: details.unit_code || '',
+      // IMPORTANT: Only use faculty if high confidence and not a generic word
+      faculty: (details.faculty && (details.confidence.faculty || 0) >= 0.7 && !/^(UNIVERSITY|EXAMINATION|VIRTUAL|DIGITAL|OPEN|LEARNING|SCHOOL|EDUCATION|ACADEMIC)$/i.test(details.faculty))
+        ? details.faculty 
+        : '',
+      unit_code: details.unit_code || '',
+      unit_name: (details.unit_name && (details.confidence.unit_name || 0) >= 0.85) ? details.unit_name : '', // Only if high confidence from PDF
       file_url: fileUrl,
       file_path: storagePath,
-      exam_year: details.year ? Number(details.year) : null,
+      year: details.year ? Number(details.year) : null,
       semester: details.semester || null,
       exam_type: details.exam_type || 'Main',
       level: null,
@@ -283,6 +290,17 @@ export async function uploadPastPaperToSupabase({
 
     // Insert record - use proper table name
     console.log(`💾 Saving record to database...`);
+    console.log(`📝 Record metadata:`, {
+      unit_code: paperRecord.unit_code,
+      unit_name: paperRecord.unit_name,
+      unit_name_status: paperRecord.unit_name ? 'POPULATED' : 'EMPTY',
+      faculty: paperRecord.faculty,
+      faculty_status: paperRecord.faculty && paperRecord.faculty !== 'UNIVERSITY' ? 'POPULATED' : 'EMPTY_OR_GENERIC',
+      year: paperRecord.year,
+      semester: paperRecord.semester,
+      exam_type: paperRecord.exam_type
+    });
+    
     const { data: paperData, error: insertError } = await supabase
       .from('past_papers')
       .insert(paperRecord)
@@ -294,7 +312,13 @@ export async function uploadPastPaperToSupabase({
       throw new Error(`Failed to create past paper record: ${insertError.message}`);
     }
 
-    console.log(`✅ Past paper uploaded successfully`);
+    console.log(`✅ Past paper uploaded successfully with metadata:`, {
+      paperId,
+      unit_code: paperData?.unit_code,
+      unit_name: paperData?.unit_name,
+      faculty: paperData?.faculty,
+      year: paperData?.year
+    });
     return {
       ok: true,
       paperId,

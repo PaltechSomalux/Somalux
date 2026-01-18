@@ -6,6 +6,7 @@ import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
 import { FaSearch } from 'react-icons/fa';
 import { AdBanner } from '../Ads/AdBanner';
 import { getPastPaperCountByUniversity } from '../Books/Admin/pastPapersApi';
+import { formatNumber } from './formatNumber';
 import './PaperPanel.css';
 
 // Memoized university card component to prevent unnecessary re-renders
@@ -72,7 +73,7 @@ const UniversityCard = React.memo(({
         }}>
           <span style={{ color: '#FFD700' }}>★</span>
           <span style={{ color: '#8696a0' }}>
-            {stats.average.toFixed(1)} ({stats.count})
+            {stats.average.toFixed(1)} ({formatNumber(stats.count)})
           </span>
         </div>
       )}
@@ -88,7 +89,7 @@ const UniversityCard = React.memo(({
         gap: '4px'
       }}>
         <span style={{ fontSize: '0.65rem', color: '#8696a0', display: 'flex', alignItems: 'center', gap: '2px' }}>
-          <FiEye size={12} /> {uni.views || 0}
+          <FiEye size={12} /> {formatNumber(uni.views || 0)}
         </span>
         {user?.subscription_tier && (user.subscription_tier === 'premium' || user.subscription_tier === 'premium_pro') ? (
           <span style={{ fontSize: '0.65rem', color: '#00a884', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -129,7 +130,7 @@ const UniversityCard = React.memo(({
             }}
           >
             {universityLikes[uni.id] ? <AiFillHeart size={12} /> : <AiOutlineHeart size={12} />}
-            <span style={{ fontSize: '0.65rem' }}>{universityLikesCounts[uni.id] || 0}</span>
+            <span style={{ fontSize: '0.65rem' }}>{formatNumber(universityLikesCounts[uni.id] || 0)}</span>
           </button>
         )}
       </div>

@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { FiBook, FiFileText } from 'react-icons/fi';
+import React, { useState, Suspense } from 'react';
+import { FiBook, FiFileText, FiDownload } from 'react-icons/fi';
 import AutoUpload from './AutoUpload';
 import PastPapersAutoUpload from './PastPapersAutoUpload';
 
+const PastPapersAutoDownload = React.lazy(() => import('./src/SomaLux/PastPapersDownloader/PastPapersAutoDownload'));
+
 const AutoUploadTabs = ({ userProfile, asSubmission = false }) => {
-  const [activeTab, setActiveTab] = useState('books'); // 'books' or 'pastpapers'
+  const [activeTab, setActiveTab] = useState('books'); // 'books', 'pastpapers-upload', or 'pastpapers-download'
 
   const tabStyles = `
     .autoupload-tabs {
@@ -52,11 +54,18 @@ const AutoUploadTabs = ({ userProfile, asSubmission = false }) => {
           Books Auto Upload
         </button>
         <button
-          className={`autoupload-tab ${activeTab === 'pastpapers' ? 'active' : ''}`}
-          onClick={() => setActiveTab('pastpapers')}
+          className={`autoupload-tab ${activeTab === 'pastpapers-upload' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pastpapers-upload')}
         >
           <FiFileText size={20} />
           Past Papers Auto Upload
+        </button>
+        <button
+          className={`autoupload-tab ${activeTab === 'pastpapers-download' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pastpapers-download')}
+        >
+          <FiDownload size={20} />
+          Past Papers Auto Download
         </button>
       </div>
 
@@ -65,8 +74,13 @@ const AutoUploadTabs = ({ userProfile, asSubmission = false }) => {
         {activeTab === 'books' && (
           <AutoUpload userProfile={userProfile} asSubmission={asSubmission} />
         )}
-        {activeTab === 'pastpapers' && (
+        {activeTab === 'pastpapers-upload' && (
           <PastPapersAutoUpload userProfile={userProfile} asSubmission={asSubmission} />
+        )}
+        {activeTab === 'pastpapers-download' && (
+          <Suspense fallback={<div>Loading...</div>}>
+            <PastPapersAutoDownload userProfile={userProfile} asSubmission={asSubmission} />
+          </Suspense>
         )}
       </div>
     </>

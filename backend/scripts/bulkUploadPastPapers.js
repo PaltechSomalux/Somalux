@@ -17,6 +17,7 @@ const DELAY_BETWEEN_REQUESTS = 2000; // 2 second delay between OCR operations
  * @param {string} config.papersDirectory - Path to folder containing PDFs
  * @param {string} config.supabaseUrl - Supabase URL
  * @param {string} config.supabaseKey - Supabase service role key
+ * @param {string} config.universityId - University ID (required)
  * @param {string} config.uploadedBy - User ID (optional)
  * @param {boolean} config.asSubmission - Whether to submit for approval
  * @param {function} config.onProgress - Progress callback
@@ -28,6 +29,7 @@ export async function bulkUploadPastPapers(config) {
     papersDirectory,
     supabaseUrl,
     supabaseKey,
+    universityId = null,
     uploadedBy = null,
     asSubmission = false,
     onProgress = null,
@@ -139,6 +141,7 @@ export async function bulkUploadPastPapers(config) {
         fileName,
         details: {
           ...details,
+          university_id: universityId,
           uploaded_by: uploadedBy,
           is_submission: asSubmission
         }

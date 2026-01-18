@@ -4,6 +4,7 @@ import { FiEye, FiChevronLeft } from 'react-icons/fi';
 import { MdVerified } from 'react-icons/md';
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
 import { FaSearch } from 'react-icons/fa';
+import { formatNumber } from './formatNumber';
 import './PaperPanel.css';
 
 // Color palette moved outside component to prevent recreation
@@ -178,7 +179,7 @@ export const FacultyGridDisplay = React.memo(({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#8696a0', marginTop: 'auto', paddingTop: '8px', borderTop: '1px solid #202c33' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <FiEye size={12} />
-                        <span>{viewCount}</span>
+                        <span>{formatNumber(viewCount)}</span>
                       </div>
                       {user && user.subscription_tier && (user.subscription_tier === 'premium' || user.subscription_tier === 'premium_pro') ? (
                         <div style={{ color: '#00a884', fontWeight: '600' }}>
@@ -218,7 +219,7 @@ export const FacultyGridDisplay = React.memo(({
                         title={isLiked ? 'Unlike' : 'Like'}
                       >
                         {isLiked ? <AiFillHeart size={14} /> : <AiOutlineHeart size={14} />}
-                        <span>{likeCount}</span>
+                        <span>{formatNumber(likeCount)}</span>
                       </button>
                     </div>
                   </div>

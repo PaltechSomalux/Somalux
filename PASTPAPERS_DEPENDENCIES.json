@@ -1,0 +1,48 @@
+{
+  "name": "somalux-pastpapers-downloader",
+  "version": "1.0.0",
+  "description": "Past Papers Downloader System for SomaLux",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "axios": "^1.4.0",
+    "cheerio": "^1.0.0-rc.12",
+    "uuid": "^9.0.0",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "jest": "^29.5.0"
+  },
+  "keywords": [
+    "pastpapers",
+    "downloader",
+    "bulk-download",
+    "dspace",
+    "kenyatta-university"
+  ],
+  "author": "SomaLux Team",
+  "license": "MIT",
+  "comments": {
+    "required-for-pastpapers": [
+      "axios - HTTP requests to DSpace",
+      "cheerio - HTML parsing and web scraping",
+      "uuid - Generate unique process IDs",
+      "express - (already have) web framework",
+      "cors - (already have) cross-origin support"
+    ],
+    "installation": "npm install axios cheerio uuid",
+    "notes": [
+      "Express and CORS should already be in your dependencies",
+      "Only need to install: axios, cheerio, uuid",
+      "All are lightweight packages (<5MB total)",
+      "No database driver required (optional for persistence)"
+    ]
+  }
+}

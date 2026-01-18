@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { FiFileText, FiFilter, FiX, FiDownload, FiUpload, FiEye, FiBookmark, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
 import { AdBanner } from '../Ads/AdBanner';
+import { formatNumber } from './formatNumber';
 import './PaperPanel.css';
 import '../Books/Admin/admin.css';
 
@@ -246,10 +247,10 @@ export const PaperGrid = React.memo(({
                       gap: '2px'
                     }}>
                       <span style={{ fontSize: '0.55rem', color: '#8696a0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                        <FiEye size={11} /> {paper.views || 0}
+                        <FiEye size={11} /> {formatNumber(paper.views || 0)}
                       </span>
                       <span style={{ fontSize: '0.55rem', color: '#8696a0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                        <FiDownload size={11} /> {paper.downloads_count || 0}
+                        <FiDownload size={11} /> {formatNumber(paper.downloads_count || 0)}
                       </span>
                       {user && (
                         <>
@@ -262,7 +263,7 @@ export const PaperGrid = React.memo(({
                            
                           >
                             {paperLikes[paper.id] ? <AiFillHeart size={10} /> : <AiOutlineHeart size={10} />}
-                            <span>{paperLikesCounts[paper.id] || 0}</span>
+                            <span>{formatNumber(paperLikesCounts[paper.id] || 0)}</span>
                           </button>
                           <button
                             onClick={(e) => {
@@ -343,10 +344,10 @@ export const PaperGrid = React.memo(({
                         gap: '2px'
                       }}>
                         <span style={{ fontSize: '0.55rem', color: '#8696a0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                          <FiEye size={11} /> {paper.views || 0}
+                          <FiEye size={11} /> {formatNumber(paper.views || 0)}
                         </span>
                         <span style={{ fontSize: '0.55rem', color: '#8696a0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                          <FiDownload size={11} /> {paper.downloads_count || 0}
+                          <FiDownload size={11} /> {formatNumber(paper.downloads_count || 0)}
                         </span>
                         {user && (
                           <>
@@ -370,7 +371,7 @@ export const PaperGrid = React.memo(({
                               }}
                             >
                               {paperLikes[paper.id] ? <AiFillHeart size={10} /> : <AiOutlineHeart size={10} />}
-                              <span>{paperLikesCounts[paper.id] || 0}</span>
+                              <span>{formatNumber(paperLikesCounts[paper.id] || 0)}</span>
                             </button>
                             <button
                               onClick={(e) => {

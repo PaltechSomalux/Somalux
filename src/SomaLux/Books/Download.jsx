@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { FiDownload } from 'react-icons/fi';
+import { FiDownload, FiFolder } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import { downloadOptimizer } from '../../utils/DownloadOptimizer';
 import { checkDownloadLimit, recordDownload } from '../../utils/downloadLimitService';
+import { getSelectedFolder, setSelectedFolder } from '../utils/downloadFolderManager';
 import DownloadLimitModal from './DownloadLimitModal';
+import FolderSelectModal from '../PastPapersDownloader/FolderSelectModal';
 
 const IconDownloadButton = styled(motion.button)`
   background: transparent; /* Keep background transparent */
@@ -95,7 +97,7 @@ const FullDownloadButton = styled(motion.button)`
 `;
 
 // High-speed download utility with streaming and caching
-const highSpeedDownload = async (url, filename) => {
+const highSpeedDownload = async (url, filename, folderPath = null) => {
   try {
     // Use DownloadOptimizer for maximum performance
     const response = await fetch(url, {
@@ -123,11 +125,11 @@ const highSpeedDownload = async (url, filename) => {
     // Create blob from chunks
     const blob = new Blob(chunks, { type: response.headers.get('content-type') || 'application/octet-stream' });
 
-    // Trigger download immediately
+    // Trigger download immediately - include folder path in filename if provided
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = blobUrl;
-    a.download = filename;
+    a.download = folderPath ? `${folderPath}/${filename}` : filename;
     document.body.appendChild(a);
     a.click();
 
@@ -183,6 +185,8 @@ export const Download = ({
   const [downloading, setDownloading] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [limitInfo, setLimitInfo] = useState(null);
+  const [selectedFolder, setSelectedFolderState] = useState(() => getSelectedFolder());
+  const [showFolderModal, setShowFolderModal] = useState(false);
   const abortControllerRef = useRef(null);
 
   // Handle case where neither book nor file is provided
@@ -216,7 +220,11 @@ export const Download = ({
     try {
       // If a direct file URL is provided
       if (file) {
-        await highSpeedDownload(file.url, file.filename || file.url.split('/').pop());
+        await highSpeedDownload(
+          file.url,
+          file.filename || file.url.split('/').pop(),
+          selectedFolder
+        );
         // Record the download
         await recordDownload(user, 'file', file.id || file.filename, file.filename);
       }
@@ -226,13 +234,14 @@ export const Download = ({
           // If book has a direct download URL
           await highSpeedDownload(
             book.downloadUrl,
-            book.downloadFilename || `${book.title.replace(/\s+/g, '_')}.${book.fileFormat || 'txt'}`
+            book.downloadFilename || `${book.title.replace(/\s+/g, '_')}.${book.fileFormat || 'txt'}`,
+            selectedFolder
           );
           // Record the download
           await recordDownload(user, 'book', book.id, book.title);
         } else {
           // Fallback to generating a sample text file (original behavior)
-          await generateSampleDownload(book);
+          await generateSampleDownload(book, selectedFolder);
           // Record the download
           await recordDownload(user, 'book_sample', book.id, book.title);
         }
@@ -247,13 +256,13 @@ export const Download = ({
     }
   };
 
-  const generateSampleDownload = (book) => {
+  const generateSampleDownload = (book, folderPath = null) => {
     const sampleContent = `${book.title} - Sample\nby ${book.author}\n\n${book.sampleText || 'No sample content available'}`;
     const blob = new Blob([sampleContent], { type: 'text/plain' });
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = blobUrl;
-    a.download = `${book.title.replace(/\s+/g, '_')}_Sample.txt`;
+    a.download = folderPath ? `${folderPath}/${book.title.replace(/\s+/g, '_')}_Sample.txt` : `${book.title.replace(/\s+/g, '_')}_Sample.txt`;
     document.body.appendChild(a);
     a.click();
 
@@ -267,6 +276,15 @@ export const Download = ({
   if (variant === 'full') {
     return (
       <>
+        <FolderSelectModal
+          isOpen={showFolderModal}
+          onClose={() => setShowFolderModal(false)}
+          onFolderSelect={(folder) => {
+            setSelectedFolderState(folder);
+            setSelectedFolder(folder);
+          }}
+          currentFolder={selectedFolder}
+        />
         <FullDownloadButton
           onClick={handleDownload}
           disabled={downloading}
@@ -296,6 +314,15 @@ export const Download = ({
 
   return (
     <>
+      <FolderSelectModal
+        isOpen={showFolderModal}
+        onClose={() => setShowFolderModal(false)}
+        onFolderSelect={(folder) => {
+          setSelectedFolderState(folder);
+          setSelectedFolder(folder);
+        }}
+        currentFolder={selectedFolder}
+      />
       <IconDownloadButton
         onClick={handleDownload}
         disabled={downloading}

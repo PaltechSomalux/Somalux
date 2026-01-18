@@ -584,15 +584,12 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
         student_count: campusForm.student_count ? Number(campusForm.student_count) : 0
       };
       
-      // Create university submission (use first image as cover)
+      // Create university (published immediately with cover image)
       const primaryImage = campusImages[0] || null;
       const result = await createUniversitySubmission({ metadata, coverFile: primaryImage });
       const universityId = result.id;
       
-      // Note: Additional images would be uploaded after approval
-      // For now, only primary image is saved with submission
-      
-      showToast({ type: 'success', message: `University submitted for approval with ${campusImages.length} image(s)!` });
+      showToast({ type: 'success', message: `University published! ${campusImages.length} image(s) added.` });
       // Reset form
       setCampusForm({ name: '', description: '', website_url: '', location: '', established: '', student_count: '' });
       setCampusImages([]);
