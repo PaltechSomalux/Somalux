@@ -441,7 +441,7 @@ const PastPapersManagement = ({ userProfile }) => {
             </select>
           </div>
         </div>
-        <div className="actions" style={{ marginBottom: 6 }}>
+        <div className="actions" style={{ marginBottom: 6, marginLeft: '20px' }}>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button className="btn primary" onClick={() => (window.location.href = '/books/admin/upload')}>Add New Past Paper</button>
             {!showCheckboxes && (

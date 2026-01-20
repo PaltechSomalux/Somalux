@@ -5857,6 +5857,96 @@ console.log(`✅ Build exists: ${existsSync(buildPath)}`);
 
 if (existsSync(buildPath)) {
   console.log(`🚀 Serving React frontend from build folder`);
+  
+  // Route to serve HTML with dynamic meta tags for social sharing - MUST BE BEFORE static middleware
+  app.get('/api/og', async (req, res) => {
+    const { type, id, title, image, description } = req.query;
+    
+    // Validate inputs
+    if (!type || !id) {
+      return res.json({ error: 'Missing type or id parameter' });
+    }
+    
+    try {
+      // Read the base index.html
+      let html = fs.readFileSync(path.join(buildPath, 'index.html'), 'utf8');
+      
+      // Determine the URL and image
+      const baseUrl = process.env.FRONTEND_URL || 'https://somalux.co.ke';
+      let ogUrl = baseUrl;
+      let ogTitle = title ? decodeURIComponent(title) : 'Somalux.co.ke';
+      let ogDescription = description ? decodeURIComponent(description) : 'Authenticity.';
+      let ogImage = image ? decodeURIComponent(image) : `${baseUrl}/PaltechBlack192.png`;
+      
+      // Ensure image URL is absolute
+      if (ogImage && !ogImage.startsWith('http')) {
+        ogImage = `${baseUrl}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`;
+      }
+      
+      if (type === 'book') {
+        ogUrl = `${baseUrl}/BookManagement?id=${id}`;
+      } else if (type === 'paper') {
+        ogUrl = `${baseUrl}/PastPapers?paper=${id}`;
+      }
+      
+      // Replace meta tags with proper escaping for HTML attributes
+      const escapeHtml = (str) => {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#x27;');
+      };
+      
+      // Replace og:image (CRITICAL FOR SHARING)
+      html = html.replace(
+        /<meta property="og:image" content="[^"]*">/,
+        `<meta property="og:image" content="${escapeHtml(ogImage)}">`
+      );
+      html = html.replace(
+        /<meta name="twitter:image" content="[^"]*">/,
+        `<meta name="twitter:image" content="${escapeHtml(ogImage)}">`
+      );
+      
+      // Replace og:url
+      html = html.replace(
+        /<meta property="og:url" content="[^"]*">/,
+        `<meta property="og:url" content="${escapeHtml(ogUrl)}">`
+      );
+      html = html.replace(
+        /<meta name="twitter:url" content="[^"]*">/,
+        `<meta name="twitter:url" content="${escapeHtml(ogUrl)}">`
+      );
+      
+      // Replace og:title
+      html = html.replace(
+        /<meta property="og:title" content="[^"]*">/,
+        `<meta property="og:title" content="${escapeHtml(ogTitle)}"`
+      );
+      html = html.replace(
+        /<meta name="twitter:title" content="[^"]*">/,
+        `<meta name="twitter:title" content="${escapeHtml(ogTitle)}"`
+      );
+      
+      // Replace og:description
+      html = html.replace(
+        /<meta property="og:description" content="[^"]*">/,
+        `<meta property="og:description" content="${escapeHtml(ogDescription)}"`
+      );
+      html = html.replace(
+        /<meta name="twitter:description" content="[^"]*">/,
+        `<meta name="twitter:description" content="${escapeHtml(ogDescription)}"`
+      );
+      
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(html);
+    } catch (error) {
+      console.error('Error serving OG meta tags:', error);
+      res.status(500).json({ error: 'Failed to generate meta tags' });
+    }
+  });
+  
   app.use(express.static(buildPath));
   
   // Catch-all for client-side routing - use middleware syntax

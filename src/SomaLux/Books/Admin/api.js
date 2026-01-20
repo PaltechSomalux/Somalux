@@ -523,7 +523,9 @@ export async function fetchStats() {
     const oldestMonthDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
     const oldestMonthIso = oldestMonthDate.toISOString();
 
-    const [booksCountRes, usersDataRes, downloadsRes, viewsCountVal, universitiesCountVal, pastPapersCountVal, recentRes, topRes, topPastPapersRes, categoriesRes, allBooksRes, viewsTimelineRes] = await Promise.all([
+    console.log('[fetchStats] Starting data fetch...');
+    
+    const [booksCountRes, usersDataRes, downloadsRes, pastPapersDownloadsRes, viewsCountVal, universitiesCountVal, pastPapersCountVal, recentRes, topRes, topPastPapersRes, categoriesRes, allBooksRes, allPastPapersRes, viewsTimelineRes, pastPapersViewsTimelineRes, bookDownloadsStatsRes, pastPaperDownloadsStatsRes] = await Promise.all([
       supabase.from('books').select('id', { count: 'exact', head: true }),
       (async () => {
         try {
@@ -536,6 +538,7 @@ export async function fetchStats() {
         }
       })(),
       supabase.from('books').select('downloads_count'),
+      supabase.from('past_papers').select('downloads_count'),
       (async () => { const { count } = await supabase.from('book_views').select('id', { count: 'exact', head: true }); return count || 0; })(),
       (async () => { const { count } = await supabase.from('universities').select('id', { count: 'exact', head: true }); return count || 0; })(),
       (async () => { const { count } = await supabase.from('past_papers').select('id', { count: 'exact', head: true }); return count || 0; })(),
@@ -544,16 +547,135 @@ export async function fetchStats() {
       supabase.from('past_papers').select('id, title, downloads_count, views_count').order('downloads_count', { ascending: false }).limit(5),
       supabase.from('categories').select('id, name'),
       supabase.from('books').select('id, category_id, created_at, author, downloads_count, views_count, comments_count, rating'),
-      supabase.from('book_views').select('id, view_date').gte('view_date', oldestMonthIso)
+      supabase.from('past_papers').select('id, created_at, downloads_count, views_count'),
+      supabase.from('book_views').select('id, view_date').gte('view_date', oldestMonthIso),
+      (async () => {
+        try {
+          const { data } = await supabase.from('past_paper_views').select('id, viewed_at').gte('viewed_at', oldestMonthIso);
+          return data || [];
+        } catch (e) {
+          console.warn('[fetchStats] past_paper_views query failed:', e?.message || e);
+          return [];
+        }
+      })(),
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .from('book_downloads')
+            .select('book_id', { head: false });
+          
+          if (error) {
+            console.warn('[fetchStats] book_downloads table might not exist:', error?.message);
+            return { data: [] };
+          }
+          
+          // Count downloads per book
+          const downloadCounts = {};
+          (data || []).forEach(record => {
+            if (record.book_id) {
+              downloadCounts[record.book_id] = (downloadCounts[record.book_id] || 0) + 1;
+            }
+          });
+          console.log('[fetchStats] Downloads from book_downloads table:', downloadCounts);
+          return { data: Object.entries(downloadCounts).map(([bookId, count]) => ({ book_id: bookId, downloads_count: count })) };
+        } catch (e) {
+          console.warn('[fetchStats] Error querying book_downloads:', e?.message || e);
+          return { data: [] };
+        }
+      })(),
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .from('past_paper_downloads')
+            .select('paper_id', { head: false });
+          
+          if (error) {
+            console.warn('[fetchStats] past_paper_downloads table might not exist:', error?.message);
+            return { data: [] };
+          }
+          
+          // Count downloads per past paper
+          const downloadCounts = {};
+          (data || []).forEach(record => {
+            if (record.paper_id) {
+              downloadCounts[record.paper_id] = (downloadCounts[record.paper_id] || 0) + 1;
+            }
+          });
+          console.log('[fetchStats] Downloads from past_paper_downloads table:', downloadCounts);
+          return { data: Object.entries(downloadCounts).map(([paperId, count]) => ({ paper_id: paperId, downloads_count: count })) };
+        } catch (e) {
+          console.warn('[fetchStats] Error querying past_paper_downloads:', e?.message || e);
+          return { data: [] };
+        }
+      })()
     ]);
+
+    console.log('[fetchStats] downloads response:', downloadsRes);
+    console.log('[fetchStats] downloadsRes.data sample:', downloadsRes?.data?.[0], 'total records:', downloadsRes?.data?.length);
+    console.log('[fetchStats] pastPapersDownloads response:', pastPapersDownloadsRes);
+    console.log('[fetchStats] bookDownloadsStats response:', bookDownloadsStatsRes);
 
     const booksCount = booksCountRes?.count || 0;
     const usersCount = Array.isArray(usersDataRes) ? usersDataRes.length : (usersDataRes?.count || 0);
     const universitiesCount = universitiesCountVal || 0;
     const pastPapersCount = pastPapersCountVal || 0;
 
-    const totals = (list, key) => (list.data || []).reduce((a, b) => a + (b[key] || 0), 0);
-    const totalDownloads = totals(downloadsRes, 'downloads');
+    const totals = (response, key) => {
+      if (!response || !response.data) {
+        console.warn('[fetchStats] Missing data for', key, response);
+        return 0;
+      }
+      const total = (response.data || []).reduce((a, b) => {
+        const val = b[key];
+        return a + (val === null || val === undefined ? 0 : Number(val) || 0);
+      }, 0);
+      console.log(`[fetchStats] Total from ${key}:`, total, 'from', response.data.length, 'records');
+      return total;
+    };
+    
+    const totalDownloads = await (async () => {
+      try {
+        // Try to count from book_downloads table directly 
+        const { count, error, data } = await supabase
+          .from('book_downloads')
+          .select('id', { count: 'exact', head: true });
+        
+        if (!error && count !== null && count !== undefined) {
+          console.log('[fetchStats] Total downloads from book_downloads count:', count);
+          return count;
+        }
+        
+        // Fallback to books table
+        const booksCount = totals(downloadsRes, 'downloads_count');
+        console.log('[fetchStats] Total downloads from books.downloads_count:', booksCount);
+        return booksCount;
+      } catch (e) {
+        console.warn('[fetchStats] Error calculating downloads:', e);
+        return totals(downloadsRes, 'downloads_count');
+      }
+    })();
+    
+    const totalPastPapersDownloads = await (async () => {
+      try {
+        // Try to count from past_paper_downloads table directly 
+        const { count, error } = await supabase
+          .from('past_paper_downloads')
+          .select('id', { count: 'exact', head: true });
+        
+        if (!error && count !== null && count !== undefined) {
+          console.log('[fetchStats] Total past papers downloads from past_paper_downloads count:', count);
+          return count;
+        }
+        
+        // Fallback to past_papers table
+        const ppCount = totals(pastPapersDownloadsRes, 'downloads_count');
+        console.log('[fetchStats] Total past papers downloads from past_papers.downloads_count:', ppCount);
+        return ppCount;
+      } catch (e) {
+        console.warn('[fetchStats] Error calculating past papers downloads:', e);
+        return totals(pastPapersDownloadsRes, 'downloads_count');
+      }
+    })();
     const totalViews = viewsCountVal || 0;
 
     (allBooksRes.data || []).forEach(row => {
@@ -567,8 +689,20 @@ export async function fetchStats() {
 
     // Build monthly views from book_views timeline
     (viewsTimelineRes.data || []).forEach(view => {
-      if (view.viewed_at) {
-        const d = new Date(view.viewed_at);
+      const viewDate = view.view_date || view.viewed_at;
+      if (viewDate) {
+        const d = new Date(viewDate);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const bucket = months.find(m => m.key === key);
+        if (bucket) bucket.views += 1;
+      }
+    });
+
+    // Build monthly views from past_paper_views timeline
+    (pastPapersViewsTimelineRes.data || []).forEach(view => {
+      const viewDate = view.viewed_at || view.view_date;
+      if (viewDate) {
+        const d = new Date(viewDate);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         const bucket = months.find(m => m.key === key);
         if (bucket) bucket.views += 1;
@@ -618,24 +752,76 @@ export async function fetchStats() {
         avgRating: a.ratingCount > 0 ? (a.totalRating / a.ratingCount).toFixed(2) : 0
       }));
 
+    // Track monthly past papers uploads
+    const monthsPastPapers = JSON.parse(JSON.stringify(months)); // Deep clone
+    (allPastPapersRes.data || []).forEach(row => {
+      if (row.created_at) {
+        const d = new Date(row.created_at);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const bucket = monthsPastPapers.find(m => m.key === key);
+        if (bucket) bucket.uploads += 1;
+      }
+    });
+
     const authorsCount = authorMap.size;
 
+    // Enrich top books with download counts from book_downloads table if needed
+    let enrichedTopBooks = topRes.data || [];
+    if (bookDownloadsStatsRes && bookDownloadsStatsRes.data) {
+      const downloadMap = new Map(
+        bookDownloadsStatsRes.data.map(item => [item.book_id, item.downloads_count])
+      );
+      enrichedTopBooks = enrichedTopBooks.map(book => ({
+        ...book,
+        downloads_count: book.downloads_count || downloadMap.get(book.id) || 0
+      }));
+      // Re-sort by downloads_count in case we filled in data
+      enrichedTopBooks = enrichedTopBooks.sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0));
+    }
+
+    // Enrich top past papers with download counts from past_paper_downloads table if needed
+    let enrichedTopPastPapers = topPastPapersRes.data || [];
+    if (pastPaperDownloadsStatsRes && pastPaperDownloadsStatsRes.data) {
+      const downloadMap = new Map(
+        pastPaperDownloadsStatsRes.data.map(item => [item.paper_id, item.downloads_count])
+      );
+      enrichedTopPastPapers = enrichedTopPastPapers.map(paper => ({
+        ...paper,
+        downloads_count: paper.downloads_count || downloadMap.get(paper.id) || 0
+      }));
+      // Re-sort by downloads_count in case we filled in data
+      enrichedTopPastPapers = enrichedTopPastPapers.sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0));
+    }
+
     return {
-      counts: { books: booksCount, users: usersCount, downloads: totalDownloads, views: totalViews, universities: universitiesCount, pastPapers: pastPapersCount, categories: categories.length, authors: authorsCount },
+      counts: { 
+        books: booksCount, 
+        users: usersCount, 
+        downloads: totalDownloads, 
+        pastPapersDownloads: totalPastPapersDownloads,
+        views: totalViews, 
+        universities: universitiesCount, 
+        pastPapers: pastPapersCount, 
+        categories: categories.length, 
+        authors: authorsCount 
+      },
       recent: recentRes.data || [],
-      top: topRes.data || [],
-      topPastPapers: topPastPapersRes.data || [],
+      top: enrichedTopBooks,
+      topPastPapers: enrichedTopPastPapers,
       monthly: months.map(m => ({ month: m.label, uploads: m.uploads, views: m.views })),
+      monthlyPastPapers: monthsPastPapers.map(m => ({ month: m.label, uploads: m.uploads, views: m.views })),
       categories,
       authors
     };
   } catch (error) {
     console.error('Error fetching stats:', error);
     return {
-      counts: { books: 0, users: 0, downloads: 0, views: 0, universities: 0, pastPapers: 0, authors: 0 },
+      counts: { books: 0, users: 0, downloads: 0, pastPapersDownloads: 0, views: 0, universities: 0, pastPapers: 0, authors: 0 },
       recent: [],
       top: [],
+      topPastPapers: [],
       monthly: [],
+      monthlyPastPapers: [],
       categories: [],
       authors: []
     };

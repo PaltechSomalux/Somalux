@@ -1,31 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createBookSubmission, createBook, fetchCategories } from '../api';
-import { createUniversitySubmission } from '../campusApi';
 import { createPastPaper, createPastPaperSubmission, getUniversitiesForDropdown, getFacultiesByUniversity, getUnitNamesByUniversityAndFaculty, getYearsByUniversityFacultyAndUnitName, checkDuplicatePastPaper } from '../pastPapersApi';
-import { 
-  autoFillUniversityData, 
-  searchUniversityNames,
-  uploadUniversityImages,
-  addUniversityImage,
-  downloadImageAsFile,
-  fetchWikimediaImages,
-  fetchUnsplashImages
-} from '../universityPrefillApi';
-import { FiUpload, FiFile, FiImage, FiBook, FiMapPin, FiFileText, FiSearch, FiX, FiLoader } from 'react-icons/fi';
+import { FiUpload, FiFile, FiImage, FiBook, FiFileText, FiSearch, FiX, FiLoader } from 'react-icons/fi';
 import { useAdminUI } from '../AdminUIContext';
 import * as pdfjsLib from 'pdfjs-dist';
-
-// Simple debounce hook
-function useDebounce(callback, delay) {
-  const timeoutRef = useRef(null);
-  return useCallback((...args) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    timeoutRef.current = setTimeout(() => callback(...args), delay);
-  }, [callback, delay]);
-}
 
 // Add styles for drag and drop effect and tabs
 const dropzoneStyles = `
@@ -92,7 +71,7 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
     return () => styleTag.remove();
   }, []);
 
-  const [activeTab, setActiveTab] = useState(initialTab); // 'books', 'campus', 'pastpapers'
+  const [activeTab, setActiveTab] = useState(initialTab); // 'books', 'pastpapers'
   const navigate = useNavigate();
   const { showToast } = useAdminUI();
 
@@ -109,17 +88,6 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
     title: '', author: '', description: '', category_id: '', 
     year: '', language: '', isbn: '', pages: '', publisher: '' 
   });
-
-  // Campus state
-  const [campusImages, setCampusImages] = useState([]);
-  const [campusForm, setCampusForm] = useState({ 
-    name: '', description: '', website_url: '', location: '', 
-    established: '', student_count: '' 
-  });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const [isAutoFilling, setIsAutoFilling] = useState(false);
 
   // Past Papers state
   const [paperPdf, setPaperPdf] = useState(null);
@@ -377,114 +345,6 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
   }, [pdf, showToast]);
 
   const onBookChange = (k) => (e) => setBookForm((f) => ({ ...f, [k]: e.target.value }));
-  const onCampusChange = (k) => (e) => {
-    setCampusForm((f) => ({ ...f, [k]: e.target.value }));
-    // If changing name, trigger search
-    if (k === 'name') {
-      setSearchQuery(e.target.value);
-      debouncedSearch(e.target.value);
-    }
-  };
-
-  // Debounced search for universities
-  const handleSearchUniversities = async (query) => {
-    if (query.length < 2) {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
-
-    try {
-      const results = await searchUniversityNames(query);
-      setSearchResults(results);
-      setShowSearchResults(results.length > 0);
-    } catch (error) {
-      console.error('Error searching:', error);
-    }
-  };
-  const debouncedSearch = useDebounce(handleSearchUniversities, 300);
-
-  // Auto-fill university data
-  const handleAutoFill = async (universityName) => {
-    setIsAutoFilling(true);
-    setShowSearchResults(false);
-
-    try {
-      const data = await autoFillUniversityData(universityName || campusForm.name);
-      
-      if (data) {
-        setCampusForm({
-          name: data.name || '',
-          description: data.description || '',
-          website_url: data.website_url || '',
-          location: data.location || '',
-          established: data.established?.toString() || '',
-          student_count: data.student_count?.toString() || ''
-        });
-        
-        // Download images if available
-        if (data.cover_images && data.cover_images.length > 0) {
-          const downloadedImages = [];
-          
-          for (let i = 0; i < Math.min(data.cover_images.length, 5); i++) {
-            const imageUrl = data.cover_images[i];
-            const fileName = `${data.name.replace(/\s+/g, '_')}_image_${i + 1}.jpg`;
-            
-            try {
-              const imageFile = await downloadImageAsFile(imageUrl, fileName);
-              if (imageFile) {
-                downloadedImages.push(imageFile);
-              }
-            } catch (err) {
-              console.error('Error downloading image:', err);
-            }
-          }
-          
-          if (downloadedImages.length > 0) {
-            setCampusImages(downloadedImages);
-            showToast({ type: 'success', message: `Auto-filled data for ${data.name} with ${downloadedImages.length} image(s)!` });
-          } else {
-            showToast({ type: 'info', message: `Auto-filled data for ${data.name}! But images could not be downloaded, please upload manually.` });
-          }
-        } else {
-          // Prefer Wikimedia Commons fallback, then Unsplash
-          let urls = await fetchWikimediaImages(data.name);
-          if (!urls.length) {
-            urls = await fetchUnsplashImages(data.name);
-          }
-
-          if (urls.length > 0) {
-            const downloadedImages = [];
-            for (let i = 0; i < urls.length; i++) {
-              try {
-                const fileName = `${data.name.replace(/\s+/g, '_')}_auto_${i + 1}.jpg`;
-                const file = await downloadImageAsFile(urls[i], fileName);
-                if (file) downloadedImages.push(file);
-              } catch (err) {
-                console.error('Auto image download error:', err);
-              }
-            }
-
-            if (downloadedImages.length > 0) {
-              setCampusImages(downloadedImages);
-              showToast({ type: 'success', message: `Auto-filled data for ${data.name} with ${downloadedImages.length} image(s)!` });
-            } else {
-              showToast({ type: 'info', message: `Auto-filled data for ${data.name}, but images couldn't be downloaded.` });
-            }
-          } else {
-            showToast({ type: 'info', message: `Auto-filled data for ${data.name}, but no images were found automatically.` });
-          }
-        }
-      } else {
-        showToast({ type: 'info', message: 'No data found for this university. Please enter details manually.' });
-      }
-    } catch (error) {
-      console.error('Error auto-filling:', error);
-      showToast({ type: 'error', message: 'Failed to auto-fill data. Please try again.' });
-    } finally {
-      setIsAutoFilling(false);
-    }
-  };
   const onPaperChange = (k) => async (e) => {
     const value = e.target.value;
     setPaperForm((f) => ({ ...f, [k]: value }));
@@ -569,35 +429,6 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
       navigate('/user/upload');
     } catch (e) {
       console.error('Book upload failed:', e);
-      showToast({ type: 'error', message: e?.message || 'Upload failed.' });
-    } finally { setBusy(false); }
-  };
-
-  const submitCampus = async () => {
-    if (!campusForm.name) { showToast({ type: 'error', message: 'Please enter university name.' }); return; }
-    setBusy(true);
-    try {
-      const metadata = {
-        name: campusForm.name,
-        description: campusForm.description || '',
-        website_url: campusForm.website_url || '',
-        location: campusForm.location || '',
-        established: campusForm.established ? Number(campusForm.established) : null,
-        student_count: campusForm.student_count ? Number(campusForm.student_count) : 0
-      };
-      
-      // Create university (published immediately with cover image)
-      const primaryImage = campusImages[0] || null;
-      const result = await createUniversitySubmission({ metadata, coverFile: primaryImage });
-      const universityId = result.id;
-      
-      showToast({ type: 'success', message: `University published! ${campusImages.length} image(s) added.` });
-      // Reset form
-      setCampusForm({ name: '', description: '', website_url: '', location: '', established: '', student_count: '' });
-      setCampusImages([]);
-      navigate('/user/upload');
-    } catch (e) {
-      console.error('University upload failed:', e);
       showToast({ type: 'error', message: e?.message || 'Upload failed.' });
     } finally { setBusy(false); }
   };
@@ -755,13 +586,6 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
           Books
         </button>
         <button 
-          className={`upload-tab ${activeTab === 'campus' ? 'active' : ''}`}
-          onClick={() => setActiveTab('campus')}
-        >
-          <FiMapPin size={20} />
-          Campus
-        </button>
-        <button 
           className={`upload-tab ${activeTab === 'pastpapers' ? 'active' : ''}`}
           onClick={() => setActiveTab('pastpapers')}
         >
@@ -829,169 +653,6 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
 
             <div className="actions" style={{ marginTop: 12 }}>
               <button className="btn primary" disabled={busy} onClick={submitBook}>{busy ? 'Uploading...' : 'Upload Book'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Campus Tab */}
-      {activeTab === 'campus' && (
-        <div className="grid-2">
-          <div className="panel">
-            <label className="label">University Cover Images (Multiple)</label>
-            <input 
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(e) => setCampusImages(Array.from(e.target.files))}
-              style={{ marginBottom: '10px' }}
-              className="input"
-            />
-            {campusImages.length > 0 && (
-            <div style={{ marginTop: '10px', color: '#00a884' }}>
-              ✓ {campusImages.length} image(s) selected
-              <button 
-                onClick={() => setCampusImages([])}
-                style={{ marginLeft: '10px', color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer' }}
-              >
-                <FiX /> Clear
-              </button>
-            </div>
-          )}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px', marginTop: '6px' }}>
-            {campusImages.map((img, idx) => (
-              <div key={idx} style={{ position: 'relative', border: '2px solid #374151', borderRadius: '8px', overflow: 'hidden' }}>
-                <img src={URL.createObjectURL(img)} alt={`Preview ${idx + 1}`} style={{ width: '100%', height: '120px', objectFit: 'cover' }} />
-                {/* Remove (X) button */}
-                <button
-                  aria-label="Remove image"
-                  title="Remove"
-                  onClick={() => setCampusImages((prev) => prev.filter((_, i) => i !== idx))}
-                  style={{
-                    position: 'absolute',
-                    top: '6px',
-                    left: '6px',
-                    width: '20px',
-                    height: '20px',
-                    padding: '2px',
-                    borderRadius: '6px',
-                    fontWeight: 'bold',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: '#a08f8f96',
-                    color: '#111010ff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.4)'
-                  }}
-                >X
-                  {/* <FiX size={36} /> */}
-                </button>
-                <div style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.7)', padding: '4px 8px', borderRadius: '4px', color: 'white', fontSize: '12px' }}>
-                  {idx === 0 ? 'Primary' : `#${idx + 1}`}
-                </div>
-              </div>
-            ))}
-          </div>
-          </div>
-          <div className="panel">
-            <label className="label">University Name *</label>
-            <div style={{ position: 'relative' }}>
-              <input 
-                className="input" 
-                placeholder="e.g., University of Nairobi" 
-                value={campusForm.name} 
-                onChange={onCampusChange('name')}
-                style={{ paddingRight: '80px' }}
-              />
-              <button 
-                onClick={() => handleAutoFill()}
-                disabled={!campusForm.name || isAutoFilling}
-                style={{
-                  position: 'absolute',
-                  right: '8px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: '#00a884',
-                  color: 'white',
-                  border: 'none',
-                  padding: '6px 12px',
-                  borderRadius: '4px',
-                  cursor: campusForm.name && !isAutoFilling ? 'pointer' : 'not-allowed',
-                  fontSize: '12px',
-                  opacity: campusForm.name && !isAutoFilling ? 1 : 0.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                {isAutoFilling ? <><FiLoader className="spin" /> Loading</> : <><FiSearch /> Auto-Fill</>}
-              </button>
-              
-              {/* Search Results Dropdown */}
-              {showSearchResults && searchResults.length > 0 && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  background: '#202c33',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  marginTop: '4px',
-                  maxHeight: '200px',
-                  overflowY: 'auto',
-                  zIndex: 1000,
-                  boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-                }}>
-                  {searchResults.map((result, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => handleAutoFill(result.university_name)}
-                      style={{
-                        padding: '10px',
-                        cursor: 'pointer',
-                        borderBottom: idx < searchResults.length - 1 ? '1px solid #374151' : 'none',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.target.style.background = 'rgba(0, 168, 132, 0.1)'}
-                      onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                    >
-                      {result.university_name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            <label className="label" style={{ marginTop: 10 }}>Description</label>
-            <textarea className="input" rows={4} placeholder="Brief description about the university" value={campusForm.description} onChange={onCampusChange('description')} />
-
-            <div className="grid-2" style={{ marginTop: 10 }}>
-              <div>
-                <label className="label">Location</label>
-                <input className="input" placeholder="e.g., Nairobi" value={campusForm.location} onChange={onCampusChange('location')} />
-              </div>
-              <div>
-                <label className="label">Website URL</label>
-                <input className="input" placeholder="https://..." value={campusForm.website_url} onChange={onCampusChange('website_url')} />
-              </div>
-            </div>
-
-            <div className="grid-2" style={{ marginTop: 10 }}>
-              <div>
-                <label className="label">Established Year</label>
-                <input className="input" type="number" placeholder="e.g., 1956" value={campusForm.established} onChange={onCampusChange('established')} />
-              </div>
-              <div>
-                <label className="label">Student Count</label>
-                <input className="input" type="number" placeholder="e.g., 84000" value={campusForm.student_count} onChange={onCampusChange('student_count')} />
-              </div>
-            </div>
-
-            <div className="actions" style={{ marginTop: 12 }}>
-              <button className="btn primary" disabled={busy} onClick={submitCampus}>{busy ? 'Adding...' : 'Add University'}</button>
             </div>
           </div>
         </div>

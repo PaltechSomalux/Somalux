@@ -69,6 +69,7 @@ const Dashboard = () => {
   const [categoriesPage, setCategoriesPage] = useState(1);
   const [topPage, setTopPage] = useState(1);
   const [topPastPapersPage, setTopPastPapersPage] = useState(1);
+  const [activityTrendTab, setActivityTrendTab] = useState('books'); // 'books' or 'pastpapers'
 
   // added: pagination for viewDetails table
   const [viewPage, setViewPage] = useState(1);
@@ -196,6 +197,22 @@ const Dashboard = () => {
   const viewsTrend = calcTrend(timeSeries, 'views');
   const downloadsTrend = calcTrend(timeSeries, 'downloads');
 
+  // Past Papers time series data (for Activity Trend tabs)
+  const monthsPastPapers = (stats.monthlyPastPapers || []).map(m => ({
+    raw: m,
+    month: m.month || m.label || 'Unknown',
+    uploads: Number(m.uploads || 0),
+    views: Number(m.views || 0),
+    downloads: extractDownloads(m),
+  }));
+
+  const pastPapersTimeSeries = monthsPastPapers.map(m => ({
+    month: m.month,
+    uploads: m.uploads,
+    views: m.views,
+    downloads: 0
+  }));
+
   // Only show non-zero rows in tables and sort highest first
   const nonZeroMonthly = safeMonthly
     .filter(m => m.Uploads > 0)
@@ -239,6 +256,7 @@ const Dashboard = () => {
       setLoading(true);
       try {
         const data = await fetchStats();
+        console.log('[Dashboard] fetchStats returned:', data);
         setStats(data);
       } catch (error) {
         console.error('Error fetching stats:', error);
@@ -289,7 +307,7 @@ const Dashboard = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.1 }}>
                     <Typography variant="h5" sx={{ color: '#e9edef', fontSize: '1.1rem' }}>{stats.counts.users}</Typography>
                     <Box sx={{ fontSize: 10, px: 0.5, py: 0.15, borderRadius: 999, bgcolor: 'rgba(52,183,241,0.1)', color: '#34B7F1' }}>
-                      {formatTrend(uploadsTrend)}
+                      —
                     </Box>
                   </Box>
                   <Typography variant="caption" sx={{ color: '#8696a0', mt: 0.1, fontSize: '0.6rem' }}>
@@ -305,7 +323,7 @@ const Dashboard = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.1 }}>
                     <Typography variant="h5" sx={{ color: '#e9edef', fontSize: '1.1rem' }}>{stats.counts.universities}</Typography>
                     <Box sx={{ fontSize: 10, px: 0.5, py: 0.15, borderRadius: 999, bgcolor: 'rgba(255,204,0,0.1)', color: '#FFCC00' }}>
-                      {formatTrend(uploadsTrend)}
+                      —
                     </Box>
                   </Box>
                   <Typography variant="caption" sx={{ color: '#8696a0', mt: 0.1, fontSize: '0.6rem' }}>
@@ -321,7 +339,7 @@ const Dashboard = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.1 }}>
                     <Typography variant="h5" sx={{ color: '#e9edef', fontSize: '1.1rem' }}>{stats.counts.pastPapers}</Typography>
                     <Box sx={{ fontSize: 10, px: 0.5, py: 0.15, borderRadius: 999, bgcolor: 'rgba(241,94,108,0.1)', color: '#f15e6c' }}>
-                      {formatTrend(uploadsTrend)}
+                      —
                     </Box>
                   </Box>
                   <Typography variant="caption" sx={{ color: '#8696a0', mt: 0.1, fontSize: '0.6rem' }}>
@@ -337,7 +355,7 @@ const Dashboard = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.1 }}>
                     <Typography variant="h5" sx={{ color: '#e9edef', fontSize: '1.1rem' }}>{stats.counts.categories}</Typography>
                     <Box sx={{ fontSize: 10, px: 0.5, py: 0.15, borderRadius: 999, bgcolor: 'rgba(123,31,162,0.1)', color: '#bb86fc' }}>
-                      {formatTrend(uploadsTrend)}
+                      —
                     </Box>
                   </Box>
                   <Typography variant="caption" sx={{ color: '#8696a0', mt: 0.1, fontSize: '0.6rem' }}>
@@ -353,7 +371,7 @@ const Dashboard = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.1 }}>
                     <Typography variant="h5" sx={{ color: '#e9edef', fontSize: '1.1rem' }}>{stats.counts.downloads}</Typography>
                     <Box sx={{ fontSize: 10, px: 0.5, py: 0.15, borderRadius: 999, bgcolor: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }}>
-                      {formatTrend(uploadsTrend)}
+                      {formatTrend(downloadsTrend)}
                     </Box>
                   </Box>
                   <Typography variant="caption" sx={{ color: '#8696a0', mt: 0.1, fontSize: '0.6rem' }}>
@@ -398,292 +416,470 @@ const Dashboard = () => {
         {/* Sharing Features Section */}
 
 
-        {timeSeries && timeSeries.length > 0 && (
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ background: '#111b21', borderRadius: 1, mt: 0 }}>
-              <CardContent sx={{ padding: 1 }}>
-                <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Activity Trend</Typography>
-                <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
-                <Box sx={{ width: '100%', height: 280 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={timeSeries} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#202c33" />
-                      <XAxis dataKey="month" stroke="#8696a0" tick={{ fontSize: 9 }} tickMargin={4} />
-                      <YAxis stroke="#8696a0" tick={{ fontSize: 9 }} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#1f2c33',
-                          border: '1px solid #2a3942',
-                          borderRadius: 4,
-                          color: '#e9edef',
-                          fontSize: '11px',
-                        }}
-                        labelStyle={{ color: '#cfd8dc' }}
-                      />
-                      <Legend />
-                      <Line type="monotone" dataKey="uploads" name="Uploads" stroke="#00a884" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="views" name="Views" stroke="#34B7F1" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="downloads" name="Downloads" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+        {/* Activity Trend Section - Tabbed with Uploads Chart */}
+        <Grid size={{ xs: 12 }}>
+          <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+            <button
+              onClick={() => setActivityTrendTab('books')}
+              style={{
+                padding: '8px 16px',
+                background: activityTrendTab === 'books' ? '#00a884' : 'transparent',
+                border: 'none',
+                color: activityTrendTab === 'books' ? '#111b21' : '#8696a0',
+                cursor: 'pointer',
+                borderRadius: '4px',
+                fontSize: '14px',
+                fontWeight: 500,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              Books
+            </button>
+            <button
+              onClick={() => setActivityTrendTab('pastpapers')}
+              style={{
+                padding: '8px 16px',
+                background: activityTrendTab === 'pastpapers' ? '#00a884' : 'transparent',
+                border: 'none',
+                color: activityTrendTab === 'pastpapers' ? '#111b21' : '#8696a0',
+                cursor: 'pointer',
+                borderRadius: '4px',
+                fontSize: '14px',
+                fontWeight: 500,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              Past Papers
+            </button>
+          </Box>
+        </Grid>
+
+        {/* Books Tab Content */}
+        {activityTrendTab === 'books' && (
+          <>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ background: '#111b21', borderRadius: 1, mt: 0, minHeight: 380 }}>
+                <CardContent sx={{ padding: 1 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Books Activity Trend</Typography>
+                  <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
+                  <Box sx={{ width: '100%', height: 280 }}>
+                    {timeSeries && timeSeries.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={timeSeries} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#202c33" />
+                          <XAxis dataKey="month" stroke="#8696a0" tick={{ fontSize: 9 }} tickMargin={4} />
+                          <YAxis stroke="#8696a0" tick={{ fontSize: 9 }} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#1f2c33',
+                              border: '1px solid #2a3942',
+                              borderRadius: 4,
+                              color: '#e9edef',
+                              fontSize: '11px',
+                            }}
+                            labelStyle={{ color: '#cfd8dc' }}
+                          />
+                          <Legend />
+                          <Line type="monotone" dataKey="uploads" name="Uploads" stroke="#00a884" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="views" name="Views" stroke="#34B7F1" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="downloads" name="Downloads" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <Box sx={{ color: '#8696a0', textAlign: 'center', pt: 4 }}>
+                        No data available
+                      </Box>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ background: '#111b21', borderRadius: 1, minHeight: 380 }}>
+                <CardContent sx={{ padding: 1 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Books Uploads per Month</Typography>
+                  <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
+                  <Box sx={{ width: '100%', height: 280, mb: 1 }}>
+                    {safeMonthly.length === 0 ? (
+                      <Box sx={{ color: '#8696a0', textAlign: 'center', pt: 4 }}>
+                        No uploads yet
+                      </Box>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={safeMonthly} margin={{ top: 10, right: 16, left: -16, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#202c33" />
+                          <XAxis dataKey="month" stroke="#8696a0" tick={{ fontSize: 11 }} tickMargin={8} />
+                          <YAxis stroke="#8696a0" tick={{ fontSize: 11 }} />
+                          <Tooltip
+                            cursor={{ fill: 'rgba(32,44,51,0.6)' }}
+                            contentStyle={{
+                              backgroundColor: '#1f2c33',
+                              border: '1px solid #2a3942',
+                              borderRadius: 8,
+                              color: '#e9edef',
+                            }}
+                            labelStyle={{ color: '#cfd8dc' }}
+                          />
+                          <Legend />
+                          <Bar dataKey="Uploads" name="Uploads" fill="#00a884" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Categories Distribution - Books Tab */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ background: '#111b21', borderRadius: 1, minHeight: 380 }}>
+                <CardContent sx={{ padding: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Categories Distribution</Typography>
+                  <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
+                  
+                  {/* Container for Pie Chart and List */}
+                  <Box sx={{ display: 'flex', gap: 1, flex: 1, minHeight: 0 }}>
+                    {/* Pie Chart Section */}
+                    <Box sx={{ width: '45%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {safeCategories.length === 0 ? (
+                        <Box sx={{ color: '#8696a0', textAlign: 'center' }}>
+                          No data
+                        </Box>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={260}>
+                          <PieChart>
+                            <Pie
+                              data={safeCategories}
+                              dataKey="count"
+                              nameKey="name"
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={90}
+                              fill="#00a884"
+                              labelLine={true}
+                              label={renderCustomizedLabel}
+                              paddingAngle={2}
+                              minAngle={3}
+                            >
+                              {safeCategories.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: '#1f2c33',
+                                border: '1px solid #2a3942',
+                                borderRadius: 8,
+                                color: '#e9edef',
+                                fontSize: '11px'
+                              }}
+                              labelStyle={{ color: '#cfd8dc' }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      )}
+                    </Box>
+
+                    {/* List Section */}
+                    <Box sx={{ width: '55%', display: 'flex', flexDirection: 'column', overflowY: 'auto', pr: 0.5 }}>
+                      {nonZeroCategories.length === 0 ? (
+                        <Box sx={{ color: '#8696a0', textAlign: 'center', pt: 2 }}>
+                          No category data
+                        </Box>
+                      ) : (
+                        <table className="table overview-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid #202c33' }}>
+                              <th style={{ textAlign: 'left', padding: '8px 4px', color: '#8696a0', fontSize: '0.75rem', fontWeight: 600 }}>Category</th>
+                              <th style={{ textAlign: 'right', padding: '8px 4px', color: '#8696a0', fontSize: '0.75rem', fontWeight: 600 }}>Count</th>
+                              <th style={{ textAlign: 'right', padding: '8px 4px', color: '#8696a0', fontSize: '0.75rem', fontWeight: 600 }}>%</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(pagedCategories.length ? pagedCategories : []).map((c, i) => {
+                              const totalCount = nonZeroCategories.reduce((sum, cat) => sum + cat.count, 0);
+                              const percentage = totalCount > 0 ? ((c.count / totalCount) * 100).toFixed(1) : 0;
+                              const safeIdx = safeCategories.indexOf(safeCategories.find(cat => cat.name === c.name));
+                              const color = COLORS[safeIdx % COLORS.length];
+                              
+                              return (
+                                <tr 
+                                  key={i}
+                                  style={{
+                                    borderBottom: '1px solid #202c33',
+                                    background: `${color}15`,
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = `${color}25`;
+                                    e.currentTarget.style.boxShadow = `inset 0 0 8px ${color}20`;
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = `${color}15`;
+                                    e.currentTarget.style.boxShadow = 'none';
+                                  }}
+                                >
+                                  <td style={{ padding: '8px 4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Box
+                                      sx={{
+                                        width: 10,
+                                        height: 10,
+                                        borderRadius: '50%',
+                                        background: color,
+                                        flexShrink: 0
+                                      }}
+                                    />
+                                    <span style={{ color: '#e9edef', fontSize: '0.8rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {c.name}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '8px 4px', textAlign: 'right', color: color, fontSize: '0.8rem', fontWeight: 600 }}>
+                                    {c.count}
+                                  </td>
+                                  <td style={{ padding: '8px 4px', textAlign: 'right', color: '#8696a0', fontSize: '0.8rem' }}>
+                                    {percentage}%
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </Box>
+                  </Box>
+                  {nonZeroCategories.length > OVERVIEW_PAGE_SIZE && (
+                    <Box className="actions" sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 0 }}>
+                      <button
+                        className="btn"
+                        disabled={categoriesPage <= 1}
+                        onClick={() => setCategoriesPage(p => Math.max(1, p - 1))}
+                      >
+                        Prev
+                      </button>
+                      <span style={{ color: '#cfd8dc', fontSize: 12, alignSelf: 'center', padding: '0 8px' }}>
+                        Page {categoriesPage} of {categoriesTotalPages}
+                      </span>
+                      <button
+                        className="btn"
+                        disabled={categoriesPage >= categoriesTotalPages}
+                        onClick={() => setCategoriesPage(p => Math.min(categoriesTotalPages, p + 1))}
+                      >
+                        Next
+                      </button>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Top Books for Books Tab */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ background: '#111b21', borderRadius: 1, minHeight: 380 }}>
+                <CardContent sx={{ padding: 1 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Top Books (Downloads)</Typography>
+                  <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
+                  <Box sx={{ overflowX: 'auto', maxHeight: 320, overflowY: 'auto' }}>
+                    <table className="table overview-table">
+                      <thead>
+                        <tr>
+                          <th>Title</th>
+                          <th>Downloads</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(pagedTop.length ? pagedTop : []).map((b, i) => {
+                          const totalDownloads = stats.counts.downloads || 0;
+                          const ratio = totalDownloads > 0 ? Math.min(1, (b.downloads_count || 0) / totalDownloads) : 0;
+                          const percent = Math.round(ratio * 100);
+                          return (
+                            <tr key={i}>
+                              <td>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  <span>{b.title}</span>
+                                  <Box sx={{ background: '#202c33', borderRadius: 999, overflow: 'hidden', height: 6 }}>
+                                    <Box sx={{ width: `${percent}%`, height: '100%', bgcolor: '#00a884' }} />
+                                  </Box>
+                                </Box>
+                              </td>
+                              <td>{b.downloads_count || 0}</td>
+                            </tr>
+                          );
+                        })}
+                        {nonZeroTop.length === 0 && (
+                          <tr><td colSpan={2} style={{ color: '#8696a0' }}>No top books data</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </Box>
+                  {nonZeroTop.length > OVERVIEW_PAGE_SIZE && (
+                    <Box className="actions" sx={{ mt: 1.5, display: 'flex', justifyContent: 'space-between' }}>
+                      <button
+                        className="btn"
+                        disabled={topPage <= 1}
+                        onClick={() => setTopPage(p => Math.max(1, p - 1))}
+                      >
+                        Prev
+                      </button>
+                      <span style={{ color: '#cfd8dc', fontSize: 12 }}>
+                        Page {topPage} of {topTotalPages}
+                      </span>
+                      <button
+                        className="btn"
+                        disabled={topPage >= topTotalPages}
+                        onClick={() => setTopPage(p => Math.min(topTotalPages, p + 1))}
+                      >
+                        Next
+                      </button>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          </>
         )}
 
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ background: '#111b21', borderRadius: 1 }}>
-            <CardContent sx={{ padding: 1 }}>
-              <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Uploads per Month</Typography>
-              <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
-              {/* Bar chart for monthly uploads */}
-              <Box sx={{ width: '100%', height: 280, mb: 1 }}>
-                {safeMonthly.length === 0 ? (
-                  <Box sx={{ color: '#8696a0', textAlign: 'center', pt: 4 }}>
-                    No uploads yet
+        {/* Past Papers Tab Content */}
+        {activityTrendTab === 'pastpapers' && (
+          <>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ background: '#111b21', borderRadius: 1, mt: 0, minHeight: 380 }}>
+                <CardContent sx={{ padding: 1 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Past Papers Activity Trend</Typography>
+                  <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
+                  <Box sx={{ width: '100%', height: 280 }}>
+                    {pastPapersTimeSeries && pastPapersTimeSeries.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={pastPapersTimeSeries} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#202c33" />
+                          <XAxis dataKey="month" stroke="#8696a0" tick={{ fontSize: 9 }} tickMargin={4} />
+                          <YAxis stroke="#8696a0" tick={{ fontSize: 9 }} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#1f2c33',
+                              border: '1px solid #2a3942',
+                              borderRadius: 4,
+                              color: '#e9edef',
+                              fontSize: '11px',
+                            }}
+                            labelStyle={{ color: '#cfd8dc' }}
+                          />
+                          <Legend />
+                          <Line type="monotone" dataKey="uploads" name="Uploads" stroke="#f15e6c" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="views" name="Views" stroke="#ffa726" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <Box sx={{ color: '#8696a0', textAlign: 'center', pt: 4 }}>
+                        No data available
+                      </Box>
+                    )}
                   </Box>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={safeMonthly} margin={{ top: 10, right: 16, left: -16, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#202c33" />
-                      <XAxis dataKey="month" stroke="#8696a0" tick={{ fontSize: 11 }} tickMargin={8} />
-                      <YAxis stroke="#8696a0" tick={{ fontSize: 11 }} />
-                      <Tooltip
-                        cursor={{ fill: 'rgba(32,44,51,0.6)' }}
-                        contentStyle={{
-                          backgroundColor: '#1f2c33',
-                          border: '1px solid #2a3942',
-                          borderRadius: 8,
-                          color: '#e9edef',
-                        }}
-                        labelStyle={{ color: '#cfd8dc' }}
-                      />
-                      <Legend />
-                      <Bar dataKey="Uploads" name="Uploads" fill="#00a884" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
 
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ background: '#111b21', borderRadius: 1 }}>
-            <CardContent sx={{ padding: 1 }}>
-              <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Categories Distribution</Typography>
-              <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
-              {/* Pie chart for category distribution */}
-              <Box sx={{ width: '100%', height: 200, mb: 1 }}>
-                {safeCategories.length === 0 ? (
-                  <Box sx={{ color: '#8696a0', textAlign: 'center', pt: 4 }}>
-                    No category data
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ background: '#111b21', borderRadius: 1, minHeight: 380 }}>
+                <CardContent sx={{ padding: 1 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Past Papers per Month</Typography>
+                  <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
+                  <Box sx={{ width: '100%', height: 280, mb: 1 }}>
+                    {monthsPastPapers.length === 0 ? (
+                      <Box sx={{ color: '#8696a0', textAlign: 'center', pt: 4 }}>
+                        No past papers yet
+                      </Box>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={monthsPastPapers} margin={{ top: 10, right: 16, left: -16, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#202c33" />
+                          <XAxis dataKey="month" stroke="#8696a0" tick={{ fontSize: 11 }} tickMargin={8} />
+                          <YAxis stroke="#8696a0" tick={{ fontSize: 11 }} />
+                          <Tooltip
+                            cursor={{ fill: 'rgba(32,44,51,0.6)' }}
+                            contentStyle={{
+                              backgroundColor: '#1f2c33',
+                              border: '1px solid #2a3942',
+                              borderRadius: 8,
+                              color: '#e9edef',
+                            }}
+                            labelStyle={{ color: '#cfd8dc' }}
+                          />
+                          <Legend />
+                          <Bar dataKey="uploads" name="Uploads" fill="#f15e6c" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
                   </Box>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={safeCategories}
-                        dataKey="count"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={90}
-                        fill="#00a884"
-                        // use outside labels with leader lines to avoid cramped small slices
-                        labelLine={true}
-                        label={renderCustomizedLabel}
-                        paddingAngle={2}
-                        minAngle={3}
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Top Past Papers for Past Papers Tab */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ background: '#111b21', borderRadius: 1, minHeight: 380 }}>
+                <CardContent sx={{ padding: 1 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Top Past Papers (Downloads)</Typography>
+                  <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
+                  <Box sx={{ overflowX: 'auto', maxHeight: 320, overflowY: 'auto' }}>
+                    <table className="table overview-table">
+                      <thead>
+                        <tr>
+                          <th>Title</th>
+                          <th>Downloads</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(pagedTopPastPapers.length ? pagedTopPastPapers : []).map((p, i) => {
+                          const totalPastPapersDownloads = stats.counts.pastPapersDownloads || 0;
+                          const ratio = totalPastPapersDownloads > 0 ? Math.min(1, (p.downloads_count || 0) / totalPastPapersDownloads) : 0;
+                          const percent = Math.round(ratio * 100);
+                          return (
+                            <tr key={i}>
+                              <td>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  <span>{p.title}</span>
+                                  <Box sx={{ background: '#202c33', borderRadius: 999, overflow: 'hidden', height: 6 }}>
+                                    <Box sx={{ width: `${percent}%`, height: '100%', bgcolor: '#f15e6c' }} />
+                                  </Box>
+                                </Box>
+                              </td>
+                              <td>{p.downloads_count || 0}</td>
+                            </tr>
+                          );
+                        })}
+                        {nonZeroTopPastPapers.length === 0 && (
+                          <tr><td colSpan={2} style={{ color: '#8696a0' }}>No top past papers data</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </Box>
+                  {nonZeroTopPastPapers.length > OVERVIEW_PAGE_SIZE && (
+                    <Box className="actions" sx={{ mt: 1.5, display: 'flex', justifyContent: 'space-between' }}>
+                      <button
+                        className="btn"
+                        disabled={topPastPapersPage <= 1}
+                        onClick={() => setTopPastPapersPage(p => Math.max(1, p - 1))}
                       >
-                        {safeCategories.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#1f2c33',
-                          border: '1px solid #2a3942',
-                          borderRadius: 8,
-                          color: '#e9edef',
-                        }}
-                        labelStyle={{ color: '#cfd8dc' }}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </Box>
-              <Box sx={{ overflowX: 'auto' }}>
-                <table className="table overview-table">
-                  <thead>
-                    <tr>
-                      <th>Category</th>
-                      <th>Count</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(pagedCategories.length ? pagedCategories : []).map((c, i) => (
-                      <tr key={i}>
-                        <td>{c.name}</td>
-                        <td>{c.count}</td>
-                      </tr>
-                    ))}
-                    {nonZeroCategories.length === 0 && (
-                      <tr><td colSpan={2} style={{ color: '#8696a0' }}>No category data</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </Box>
-              {nonZeroCategories.length > OVERVIEW_PAGE_SIZE && (
-                <Box className="actions" sx={{ mt: 1.5, display: 'flex', justifyContent: 'space-between' }}>
-                  <button
-                    className="btn"
-                    disabled={categoriesPage <= 1}
-                    onClick={() => setCategoriesPage(p => Math.max(1, p - 1))}
-                  >
-                    Prev
-                  </button>
-                  <span style={{ color: '#cfd8dc', fontSize: 12 }}>
-                    Page {categoriesPage} of {categoriesTotalPages}
-                  </span>
-                  <button
-                    className="btn"
-                    disabled={categoriesPage >= categoriesTotalPages}
-                    onClick={() => setCategoriesPage(p => Math.min(categoriesTotalPages, p + 1))}
-                  >
-                    Next
-                  </button>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ background: '#111b21', borderRadius: 1 }}>
-            <CardContent sx={{ padding: 1 }}>
-              <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Top Books (Downloads)</Typography>
-              <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
-              <Box sx={{ overflowX: 'auto', maxHeight: 350, overflowY: 'auto' }}>
-                <table className="table overview-table">
-                  <thead>
-                    <tr>
-                      <th>Title</th>
-                      <th>Downloads</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(pagedTop.length ? pagedTop : []).map((b, i) => {
-                      const totalDownloads = stats.counts.downloads || 0;
-                      const ratio = totalDownloads > 0 ? Math.min(1, (b.downloads || 0) / totalDownloads) : 0;
-                      const percent = Math.round(ratio * 100);
-                      return (
-                        <tr key={i}>
-                          <td>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                              <span>{b.title}</span>
-                              <Box sx={{ background: '#202c33', borderRadius: 999, overflow: 'hidden', height: 6 }}>
-                                <Box sx={{ width: `${percent}%`, height: '100%', bgcolor: '#00a884' }} />
-                              </Box>
-                            </Box>
-                          </td>
-                          <td>{b.downloads}</td>
-                        </tr>
-                      );
-                    })}
-                    {nonZeroTop.length === 0 && (
-                      <tr><td colSpan={2} style={{ color: '#8696a0' }}>No top books data</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </Box>
-              {nonZeroTop.length > OVERVIEW_PAGE_SIZE && (
-                <Box className="actions" sx={{ mt: 1.5, display: 'flex', justifyContent: 'space-between' }}>
-                  <button
-                    className="btn"
-                    disabled={topPage <= 1}
-                    onClick={() => setTopPage(p => Math.max(1, p - 1))}
-                  >
-                    Prev
-                  </button>
-                  <span style={{ color: '#cfd8dc', fontSize: 12 }}>
-                    Page {topPage} of {topTotalPages}
-                  </span>
-                  <button
-                    className="btn"
-                    disabled={topPage >= topTotalPages}
-                    onClick={() => setTopPage(p => Math.min(topTotalPages, p + 1))}
-                  >
-                    Next
-                  </button>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ background: '#111b21', borderRadius: 1 }}>
-            <CardContent sx={{ padding: 1 }}>
-              <Typography variant="subtitle1" sx={{ color: '#e9edef', mb: 0.3, fontSize: '0.85rem' }}>Top Past Papers (Downloads)</Typography>
-              <Divider sx={{ borderColor: '#202c33', mb: 0.5 }} />
-              <Box sx={{ overflowX: 'auto', maxHeight: 350, overflowY: 'auto' }}>
-                <table className="table overview-table">
-                  <thead>
-                    <tr>
-                      <th>Title</th>
-                      <th>Downloads</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(pagedTopPastPapers.length ? pagedTopPastPapers : []).map((p, i) => {
-                      const totalDownloads = stats.counts.downloads || 0;
-                      const ratio = totalDownloads > 0 ? Math.min(1, (p.downloads || 0) / totalDownloads) : 0;
-                      const percent = Math.round(ratio * 100);
-                      return (
-                        <tr key={i}>
-                          <td>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                              <span>{p.title}</span>
-                              <Box sx={{ background: '#202c33', borderRadius: 999, overflow: 'hidden', height: 6 }}>
-                                <Box sx={{ width: `${percent}%`, height: '100%', bgcolor: '#00a884' }} />
-                              </Box>
-                            </Box>
-                          </td>
-                          <td>{p.downloads}</td>
-                        </tr>
-                      );
-                    })}
-                    {nonZeroTopPastPapers.length === 0 && (
-                      <tr><td colSpan={2} style={{ color: '#8696a0' }}>No top past papers data</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </Box>
-              {nonZeroTopPastPapers.length > OVERVIEW_PAGE_SIZE && (
-                <Box className="actions" sx={{ mt: 1.5, display: 'flex', justifyContent: 'space-between' }}>
-                  <button
-                    className="btn"
-                    disabled={topPastPapersPage <= 1}
-                    onClick={() => setTopPastPapersPage(p => Math.max(1, p - 1))}
-                  >
-                    Prev
-                  </button>
-                  <span style={{ color: '#cfd8dc', fontSize: 12 }}>
-                    Page {topPastPapersPage} of {topPastPapersTotalPages}
-                  </span>
-                  <button
-                    className="btn"
-                    disabled={topPastPapersPage >= topPastPapersTotalPages}
-                    onClick={() => setTopPastPapersPage(p => Math.min(topPastPapersTotalPages, p + 1))}
-                  >
-                    Next
-                  </button>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
+                        Prev
+                      </button>
+                      <span style={{ color: '#cfd8dc', fontSize: 12 }}>
+                        Page {topPastPapersPage} of {topPastPapersTotalPages}
+                      </span>
+                      <button
+                        className="btn"
+                        disabled={topPastPapersPage >= topPastPapersTotalPages}
+                        onClick={() => setTopPastPapersPage(p => Math.min(topPastPapersTotalPages, p + 1))}
+                      >
+                        Next
+                      </button>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          </>
+        )}
       </Grid>
 
       {showViewsModal && (

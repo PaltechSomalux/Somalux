@@ -446,7 +446,7 @@ const Books = ({ userProfile }) => {
           </div>
         </div>
 
-        <div className="actions" style={{ marginBottom: 10 }}>
+        <div className="actions" style={{ marginBottom: 10, marginLeft: '20px' }}>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button className="btn primary" onClick={() => (window.location.href = '/books/admin/upload')}>Add / Upload New Book</button>
             {!showCheckboxes && (

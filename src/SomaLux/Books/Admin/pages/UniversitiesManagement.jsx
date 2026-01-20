@@ -174,7 +174,7 @@ const UniversitiesManagement = ({ userProfile }) => {
           <input className="input" value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} placeholder="Search by name or location..." />
         </div>
 
-        <div className="actions" style={{ marginBottom: 6 }}>
+        <div className="actions" style={{ marginBottom: 6, marginLeft: '20px' }}>
           <button className="btn primary" onClick={() => (window.location.href = '/books/admin/upload')}>Add New University</button>
         </div>
 

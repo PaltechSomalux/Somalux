@@ -31,6 +31,7 @@ import {
   FiThumbsUp,
   FiMail,
   FiInfo,
+  FiLink,
 } from 'react-icons/fi';
 import {
   FaTwitter,
@@ -38,6 +39,14 @@ import {
   FaLinkedin,
   FaWhatsapp,
 } from 'react-icons/fa';
+import {
+  SiX,
+  SiFacebook,
+  SiLinkedin,
+  SiWhatsapp,
+  SiGmail,
+  SiGoogledrive,
+} from 'react-icons/si';
 import { motion, AnimatePresence } from 'framer-motion';
 import SimpleScrollReader from './SimpleScrollReader';
 import { API_URL } from '../../config';
@@ -368,6 +377,50 @@ export const BookPanel = ({ demoMode = false }) => {
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Update Open Graph meta tags for sharing
+  useEffect(() => {
+    if (selectedBook) {
+      const bookCover = selectedBook.bookImage || selectedBook.cover_image_url;
+      const bookUrl = `${window.location.origin}${window.location.pathname}?id=${selectedBook.id}`;
+      
+      // Update og:image
+      let ogImage = document.querySelector('meta[property="og:image"]');
+      if (!ogImage) {
+        ogImage = document.createElement('meta');
+        ogImage.setAttribute('property', 'og:image');
+        document.head.appendChild(ogImage);
+      }
+      ogImage.setAttribute('content', bookCover);
+      
+      // Update og:title
+      let ogTitle = document.querySelector('meta[property="og:title"]');
+      if (!ogTitle) {
+        ogTitle = document.createElement('meta');
+        ogTitle.setAttribute('property', 'og:title');
+        document.head.appendChild(ogTitle);
+      }
+      ogTitle.setAttribute('content', selectedBook.title);
+      
+      // Update og:description
+      let ogDesc = document.querySelector('meta[property="og:description"]');
+      if (!ogDesc) {
+        ogDesc = document.createElement('meta');
+        ogDesc.setAttribute('property', 'og:description');
+        document.head.appendChild(ogDesc);
+      }
+      ogDesc.setAttribute('content', `Check out "${selectedBook.title}" by ${selectedBook.author || 'Unknown Author'}`);
+      
+      // Update og:url
+      let ogUrl = document.querySelector('meta[property="og:url"]');
+      if (!ogUrl) {
+        ogUrl = document.createElement('meta');
+        ogUrl.setAttribute('property', 'og:url');
+        document.head.appendChild(ogUrl);
+      }
+      ogUrl.setAttribute('content', bookUrl);
+    }
+  }, [selectedBook]);
 
 /*************  ✨ Windsurf Command ⭐  *************/
 /**
@@ -2150,18 +2203,35 @@ export const BookPanel = ({ demoMode = false }) => {
 
   const handleShare = async (method, book) => {
     if (!book) return;
+    
+    // Ensure cover image URL is absolute
+    let coverImageUrl = book.bookImage || book.cover_image_url || '';
+    if (coverImageUrl && !coverImageUrl.startsWith('http')) {
+      // If it's relative, make it absolute
+      coverImageUrl = `${window.location.origin}${coverImageUrl.startsWith('/') ? '' : '/'}${coverImageUrl}`;
+    }
+    if (!coverImageUrl.startsWith('http')) {
+      // Fallback to a default
+      coverImageUrl = `${window.location.origin}/PaltechBlack192.png`;
+    }
+    
+    // Use OG endpoint for proper meta tag serving to social platforms
+    const ogUrl = `${window.location.origin}/api/og?type=book&id=${book.id}&title=${encodeURIComponent(book.title)}&image=${encodeURIComponent(coverImageUrl)}&description=${encodeURIComponent(`Check out "${book.title}" by ${book.author || 'Unknown Author'}`)}`;
+    
+    // Fallback URL for direct sharing
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
-    const url = `${baseUrl}?id=${book.id}`;
+    const directUrl = `${baseUrl}?id=${book.id}`;
     const text = `Check out "${book.title}" by ${book.author}`;
+    
     try {
       switch (method) {
         case 'copy': {
           if (navigator.clipboard) {
-            await navigator.clipboard.writeText(`${text}\n${url}`);
+            await navigator.clipboard.writeText(`${text}\n${directUrl}`);
             alert('Link copied to clipboard');
           } else {
             const input = document.createElement('input');
-            input.value = `${text}\n${url}`;
+            input.value = `${text}\n${directUrl}`;
             document.body.appendChild(input);
             input.select();
             document.execCommand('copy');
@@ -2171,19 +2241,28 @@ export const BookPanel = ({ demoMode = false }) => {
           break;
         }
         case 'twitter':
-          window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=books,reading`,`_blank`,`noopener,noreferrer`);
+          window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(ogUrl)}&hashtags=books,reading`,`_blank`,`noopener,noreferrer`);
           break;
         case 'facebook':
-          window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`,`_blank`,`noopener,noreferrer`);
+          window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(ogUrl)}`,`_blank`,`noopener,noreferrer`);
           break;
         case 'linkedin':
-          window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,`_blank`,`noopener,noreferrer`);
+          window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(ogUrl)}`,`_blank`,`noopener,noreferrer`);
           break;
         case 'email':
-          window.open(`mailto:?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(`${text}\n\n${url}\n\n`)}`);
+          window.open(`mailto:?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(`${text}\n\n${ogUrl}\n\n`)}`);
           break;
         case 'whatsapp':
-          window.open(`https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`,`_blank`,`noopener,noreferrer`);
+          // Send only URL - WhatsApp will show preview with image automatically
+          window.open(`https://wa.me/?text=${encodeURIComponent(ogUrl)}`,`_blank`,`noopener,noreferrer`);
+          break;
+        case 'googledrive':
+          // Open Google Drive in new window
+          window.open(`https://drive.google.com/`,`_blank`,`noopener,noreferrer`);
+          // Copy link to clipboard for user to save manually
+          if (navigator.clipboard) {
+            await navigator.clipboard.writeText(`${text}\n${ogUrl}`);
+          }
           break;
         default:
           break;
@@ -3675,54 +3754,121 @@ export const BookPanel = ({ demoMode = false }) => {
               style={{
                 background: '#0b1220',
                 color: '#e6eef7',
-                padding: 32,
-                borderRadius: 12,
+                padding: 48,
+                borderRadius: 20,
                 boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
                 textAlign: 'center',
-                maxWidth: 400,
+                maxWidth: '600px',
+                width: '85%',
+                maxHeight: '90vh',
+                position: 'relative',
               }}
             >
-              <h3 style={{ margin: 0, marginBottom: 8, fontSize: 18, fontWeight: 600 }}>
-                Share "{selectedBook.title}"
-              </h3>
-              <p style={{ margin: 0, marginBottom: 24, color: '#9ca3af', fontSize: 14 }}>
-                Choose how you want to share this book
-              </p>
+              <button
+                className="share-modal-btn"
+                title="Close"
+                onClick={() => setShowSharingModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 12,
+                  background: 'transparent',
+                  color: '#9ca3af',
+                  border: 'none',
+                  padding: '0',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+              >
+                <FiX size={20} color="#9ca3af" />
+              </button>
+              <div style={{ marginBottom: 24 }}>
+                <h3 style={{ margin: 0, marginBottom: 8, fontSize: 28, fontWeight: 700, color: '#e6eef7' }}>
+                  Share "{selectedBook.title}"
+                </h3>
+              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              {/* Book Cover Image as Clickable Link */}
+              <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
+                <a 
+                  href={`${window.location.origin}${window.location.pathname}?id=${selectedBook.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'block',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer',
+                    textDecoration: 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.6)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.4)';
+                  }}
+                >
+                  <img 
+                    src={selectedBook.bookImage || selectedBook.cover_image_url} 
+                    alt={selectedBook.title}
+                    style={{
+                      width: 140,
+                      height: 200,
+                      objectFit: 'cover',
+                      display: 'block',
+                    }}
+                  />
+                </a>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 0 }}>
                 <button
                   className="share-modal-btn"
-                  title="Copy Link"
+                  title="Share on WhatsApp"
                   onClick={() => {
-                    handleShare('copy', selectedBook);
+                    handleShare('whatsapp', selectedBook);
                     setShowSharingModal(false);
                   }}
                   style={{
-                    background: '#1e293b',
+                    background: 'transparent',
                     color: '#e6eef7',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
+                    border: 'none',
+                    padding: '8px 0',
                     borderRadius: 8,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 9,
+                    fontWeight: 400,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
+                    e.currentTarget.style.opacity = '0.8';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#334155';
+                    e.currentTarget.style.opacity = '1';
                   }}
                 >
-                  <FiCopy size={16} color="#64748b" />
-                  Copy Link
+                  <div style={{ background: '#34C759', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <SiWhatsapp size={30} color="#ffffff" />
+                  </div>
+                  WhatsApp
                 </button>
 
                 <button
@@ -3733,31 +3879,66 @@ export const BookPanel = ({ demoMode = false }) => {
                     setShowSharingModal(false);
                   }}
                   style={{
-                    background: '#1e293b',
+                    background: 'transparent',
                     color: '#e6eef7',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
+                    border: 'none',
+                    padding: '8px 0',
                     borderRadius: 8,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 9,
+                    fontWeight: 400,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
+                    e.currentTarget.style.opacity = '0.8';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#334155';
+                    e.currentTarget.style.opacity = '1';
                   }}
                 >
-                  <FaTwitter size={16} color="#000000" />
+                  <div style={{ background: '#000000', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <SiX size={26} color="#ffffff" />
+                  </div>
                   X
+                </button>
+
+                <button
+                  className="share-modal-btn"
+                  title="Copy Link"
+                  onClick={() => {
+                    handleShare('copy', selectedBook);
+                    setShowSharingModal(false);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    color: '#e6eef7',
+                    border: 'none',
+                    padding: '8px 0',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 9,
+                    fontWeight: 400,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
+                >
+                  <div style={{ background: '#8B5CF6', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FiLink size={26} color="#ffffff" />
+                  </div>
+                  Copy Link
                 </button>
 
                 <button
@@ -3768,30 +3949,30 @@ export const BookPanel = ({ demoMode = false }) => {
                     setShowSharingModal(false);
                   }}
                   style={{
-                    background: '#1e293b',
+                    background: 'transparent',
                     color: '#e6eef7',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
+                    border: 'none',
+                    padding: '8px 0',
                     borderRadius: 8,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 9,
+                    fontWeight: 400,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
+                    e.currentTarget.style.opacity = '0.8';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#334155';
+                    e.currentTarget.style.opacity = '1';
                   }}
                 >
-                  <FaFacebook size={16} color="#1877F2" />
+                  <div style={{ background: '#1877F2', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <SiFacebook size={26} color="#ffffff" />
+                  </div>
                   Facebook
                 </button>
 
@@ -3803,66 +3984,31 @@ export const BookPanel = ({ demoMode = false }) => {
                     setShowSharingModal(false);
                   }}
                   style={{
-                    background: '#1e293b',
+                    background: 'transparent',
                     color: '#e6eef7',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
+                    border: 'none',
+                    padding: '8px 0',
                     borderRadius: 8,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 9,
+                    fontWeight: 400,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
+                    e.currentTarget.style.opacity = '0.8';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#334155';
+                    e.currentTarget.style.opacity = '1';
                   }}
                 >
-                  <FaLinkedin size={16} color="#0A66C2" />
+                  <div style={{ background: '#0A66C2', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <SiLinkedin size={26} color="#ffffff" />
+                  </div>
                   LinkedIn
-                </button>
-
-                <button
-                  className="share-modal-btn"
-                  title="Share on WhatsApp"
-                  onClick={() => {
-                    handleShare('whatsapp', selectedBook);
-                    setShowSharingModal(false);
-                  }}
-                  style={{
-                    background: '#1e293b',
-                    color: '#e6eef7',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 8,
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#334155';
-                  }}
-                >
-                  <FaWhatsapp size={16} color="#25D366" />
-                  WhatsApp
                 </button>
 
                 <button
@@ -3873,65 +4019,68 @@ export const BookPanel = ({ demoMode = false }) => {
                     setShowSharingModal(false);
                   }}
                   style={{
-                    background: '#1e293b',
+                    background: 'transparent',
                     color: '#e6eef7',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
+                    border: 'none',
+                    padding: '8px 0',
                     borderRadius: 8,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 9,
+                    fontWeight: 400,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
+                    e.currentTarget.style.opacity = '0.8';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#334155';
+                    e.currentTarget.style.opacity = '1';
                   }}
                 >
-                  <FiMail size={16} color="#D44638" />
+                  <div style={{ background: '#D44638', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="#ffffff">
+                      <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                    </svg>
+                  </div>
                   Email
                 </button>
 
                 <button
                   className="share-modal-btn"
-                  title="Close"
-                  onClick={() => setShowSharingModal(false)}
+                  title="Save to Google Drive"
+                  onClick={() => {
+                    handleShare('googledrive', selectedBook);
+                    setShowSharingModal(false);
+                  }}
                   style={{
                     background: 'transparent',
-                    color: '#9ca3af',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
+                    color: '#e6eef7',
+                    border: 'none',
+                    padding: '8px 0',
                     borderRadius: 8,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 9,
+                    fontWeight: 400,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#475569';
-                    e.target.style.color = '#e6eef7';
+                    e.currentTarget.style.opacity = '0.8';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = 'transparent';
-                    e.target.style.borderColor = '#334155';
-                    e.target.style.color = '#9ca3af';
+                    e.currentTarget.style.opacity = '1';
                   }}
                 >
-                  <FiX size={16} />
-                  Close
+                  <div style={{ background: '#1F2937', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <SiGoogledrive size={26} color="#ffffff" />
+                  </div>
+                  Google Drive
                 </button>
               </div>
             </motion.div>

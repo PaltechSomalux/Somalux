@@ -28,11 +28,12 @@ import { RatingModal } from '../Books/RatingModal';
 import VerificationTierModal from '../Books/VerificationTierModal';
 import SecureReader from '../Books/SecureReader';
 import SimpleScrollReader from '../Books/SimpleScrollReader';
-import { FaSearch, FaTwitter, FaFacebook, FaLinkedin, FaWhatsapp } from 'react-icons/fa';
+import { FaSearch, FaFacebook, FaLinkedin, FaWhatsapp } from 'react-icons/fa';
+import { SiX, SiGoogledrive } from 'react-icons/si';
 import { AdBanner } from '../Ads/AdBanner';
 import { 
   FiSearch, FiFileText, FiFilter, FiChevronRight, FiChevronLeft, FiX, 
-  FiTrendingUp, FiDownload, FiArrowLeft, FiEye, FiStar, FiMapPin, FiUpload, FiBook, FiBookmark, FiShare2
+  FiTrendingUp, FiDownload, FiArrowLeft, FiEye, FiStar, FiMapPin, FiUpload, FiBook, FiBookmark, FiShare2, FiCopy, FiLink
 } from 'react-icons/fi';
 import { BiCommentDetail } from 'react-icons/bi';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -587,6 +588,49 @@ export const PaperPanel = ({ demoMode = false }) => {
     
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Update Open Graph meta tags for sharing
+  useEffect(() => {
+    if (selectedPaper) {
+      const paperUrl = `${window.location.origin}${window.location.pathname}?paper=${selectedPaper.id}`;
+      
+      // Update og:image
+      let ogImage = document.querySelector('meta[property="og:image"]');
+      if (!ogImage) {
+        ogImage = document.createElement('meta');
+        ogImage.setAttribute('property', 'og:image');
+        document.head.appendChild(ogImage);
+      }
+      ogImage.setAttribute('content', selectedPaper.thumbnail_url || `${window.location.origin}/paper-icon.png`);
+      
+      // Update og:title
+      let ogTitle = document.querySelector('meta[property="og:title"]');
+      if (!ogTitle) {
+        ogTitle = document.createElement('meta');
+        ogTitle.setAttribute('property', 'og:title');
+        document.head.appendChild(ogTitle);
+      }
+      ogTitle.setAttribute('content', selectedPaper.title);
+      
+      // Update og:description
+      let ogDesc = document.querySelector('meta[property="og:description"]');
+      if (!ogDesc) {
+        ogDesc = document.createElement('meta');
+        ogDesc.setAttribute('property', 'og:description');
+        document.head.appendChild(ogDesc);
+      }
+      ogDesc.setAttribute('content', `Check out "${selectedPaper.title}" from ${selectedPaper.university || 'Unknown'}`);
+      
+      // Update og:url
+      let ogUrl = document.querySelector('meta[property="og:url"]');
+      if (!ogUrl) {
+        ogUrl = document.createElement('meta');
+        ogUrl.setAttribute('property', 'og:url');
+        document.head.appendChild(ogUrl);
+      }
+      ogUrl.setAttribute('content', paperUrl);
+    }
+  }, [selectedPaper]);
 
   // Real-time subscription for past papers - start FIRST before loading
   useEffect(() => {
@@ -1658,6 +1702,9 @@ export const PaperPanel = ({ demoMode = false }) => {
   const handleShare = async (method) => {
     if (!selectedPaper) return;
 
+    // Use OG endpoint for proper meta tag serving to social platforms
+    const ogUrl = `${window.location.origin}/api/og?type=paper&id=${selectedPaper.id}&title=${encodeURIComponent(selectedPaper.title)}&description=${encodeURIComponent(`Check out "${selectedPaper.title}" from ${selectedPaper.university}`)}`;
+    
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
     const shareUrl = `${baseUrl}?paper=${selectedPaper.id}`;
     const shareText = `Check out "${selectedPaper.title}" from ${selectedPaper.university}`;
@@ -1680,7 +1727,7 @@ export const PaperPanel = ({ demoMode = false }) => {
 
         case 'twitter':
           window.open(
-            `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}&hashtags=${encodeURIComponent(hashtags)}`,
+            `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(ogUrl)}&hashtags=${encodeURIComponent(hashtags)}`,
             '_blank',
             'noopener,noreferrer'
           );
@@ -1688,7 +1735,7 @@ export const PaperPanel = ({ demoMode = false }) => {
 
         case 'facebook':
           window.open(
-            `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`,
+            `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(ogUrl)}`,
             '_blank',
             'noopener,noreferrer'
           );
@@ -1696,7 +1743,7 @@ export const PaperPanel = ({ demoMode = false }) => {
 
         case 'linkedin':
           window.open(
-            `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+            `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(ogUrl)}`,
             '_blank',
             'noopener,noreferrer'
           );
@@ -1704,18 +1751,24 @@ export const PaperPanel = ({ demoMode = false }) => {
 
         case 'email':
           window.open(
-            `mailto:?subject=${encodeURIComponent(shareText)}&body=${encodeURIComponent(`${shareText}%0A%0A${shareUrl}%0A%0A`)}`,
+            `mailto:?subject=${encodeURIComponent(shareText)}&body=${encodeURIComponent(`${shareText}%0A%0A${ogUrl}%0A%0A`)}`,
             '_blank',
             'noopener,noreferrer'
           );
           break;
 
         case 'whatsapp':
-          window.open(
-            `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`,
-            '_blank',
-            'noopener,noreferrer'
-          );
+          // Send only URL - WhatsApp will show preview with image automatically
+          window.open(`https://wa.me/?text=${encodeURIComponent(ogUrl)}`,`_blank`,`noopener,noreferrer`);
+          break;
+
+        case 'googledrive':
+          // Open Google Drive in new window
+          window.open(`https://drive.google.com/`,`_blank`,`noopener,noreferrer`);
+          // Copy link to clipboard for user to save manually
+          if (navigator.clipboard) {
+            await navigator.clipboard.writeText(`${shareText}\n${ogUrl}`);
+          }
           break;
 
         case 'native':
@@ -1723,7 +1776,7 @@ export const PaperPanel = ({ demoMode = false }) => {
             await navigator.share({
               title: shareText,
               text: selectedPaper.description || shareText,
-              url: shareUrl,
+              url: ogUrl,
             });
           }
           break;
@@ -2081,111 +2134,208 @@ export const PaperPanel = ({ demoMode = false }) => {
               style={{
                 background: '#0b1220',
                 color: '#e6eef7',
-                padding: 32,
-                borderRadius: 12,
+                padding: 48,
+                borderRadius: 20,
                 boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
                 textAlign: 'center',
-                maxWidth: 400,
+                maxWidth: '600px',
+                width: '85%',
+                maxHeight: '90vh',
+                position: 'relative',
               }}
             >
-              <h3 style={{ margin: 0, marginBottom: 8, fontSize: 18, fontWeight: 600 }}>
-                Share "{selectedPaper.title}"
-              </h3>
-              <p style={{ margin: 0, marginBottom: 24, color: '#9ca3af', fontSize: 14 }}>
-                Choose how you want to share this paper
-              </p>
+              <button
+                title="Close"
+                onClick={() => setShowSharingModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 12,
+                  background: 'transparent',
+                  color: '#9ca3af',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+              >
+                <FiX size={20} color="#9ca3af" />
+              </button>
+              <div style={{ marginBottom: 24 }}>
+                <h3 style={{ margin: 0, marginBottom: 8, fontSize: 28, fontWeight: 700, color: '#e6eef7' }}>
+                  Share "{selectedPaper.title}"
+                </h3>
+              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                <button
-                  title="Copy Link"
-                  onClick={() => handleShare('copy')}
+              {/* Paper PDF/Thumbnail as Clickable Link */}
+              <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
+                <a 
+                  href={`${window.location.origin}${window.location.pathname}?paper=${selectedPaper.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
-                    background: '#1e293b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer',
+                    textDecoration: 'none',
+                    width: 140,
+                    height: 200,
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1))',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.6)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.4)';
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <FiFileText size={48} style={{ color: '#6366f1', opacity: 0.8 }} />
+                    <span style={{ fontSize: 11, color: '#e6eef7', fontWeight: 600, textAlign: 'center', paddingX: 8 }}>
+                      View Paper
+                    </span>
+                  </div>
+                </a>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 24 }}>
+                <button
+                  title="Share on WhatsApp"
+                  onClick={() => handleShare('whatsapp')}
+                  style={{
+                    background: 'transparent',
                     color: '#e6eef7',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
+                    border: 'none',
+                    padding: '8px 0',
                     borderRadius: 8,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 9,
+                    fontWeight: 400,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
+                    e.target.style.opacity = '0.8';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#334155';
+                    e.target.style.opacity = '1';
                   }}
                 >
-                  <FiShare2 size={16} color="#64748b" />
-                  Copy Link
+                  <div style={{ background: '#34C759', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FaWhatsapp size={30} color="#ffffff" />
+                  </div>
+                  WhatsApp
                 </button>
 
                 <button
                   title="Share on X"
                   onClick={() => handleShare('twitter')}
                   style={{
-                    background: '#1e293b',
+                    background: 'transparent',
                     color: '#e6eef7',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
+                    border: 'none',
+                    padding: '8px 0',
                     borderRadius: 8,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 9,
+                    fontWeight: 400,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
+                    e.target.style.opacity = '0.8';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#334155';
+                    e.target.style.opacity = '1';
                   }}
                 >
-                  <FaTwitter size={16} color="#000000" />
+                  <div style={{ background: '#000000', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <SiX size={26} color="#ffffff" />
+                  </div>
                   X
+                </button>
+
+                <button
+                  title="Copy Link"
+                  onClick={() => handleShare('copy')}
+                  style={{
+                    background: 'transparent',
+                    color: '#e6eef7',
+                    border: 'none',
+                    padding: '8px 0',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 9,
+                    fontWeight: 400,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.opacity = '0.8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.opacity = '1';
+                  }}
+                >
+                  <div style={{ background: '#8B5CF6', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FiLink size={26} color="#ffffff" />
+                  </div>
+                  Copy Link
                 </button>
 
                 <button
                   title="Share on Facebook"
                   onClick={() => handleShare('facebook')}
                   style={{
-                    background: '#1e293b',
+                    background: 'transparent',
                     color: '#e6eef7',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
+                    border: 'none',
+                    padding: '8px 0',
                     borderRadius: 8,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 9,
+                    fontWeight: 400,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
+                    e.target.style.opacity = '0.8';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#334155';
+                    e.target.style.opacity = '1';
                   }}
                 >
-                  <FaFacebook size={16} color="#1877F2" />
+                  <div style={{ background: '#1877F2', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FaFacebook size={26} color="#ffffff" />
+                  </div>
                   Facebook
                 </button>
 
@@ -2193,124 +2343,95 @@ export const PaperPanel = ({ demoMode = false }) => {
                   title="Share on LinkedIn"
                   onClick={() => handleShare('linkedin')}
                   style={{
-                    background: '#1e293b',
+                    background: 'transparent',
                     color: '#e6eef7',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
+                    border: 'none',
+                    padding: '8px 0',
                     borderRadius: 8,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 9,
+                    fontWeight: 400,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
+                    e.target.style.opacity = '0.8';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#334155';
+                    e.target.style.opacity = '1';
                   }}
                 >
-                  <FaLinkedin size={16} color="#0A66C2" />
+                  <div style={{ background: '#0A66C2', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FaLinkedin size={26} color="#ffffff" />
+                  </div>
                   LinkedIn
-                </button>
-
-                <button
-                  title="Share on WhatsApp"
-                  onClick={() => handleShare('whatsapp')}
-                  style={{
-                    background: '#1e293b',
-                    color: '#e6eef7',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 8,
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#334155';
-                  }}
-                >
-                  <FaWhatsapp size={16} color="#25D366" />
-                  WhatsApp
                 </button>
 
                 <button
                   title="Share via Email"
                   onClick={() => handleShare('email')}
                   style={{
-                    background: '#1e293b',
+                    background: 'transparent',
                     color: '#e6eef7',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
+                    border: 'none',
+                    padding: '8px 0',
                     borderRadius: 8,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 9,
+                    fontWeight: 400,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
+                    e.target.style.opacity = '0.8';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = '#1e293b';
-                    e.target.style.borderColor = '#334155';
+                    e.target.style.opacity = '1';
                   }}
                 >
-                  <FiShare2 size={16} color="#D44638" />
+                  <div style={{ background: '#D44638', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="#ffffff">
+                      <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                    </svg>
+                  </div>
                   Email
                 </button>
 
                 <button
-                  title="Close"
-                  onClick={() => setShowSharingModal(false)}
+                  title="Save to Google Drive"
+                  onClick={() => handleShare('googledrive')}
                   style={{
                     background: 'transparent',
-                    color: '#9ca3af',
-                    border: '1px solid #334155',
-                    padding: '12px 16px',
+                    color: '#e6eef7',
+                    border: 'none',
+                    padding: '8px 0',
                     borderRadius: 8,
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 9,
+                    fontWeight: 400,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#334155';
-                    e.target.style.borderColor = '#475569';
+                    e.target.style.opacity = '0.8';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = 'transparent';
-                    e.target.style.borderColor = '#334155';
+                    e.target.style.opacity = '1';
                   }}
                 >
-                  <FiX size={16} />
-                  Close
+                  <div style={{ background: '#1F2937', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <SiGoogledrive size={26} color="#ffffff" />
+                  </div>
+                  Google Drive
                 </button>
               </div>
             </motion.div>
