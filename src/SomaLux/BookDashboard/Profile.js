@@ -75,7 +75,7 @@ export const Profile = ({ user: propUser = null }) => {
     try {
       const nowIso = new Date().toISOString();
       // Non-blocking fire-and-forget profile update
-      supabase
+      await supabase
         .from('profiles')
         .upsert(
           {
@@ -87,8 +87,7 @@ export const Profile = ({ user: propUser = null }) => {
             deactivated_at: null,
           },
           { returning: 'minimal' }
-        )
-        .catch(e => console.warn('Failed to mark profile active', e));
+        );
     } catch (e) {
       console.warn('Failed to mark profile active', e);
     }
@@ -99,14 +98,13 @@ export const Profile = ({ user: propUser = null }) => {
     try {
       const nowIso = new Date().toISOString();
       // Non-blocking fire-and-forget profile update
-      supabase
+      await supabase
         .from('profiles')
         .update({
           is_active: false,
           deactivated_at: nowIso,
         })
-        .eq('id', user.id)
-        .catch(e => console.warn('Failed to mark profile signed out', e));
+        .eq('id', user.id);
     } catch (e) {
       console.warn('Failed to mark profile signed out', e);
     }

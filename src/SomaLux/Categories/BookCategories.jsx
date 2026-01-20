@@ -25,7 +25,7 @@ export const BookCategories = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(8);
+  const [visibleCount, setVisibleCount] = useState(32);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -475,12 +475,14 @@ export const BookCategories = () => {
                 >
                   Name (A-Z)
                 </div>
-                <div 
-                  className={`filter-optioncat ${sortBy === 'bookCount' ? 'activecat' : ''}`}
-                  onClick={() => handleSortChange('bookCount')}
-                >
-                  Most Books
-                </div>
+                {(userProfile?.subscription_tier === 'premium' || userProfile?.subscription_tier === 'premium_pro') && (
+                  <div 
+                    className={`filter-optioncat ${sortBy === 'bookCount' ? 'activecat' : ''}`}
+                    onClick={() => handleSortChange('bookCount')}
+                  >
+                    Most Books
+                  </div>
+                )}
                 <div 
                   className={`filter-optioncat ${sortBy === 'rating' ? 'activecat' : ''}`}
                   onClick={() => handleSortChange('rating')}
@@ -562,13 +564,15 @@ export const BookCategories = () => {
                       )}
                     </div>
                     
-                    <span
-                      className="book-countcat"
-                      aria-label={`Books in category ${category.name}: ${category.bookCount}`}
-                      title={`${category.bookCount.toLocaleString()} books`}
-                    >
-                      <FiBookOpen size={14} /> {category.bookCount.toLocaleString()} books
-                    </span>
+                    {(userProfile?.subscription_tier === 'premium' || userProfile?.subscription_tier === 'premium_pro') && (
+                      <span
+                        className="book-countcat"
+                        aria-label={`Books in category ${category.name}: ${category.bookCount}`}
+                        title={`${category.bookCount.toLocaleString()} books`}
+                      >
+                        <FiBookOpen size={14} /> {category.bookCount.toLocaleString()} books
+                      </span>
+                    )}
                     <h3 className="category-namecat">{category.name}</h3>
                     <p className="category-desccat">{category.description}</p>
                     <div className="category-metacat">
@@ -608,13 +612,15 @@ export const BookCategories = () => {
                         )}
                       </div>
                       
-                      <span
-                        className="book-countcat"
-                        aria-label={`Books in category ${category.name}: ${category.bookCount}`}
-                        title={`${category.bookCount.toLocaleString()} books`}
-                      >
-                        <FiBookOpen size={14} /> {category.bookCount.toLocaleString()} books
-                      </span>
+                      {(userProfile?.subscription_tier === 'premium' || userProfile?.subscription_tier === 'premium_pro') && (
+                        <span
+                          className="book-countcat"
+                          aria-label={`Books in category ${category.name}: ${category.bookCount}`}
+                          title={`${category.bookCount.toLocaleString()} books`}
+                        >
+                          <FiBookOpen size={14} /> {category.bookCount.toLocaleString()} books
+                        </span>
+                      )}
                       <h3 className="category-namecat">{category.name}</h3>
                       <p className="category-desccat">{category.description}</p>
                       <div className="category-metacat">
@@ -678,10 +684,12 @@ export const BookCategories = () => {
               
               <div className="modal-bodycat">
                 <div className="stats-containercat">
-                  <div className="stat-itemcat">
-                    <FiBookOpen size={20} />
-                    <span>{selectedCategory.bookCount.toLocaleString()} books available</span>
-                  </div>
+                  {(userProfile?.subscription_tier === 'premium' || userProfile?.subscription_tier === 'premium_pro') && (
+                    <div className="stat-itemcat">
+                      <FiBookOpen size={20} />
+                      <span>{selectedCategory.bookCount.toLocaleString()} books available</span>
+                    </div>
+                  )}
                   <div className="stat-itemcat">
                     <FiClock size={20} />
                     <span>Last updated: {new Date(selectedCategory.updatedAt).toLocaleDateString()}</span>

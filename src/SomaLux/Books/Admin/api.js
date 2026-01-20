@@ -1,6 +1,7 @@
 import { supabase } from '../supabaseClient';
 import { API_URL } from '../../../config';
 
+const API_BASE = API_URL;
 const BOOKS_BUCKET = 'elib-books';
 
 // Backend origin helper (mirrors patterns used elsewhere in the app)
@@ -368,6 +369,66 @@ export async function createBookSubmission({ metadata, pdfFile, coverFile }) {
   
   const { data, error } = await supabase.from('book_submissions').insert(payload).select().maybeSingle();
   if (error) throw error;
+
+  // Fire-and-forget admin notification; do not block user on email errors
+  try {
+    const notifyBody = {
+      type: 'books',
+      uploadedBy: payload.uploaded_by || null,
+      itemTitle: payload.title || null,
+    };
+    console.log('📤 [SUBMISSION] Sending admin notification:', notifyBody);
+    const notifyResponse = await fetch(`${API_BASE}/api/elib/submissions/notify-admins`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(notifyBody),
+    });
+    const notifyJson = await notifyResponse.json();
+    console.log('📤 [SUBMISSION] Admin notification response:', notifyJson);
+    if (!notifyResponse.ok) {
+      console.warn('⚠️ [SUBMISSION] Admin notification failed:', notifyJson);
+    }
+  } catch (e) {
+    console.error('❌ [SUBMISSION] Error sending admin notification:', e);
+  }
+
+  // Send submission confirmation email to uploader
+  try {
+    console.log('📬 [SUBMISSION] Fetching uploader profile for confirmation email...');
+    // Get the uploader's profile to send confirmation email
+    if (payload.uploaded_by) {
+      const { data: uploaderProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', payload.uploaded_by)
+        .single();
+      
+      if (!profileError && uploaderProfile) {
+        const uploaderNotifyBody = {
+          type: 'books',
+          uploaderEmail: uploaderProfile.email,
+          uploaderName: uploaderProfile.full_name,
+          itemTitle: payload.title,
+        };
+        console.log('📬 [SUBMISSION] Sending uploader confirmation:', uploaderNotifyBody);
+        const uploaderResponse = await fetch(`${API_BASE}/api/elib/submissions/notify-uploader`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(uploaderNotifyBody),
+        });
+        const uploaderJson = await uploaderResponse.json();
+        console.log('📬 [SUBMISSION] Uploader notification response:', uploaderJson);
+        if (!uploaderResponse.ok) {
+          console.warn('⚠️ [SUBMISSION] Uploader notification failed:', uploaderJson);
+        }
+      } else {
+        console.warn('⚠️ [SUBMISSION] Could not fetch uploader profile for confirmation email');
+      }
+    }
+  } catch (e) {
+    console.error('❌ [SUBMISSION] Error sending uploader confirmation:', e);
+  }
+
   return data;
 }
 

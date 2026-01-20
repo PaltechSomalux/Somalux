@@ -1,8 +1,25 @@
-import React from 'react';
-import { FiCheck, FiX, FiClock, FiBell } from 'react-icons/fi';
+import React, { useState } from 'react';
+import { FiCheck, FiX, FiClock, FiBell, FiEye } from 'react-icons/fi';
+import SimpleScrollReader from '../../SimpleScrollReader';
 
 const SubmissionDetailModal = ({ submission, type, busy, onClose, onApprove, onReject }) => {
   const fmt = (d) => d ? new Date(d).toLocaleString() : '—';
+  const [showReader, setShowReader] = useState(false);
+
+  // Helper function to convert file path to full public URL
+  const getPublicUrl = (fileUrl) => {
+    if (!fileUrl) return null;
+    
+    // If it's already a full URL, return as-is
+    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+      return fileUrl;
+    }
+    
+    // Otherwise, construct full Supabase public URL
+    const bucket = type === 'past_papers' ? 'past-papers' : 'elib-books';
+    const supabaseUrl = 'https://wuwlnawtuhjoubfkdtgc.supabase.co';
+    return `${supabaseUrl}/storage/v1/object/public/${bucket}/${fileUrl}`;
+  };
 
   return (
     <div
@@ -278,6 +295,15 @@ const SubmissionDetailModal = ({ submission, type, busy, onClose, onApprove, onR
         <div className="profile-signout-footer" style={{ borderTop: '1px solid #1f2c33', padding: 6, display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
           {submission.status === 'pending' ? (
             <>
+              {(type === 'books' || type === 'past_papers') && submission.file_url && (
+                <button
+                  className="btn"
+                  onClick={() => setShowReader(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#3b82f6', color: '#fff', fontSize: 11, padding: '4px 8px' }}
+                >
+                  <FiEye /> Read
+                </button>
+              )}
               <button
                 className="btn"
                 disabled={!!busy[submission.id]}
@@ -301,6 +327,16 @@ const SubmissionDetailModal = ({ submission, type, busy, onClose, onApprove, onR
             </div>
           )}
         </div>
+
+        {showReader && submission.file_url && (
+          <SimpleScrollReader
+            src={getPublicUrl(submission.file_url)}
+            title={submission.title || 'Document'}
+            author={submission.author || 'Unknown'}
+            sampleText={submission.description || ''}
+            onClose={() => setShowReader(false)}
+          />
+        )}
       </div>
     </div>
   );

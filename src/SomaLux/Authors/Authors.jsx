@@ -2,7 +2,6 @@
 import { API_URL } from '../../config';
 import { supabase } from '../Books/supabaseClient';
 import { FaSearch } from 'react-icons/fa';
-import { fetchAuthorImages } from '../Books/utils/wikipediaApi';
 import { AuthorCard } from './AuthorCard';
 import { AuthorModal } from './AuthorModal';
 import { AdBanner } from '../Ads/AdBanner';
@@ -37,33 +36,25 @@ export const Authors = () => {
   // ⚡ Initialize authors from cache IMMEDIATELY on mount
   useEffect(() => {
     const cacheKey = 'authors_list_cache_v2';
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          const cacheAge = parsed.timestamp ? Date.now() - parsed.timestamp : Infinity;
-          if (cacheAge < 24 * 60 * 60 * 1000 && parsed.data?.length > 0) {
-            console.log('⚡ Authors instant load from localStorage cache');
-            setAuthors(parsed.data);
-            setIsLoading(false);
-            return;
-          }
-        } catch (e) {
-          console.warn('localStorage cache error:', e);
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        const cacheAge = parsed.timestamp ? Date.now() - parsed.timestamp : Infinity;
+        if (cacheAge < 24 * 60 * 60 * 1000 && parsed.data?.length > 0) {
+          console.log('⚡ Authors instant load from localStorage cache');
+          setAuthors(parsed.data);
+          setIsLoading(false);
+          return;
         }
+      } catch (e) {
+        console.warn('localStorage cache error:', e);
       }
-    } catch (e) {
-      console.warn('localStorage access error:', e);
     }
     
     // Try IndexedDB as fallback
     (async () => {
       try {
-        if (!cacheDB || !cacheDB.loadAuthors) {
-          console.warn('cacheDB not available');
-          return;
-        }
         const idbAuthors = await cacheDB.loadAuthors();
         if (idbAuthors && idbAuthors.length > 0) {
           console.log('⚡ Authors instant load from IndexedDB cache');
@@ -133,7 +124,7 @@ export const Authors = () => {
     (async () => {
       try {
         // ⚡ CHECK CACHE FIRST - instant load from localStorage
-        const cacheKey = 'authors_list_cache_v6'; // Bumped to v6 - force fresh OpenLibrary image fetch
+        const cacheKey = 'authors_list_cache_v2';
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           try {
@@ -158,6 +149,7 @@ export const Authors = () => {
         const { data: rows, error } = await supabase
           .from('books')
           .select('author, cover_image_url, rating, rating_count')
+          .neq('author', null)
           .limit(1000);
 
         if (error) {
@@ -237,36 +229,6 @@ export const Authors = () => {
           
           setAuthors(list);
           setIsLoading(false); // 🚀 Mark ready immediately!
-          
-          // 🖼️ Fetch author images from Wikipedia in parallel (non-blocking)
-          console.log('🔍 Fetching author images from Wikipedia...');
-          const authorNames = list.map(a => a.name);
-          fetchAuthorImages(authorNames)
-            .then((imageMap) => {
-              console.log('✅ Wikipedia images fetched:', imageMap);
-              // Update authors with fetched images
-              const updatedList = list.map(author => ({
-                ...author,
-                photo: imageMap[author.name] || author.photo // Use Wikipedia image if found
-              }));
-              
-              if (mounted) {
-                setAuthors(updatedList);
-                // Update cache with new images
-                try {
-                  localStorage.setItem(cacheKey, JSON.stringify({
-                    data: updatedList,
-                    timestamp: Date.now()
-                  }));
-                } catch (e) {
-                  console.warn('Failed to update cache:', e);
-                }
-              }
-            })
-            .catch(error => {
-              console.warn('⚠️ Failed to fetch author images:', error);
-              // Continue with existing images
-            });
           
           // ⚡ Enrich authors in BACKGROUND (doesn't block UI)
           (async () => {

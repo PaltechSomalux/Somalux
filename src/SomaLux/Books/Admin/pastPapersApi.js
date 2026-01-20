@@ -1083,4 +1083,204 @@ export async function clearAllUploadHistory() {
   }
 }
 
+/**
+ * Extract past paper metadata from PDF using backend OCR + Direct PDF text extraction
+ * This function sends the PDF to the backend which performs:
+ * 1. Direct text extraction (fast, for searchable PDFs)
+ * 2. OCR fallback (for scanned documents)
+ * 3. Regex-based parsing for fields
+ * 
+ * @param {File} pdfFile - The PDF file to extract from
+ * @returns {Promise<Object>} Extracted metadata with confidence scores
+ */
+export async function extractPastPaperMetadataBackend(pdfFile) {
+  try {
+    console.log('📤 [BACKEND-EXTRACT] Uploading PDF for extraction:', pdfFile.name);
+    
+    // Create FormData for multipart upload
+    const formData = new FormData();
+    formData.append('pdf', pdfFile);
+    
+    // Call backend extraction endpoint
+    const response = await fetch(`${API_BASE}/api/past-papers/extract`, {
+      method: 'POST',
+      body: formData,
+      // Do NOT set Content-Type header - browser will set it automatically with boundary
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Extraction failed: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || 'Extraction failed');
+    }
+    
+    console.log('✅ [BACKEND-EXTRACT] Extraction successful:', {
+      unit_code: result.data.unit_code,
+      unit_name: result.data.unit_name,
+      year: result.data.year,
+      confidence: result.data.confidence
+    });
+    
+    return {
+      unitCode: result.data.unit_code,
+      unitName: result.data.unit_name,
+      faculty: result.data.faculty,
+      year: result.data.year,
+      semester: result.data.semester,
+      examType: result.data.exam_type,
+      source: 'backend-extracted',
+      confidence: result.data.confidence
+    };
+  } catch (error) {
+    console.error('❌ [BACKEND-EXTRACT] Extraction error:', error.message);
+    // Return empty result - let frontend fallback to filename extraction
+    return {
+      unitCode: null,
+      unitName: null,
+      faculty: null,
+      year: null,
+      semester: null,
+      examType: 'Main',
+      source: 'failed',
+      confidence: {},
+      error: error.message
+    };
+  }
+}
 
+/**
+ * NEW: Extract metadata from first page of PDF (High Accuracy)
+ * 
+ * Uses specialized academic header extraction:
+ * - Focuses on first page only
+ * - Extracts: unitCode, unitName, year, semester, examType
+ * - Returns confidence scores for each field
+ * - Returns validation quality score
+ * 
+ * @param {File} pdfFile - PDF file object
+ * @returns {Promise<Object>} Normalized metadata with validation
+ */
+export async function extractFirstPageMetadata(pdfFile) {
+  try {
+    console.log('📖 [FIRST-PAGE-API] Calling extraction API for:', pdfFile.name);
+    
+    const formData = new FormData();
+    formData.append('pdf', pdfFile);
+    
+    const response = await fetch('/api/past-papers/extract-first-page', {
+      method: 'POST',
+      body: formData
+    });
+    
+    console.log('📡 [FIRST-PAGE-API] Response status:', response.status);
+    
+    if (!response.ok) {
+      console.error('❌ [FIRST-PAGE-API] HTTP error:', response.status, response.statusText);
+      return null;
+    }
+    
+    const data = await response.json();
+    console.log('📦 [FIRST-PAGE-API] Response data:', data);
+    
+    if (!data.success) {
+      console.warn('⚠️ [FIRST-PAGE-API] Extraction unsuccessful:', data);
+      return null;
+    }
+    
+    if (!data.unitCode || !data.unitName) {
+      console.warn('⚠️ [FIRST-PAGE-API] Missing required fields:', { unitCode: data.unitCode, unitName: data.unitName });
+      return null;
+    }
+    
+    console.log('✅ [FIRST-PAGE-API] Success! Extracted:', { 
+      unitCode: data.unitCode, 
+      unitName: data.unitName, 
+      year: data.year 
+    });
+    
+    // Return normalized result - ONLY 3 fields
+    const result = {
+      source: 'first-page-extracted',
+      unitCode: data.unitCode,
+      unitName: data.unitName,
+      year: data.year,
+      validation: {
+        quality: data.unitCode && data.unitName && data.year ? 'excellent' : 'good',
+        isValid: data.success
+      }
+    };
+    
+    console.log('📊 [FIRST-PAGE-API] Returning result:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('❌ [FIRST-PAGE-API] Exception:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Batch extract metadata from multiple PDFs (first page)
+ * 
+ * @param {FileList|File[]} pdfFiles - Array of PDF files
+ * @returns {Promise<Array>} Array of extraction results
+ */
+export async function extractFirstPageMetadataBatch(pdfFiles) {
+  try {
+    console.log('📦 [BATCH-FIRST-PAGE] Starting batch extraction for', pdfFiles.length, 'files...');
+    
+    const formData = new FormData();
+    Array.from(pdfFiles).forEach(file => {
+      formData.append('pdfs', file);
+    });
+    
+    const response = await fetch('/api/past-papers/extract-first-page-batch', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    console.log('✅ [BATCH-FIRST-PAGE] Batch extraction completed');
+    console.log('📊 [BATCH-FIRST-PAGE] Summary:', data.summary);
+    
+    // Normalize results
+    const normalized = data.results.map(result => ({
+      fileName: result.fileName,
+      source: result.success ? 'first-page-extracted' : null,
+      extractionMethod: result.extraction?.extractionMethod,
+      unitCode: result.extraction?.unitCode || '',
+      unitName: result.extraction?.unitName || '',
+      year: result.extraction?.year || null,
+      semester: result.extraction?.semester || '',
+      examType: result.extraction?.examType || 'Main',
+      confidence: result.confidence || {},
+      validation: result.validation || {},
+      success: result.success,
+      error: result.error
+    }));
+    
+    return {
+      success: true,
+      results: normalized,
+      summary: data.summary
+    };
+    
+  } catch (error) {
+    console.error('❌ [BATCH-FIRST-PAGE] Error:', error.message);
+    return {
+      success: false,
+      error: error.message,
+      results: []
+    };
+  }
+}

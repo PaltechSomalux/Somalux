@@ -28,7 +28,7 @@ import { RatingModal } from '../Books/RatingModal';
 import VerificationTierModal from '../Books/VerificationTierModal';
 import SecureReader from '../Books/SecureReader';
 import SimpleScrollReader from '../Books/SimpleScrollReader';
-import { FaSearch } from 'react-icons/fa';
+import { FaSearch, FaTwitter, FaFacebook, FaLinkedin, FaWhatsapp } from 'react-icons/fa';
 import { AdBanner } from '../Ads/AdBanner';
 import { 
   FiSearch, FiFileText, FiFilter, FiChevronRight, FiChevronLeft, FiX, 
@@ -1710,6 +1710,14 @@ export const PaperPanel = ({ demoMode = false }) => {
           );
           break;
 
+        case 'whatsapp':
+          window.open(
+            `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`,
+            '_blank',
+            'noopener,noreferrer'
+          );
+          break;
+
         case 'native':
           if (navigator.share) {
             await navigator.share({
@@ -2115,7 +2123,7 @@ export const PaperPanel = ({ demoMode = false }) => {
                     e.target.style.borderColor = '#334155';
                   }}
                 >
-                  <FiShare2 size={16} />
+                  <FiShare2 size={16} color="#64748b" />
                   Copy Link
                 </button>
 
@@ -2146,7 +2154,7 @@ export const PaperPanel = ({ demoMode = false }) => {
                     e.target.style.borderColor = '#334155';
                   }}
                 >
-                  <span style={{ fontSize: 16 }}>𝕏</span>
+                  <FaTwitter size={16} color="#000000" />
                   X
                 </button>
 
@@ -2177,9 +2185,7 @@ export const PaperPanel = ({ demoMode = false }) => {
                     e.target.style.borderColor = '#334155';
                   }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                  </svg>
+                  <FaFacebook size={16} color="#1877F2" />
                   Facebook
                 </button>
 
@@ -2210,10 +2216,39 @@ export const PaperPanel = ({ demoMode = false }) => {
                     e.target.style.borderColor = '#334155';
                   }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z"/>
-                  </svg>
+                  <FaLinkedin size={16} color="#0A66C2" />
                   LinkedIn
+                </button>
+
+                <button
+                  title="Share on WhatsApp"
+                  onClick={() => handleShare('whatsapp')}
+                  style={{
+                    background: '#1e293b',
+                    color: '#e6eef7',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <FaWhatsapp size={16} color="#25D366" />
+                  WhatsApp
                 </button>
 
                 <button
@@ -2243,7 +2278,7 @@ export const PaperPanel = ({ demoMode = false }) => {
                     e.target.style.borderColor = '#334155';
                   }}
                 >
-                  <FiShare2 size={16} />
+                  <FiShare2 size={16} color="#D44638" />
                   Email
                 </button>
 

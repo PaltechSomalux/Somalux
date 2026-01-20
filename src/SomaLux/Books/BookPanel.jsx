@@ -36,6 +36,7 @@ import {
   FaTwitter,
   FaFacebook,
   FaLinkedin,
+  FaWhatsapp,
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import SimpleScrollReader from './SimpleScrollReader';
@@ -929,6 +930,46 @@ export const BookPanel = ({ demoMode = false }) => {
       }
     };
   }, []);
+
+  // Fetch pending submissions count for admins
+  useEffect(() => {
+    if (!user) return;
+
+    const ADMIN_EMAILS = ['campuslives254@gmail.com', 'paltechsomalux@gmail.com'];
+    const isAdmin = user?.role === 'admin' || ADMIN_EMAILS.includes(user?.email);
+    
+    if (!isAdmin) return;
+
+    const fetchSubmissionsCount = async () => {
+      try {
+        const { count: bookCount } = await supabase
+          .from('book_submissions')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending');
+        
+        const { count: paperCount } = await supabase
+          .from('past_paper_submissions')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending');
+
+        const { count: universityCount } = await supabase
+          .from('universities')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending');
+
+        const total = (bookCount || 0) + (paperCount || 0) + (universityCount || 0);
+        setPendingSubmissions(total);
+      } catch (err) {
+        console.warn('Failed to fetch pending submissions count:', err);
+      }
+    };
+
+    fetchSubmissionsCount();
+    
+    // Poll every 30 seconds for updates
+    const interval = setInterval(fetchSubmissionsCount, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Fetch personalized recommendations - memoized to prevent flickering
   const fetchRecommendations = useCallback(async () => {
@@ -2067,6 +2108,9 @@ export const BookPanel = ({ demoMode = false }) => {
         case 'email':
           window.open(`mailto:?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(`${text}\n\n${url}\n\n`)}`);
           break;
+        case 'whatsapp':
+          window.open(`https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`,`_blank`,`noopener,noreferrer`);
+          break;
         default:
           break;
       }
@@ -2540,13 +2584,35 @@ export const BookPanel = ({ demoMode = false }) => {
           </button>
 
           {((user?.role === 'admin' || user?.role === 'editor') || ['campuslives254@gmail.com', 'paltechsomalux@gmail.com'].includes(user?.email)) && (
-            <button
-              onClick={() => navigate('/books/admin')}
-              className="filter-buttonBKP"
-              title="Open Admin Dashboard"
-            >
-              {user?.role === 'admin' || ['campuslives254@gmail.com', 'paltechsomalux@gmail.com'].includes(user?.email) ? 'Admin' : 'Editor'}
-            </button>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <button
+                onClick={() => navigate('/books/admin')}
+                className="filter-buttonBKP"
+                title="Open Admin Dashboard"
+              >
+                {user?.role === 'admin' || ['campuslives254@gmail.com', 'paltechsomalux@gmail.com'].includes(user?.email) ? 'Admin' : 'Editor'}
+              </button>
+              {pendingSubmissions > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: -6,
+                  right: -6,
+                  background: '#ea4335',
+                  color: '#fff',
+                  borderRadius: '50%',
+                  width: 20,
+                  height: 20,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  border: '2px solid #0b1216'
+                }}>
+                  {pendingSubmissions > 99 ? '99+' : pendingSubmissions}
+                </div>
+              )}
+            </div>
           )}
 
           {showFilters && (
@@ -3583,7 +3649,7 @@ export const BookPanel = ({ demoMode = false }) => {
                     e.target.style.borderColor = '#334155';
                   }}
                 >
-                  <FiCopy size={16} />
+                  <FiCopy size={16} color="#64748b" />
                   Copy Link
                 </button>
 
@@ -3618,7 +3684,7 @@ export const BookPanel = ({ demoMode = false }) => {
                     e.target.style.borderColor = '#334155';
                   }}
                 >
-                  <span style={{ fontSize: 16 }}>𝕏</span>
+                  <FaTwitter size={16} color="#000000" />
                   X
                 </button>
 
@@ -3653,7 +3719,7 @@ export const BookPanel = ({ demoMode = false }) => {
                     e.target.style.borderColor = '#334155';
                   }}
                 >
-                  <FaFacebook size={16} />
+                  <FaFacebook size={16} color="#1877F2" />
                   Facebook
                 </button>
 
@@ -3688,8 +3754,43 @@ export const BookPanel = ({ demoMode = false }) => {
                     e.target.style.borderColor = '#334155';
                   }}
                 >
-                  <FaLinkedin size={16} />
+                  <FaLinkedin size={16} color="#0A66C2" />
                   LinkedIn
+                </button>
+
+                <button
+                  className="share-modal-btn"
+                  title="Share on WhatsApp"
+                  onClick={() => {
+                    handleShare('whatsapp', selectedBook);
+                    setShowSharingModal(false);
+                  }}
+                  style={{
+                    background: '#1e293b',
+                    color: '#e6eef7',
+                    border: '1px solid #334155',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#334155';
+                    e.target.style.borderColor = '#475569';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = '#1e293b';
+                    e.target.style.borderColor = '#334155';
+                  }}
+                >
+                  <FaWhatsapp size={16} color="#25D366" />
+                  WhatsApp
                 </button>
 
                 <button
@@ -3723,7 +3824,7 @@ export const BookPanel = ({ demoMode = false }) => {
                     e.target.style.borderColor = '#334155';
                   }}
                 >
-                  <FiMail size={16} />
+                  <FiMail size={16} color="#D44638" />
                   Email
                 </button>
 

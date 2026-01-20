@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiUpload, FiFolder, FiRefreshCw, FiCheck, FiX, FiAlertCircle, FiFile, FiBook, FiFileText, FiClock, FiPause, FiPlay } from 'react-icons/fi';
 import { createBook, createBookSubmission, fetchCategories } from '../api';
-import { getUniversitiesForDropdown, getFacultiesByUniversity, createPastPaper, createPastPaperSubmission, searchUnitFaculty, clearPastPapersCache, checkDuplicatePastPaper, logUploadHistory } from '../pastPapersApi';
+import { getUniversitiesForDropdown, getFacultiesByUniversity, createPastPaper, createPastPaperSubmission, searchUnitFaculty, clearPastPapersCache, checkDuplicatePastPaper, logUploadHistory, extractPastPaperMetadataBackend, extractFirstPageMetadata, extractFirstPageMetadataBatch } from '../pastPapersApi';
 import { extractPastPaperMetadata, findMatchingUniversity, findMatchingFaculty, guessFacultyFromUnitCode } from '../utils/extractPastPaperMetadata';
 import * as pdfjsLib from 'pdfjs-dist';
 import { useAdminUI } from '../AdminUIContext';
@@ -872,25 +872,40 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
           )}
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
             <button
               onClick={uploadFiles}
               disabled={uploading || paused}
               style={{
-                flex: 1,
-                padding: '10px 16px',
-                background: uploading ? '#00a88466' : '#00a884',
+                padding: '12px 24px',
+                background: uploading ? 'linear-gradient(135deg, #00a884 0%, #00d4aa 100%)' : 'linear-gradient(135deg, #00a884 0%, #00d4aa 100%)',
                 color: '#fff',
                 border: 'none',
-                borderRadius: '6px',
-                fontSize: '13px',
-                fontWeight: '500',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
                 cursor: uploading ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                opacity: uploading ? 0.6 : 1
+                opacity: uploading ? 0.7 : 1,
+                boxShadow: uploading ? '0 2px 8px rgba(0, 168, 132, 0.3)' : '0 4px 12px rgba(0, 168, 132, 0.4)',
+                transition: 'all 0.3s ease',
+                letterSpacing: '0.3px',
+                whiteSpace: 'nowrap'
+              }}
+              onMouseEnter={(e) => {
+                if (!uploading) {
+                  e.target.style.boxShadow = '0 6px 16px rgba(0, 168, 132, 0.5)';
+                  e.target.style.transform = 'translateY(-2px)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!uploading) {
+                  e.target.style.boxShadow = '0 4px 12px rgba(0, 168, 132, 0.4)';
+                  e.target.style.transform = 'translateY(0)';
+                }
               }}
             >
               {uploading ? (
@@ -900,7 +915,7 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
                 </>
               ) : (
                 <>
-                  <FiUpload size={14} />
+                  <FiUpload size={16} />
                   Upload {selectedFiles.length} File{selectedFiles.length !== 1 ? 's' : ''}
                 </>
               )}
@@ -911,60 +926,93 @@ const BooksAutoUploadContent = ({ userProfile, asSubmission, showToast }) => {
                   <button
                     onClick={handlePause}
                     style={{
-                      padding: '10px 16px',
-                      background: '#f1b233',
+                      padding: '12px 24px',
+                      background: 'linear-gradient(135deg, #f1b233 0%, #ffc657 100%)',
                       color: '#1f2c33',
                       border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      fontWeight: '500',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '8px',
+                      boxShadow: '0 4px 12px rgba(241, 178, 51, 0.3)',
+                      transition: 'all 0.3s ease',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.boxShadow = '0 6px 16px rgba(241, 178, 51, 0.4)';
+                      e.target.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.boxShadow = '0 4px 12px rgba(241, 178, 51, 0.3)';
+                      e.target.style.transform = 'translateY(0)';
                     }}
                   >
-                    <FiPause size={14} />
+                    <FiPause size={16} />
                     Pause
                   </button>
                 ) : (
                   <button
                     onClick={handleResume}
                     style={{
-                      padding: '10px 16px',
-                      background: '#00a884',
+                      padding: '12px 24px',
+                      background: 'linear-gradient(135deg, #00a884 0%, #00d4aa 100%)',
                       color: '#fff',
                       border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      fontWeight: '500',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '8px',
+                      boxShadow: '0 4px 12px rgba(0, 168, 132, 0.3)',
+                      transition: 'all 0.3s ease',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.boxShadow = '0 6px 16px rgba(0, 168, 132, 0.4)';
+                      e.target.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.boxShadow = '0 4px 12px rgba(0, 168, 132, 0.3)';
+                      e.target.style.transform = 'translateY(0)';
                     }}
                   >
-                    <FiPlay size={14} />
+                    <FiPlay size={16} />
                     Resume
                   </button>
                 )}
                 <button
                   onClick={handleCancel}
                   style={{
-                    padding: '10px 16px',
-                    background: '#ea4335',
+                    padding: '12px 24px',
+                    background: 'linear-gradient(135deg, #ea4335 0%, #f66b6b 100%)',
                     color: '#fff',
                     border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: '500',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '8px',
+                    boxShadow: '0 4px 12px rgba(234, 67, 53, 0.3)',
+                    transition: 'all 0.3s ease',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.boxShadow = '0 6px 16px rgba(234, 67, 53, 0.4)';
+                    e.target.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.boxShadow = '0 4px 12px rgba(234, 67, 53, 0.3)';
+                    e.target.style.transform = 'translateY(0)';
                   }}
                 >
-                  <FiX size={14} />
+                  <FiX size={16} />
                   Cancel
                 </button>
               </>
@@ -1264,53 +1312,87 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
     loadFaculties();
   }, [university, extractedMetadata?.faculty]);
 
-  // Auto-extract metadata from PDF and filename
+  // Auto-extract metadata from PDF (using first-page header extraction)
   const autoExtractMetadata = async (pdfFile, unisList = null) => {
     try {
-      console.log('🔄 Extracting metadata from PDF:', pdfFile.name);
-      const pdfMetadata = await extractPastPaperMetadata(pdfFile);
-      setExtractedMetadata(pdfMetadata);
+      console.log('📖 [AUTO-EXTRACT] Starting extraction for:', pdfFile.name);
       
-      console.log('📄 Extracted from PDF:', pdfMetadata);
+      // STRATEGY 1: Try first-page academic header extraction (NEW - HIGH ACCURACY)
+      console.log('📍 [AUTO-EXTRACT] Strategy 1: Calling extractFirstPageMetadata...');
+      let pdfMetadata = await extractFirstPageMetadata(pdfFile);
+      
+      console.log('📊 [AUTO-EXTRACT] Strategy 1 result:', pdfMetadata);
+      
+      // If first-page extraction succeeded with good quality, use it
+      if (pdfMetadata && pdfMetadata.validation && pdfMetadata.validation.quality !== 'poor') {
+        console.log('✅ [AUTO-EXTRACT] Using first-page extraction:', {
+          unitCode: pdfMetadata.unitCode,
+          unitName: pdfMetadata.unitName,
+          year: pdfMetadata.year,
+          quality: pdfMetadata.validation.quality
+        });
+        setExtractedMetadata(pdfMetadata);
+      } else {
+        console.log('⚠️ [AUTO-EXTRACT] Strategy 1 failed, trying Strategy 2 (backend extraction)...');
+        
+        // STRATEGY 2: Fallback to full-page backend extraction (OCR + Direct text)
+        console.log('📍 [AUTO-EXTRACT] Strategy 2: Calling extractPastPaperMetadataBackend...');
+        pdfMetadata = await extractPastPaperMetadataBackend(pdfFile);
+        
+        console.log('📊 [AUTO-EXTRACT] Strategy 2 result:', pdfMetadata);
+        
+        if (pdfMetadata) {
+          console.log('✅ [AUTO-EXTRACT] Using backend extraction:', {
+            unitCode: pdfMetadata.unitCode,
+            unitName: pdfMetadata.unitName,
+            year: pdfMetadata.year
+          });
+          setExtractedMetadata(pdfMetadata);
+        } else {
+          console.warn('⚠️ [AUTO-EXTRACT] Both extraction strategies failed');
+          setExtractedMetadata(null);
+        }
+      }
 
       // Use provided universities list or fallback to state
       const unis = unisList || universities;
       
-      // Try to match university from PDF
-      let matchedUniversityId = null;
-      if (pdfMetadata.university && unis.length > 0) {
-        console.log('🔍 Attempting to match university:', pdfMetadata.university);
-        matchedUniversityId = findMatchingUniversity(pdfMetadata.university, unis);
-        console.log('✅ Matched university ID:', matchedUniversityId);
+      // Try to match university from PDF (if extraction succeeded)
+      if (pdfMetadata && pdfMetadata.faculty && unis.length > 0) {
+        console.log('🔍 [AUTO-EXTRACT] Attempting to match university from faculty:', pdfMetadata.faculty);
         
-        if (matchedUniversityId) {
-          setUniversity(matchedUniversityId);
-        }
-      }
-
-      // Try to match faculty if we found a university
-      if (matchedUniversityId && pdfMetadata.faculty) {
-        console.log('🔍 Attempting to match faculty:', pdfMetadata.faculty);
-        try {
-          const facs = await getFacultiesByUniversity(matchedUniversityId);
-          if (facs.length > 0) {
-            const matchedFaculty = findMatchingFaculty(pdfMetadata.faculty, facs);
-            if (matchedFaculty) {
-              setFaculty(matchedFaculty);
-              console.log('✅ Matched faculty:', matchedFaculty);
+        // Look for a university that has this faculty
+        for (const uni of unis) {
+          try {
+            const facs = await getFacultiesByUniversity(uni.id);
+            if (facs.some(f => f.toLowerCase() === pdfMetadata.faculty.toLowerCase())) {
+              setUniversity(uni.id);
+              setFaculty(pdfMetadata.faculty);
+              console.log('✅ [AUTO-EXTRACT] Matched university and faculty:', uni.name, pdfMetadata.faculty);
+              break;
             }
+          } catch (e) {
+            // Continue to next university
           }
-        } catch (error) {
-          console.warn('⚠️ Could not fetch faculties:', error);
         }
       }
 
-      // Show success message regardless of extraction result
-      internalShowToast('✅ Metadata extracted - ready to upload', 'success');
+      // Show success message with extraction source
+      let source = 'filename (fallback)';
+      if (pdfMetadata?.source === 'first-page-extracted') {
+        source = `first page (${pdfMetadata.validation.quality} quality)`;
+      } else if (pdfMetadata?.source === 'backend-extracted') {
+        source = 'PDF content via OCR';
+      }
+      
+      console.log('📄 [AUTO-EXTRACT] Extraction complete - Source:', source);
+      internalShowToast(`✅ Metadata extracted from ${source}`, 'success');
+      
     } catch (error) {
-      console.error('⚠️ Extraction error:', error);
+      console.error('⚠️ [AUTO-EXTRACT] Extraction error:', error);
+      setExtractedMetadata(null);
       // Don't fail - allow upload with filename extraction
-      internalShowToast('✅ Ready to upload (using filename extraction)', 'success');
+      internalShowToast('✅ Ready to upload (will extract from filename)', 'success');
     }
   };
 
@@ -1464,81 +1546,113 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
       savePastPapersUploadState(selectedFiles, { current: i + 1, total: selectedFiles.length }, uploaded, failed, duplicates);
       
       let metadata = null; // Declare here so it's accessible in catch block
+      
+      // Declare extraction variables at function level for use in Egerton detection
+      let unit_code = '';
+      let unit_name = '';
+      let year = '';
+      let semester = '';
+      let exam_type = '';
 
       try {
-        // Extract metadata from filename
-        // Expected formats:
-        // 1. UNITCODE_UnitName_2023_1_Main.pdf (underscore-separated)
-        // 2. CODE NUMBER MONTH YEAR.pdf (space-separated) e.g., "CHEM 212 JUNE 2019.pdf"
-        const fileNameWithoutExt = file.name.replace('.pdf', '').trim();
-        
-        // Try underscore-separated format first
-        let parts = fileNameWithoutExt.split('_');
-        let unit_code = '';
-        let unit_name = '';
-        let year = '';
-        let semester = '';
-        let exam_type = '';
-        
-        console.log('📋 Parsing filename:', fileNameWithoutExt, 'Parts:', parts, 'Parts length:', parts.length);
-        
-        if (parts.length >= 2) {
-          // Standard format: CODE_Name_Year_Sem_Type
-          unit_code = parts[0] || '';
-          unit_name = parts[1] || '';
-          year = parts[2] || '';
-          semester = parts[3] || '';
-          exam_type = parts[4] || '';
-          console.log('✅ Using underscore format - code:', unit_code, 'name:', unit_name, 'year:', year);
-        } else {
-          // Fallback: try to extract from space-separated filename: "CODE NUMBER MONTH YEAR" or "PREFIX CODE NUMBER MONTH YEAR"
-          console.log('🔄 Trying space-separated parsing...');
-          try {
-            // Extract year first (most reliable) - look for 4-digit year
-            const yearMatch = fileNameWithoutExt.match(/\b(19|20)\d{2}\b/);
-            year = yearMatch ? yearMatch[0] : '';
-            console.log('📅 Extracted year:', year);
-            
-            // Try to extract course code and numbers (handles DIP EDFO 0112, AGBM 0220, SOCI 104, etc.)
-            // Matches: "DIP EDFO 0112", "AGBM 0220", "SOCI 104", "CODE123", etc.
-            
-            // First, try pattern with potential prefix: "WORD WORD DIGITS" or "WORD DIGITS"
-            let codeMatch = fileNameWithoutExt.match(/\b([A-Z]{2,4})\s+(\d{3,4})\b/i);
-            
-            if (codeMatch) {
-              // Found single code with numbers: "EDFO 0112"
-              const letters = codeMatch[1];
-              const numbers = codeMatch[2];
+        // ✅ PRIORITY 1: Use first-page extracted metadata (highest accuracy)
+        if (extractedMetadata && extractedMetadata.source === 'first-page-extracted' && extractedMetadata.validation.isValid) {
+          console.log('✅ [UPLOAD] Using FIRST-PAGE extracted metadata (quality: ' + extractedMetadata.validation.quality + ')');
+          
+          unit_code = extractedMetadata.unitCode || '';
+          unit_name = extractedMetadata.unitName || '';
+          year = extractedMetadata.year || null;
+          semester = extractedMetadata.semester || '';
+          exam_type = extractedMetadata.examType || 'Main';
+          
+          console.log('📖 [UPLOAD] First-page extracted:', { 
+            unit_code, 
+            unit_name, 
+            year, 
+            validationScore: extractedMetadata.validation.score 
+          });
+        }
+        // ✅ PRIORITY 2: Use backend extracted metadata (OCR + direct text)
+        else if (extractedMetadata && extractedMetadata.source === 'backend-extracted') {
+          console.log('✅ [UPLOAD] Using BACKEND extracted metadata from PDF');
+          
+          unit_code = extractedMetadata.unitCode || '';
+          unit_name = extractedMetadata.unitName || '';
+          year = extractedMetadata.year || null;
+          semester = extractedMetadata.semester || '';
+          exam_type = extractedMetadata.examType || 'Main';
+          
+          console.log('📊 [UPLOAD] Backend extracted:', { unit_code, unit_name, year, semester, exam_type });
+        } 
+        // ⚠️ FALLBACK: Parse filename if no extraction available
+        else {
+          console.log('⚠️ [UPLOAD] No PDF extraction available, falling back to filename parsing');
+          
+          const fileNameWithoutExt = file.name.replace('.pdf', '').trim();
+          
+          // Try underscore-separated format first
+          let parts = fileNameWithoutExt.split('_');
+          
+          console.log('📋 Parsing filename:', fileNameWithoutExt, 'Parts:', parts, 'Parts length:', parts.length);
+          
+          if (parts.length >= 2) {
+            // Standard format: CODE_Name_Year_Sem_Type
+            unit_code = parts[0] || '';
+            unit_name = parts[1] || '';
+            year = parts[2] || '';
+            semester = parts[3] || '';
+            exam_type = parts[4] || '';
+            console.log('✅ Using underscore format - code:', unit_code, 'name:', unit_name, 'year:', year);
+          } else {
+            // Fallback: try to extract from space-separated filename: "CODE NUMBER MONTH YEAR" or "PREFIX CODE NUMBER MONTH YEAR"
+            console.log('🔄 Trying space-separated parsing...');
+            try {
+              // Extract year first (most reliable) - look for 4-digit year
+              const yearMatch = fileNameWithoutExt.match(/\b(19|20)\d{2}\b/);
+              year = yearMatch ? yearMatch[0] : '';
+              console.log('📅 Extracted year:', year);
               
-              unit_name = letters;
-              unit_code = numbers;
-              console.log('🔤 Extracted - Name:', unit_name, 'Code:', unit_code, 'from:', codeMatch[0]);
-            } else {
-              // Try pattern with prefix: "DIP EDFO" where EDFO is the real code
-              codeMatch = fileNameWithoutExt.match(/\b([A-Z]{3})\s+([A-Z]{2,4})\s+(\d{3,4})\b/i);
+              // Try to extract course code and numbers (handles DIP EDFO 0112, AGBM 0220, SOCI 104, etc.)
+              // Matches: "DIP EDFO 0112", "AGBM 0220", "SOCI 104", "CODE123", etc.
+              
+              // First, try pattern with potential prefix: "WORD WORD DIGITS" or "WORD DIGITS"
+              let codeMatch = fileNameWithoutExt.match(/\b([A-Z]{2,4})\s+(\d{3,4})\b/i);
+              
               if (codeMatch) {
-                // codeMatch[1] = prefix (e.g., "DIP")
-                // codeMatch[2] = unit code letters (e.g., "EDFO")
-                // codeMatch[3] = unit code numbers (e.g., "0112")
-                const letters = codeMatch[2];
-                const numbers = codeMatch[3];
+                // Found single code with numbers: "EDFO 0112"
+                const letters = codeMatch[1];
+                const numbers = codeMatch[2];
                 
                 unit_name = letters;
                 unit_code = numbers;
-                console.log('🔤 Extracted with prefix - Prefix:', codeMatch[1], 'Name:', unit_name, 'Code:', unit_code, 'from:', codeMatch[0]);
+                console.log('🔤 Extracted - Name:', unit_name, 'Code:', unit_code, 'from:', codeMatch[0]);
               } else {
-                // Last resort: just use the whole filename
-                unit_name = fileNameWithoutExt;
-                console.log('⚠️ Could not extract code, using filename as name:', unit_name);
+                // Try pattern with prefix: "DIP EDFO" where EDFO is the real code
+                codeMatch = fileNameWithoutExt.match(/\b([A-Z]{3})\s+([A-Z]{2,4})\s+(\d{3,4})\b/i);
+                if (codeMatch) {
+                  // codeMatch[1] = prefix (e.g., "DIP")
+                  // codeMatch[2] = unit code letters (e.g., "EDFO")
+                  // codeMatch[3] = unit code numbers (e.g., "0112")
+                  const letters = codeMatch[2];
+                  const numbers = codeMatch[3];
+                  
+                  unit_name = letters;
+                  unit_code = numbers;
+                  console.log('🔤 Extracted with prefix - Prefix:', codeMatch[1], 'Name:', unit_name, 'Code:', unit_code, 'from:', codeMatch[0]);
+                } else {
+                  // Last resort: just use the whole filename
+                  unit_name = fileNameWithoutExt;
+                  console.log('⚠️ Could not extract code, using filename as name:', unit_name);
+                }
               }
+            } catch (e) {
+              console.warn('⚠️ Error parsing filename:', e);
+              unit_name = fileNameWithoutExt;
             }
-          } catch (e) {
-            console.warn('⚠️ Error parsing filename:', e);
-            unit_name = fileNameWithoutExt;
           }
+          
+          console.log('📊 Final parsed metadata:', { unit_code, unit_name, year, semester, exam_type });
         }
-        
-        console.log('📊 Final parsed metadata:', { unit_code, unit_name, year, semester, exam_type });
         
         // EGERTON UNIVERSITY AUTO-DETECTION FOR PAPERS
         // If we have Egerton unit codes, automatically set Egerton University
@@ -2043,6 +2157,11 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
 
   return (
     <div className="panel">
+      <style>{`
+        div[style*="overflowY"]::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
       {/* Header */}
       <div style={{ marginBottom: '20px' }}>
         <h2 style={{ color: '#e9edef', fontSize: '20px', fontWeight: '600', margin: '0 0 8px 0' }}>
@@ -2124,7 +2243,7 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
               </div>
             </div>
 
-            <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+            <div style={{ maxHeight: '250px', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {(resumeStatePastPapers || savedPastPapersState) && (resumeStatePastPapers || savedPastPapersState).fileNames ? (
                 (resumeStatePastPapers || savedPastPapersState).fileNames.map((fileName, idx) => (
                   <div
@@ -2219,51 +2338,60 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
         </>
       ) : (
         <>
-          {/* University Selection */}
+          {/* University and Faculty Selection - Side by Side */}
           <div style={{
-            background: '#0b141a',
-            border: '1px solid #1f2c33',
-            borderRadius: '8px',
-            marginBottom: '20px',
-            padding: '16px'
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '16px',
+            marginBottom: '20px'
           }}>
-            <label style={{ color: '#e9edef', fontSize: '13px', fontWeight: '500', marginBottom: '8px', display: 'block' }}>
-              Select University 🏫 {university ? '✓' : ''}
-            </label>
-            <select
-              value={university}
-              onChange={(e) => setUniversity(e.target.value)}
-              disabled={uploading}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                background: '#1f2c33',
-                color: '#ffffff',
-                border: university ? '2px solid #00a884' : '1px solid #374151',
-                borderRadius: '6px',
-                fontSize: '13px',
-                cursor: 'pointer',
-                outline: 'none',
-                marginBottom: '8px',
-                fontWeight: university ? '600' : '400'
-              }}
-            >
-              <option value="">-- Select University --</option>
-              {universities.map(uni => (
-                <option key={uni.id} value={uni.id}>
-                  {uni.name}
-                </option>
-              ))}
-            </select>
-            <p style={{ color: '#8696a0', fontSize: '12px', margin: '0' }}>
-              {universities.length === 0 ? 'Loading universities...' : 'Choose which university these past papers belong to'}
-            </p>
+            {/* University Selection */}
+            <div style={{
+              background: '#0b141a',
+              border: '1px solid #1f2c33',
+              borderRadius: '8px',
+              padding: '12px'
+            }}>
+              <label style={{ color: '#e9edef', fontSize: '13px', fontWeight: '500', marginBottom: '6px', display: 'block' }}>
+                Select University
+              </label>
+              <select
+                value={university}
+                onChange={(e) => setUniversity(e.target.value)}
+                disabled={uploading}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: '#1f2c33',
+                  color: '#ffffff',
+                  border: university ? '2px solid #00a884' : '1px solid #374151',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  marginBottom: '0',
+                  fontWeight: university ? '600' : '400'
+                }}
+              >
+                <option value="">-- Select University --</option>
+                {universities.map(uni => (
+                  <option key={uni.id} value={uni.id}>
+                    {uni.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* Faculty Selection */}
             {university && (
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #1f2c33' }}>
-                <label style={{ color: '#e9edef', fontSize: '13px', fontWeight: '500', marginBottom: '8px', display: 'block' }}>
-                  Select Faculty 🏢 {faculty || customFaculty ? '✓' : ''}
+              <div style={{
+                background: '#0b141a',
+                border: '1px solid #1f2c33',
+                borderRadius: '8px',
+                padding: '12px'
+              }}>
+                <label style={{ color: '#e9edef', fontSize: '13px', fontWeight: '500', marginBottom: '6px', display: 'block' }}>
+                  Select Faculty
                 </label>
                 {!useCustomFaculty ? (
                   <select
@@ -2280,7 +2408,7 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
                       fontSize: '13px',
                       cursor: 'pointer',
                       outline: 'none',
-                      marginBottom: '8px',
+                      marginBottom: '0',
                       fontWeight: faculty ? '600' : '400'
                     }}
                   >
@@ -2309,7 +2437,7 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
                       borderRadius: '6px',
                       fontSize: '13px',
                       outline: 'none',
-                      marginBottom: '8px',
+                      marginBottom: '0',
                       fontWeight: customFaculty ? '600' : '400',
                       transition: 'border-color 0.2s ease'
                     }}
@@ -2317,7 +2445,7 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
                     onBlur={(e) => (e.target.style.borderColor = customFaculty ? '#00a884' : '#374151')}
                   />
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '0' }}>
                   <input
                     type="checkbox"
                     id="custom-faculty-toggle"
@@ -2340,164 +2468,9 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
                     Enter custom faculty name
                   </label>
                 </div>
-                <p style={{ color: '#8696a0', fontSize: '12px', margin: '0' }}>
-                  {faculties.length === 0 ? 'Loading faculties...' : 'Choose faculty for papers (auto-detected if not selected)'}
-                </p>
               </div>
             )}
           </div>
-
-          {/* Extracted Metadata Display Section */}
-          {selectedFiles.length > 0 && extractedMetadata && (
-            <div style={{
-              background: '#0b141a',
-              border: '1px solid #00a884',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              padding: '16px'
-            }}>
-              <div style={{ color: '#e9edef', fontSize: '13px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                📋 Extracted Metadata (OCR)
-              </div>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '12px'
-              }}>
-                {/* Unit Code */}
-                <div>
-                  <label style={{ color: '#8696a0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
-                    Unit Code
-                  </label>
-                  <div style={{
-                    background: '#1f2c33',
-                    border: extractedMetadata.unitCode ? '1px solid #00a884' : '1px solid #374151',
-                    borderRadius: '6px',
-                    padding: '8px 10px',
-                    color: extractedMetadata.unitCode ? '#00a884' : '#8696a0',
-                    fontSize: '13px',
-                    fontWeight: extractedMetadata.unitCode ? '600' : '400',
-                    minHeight: '32px',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}>
-                    {extractedMetadata.unitCode || '—'}
-                  </div>
-                </div>
-
-                {/* Unit Name */}
-                <div>
-                  <label style={{ color: '#8696a0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
-                    Unit Name
-                  </label>
-                  <div style={{
-                    background: '#1f2c33',
-                    border: extractedMetadata.unitName ? '1px solid #00a884' : '1px solid #374151',
-                    borderRadius: '6px',
-                    padding: '8px 10px',
-                    color: extractedMetadata.unitName ? '#00a884' : '#8696a0',
-                    fontSize: '13px',
-                    fontWeight: extractedMetadata.unitName ? '600' : '400',
-                    minHeight: '32px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    wordBreak: 'break-word'
-                  }}>
-                    {extractedMetadata.unitName || '—'}
-                  </div>
-                </div>
-
-                {/* Year */}
-                <div>
-                  <label style={{ color: '#8696a0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
-                    Year
-                  </label>
-                  <div style={{
-                    background: '#1f2c33',
-                    border: extractedMetadata.year ? '1px solid #00a884' : '1px solid #374151',
-                    borderRadius: '6px',
-                    padding: '8px 10px',
-                    color: extractedMetadata.year ? '#00a884' : '#8696a0',
-                    fontSize: '13px',
-                    fontWeight: extractedMetadata.year ? '600' : '400',
-                    minHeight: '32px',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}>
-                    {extractedMetadata.year || '—'}
-                  </div>
-                </div>
-
-                {/* Semester */}
-                <div>
-                  <label style={{ color: '#8696a0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
-                    Semester
-                  </label>
-                  <div style={{
-                    background: '#1f2c33',
-                    border: extractedMetadata.semester ? '1px solid #00a884' : '1px solid #374151',
-                    borderRadius: '6px',
-                    padding: '8px 10px',
-                    color: extractedMetadata.semester ? '#00a884' : '#8696a0',
-                    fontSize: '13px',
-                    fontWeight: extractedMetadata.semester ? '600' : '400',
-                    minHeight: '32px',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}>
-                    {extractedMetadata.semester || '—'}
-                  </div>
-                </div>
-
-                {/* Exam Type */}
-                <div>
-                  <label style={{ color: '#8696a0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
-                    Exam Type
-                  </label>
-                  <div style={{
-                    background: '#1f2c33',
-                    border: extractedMetadata.examType ? '1px solid #00a884' : '1px solid #374151',
-                    borderRadius: '6px',
-                    padding: '8px 10px',
-                    color: extractedMetadata.examType ? '#00a884' : '#8696a0',
-                    fontSize: '13px',
-                    fontWeight: extractedMetadata.examType ? '600' : '400',
-                    minHeight: '32px',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}>
-                    {extractedMetadata.examType || '—'}
-                  </div>
-                </div>
-
-                {/* Source */}
-                <div>
-                  <label style={{ color: '#8696a0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
-                    Source
-                  </label>
-                  <div style={{
-                    background: '#1f2c33',
-                    border: '1px solid #374151',
-                    borderRadius: '6px',
-                    padding: '8px 10px',
-                    color: extractedMetadata.source === 'text' ? '#00d4aa' : '#ffa500',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    minHeight: '32px',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}>
-                    {extractedMetadata.source === 'text' ? '📄 PDF Text' : '📝 Filename'}
-                  </div>
-                </div>
-              </div>
-
-              <p style={{ color: '#8696a0', fontSize: '11px', margin: '12px 0 0 0' }}>
-                ℹ️ Green fields = Successfully extracted from PDF. Orange = Extracted from filename. Click upload to use these values.
-              </p>
-            </div>
-          )}
 
           {/* File List */}
           <div style={{
@@ -2505,6 +2478,7 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
             border: '1px solid #1f2c33',
             borderRadius: '8px',
             marginBottom: '20px',
+            marginTop: '20px',
             overflow: 'hidden'
           }}>
             <div style={{
@@ -2517,7 +2491,7 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
               </div>
             </div>
 
-            <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+            <div style={{ maxHeight: '250px', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {selectedFiles.length > 0 ? (
                 selectedFiles.map((file, idx) => (
                   <div
@@ -2739,30 +2713,6 @@ const PastPapersAutoUploadContent = ({ userProfile, asSubmission, showToast }) =
         </>
       )}
 
-      {/* Info Box */}
-      <div style={{
-        marginTop: '20px',
-        padding: '12px 16px',
-        background: '#1f2c33',
-        border: '1px solid #374151',
-        borderRadius: '6px',
-        color: '#8696a0',
-        fontSize: '12px',
-        lineHeight: '1.6'
-      }}>
-        <strong style={{ color: '#e9edef' }}>🤖 Fully Automatic Extraction:</strong>
-        <br />
-        ✅ <strong>No manual selection needed!</strong> Just select folder and upload
-        <br />
-        ✓ University & Faculty automatically extracted from PDF text
-        <br />
-        ✓ Unit Code, Year, Semester automatically extracted from filename: <code style={{ background: '#0b141a', padding: '2px 4px', borderRadius: '3px' }}>UNITCODE_Name_2023_1_Main.pdf</code>
-        <br />
-        ✓ If PDF extraction fails, filename extraction is used as fallback
-        <br />
-        <br />
-        <strong>Best Results:</strong> Include "University Name" and "Faculty Name" on the first page of your PDF
-      </div>
     </div>
   );
 };

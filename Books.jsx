@@ -1,6 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchBooks, fetchCategories, deleteBook, updateBook } from '../api';
 import { useAdminUI } from '../AdminUIContext';
+import { API_URL } from '../config';
+
+// Notification Badge Component
+const NotificationBadge = ({ count }) => {
+  console.log('🏷️ [NOTIF-BADGE] Rendering with count:', count, 'should show?', count && count > 0);
+  if (!count || count === 0) return null;
+  return (
+    <span className="books-notification-badge" title={`${count} pending submissions`}>
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+};
 
 const Books = ({ userProfile }) => {
   const [loading, setLoading] = useState(true);
@@ -16,13 +28,48 @@ const Books = ({ userProfile }) => {
   const [editDraft, setEditDraft] = useState({});
   const [newPdf, setNewPdf] = useState(null);
   const [newCover, setNewCover] = useState(null);
+  const [pendingSubmissions, setPendingSubmissions] = useState(0);
 
   const { confirm, showToast } = useAdminUI();
 
   const isAdmin = userProfile?.role === 'admin';
   const isEditor = userProfile?.role === 'editor';
 
+  console.log('📚 Books component - userProfile:', { 
+    id: userProfile?.id, 
+    email: userProfile?.email, 
+    role: userProfile?.role, 
+    isAdmin 
+  });
+
   const totalPages = useMemo(() => Math.max(1, Math.ceil(count / pageSize)), [count, pageSize]);
+
+  // Fetch pending submissions count for badge
+  useEffect(() => {
+    if (isAdmin) {
+      const fetchSubmissionsCount = async () => {
+        try {
+          console.log('🔔 [BADGE] Fetching submissions summary from:', `${API_URL}/api/elib/submissions/summary`);
+          const res = await fetch(`${API_URL}/api/elib/submissions/summary`);
+          if (res.ok) {
+            const json = await res.json();
+            console.log('🔔 [BADGE] API Response:', json);
+            setPendingSubmissions(json.totalPending || 0);
+            console.log('🔔 [BADGE] Updated pendingSubmissions to:', json.totalPending || 0);
+          } else {
+            console.warn('🔔 [BADGE] Failed to fetch submissions: HTTP', res.status);
+          }
+        } catch (err) {
+          console.warn('🔔 [BADGE] Failed to fetch submissions count:', err);
+        }
+      };
+
+      fetchSubmissionsCount();
+      // Refresh every 30 seconds
+      const interval = setInterval(fetchSubmissionsCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]);
 
   const load = async () => {
     setLoading(true);
@@ -149,8 +196,16 @@ const Books = ({ userProfile }) => {
           </div>
         </div>
 
-        <div className="actions" style={{ marginBottom: 10 }}>
+        <div className="actions" style={{ marginBottom: 10, display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button className="btn primary" onClick={() => (window.location.href = '/books/admin/upload')}>Add / Upload New Book</button>
+          {isAdmin && (
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <button className="btn" onClick={() => (window.location.href = '/books/admin')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                ⚙️ Admin
+              </button>
+              <NotificationBadge count={pendingSubmissions} />
+            </div>
+          )}
         </div>
 
         <div className="panel" style={{ padding: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -318,6 +373,31 @@ const Books = ({ userProfile }) => {
         </div>
       </div>
     </div>
+
+    <style>{`
+      .books-notification-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        background: #dc2626;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        border-radius: 9px;
+        margin-left: 8px;
+        line-height: 1;
+        box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+        position: absolute;
+        top: -8px;
+        right: -12px;
+        min-width: 20px;
+        padding: 0 4px;
+        z-index: 10;
+      }
+    `}</style>
   );
 };
 

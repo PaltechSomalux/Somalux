@@ -41,7 +41,7 @@ const transporter = nodemailer.createTransport({
 })();
 
 export function buildBrandedEmailHtml({ title, body }) {
-  const safeTitle = title || 'Campus Life | Paltech';
+  const safeTitle = title || 'Somalux';
   const safeBody = body || '';
   const logoUrl = EMAIL_LOGO_URL || '';
 
@@ -73,11 +73,11 @@ export function buildBrandedEmailHtml({ title, body }) {
                     <tr>
                       <td style="vertical-align:middle;">
                         ${logoUrl
-                          ? `<img src="${logoUrl}" alt="Campus Life | Paltech" style="max-height:40px; display:block;" />`
-                          : `<span style="color:#e5e7eb; font-size:18px; font-weight:600;">Campus Life | Paltech</span>`}
+                          ? `<img src="${logoUrl}" alt="Paltech Somalux" style="max-height:40px; display:block;" />`
+                          : `<span style="color:#e5e7eb; font-size:18px; font-weight:600;">Paltech Somalux</span>`}
                       </td>
                       <td style="vertical-align:middle; text-align:right;">
-                        <span style="color:#9ca3af; font-size:11px; letter-spacing:0.12em; text-transform:uppercase;">Campus Life Update</span>
+                        <span style="color:#9ca3af; font-size:11px; letter-spacing:0.12em; text-transform:uppercase;">Paltech Somalux Update</span>
                       </td>
                     </tr>
                   </table>
@@ -92,14 +92,14 @@ export function buildBrandedEmailHtml({ title, body }) {
                 <td style="padding:0 24px 24px;">
                   ${bodyHtml}
                   <p style="margin:24px 0 8px; color:#6b7280; font-size:13px;">Warm regards,</p>
-                  <p style="margin:0 0 4px; color:#111827; font-size:14px; font-weight:600;">Campus Life | Paltech</p>
-                  <p style="margin:0; color:#9ca3af; font-size:12px;">Your digital campus companion</p>
+                  <p style="margin:0 0 4px; color:#111827; font-size:14px; font-weight:600;">Somalux</p>
+                  <p style="margin:0; color:#9ca3af; font-size:12px;">Your knowledge platform</p>
                 </td>
               </tr>
               <tr>
                 <td style="padding:16px 24px 20px; border-top:1px solid #e5e7eb; background-color:#f9fafb;">
-                  <p style="margin:0 0 4px; color:#9ca3af; font-size:11px;">You received this email because you are connected with Campus Life | Paltech.</p>
-                  <p style="margin:0; color:#d1d5db; font-size:10px;">&copy; ${new Date().getFullYear()} Campus Life | Paltech. All rights reserved.</p>
+                  <p style="margin:0 0 4px; color:#9ca3af; font-size:11px;">You received this email because you are connected with Somalux.</p>
+                  <p style="margin:0; color:#d1d5db; font-size:10px;">&copy; ${new Date().getFullYear()} Somalux. All rights reserved.</p>
                 </td>
               </tr>
             </table>
@@ -135,7 +135,9 @@ export async function sendEmail({ to, subject, text, html }) {
       html,
     });
 
-
+    console.log('✅ [EMAIL UTILITY] Email sent successfully!');
+    console.log('✅ [EMAIL UTILITY] Message ID:', info.messageId);
+    console.log('✅ [EMAIL UTILITY] Response:', info.response);
     return info;
   } catch (error) {
     console.error('❌ [EMAIL UTILITY] Failed to send email!');

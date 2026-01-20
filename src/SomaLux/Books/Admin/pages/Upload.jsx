@@ -549,6 +549,8 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
         uploaded_by: userProfile?.id || null
       };
       
+      console.log('📤 Submitting book with metadata:', metadata);
+      
       // Check if user is admin or editor - if so, directly upload; otherwise submit for approval
       const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'editor';
       

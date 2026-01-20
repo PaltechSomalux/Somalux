@@ -31,6 +31,8 @@ import adsApiV2 from './routes/adsApiV2.js';
 import { createRankingRoutes } from './routes/rankings.js';
 import featureFlagsRouter from './routes/featureFlags.js';
 import pastPapersDownloaderRoutes from './routes/pastPapersDownloaderRoutes.js';
+import pastPaperExtractRoute from './routes/pastPaperExtractRoute.js';
+import firstPageExtractRoute from './routes/firstPageExtractRoute.js';
 
 
 // Express Setup MUST be before any app.use/app.post calls
@@ -45,6 +47,12 @@ app.use(featureFlagsRouter);
 
 // Past Papers Downloader Routes
 app.use('/api/elib/pastpapers', pastPapersDownloaderRoutes);
+
+// Past Papers Extraction Routes (OCR + Direct Text)
+app.use('/api/past-papers', pastPaperExtractRoute);
+
+// First Page Academic Header Extraction Routes (NEW - High Accuracy)
+app.use('/api/past-papers', firstPageExtractRoute);
 
 // FCM topic management - DISABLED (Firebase not used)
 app.post('/subscribe-topic', async (req, res) => {
@@ -3385,16 +3393,81 @@ app.get('/api/elib/submissions', async (req, res) => {
 
     const enriched = submissions.map((s) => {
       const prof = s.uploaded_by ? profileMap.get(s.uploaded_by) : null;
+      
+      // For submissions without uploaded_by, try to extract info from auth logs or fallback
+      let uploaderEmail = prof?.email || null;
+      let uploaderName = prof?.full_name || null;
+      
+      // If no uploader info and this is an old submission, check if we can find user from approval history
+      if (!uploaderEmail && !uploaderName && s.status !== 'pending') {
+        // For approved/rejected items, we might have info in the submission details
+        uploaderEmail = s.submitter_email || null;
+        uploaderName = s.submitter_name || null;
+      }
+      
       return {
         ...s,
-        uploader_email: prof?.email || null,
-        uploader_name: prof?.full_name || null,
+        uploader_email: uploaderEmail,
+        uploader_name: uploaderName,
       };
     });
 
     res.json({ ok: true, type, submissions: enriched });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Failed to load submissions' });
+  }
+});
+
+// PATCH /api/elib/submissions/:id/uploader - Update uploader info for a submission
+app.patch('/api/elib/submissions/:id/uploader', async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
+    
+    const { id } = req.params;
+    const { uploaded_by } = req.body;
+    const type = (req.query.type || 'books').toString();
+    
+    if (!uploaded_by) {
+      return res.status(400).json({ error: 'uploaded_by is required' });
+    }
+    
+    // Validate UUID format
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(id)) {
+      return res.status(400).json({ error: `Invalid submission ID format: ${id}` });
+    }
+    
+    const table = type === 'past_papers' ? 'past_paper_submissions' : 'book_submissions';
+    
+    // Update the submission
+    const { data, error } = await supabaseAdmin
+      .from(table)
+      .update({ uploaded_by })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Submission not found' });
+    
+    // Fetch user profile to return enriched data
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('email, full_name')
+      .eq('id', uploaded_by)
+      .single();
+    
+    res.json({
+      ok: true,
+      message: 'Uploader info updated',
+      submission: {
+        ...data,
+        uploader_email: profile?.email || null,
+        uploader_name: profile?.full_name || null,
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Failed to update submission' });
   }
 });
 
@@ -3437,6 +3510,8 @@ app.post('/api/elib/submissions/notify-admins', async (req, res) => {
       semester = null,
     } = req.body || {};
 
+    console.log('🔔 [NOTIFY-ADMINS] Received notification request:', { type, uploadedBy, itemTitle });
+
     const normalizedType = String(type || 'books').trim();
     const isPastPaper = normalizedType === 'past_papers';
 
@@ -3444,6 +3519,7 @@ app.post('/api/elib/submissions/notify-admins', async (req, res) => {
     let uploaderEmail = null;
     let uploaderName = null;
     if (uploadedBy) {
+      console.log('🔔 [NOTIFY-ADMINS] Looking up uploader profile:', uploadedBy);
       const { data: prof } = await supabaseAdmin
         .from('profiles')
         .select('email, full_name')
@@ -3452,6 +3528,9 @@ app.post('/api/elib/submissions/notify-admins', async (req, res) => {
       if (prof) {
         uploaderEmail = prof.email || null;
         uploaderName = prof.full_name || null;
+        console.log('🔔 [NOTIFY-ADMINS] Found uploader:', { uploaderEmail, uploaderName });
+      } else {
+        console.warn('🔔 [NOTIFY-ADMINS] Uploader profile not found');
       }
     }
 
@@ -3478,6 +3557,8 @@ app.post('/api/elib/submissions/notify-admins', async (req, res) => {
       console.warn('⚠️ No admin emails configured; skipping submission notification');
       return res.status(200).json({ ok: false, message: 'No admin emails configured' });
     }
+
+    console.log('🔔 [NOTIFY-ADMINS] Sending to admin emails:', adminEmails);
 
     const subject = isPastPaper
       ? '📚 New Past Paper Submission Awaiting Review'
@@ -3509,16 +3590,158 @@ Please open the admin dashboard and review this submission in Books → Submissi
     const html = buildBrandedEmailHtml({ title: subject, body: bodyHtml });
 
     // Send email to each admin (best-effort)
-    await Promise.allSettled(
-      adminEmails.map((to) =>
-        sendEmail({ to, subject, text: plainText, html })
-      )
+    console.log('🔔 [NOTIFY-ADMINS] Sending emails via Promise.allSettled...');
+    const emailPromises = adminEmails.map((to) =>
+      sendEmail({ to, subject, text: plainText, html })
     );
+    const results = await Promise.allSettled(emailPromises);
+    
+    const successful = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+    console.log(`🔔 [NOTIFY-ADMINS] Email results: ${successful} succeeded, ${failed} failed`);
+    
+    if (failed > 0) {
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          console.error(`🔔 [NOTIFY-ADMINS] Email ${i} failed:`, r.reason.message);
+        }
+      });
+    }
 
-    return res.json({ ok: true, message: 'Admin notification sent' });
+    return res.json({ ok: true, message: 'Admin notification sent', successful, failed });
   } catch (e) {
-    console.error('Failed to notify admins about new submission:', e);
+    console.error('❌ [NOTIFY-ADMINS] Error:', e.message);
     return res.status(500).json({ error: e.message || 'Failed to notify admins' });
+  }
+});
+
+// Send submission confirmation email to the uploader
+app.post('/api/elib/submissions/notify-uploader', async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
+    const {
+      type = 'books',           // 'books' | 'past_papers'
+      uploaderEmail = null,     // uploader's email address
+      uploaderName = null,      // uploader's full name
+      itemTitle = null,         // title of submission
+      faculty = null,
+      unitCode = null,
+      unitName = null,
+      year = null,
+      semester = null,
+    } = req.body || {};
+
+    console.log('📬 [NOTIFY-UPLOADER] Received uploader notification request:', { type, uploaderEmail, itemTitle });
+
+    if (!uploaderEmail) {
+      console.warn('📬 [NOTIFY-UPLOADER] No uploader email provided, skipping notification');
+      return res.status(200).json({ ok: false, message: 'No uploader email provided' });
+    }
+
+    const normalizedType = String(type || 'books').trim();
+    const isPastPaper = normalizedType === 'past_papers';
+
+    // Build submission summary
+    let submissionSummary;
+    if (isPastPaper) {
+      const parts = [];
+      if (unitCode) parts.push(unitCode);
+      if (unitName) parts.push(unitName);
+      if (faculty) parts.push(`(${faculty})`);
+      const main = parts.join(' ');
+      const meta = [year && `Year ${year}`, semester && `Sem ${semester}`].filter(Boolean).join(' • ');
+      submissionSummary = [main || 'Past paper', meta].filter(Boolean).join(' — ');
+    } else {
+      submissionSummary = itemTitle || 'Your submission';
+    }
+
+    const greeterName = uploaderName ? uploaderName.split(' ')[0] : 'there';
+    const subject = isPastPaper
+      ? '📚 Your Past Paper Submission Received'
+      : '📖 Your Book Submission Received';
+
+    const bodyHtml = `
+      <div style="font-size:14px;color:#111827;">
+        <p>Hi ${greeterName},</p>
+        <p>Thank you for submitting your ${isPastPaper ? 'past paper' : 'book'}! We've received it and it's now under review by our admin team.</p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;margin:16px 0;">
+          <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">What you submitted</p>
+          <p style="margin:0;color:#111827;font-weight:600;">${submissionSummary}</p>
+        </div>
+        <p style="color:#374151;"><strong>What happens next:</strong></p>
+        <ul style="color:#374151;margin:8px 0;padding-left:20px;">
+          <li>Our team will review your submission for quality and completeness</li>
+          <li>You'll receive an email notification once your submission is approved or if we need changes</li>
+          <li>After approval, your contribution will be visible to all students on the platform</li>
+        </ul>
+        <p style="color:#374151;">If you have any questions, feel free to reach out to our support team.</p>
+      </div>
+    `.trim();
+
+    const plainText = `
+Hi ${greeterName},
+
+Thank you for submitting your ${isPastPaper ? 'past paper' : 'book'}! We've received it and it's now under review by our admin team.
+
+WHAT YOU SUBMITTED
+${submissionSummary}
+
+WHAT HAPPENS NEXT
+- Our team will review your submission for quality and completeness
+- You'll receive an email notification once your submission is approved or if we need changes
+- After approval, your contribution will be visible to all students on the platform
+
+If you have any questions, feel free to reach out to our support team.
+`.trim();
+
+    const html = buildBrandedEmailHtml({ title: subject, body: bodyHtml });
+
+    console.log('📬 [NOTIFY-UPLOADER] Sending confirmation email to:', uploaderEmail);
+    try {
+      const emailResult = await sendEmail({ 
+        to: uploaderEmail, 
+        subject, 
+        text: plainText, 
+        html 
+      });
+      console.log('✅ [NOTIFY-UPLOADER] Email sent successfully to', uploaderEmail);
+      return res.json({ ok: true, message: 'Uploader notification sent', messageId: emailResult.messageId });
+    } catch (emailError) {
+      console.error('❌ [NOTIFY-UPLOADER] Failed to send email:', emailError.message);
+      return res.status(500).json({ ok: false, error: 'Failed to send email to uploader', details: emailError.message });
+    }
+  } catch (e) {
+    console.error('❌ [NOTIFY-UPLOADER] Error:', e.message);
+    return res.status(500).json({ error: e.message || 'Failed to notify uploader' });
+  }
+});
+
+// DELETE old submissions with no uploader info
+app.delete('/api/elib/submissions/cleanup/null-uploaders', async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured' });
+    
+    // Delete pending submissions with no uploaded_by
+    const { data: booksData, error: booksError } = await supabaseAdmin
+      .from('book_submissions')
+      .delete()
+      .eq('uploaded_by', null)
+      .eq('status', 'pending');
+    
+    const { data: papersData, error: papersError } = await supabaseAdmin
+      .from('past_paper_submissions')
+      .delete()
+      .eq('uploaded_by', null)
+      .eq('status', 'pending');
+    
+    if (booksError) throw booksError;
+    if (papersError) throw papersError;
+    
+    console.log('✅ Cleaned up old submissions with null uploaders');
+    res.json({ ok: true, message: 'Cleaned up old submissions' });
+  } catch (e) {
+    console.error('Error cleaning up submissions:', e);
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -3703,13 +3926,16 @@ app.post('/api/elib/submissions/:id/approve', async (req, res) => {
     });
 
     // 6. Send beautiful, warm approval email
+    console.log('📧 [APPROVAL EMAIL] Checking uploader:', { uploaded_by: sub.uploaded_by, has_uploaded_by: !!sub.uploaded_by });
     if (sub.uploaded_by) {
-      const { data: profile } = await supabaseAdmin
+      console.log('📧 [APPROVAL EMAIL] Fetching profile for uploader:', sub.uploaded_by);
+      const { data: profile, error: profileErr } = await supabaseAdmin
         .from('profiles')
         .select('email, full_name')
         .eq('id', sub.uploaded_by)
         .single();
 
+      console.log('📧 [APPROVAL EMAIL] Profile fetch result:', { profile, profileErr });
       if (profile?.email) {
         const firstName = profile.full_name?.split(' ')[0] || 'Contributor';
         const isPastPaper = type === 'past_papers';
@@ -3742,16 +3968,55 @@ app.post('/api/elib/submissions/:id/approve', async (req, res) => {
         });
 
         try {
+          console.log('📧 [APPROVAL EMAIL] Sending approval email to:', profile.email);
           await sendEmail({
             to: profile.email,
             subject,
             html: htmlBody,
             text: `Congratulations! Your submission "${itemName}" has been approved and published. Thank you for your contribution!`,
           });
+          console.log('📧 [APPROVAL EMAIL] Email sent successfully to:', profile.email);
         } catch (emailErr) {
-          console.warn(`Approval email failed for ${profile.email}:`, emailErr);
+          console.error(`📧 [APPROVAL EMAIL] Failed for ${profile.email}:`, emailErr);
           // Non-blocking
         }
+      } else {
+        console.warn('📧 [APPROVAL EMAIL] No email found for uploader profile:', { uploaded_by: sub.uploaded_by, profile });
+      }
+    } else {
+      console.warn('📧 [APPROVAL EMAIL] Submission has no uploaded_by field, cannot send email');
+    }
+
+    // Send in-app notification via WebSocket
+    if (sub.uploaded_by) {
+      try {
+        const isPastPaper = type === 'past_papers';
+        const itemName = isPastPaper
+          ? `${sub.unit_code || ''} ${sub.unit_name || ''} (${sub.year})`.trim() || 'Past Paper'
+          : sub.title || 'Your Book';
+
+        const notificationMessage = {
+          type: 'submission_approved',
+          title: 'Submission Approved! 🎉',
+          message: `Your ${isPastPaper ? 'past paper' : 'book'} "${itemName}" has been approved and is now live!`,
+          submissionId: id,
+          submissionType: type,
+          timestamp: nowIso,
+        };
+
+        // Send via WebSocket to user if connected
+        if (userChannels.has(sub.uploaded_by)) {
+          const userConnections = userChannels.get(sub.uploaded_by);
+          userConnections.forEach((ws) => {
+            if (ws.readyState === 1) { // OPEN
+              ws.send(JSON.stringify(notificationMessage));
+            }
+          });
+          console.log('📲 [IN-APP NOTIFICATION] Approval notification sent via WebSocket to user:', sub.uploaded_by);
+        }
+      } catch (notifyErr) {
+        console.warn('⚠️ [IN-APP NOTIFICATION] Failed to send WebSocket notification:', notifyErr);
+        // Non-blocking
       }
     }
 
@@ -3816,13 +4081,16 @@ app.post('/api/elib/submissions/:id/reject', async (req, res) => {
     });
 
     // Send notification email only if uploader has an email
+    console.log('📧 [REJECTION EMAIL] Checking uploader:', { uploaded_by: submission.uploaded_by, has_uploaded_by: !!submission.uploaded_by });
     if (submission.uploaded_by) {
-      const { data: profile } = await supabaseAdmin
+      console.log('📧 [REJECTION EMAIL] Fetching profile for uploader:', submission.uploaded_by);
+      const { data: profile, error: profileErr } = await supabaseAdmin
         .from('profiles')
         .select('email, full_name')
         .eq('id', submission.uploaded_by)
         .single();
 
+      console.log('📧 [REJECTION EMAIL] Profile fetch result:', { profile, profileErr });
       if (profile?.email) {
         const bookTitle = submission.title?.trim() || 'Untitled';
         const authorGreeting = profile.full_name?.split(' ')[0] || 'Author';
@@ -3860,6 +4128,37 @@ app.post('/api/elib/submissions/:id/reject', async (req, res) => {
           console.warn('Failed to send rejection email:', emailError);
           // Don't fail the whole request just because email failed
         }
+      }
+    }
+
+    // Send in-app notification via WebSocket
+    if (submission.uploaded_by) {
+      try {
+        const itemName = submission.title?.trim() || 'Your submission';
+
+        const notificationMessage = {
+          type: 'submission_rejected',
+          title: 'Submission Status Update',
+          message: `Your submission "${itemName}" was not approved.${reason ? ` Reason: ${reason}` : ''}`,
+          submissionId: id,
+          submissionType: type,
+          reason: reason || null,
+          timestamp: nowIso,
+        };
+
+        // Send via WebSocket to user if connected
+        if (userChannels.has(submission.uploaded_by)) {
+          const userConnections = userChannels.get(submission.uploaded_by);
+          userConnections.forEach((ws) => {
+            if (ws.readyState === 1) { // OPEN
+              ws.send(JSON.stringify(notificationMessage));
+            }
+          });
+          console.log('📲 [IN-APP NOTIFICATION] Rejection notification sent via WebSocket to user:', submission.uploaded_by);
+        }
+      } catch (notifyErr) {
+        console.warn('⚠️ [IN-APP NOTIFICATION] Failed to send WebSocket notification:', notifyErr);
+        // Non-blocking
       }
     }
 
@@ -5882,6 +6181,79 @@ app.get('/api/elib/search-unit-faculty', async (req, res) => {
       error: 'Faculty search failed',
       details: error.message 
     });
+  }
+});
+
+// Get user notifications (approval/rejection status updates)
+app.get('/api/user/notifications', async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured' });
+
+    const userId = req.headers['x-user-id'];
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing x-user-id header' });
+    }
+
+    // Fetch user's submission approval/rejection history
+    const { data: bookSubmissions, error: bookErr } = await supabaseAdmin
+      .from('book_submissions')
+      .select('id, title, status, approved_at, rejected_at, admin_notes')
+      .eq('uploaded_by', userId)
+      .in('status', ['approved', 'rejected'])
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    const { data: paperSubmissions, error: paperErr } = await supabaseAdmin
+      .from('past_paper_submissions')
+      .select('id, unit_code, unit_name, year, status, approved_at, rejected_at, admin_notes')
+      .eq('uploaded_by', userId)
+      .in('status', ['approved', 'rejected'])
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (bookErr || paperErr) {
+      console.error('Error fetching notifications:', { bookErr, paperErr });
+      return res.status(500).json({ error: 'Failed to fetch notifications' });
+    }
+
+    // Transform into notification objects
+    const notifications = [
+      ...(bookSubmissions || []).map(sub => ({
+        id: sub.id,
+        type: 'book',
+        title: sub.title,
+        status: sub.status,
+        timestamp: sub.status === 'approved' ? sub.approved_at : sub.rejected_at,
+        reason: sub.admin_notes,
+        message: sub.status === 'approved' 
+          ? `Your book "${sub.title}" has been approved and published!`
+          : `Your book submission "${sub.title}" was not approved.${sub.admin_notes ? ` Reason: ${sub.admin_notes}` : ''}`
+      })),
+      ...(paperSubmissions || []).map(sub => {
+        const paperName = `${sub.unit_code} ${sub.unit_name} (${sub.year})`.trim();
+        return {
+          id: sub.id,
+          type: 'paper',
+          title: paperName,
+          status: sub.status,
+          timestamp: sub.status === 'approved' ? sub.approved_at : sub.rejected_at,
+          reason: sub.admin_notes,
+          message: sub.status === 'approved'
+            ? `Your past paper "${paperName}" has been approved and published!`
+            : `Your past paper submission "${paperName}" was not approved.${sub.admin_notes ? ` Reason: ${sub.admin_notes}` : ''}`
+        };
+      })
+    ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    res.json({
+      ok: true,
+      notifications,
+      count: notifications.length
+    });
+
+  } catch (error) {
+    console.error('Error in notifications endpoint:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch notifications' });
   }
 });
 

@@ -44,13 +44,11 @@ const SubmissionsList = ({ items, loading, type, busy, onSelect, onApprove, onRe
                   {sub.faculty || 'Unknown faculty'} {sub.unit_code ? `• ${sub.unit_code}` : ''} {sub.unit_name ? `• ${sub.unit_name}` : ''}
                 </div>
               )}
+              <div style={{ color: '#00a884', fontSize: 11, marginTop: 4, fontWeight: 500 }}>
+                👤 {sub.uploader_name ? `${sub.uploader_name} (${sub.uploader_email || 'No email'})` : sub.uploader_email || 'Unknown user'}
+              </div>
               <div style={{ color: '#8696a0', fontSize: 10, marginTop: 3 }}>
                 {fmt(sub.created_at)} • {sub.status}
-                {sub.uploader_email ? (
-                  <> • Uploaded by {sub.uploader_name || sub.uploader_email}</>
-                ) : sub.uploaded_by ? (
-                  <> • Uploaded by {String(sub.uploaded_by)}</>
-                ) : null}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 4 }}>

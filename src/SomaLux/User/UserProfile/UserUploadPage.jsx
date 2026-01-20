@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FiChevronLeft } from 'react-icons/fi';
 import { AdminUIProvider } from '../../Books/Admin/AdminUIContext';
+import { supabase } from '../../Books/supabaseClient';
 import './UserUploadPage.css';
 
 const Upload = React.lazy(() => import('../../Books/Admin/pages/Upload'));
@@ -11,8 +12,35 @@ const UserUploadPage = () => {
   const { tabType } = useParams();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [activeTab, setActiveTab] = useState(tabType || 'books');
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
+
+  // Fetch current user profile
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('👤 UserUploadPage - Auth user:', { id: user?.id, email: user?.email });
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, email, full_name, role')
+            .eq('id', user.id)
+            .single();
+          console.log('👤 UserUploadPage - Profile fetched:', profile);
+          setUserProfile(profile);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user profile:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
 
   const tabOptions = [
     { id: 'books', label: 'Books' },
@@ -119,7 +147,7 @@ const UserUploadPage = () => {
         </div>
       }>
         <AdminUIProvider>
-          <Upload userProfile={null} initialTab={activeTab} />
+          <Upload userProfile={userProfile} initialTab={activeTab} />
         </AdminUIProvider>
       </React.Suspense>
     </div>

@@ -260,10 +260,25 @@ export const PaperGrid = React.memo(({
                               onToggleLike?.(paper.id);
                             }}
                             title={paperLikes[paper.id] ? "Unlike" : "Like"}
-                           
+                            style={{
+                              fontSize: '0.55rem',
+                              color: paperLikes[paper.id] ? '#ef4444' : '#8696a0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '2px',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '0',
+                              margin: '0',
+                              lineHeight: '1',
+                              fontFamily: 'inherit',
+                              transition: 'all 0.2s'
+                            }}
                           >
-                            {paperLikes[paper.id] ? <AiFillHeart size={10} /> : <AiOutlineHeart size={10} />}
-                            <span>{formatNumber(paperLikesCounts[paper.id] || 0)}</span>
+                            {paperLikes[paper.id] ? <AiFillHeart size={11} /> : <AiOutlineHeart size={11} />}
+                            {formatNumber(paperLikesCounts[paper.id] || 0)}
                           </button>
                           <button
                             onClick={(e) => {
@@ -358,20 +373,24 @@ export const PaperGrid = React.memo(({
                               }}
                               title={paperLikes[paper.id] ? "Unlike" : "Like"}
                               style={{
+                                fontSize: '0.55rem',
+                                color: paperLikes[paper.id] ? '#FF1493' : '#8696a0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '2px',
                                 background: 'none',
                                 border: 'none',
                                 cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '2px',
-                                color: paperLikes[paper.id] ? '#FF1493' : '#8696a0',
-                                padding: '2px 2px',
-                                fontSize: '0.8rem',
+                                padding: '0',
+                                margin: '0',
+                                lineHeight: '1',
+                                fontFamily: 'inherit',
                                 transition: 'all 0.2s'
                               }}
                             >
-                              {paperLikes[paper.id] ? <AiFillHeart size={10} /> : <AiOutlineHeart size={10} />}
-                              <span>{formatNumber(paperLikesCounts[paper.id] || 0)}</span>
+                              {paperLikes[paper.id] ? <AiFillHeart size={11} /> : <AiOutlineHeart size={11} />}
+                              {formatNumber(paperLikesCounts[paper.id] || 0)}
                             </button>
                             <button
                               onClick={(e) => {

@@ -14,27 +14,33 @@ export async function extractPastPaperMetadata(pdfFile) {
     const arrayBuffer = await pdfFile.arrayBuffer();
     const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-    // Extract text from first 3 pages (increased from 2 to get more context)
+    // Extract text from first 5 pages (more pages for better content extraction)
     let fullText = '';
-    const pagesToRead = Math.min(3, pdfDoc.numPages);
+    const pagesToRead = Math.min(5, pdfDoc.numPages);
 
     for (let i = 1; i <= pagesToRead; i++) {
       const page = await pdfDoc.getPage(i);
       const textContent = await page.getTextContent();
       
-      // Preserve more structure - join with spaces but add newlines for layout
-      const textItems = textContent.items.map(item => item.str);
+      // AGGRESSIVE: Collect ALL items, not just text items
       let pageText = '';
       
+      // Separate by y-coordinate to better detect line breaks
+      let currentY = null;
       let currentLine = '';
-      for (const item of textItems) {
-        // If item is empty or just whitespace, it might signal a line break
-        if (item.trim()) {
-          currentLine += item + ' ';
-        } else if (currentLine.trim()) {
-          // Line break detected
+      
+      for (const item of textContent.items) {
+        // Item might have y property for vertical position
+        if (item.y !== undefined && item.y !== currentY && currentLine.trim()) {
+          // Y position changed - likely a new line
           pageText += currentLine.trim() + '\n';
           currentLine = '';
+          currentY = item.y;
+        }
+        
+        if (item.str && item.str.trim()) {
+          currentLine += item.str + ' ';
+          currentY = item.y;
         }
       }
       
@@ -47,10 +53,32 @@ export async function extractPastPaperMetadata(pdfFile) {
       fullText += pageText + '\n\n';
     }
 
-    return parseMetadataFromText(fullText, pdfFile.name);
+    // Only return parseMetadataFromText if we got substantial content
+    if (fullText && fullText.trim().length >= 50) {
+      return parseMetadataFromText(fullText, pdfFile.name);
+    } else {
+      // If PDF extraction failed to get content, log clearly
+      console.warn(`⚠️ PDF content too small (${fullText.trim().length} chars). Extraction may be incomplete.`);
+      const result = parseMetadataFromText(fullText, pdfFile.name);
+      // DO NOT fallback to filename - leave empty fields if PDF extraction insufficient
+      result.source = 'pdf-empty';
+      return result;
+    }
   } catch (error) {
-    console.warn('PDF extraction failed, falling back to filename parsing:', error);
-    return parseMetadataFromFilename(pdfFile.name);
+    console.warn('PDF extraction failed:', error);
+    // CRITICAL: DO NOT fallback to filename parsing
+    // Return empty metadata instead - filename should NEVER be used for extraction
+    console.warn('⚠️ IMPORTANT: Not using filename as fallback. Unit name must be from PDF only.');
+    return {
+      university: null,
+      faculty: null,
+      unitCode: null,
+      unitName: null,
+      year: null,
+      semester: null,
+      examType: null,
+      source: 'failed'
+    };
   }
 }
 
@@ -123,153 +151,42 @@ function parseMetadataFromText(text, filename) {
     }
   }
 
-  // Extract Unit Code (usually 4-6 letters followed by 2-3 digits)
-  // More flexible pattern to catch variations like "CS 101", "CS-101", "CS101", etc.
+  // Extract Unit Code (ONLY numeric part: 2-4 digits, NO letters)
+  // The full code is usually "PREFIX NUMBER" e.g., "SCE 116" or "BIO 301"
+  // Unit Name = PREFIX (SCE, KAS, HSU)
+  // Unit Code = NUMBER (116, 101, 301)
   const codePatterns = [
-    /\b([A-Z]{2,6}\s*[-]?\s*\d{3,4})\b/,
-    /\b([A-Z]{2,6}\d{3,4})\b/,
-    /\b([A-Z]+\d{3,4})\b/
+    /\b([A-Z]{2,6})\s*[-]?\s*(\d{2,4})\b/,  // Extract both prefix and digits from "CODE 101" or "CODE-101"
+    /\b([A-Z]{2,6})(\d{2,4})\b/,              // Extract both from "CODE101"
+    /\bCOURSE[:\s]*([A-Z]{2,6})\s*[-]?\s*(\d{2,4})/i,  // "COURSE: SCE 116"
+    /\bCODE[:\s]*([A-Z]{2,6})\s*[-]?\s*(\d{2,4})/i,    // "CODE: SCE 116"
+    /\b([A-Za-z]+)\s+(\d{3,4})\b/             // Extract from "BIOLOGY 301" or "Physics 101"
   ];
   
   for (const pattern of codePatterns) {
     const match = text.match(pattern);
     if (match) {
-      metadata.unitCode = match[1].replace(/\s+/g, '').replace('-', '');
-      break;
+      const prefix = match[1];    // PREFIX is unitName
+      const digits = match[2];    // DIGITS is unitCode
+      // Validate: digits must be ONLY digits and reasonable length
+      if (/^\d{2,4}$/.test(digits)) {
+        // Only set if we don't have a unitName yet
+        if (!metadata.unitName) {
+          metadata.unitName = prefix;  // PREFIX becomes Unit Name
+          metadata.unitCode = digits;  // DIGITS becomes Unit Code
+          console.log(`✅ Extracted unitName (prefix): "${metadata.unitName}", unitCode (digits): "${metadata.unitCode}"`);
+          break;
+        }
+      } else {
+        console.log(`❌ Rejected - code number invalid: "${digits}"`);
+      }
     }
   }
 
-  // Extract Unit Name (the full course/unit name) - FROM PDF ONLY
-  // CRITICAL: Much more aggressive extraction with multiple fallback patterns
-  // The unit name MUST come from PDF content, never from filename
-  
-  // First, collect ALL lines from text - don't filter too early, we'll validate later
-  const allLines = text.split('\n')
-    .map(l => l.trim())
-    .filter(l => l.length > 0); // Keep even short lines for context
-  
-  console.log(`\n🔍 UNIT NAME EXTRACTION - Scanning ${allLines.length} lines`);
-  console.log('🔝 First 20 lines of PDF:');
-  allLines.slice(0, 20).forEach((line, idx) => console.log(`  [${idx}] "${line}"`));
-  
-  // Build a comprehensive list of patterns with scores
-  const candidateNames = [];
-  
-  // SECTION 1: EXPLICIT PATTERNS - highest confidence
-  const highPriorityPatterns = [
-    { regex: /(?:COURSE|UNIT|SUBJECT|MODULE|PAPER)\s*(?:TITLE|NAME)?[:\s]+([A-Z][A-Za-z0-9\s&,\-()./]{3,150}?)(?:\n|$|EXAMINATION|EXAM|CODE|DURATION|DATE)/i, score: 100, name: 'explicit-label' },
-    { regex: /(?:[A-Z]{2,6}\s*[-]?\s*\d{3,4})\s*[:\/\-]\s*([A-Z][A-Za-z0-9\s&,\-()./]{3,150}?)(?:\n|$|EXAMINATION|EXAM)/i, score: 95, name: 'code-after' },
-    { regex: /(?:CODE|COURSE|UNIT)[:\s]+[A-Z0-9\-\s]*\n\s*([A-Z][A-Za-z\s&,\-()./]{4,150}?)(?:\n|$)/i, score: 90, name: 'code-line' }
-  ];
-  
-  for (const { regex, score, name } of highPriorityPatterns) {
-    const match = text.match(regex);
-    if (match && match[1]) {
-      let extracted = match[1].trim()
-        .replace(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/g, '')
-        .replace(/\d{1,2}:\d{2}/g, '')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
-      
-      if (extracted.length >= 3 && extracted.length <= 200 && /[A-Za-z]/.test(extracted)) {
-        candidateNames.push({ text: extracted, score, source: name });
-        console.log(`✅ PATTERN MATCH [${name}] (${score}): "${extracted}"`);
-      }
-    }
-  }
-  
-  // SECTION 2: SCAN ALL LINES - aggressive line-by-line search
-  console.log('\n📋 Scanning all lines for course-like content...');
-  for (let i = 0; i < allLines.length; i++) {
-    const line = allLines[i];
-    const prevLine = i > 0 ? allLines[i-1] : '';
-    
-    // Skip obvious non-course lines
-    if (/^(EXAMINATION|EXAM|QUESTION|SECTION|INSTRUCTIONS|DATE|TIME|DURATION|MARKS|PAPER|ANSWER|MAIN|SUPPLEMENTARY|FOR OFFICIAL|Page|Confidential|Total|TOTAL|marks?|MARKS|Semester|SEM|UNIVERSITY|FACULTY|SCHOOL|INSTITUTE|DEPARTMENT|COLLEGE)$/i.test(line)) {
-      continue;
-    }
-    
-    if (/^\d+$/.test(line)) continue; // Pure numbers
-    if (/^[A-Z0-9\-\.]+$/.test(line) && line.length < 10) continue; // Code-like
-    if (line.length < 3) continue; // Too short
-    
-    // STRATEGY 1: Line directly after unit code (VERY HIGH CONFIDENCE)
-    if (metadata.unitCode && prevLine.toUpperCase().includes(metadata.unitCode.toUpperCase())) {
-      if (/[A-Za-z]/.test(line) && !(/^[A-Z0-9]+$/.test(line) && line.length < 10)) {
-        candidateNames.push({ text: line, score: 92, source: 'direct-after-code', lineNum: i });
-        console.log(`✅ [after-code at line ${i}] (92): "${line}"`);
-      }
-    }
-    
-    // STRATEGY 2: Multi-word capitalized lines (GOOD INDICATOR)
-    if (/^[A-Z]/.test(line) && line.split(/\s+/).length >= 2 && line.length >= 5 && line.length <= 200) {
-      if (!/^(SECTION|INSTRUCTIONS|QUESTION|ATTEMPT|ANSWER|EXAMINATION|FOR|CONFIDENTIAL)/i.test(line)) {
-        candidateNames.push({ text: line, score: 75, source: 'cap-multiword', lineNum: i });
-      }
-    }
-    
-    // STRATEGY 3: Lines with mixture of letters and spaces (probably course names)
-    if (/[A-Za-z\s]{4,}/.test(line) && line.split(/\s+/).length >= 2 && /[a-z]/.test(line) && line.length >= 5 && line.length <= 200) {
-      if (!/^(EXAMINATION|EXAM|DATE|TIME|DURATION|MARKS|QUESTION|SECTION|PAPER|INSTRUCTIONS|ANSWER|MAIN|SUPPLEMENTARY)$/i.test(line)) {
-        candidateNames.push({ text: line, score: 60, source: 'mixed-case', lineNum: i });
-      }
-    }
-  }
-  
-  console.log(`\n📊 Total candidates found: ${candidateNames.length}`);
-  if (candidateNames.length > 0) {
-    const topCandidates = candidateNames
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10)
-      .map(c => `"${c.text}" (${c.score})`);
-    console.log(`🔝 Top 10 candidates:\n  ${topCandidates.join('\n  ')}`);
-  }
-  
-  // SECTION 3: SELECT BEST CANDIDATE
-  if (candidateNames.length > 0) {
-    // Sort by score (descending), then by length preference
-    candidateNames.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      // Prefer medium-length names (30-100 chars)
-      const aLenScore = Math.abs(a.text.length - 60);
-      const bLenScore = Math.abs(b.text.length - 60);
-      return aLenScore - bLenScore;
-    });
-    
-    console.log('\n✅ VALIDATION: Checking candidates in order...');
-    for (const candidate of candidateNames) {
-      const text = candidate.text;
-      console.log(`  Checking: "${text}" (score: ${candidate.score})...`);
-      
-      // Final validation: reject only if obviously invalid
-      if (/^\d+$/.test(text)) {
-        console.log(`    ❌ REJECT: Pure numbers`);
-        continue;
-      }
-      if (/^(EXAMINATION|EXAM|COURSE|UNIT|DATE|TIME|SEMESTER|SEM|DOCUMENT|SECTION|QUESTION|MAIN|SUPPLEMENTARY|FOR|CONFIDENTIAL|PAGE|FACULTY|SCHOOL|INSTITUTE|UNIVERSITY|DEPARTMENT|COLLEGE)$/i.test(text)) {
-        console.log(`    ❌ REJECT: Generic metadata term`);
-        continue;
-      }
-      if (/^[A-Z0-9\-]+$/.test(text) && text.length < 10) {
-        console.log(`    ❌ REJECT: Code-like string`);
-        continue;
-      }
-      if (text.length < 3) {
-        console.log(`    ❌ REJECT: Too short`);
-        continue;
-      }
-      
-      // Accept this candidate!
-      metadata.unitName = text;
-      console.log(`\n✅✅✅ SELECTED UNIT NAME: "${text}" (score: ${candidate.score}, source: ${candidate.source})`);
-      break;
-    }
-  }
-  
-  // If still no unit name found, log it clearly
-  if (!metadata.unitName) {
-    console.warn(`\n⚠️⚠️⚠️ UNIT NAME NOT FOUND - No valid candidates passed validation`);
-    console.warn(`Available candidates were: ${candidateNames.map(c => c.text).join(', ')}`);
+  // Note: unitName has already been extracted from the code prefix above
+  // No need for additional unit name extraction - it's now part of the code pattern
+  if (metadata.unitName) {
+    console.log(`\n✅ UNIT NAME ALREADY EXTRACTED FROM CODE PREFIX: "${metadata.unitName}"`);
   }
 
   // Extract Year (4 digits, prioritize years in reasonable range 1980-2050)
@@ -389,6 +306,12 @@ function parseMetadataFromText(text, filename) {
           // Skip very short lines (likely not course name)
           if (line.length < 4) continue;
           
+          // CRITICAL: Unit name MUST NOT contain digits
+          if (/\d/.test(line)) {
+            console.log(`⏭️ Skipping line with digits: "${line}"`);
+            continue;
+          }
+          
           // This could be the course name
           if (/[A-Za-z]/.test(line)) {
             metadata.unitName = line;
@@ -408,6 +331,12 @@ function parseMetadataFromText(text, filename) {
         
         // Skip metadata lines
         if (/^(EXAMINATION|EXAM|DATE|TIME|DURATION|MARKS|QUESTION|SECTION|PAPER|INSTRUCTIONS|ANSWER|MAIN|SUPPLEMENTARY|FOR|CONFIDENTIAL|Page|\d+|[A-Z0-9]+)$/i.test(line)) continue;
+        
+        // CRITICAL: Unit name MUST NOT contain digits
+        if (/\d/.test(line)) {
+          console.log(`⏭️ Skipping line with digits: "${line}"`);
+          continue;
+        }
         
         // Skip if it's just the unit code
         if (metadata.unitCode && line.toUpperCase().includes(metadata.unitCode.toUpperCase()) && line.length < 20) continue;
@@ -433,12 +362,18 @@ function parseMetadataFromText(text, filename) {
         // Skip pure metadata indicators
         if (/(EXAMINATION|EXAM|QUESTIONS|INSTRUCTIONS|TIME|DATE|DURATION|MARKS|Page|For official|Confidential|ANSWER)/i.test(trimmed)) continue;
         
+        // CRITICAL: Unit name MUST NOT contain digits
+        if (/\d/.test(trimmed)) {
+          console.log(`⏭️ Skipping line with digits: "${trimmed}"`);
+          continue;
+        }
+        
         // Prefer lines that start with capital and have multiple words
         if (/^[A-Z]/.test(trimmed) && trimmed.includes(' ') && !(/^[A-Z0-9\-]+$/.test(trimmed))) {
           // Clean up any trailing non-letter characters
           let cleaned = trimmed.replace(/[\d\(\)\[\]]+\s*$/, '').trim();
           
-          if (cleaned.length > 3 && /[A-Za-z]/.test(cleaned) && cleaned.length < 200) {
+          if (cleaned.length > 3 && /[A-Za-z]/.test(cleaned) && cleaned.length < 200 && !/\d/.test(cleaned)) {
             metadata.unitName = cleaned;
             console.log('✅ Extracted unit name (strategy 3 - capitalized):', metadata.unitName);
             break;
@@ -490,46 +425,99 @@ function parseMetadataFromText(text, filename) {
 
 /**
  * Parse metadata from filename
- * Supports multiple formats:
- * - UNITCODE_UnitName_2023_1_Main.pdf
- * - UNITCODEYEARSEMESTER.pdf (compact format)
- * - UCU101_Management_2023_1.pdf
+ * IMPORTANT: NEVER extract unitName from filename under ANY circumstance
+ * IMPORTANT: unitCode must be ONLY digits, no letters
+ * Supports extraction of unitCode (numeric part only), year, semester, examType only
  */
 function parseMetadataFromFilename(filename) {
   const metadata = {
     university: null,
     faculty: null,
     unitCode: null,
-    unitName: null,
+    unitName: null, // MUST REMAIN NULL - extracted from PDF only
     year: null,
     semester: null,
     examType: null,
     source: 'filename'
   };
 
-  const fileNameWithoutExt = filename.replace('.pdf', '').replace(/\.[a-z]+$/i, '');
+  const fileNameWithoutExt = filename.replace('.pdf', '').replace(/\.[a-z]+$/i, '').replace('.PDF', '');
   
-  // Try standard delimited format first: CODE_NAME_YEAR_SEM_TYPE
-  if (fileNameWithoutExt.includes('_')) {
-    const parts = fileNameWithoutExt.split('_');
-    if (parts.length >= 2) {
-      metadata.unitCode = parts[0] || null;
-      metadata.unitName = parts[1] || null;
-      if (parts.length >= 3) metadata.year = parts[2] ? parseInt(parts[2]) : null;
-      if (parts.length >= 4) metadata.semester = parts[3] || null;
-      if (parts.length >= 5) metadata.examType = parts[4] || 'Main';
+  // CRITICAL: NEVER extract or set unitName from filename
+  // If this function is called, it means PDF extraction failed
+  // We can only safely extract numeric unit code and date information
+  
+  // Try to extract CODE-like pattern: LETTERS followed by DIGITS
+  // Handle multiple formats:
+  // 1. "APH1012" -> code "1012" (up to 4 digits, but grab last 2-4 consecutive digits before date)
+  // 2. "HPH70020120402" -> code "202" (grab middle digits, not embedded in date)
+  // 3. "AEN 202" -> code "202"
+  // 4. "AGE 101 2015" -> code "101"
+  
+  // Strategy: Extract PREFIX, then find the first significant digit group (2-4 digits not part of date)
+  const prefixMatch = fileNameWithoutExt.match(/^([A-Z]{2,6})/);
+  if (prefixMatch) {
+    const prefix = prefixMatch[1];
+    
+    // Now find a 2-4 digit sequence that looks like a unit code
+    // Exclude sequences that are clearly dates (yyyymmdd format)
+    const afterPrefix = fileNameWithoutExt.substring(prefix.length);
+    
+    // Try different patterns to find unit code
+    let unitCode = null;
+    
+    // Pattern 1: Digits immediately after prefix "APH1012"
+    let digitsMatch = afterPrefix.match(/^(\d{2,4})/);
+    if (digitsMatch && !/^\d{8}$/.test(digitsMatch[1])) {
+      unitCode = digitsMatch[1];
+    } else {
+      // Pattern 2: Extract 2-4 digits that are NOT part of an 8-digit date (yyyymmdd)
+      // Look for digit sequences surrounded by non-digits or separators
+      const allDigits = afterPrefix.match(/(\d{1,4})/g);
+      if (allDigits && allDigits.length > 0) {
+        // Skip 8-digit sequences (these are dates like 20120402)
+        // Take the first 2-4 digit sequence that's not 8 digits
+        for (const digits of allDigits) {
+          if (digits.length >= 2 && digits.length <= 4) {
+            unitCode = digits;
+            break;
+          }
+        }
+      }
     }
-  } else {
-    // Try compact format: codes followed by numbers
-    // E.g., "UCU10320171201" -> code=UCU101, year=2017, semester=1, etc.
-    const match = fileNameWithoutExt.match(/^([A-Z]+\d{3,4})(\d{4})(\d)(\d{2})$/);
-    if (match) {
-      metadata.unitCode = match[1];
-      metadata.year = parseInt(match[2]);
-      metadata.semester = match[3];
-      // Don't set unitName from this format as it doesn't contain it
+    
+    // Validate: unit_code MUST be ONLY digits and correct length
+    if (unitCode && /^\d{2,4}$/.test(unitCode)) {
+      metadata.unitCode = unitCode;
+      console.log(`✅ [FILENAME] Extracted unitCode: ${unitCode} from prefix: ${prefix}`);
     }
+    // ⚠️ CRITICAL: NEVER extract the letter part as unitName - it must come from PDF
+    // ⚠️ CRITICAL: NEVER set unitName - it must come from PDF content only
+    // unitName MUST remain null - will NEVER be used from filename
   }
+  
+  // Try to extract year (looking for 4-digit year patterns)
+  const yearMatch = fileNameWithoutExt.match(/(?:20|19)\d{2}/);
+  if (yearMatch) {
+    metadata.year = parseInt(yearMatch[0]);
+  }
+  
+  // Try to extract semester (single digit 1-3)
+  const semesterMatch = fileNameWithoutExt.match(/[_\-\s](\d)(?:[_\-\s]|$)/);
+  if (semesterMatch && /[1-3]/.test(semesterMatch[1])) {
+    metadata.semester = semesterMatch[1];
+  }
+  
+  // Try to extract exam type
+  if (/supplementary|supp/i.test(fileNameWithoutExt)) metadata.examType = 'Supplementary';
+  else if (/\bcat\b/i.test(fileNameWithoutExt)) metadata.examType = 'CAT';
+  else if (/mock/i.test(fileNameWithoutExt)) metadata.examType = 'Mock';
+  else if (/main/i.test(fileNameWithoutExt)) metadata.examType = 'Main';
+
+  // ⚠️ CRITICAL LOG: Explicitly confirm unitName is NOT extracted from filename
+  console.warn(`⚠️ [FILENAME-PARSE] ✅ Confirmed: unitName is NEVER extracted from filename`);
+  console.warn(`⚠️ [FILENAME-PARSE] ✅ unitName field remains NULL - must come from PDF content only`);
+  console.warn(`⚠️ [FILENAME-PARSE] Extracted from filename - unitCode: ${metadata.unitCode}, year: ${metadata.year}`);
 
   return metadata;
 }

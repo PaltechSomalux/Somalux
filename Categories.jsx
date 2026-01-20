@@ -11,11 +11,46 @@ const Categories = () => {
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({ name: '', description: '' });
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(15);
+  const [pageSize] = useState(32);
   const [bookCounts, setBookCounts] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [user, setUser] = useState(null);
+  const [userLoading, setUserLoading] = useState(true);
 
   const { confirm, showToast } = useAdminUI();
+
+  // Load current user and subscription tier
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        
+        if (authUser) {
+          // Fetch user profile to get subscription_tier
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('subscription_tier')
+            .eq('id', authUser.id)
+            .single();
+          
+          if (!error && profile) {
+            setUser({
+              ...authUser,
+              subscription_tier: profile.subscription_tier || 'basic'
+            });
+          } else {
+            setUser(authUser);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load user subscription tier:', err);
+      } finally {
+        setUserLoading(false);
+      }
+    };
+
+    loadUser();
+  }, []);
 
   // Load from cache immediately to avoid blank UI
   useEffect(() => {
@@ -165,6 +200,11 @@ const Categories = () => {
     return Object.values(bookCounts).reduce((sum, count) => sum + count, 0);
   }, [bookCounts]);
 
+  // Check if user is premium
+  const isPremiumUser = useMemo(() => {
+    return user?.subscription_tier === 'premium' || user?.subscription_tier === 'premium_pro';
+  }, [user?.subscription_tier]);
+
   return (
     <div>
       <div className="panel">
@@ -184,7 +224,7 @@ const Categories = () => {
             <div>
               <div className="panel-title" style={{ marginBottom: '0.25rem' }}>Categories</div>
               <div style={{ fontSize: '0.875rem', color: '#8696a0' }}>
-                {rows.length} {rows.length === 1 ? 'category' : 'categories'} • {totalBooks} total books
+                {rows.length} {rows.length === 1 ? 'category' : 'categories'} {isPremiumUser && `• ${totalBooks} total books`}
               </div>
             </div>
           </div>
@@ -371,22 +411,24 @@ const Categories = () => {
                   </div>
                 )}
 
-                {/* Book Count Badge */}
-                <div style={{ 
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.375rem',
-                  background: bookCounts[row.id] > 0 ? 'rgba(0, 168, 132, 0.15)' : 'rgba(134, 150, 160, 0.1)',
-                  color: bookCounts[row.id] > 0 ? '#00a884' : '#8696a0',
-                  padding: '0.4rem 0.8rem',
-                  borderRadius: '18px',
-                  fontSize: '0.8rem',
-                  fontWeight: '500',
-                  width: 'fit-content'
-                }}>
-                  <FiBookOpen size={13} />
-                  {bookCounts[row.id] || 0} {bookCounts[row.id] === 1 ? 'book' : 'books'}
-                </div>
+                {/* Book Count Badge - Only visible to premium users */}
+                {isPremiumUser && (
+                  <div style={{ 
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    background: bookCounts[row.id] > 0 ? 'rgba(0, 168, 132, 0.15)' : 'rgba(134, 150, 160, 0.1)',
+                    color: bookCounts[row.id] > 0 ? '#00a884' : '#8696a0',
+                    padding: '0.4rem 0.8rem',
+                    borderRadius: '18px',
+                    fontSize: '0.8rem',
+                    fontWeight: '500',
+                    width: 'fit-content'
+                  }}>
+                    <FiBookOpen size={13} />
+                    {bookCounts[row.id] || 0} {bookCounts[row.id] === 1 ? 'book' : 'books'}
+                  </div>
+                )}
 
                 {/* Actions */}
                 {editingId === row.id ? (
