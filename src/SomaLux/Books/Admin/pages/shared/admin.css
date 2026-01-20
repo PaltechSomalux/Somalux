@@ -566,6 +566,9 @@
     display: flex;
     gap: 4px;
     flex-wrap: wrap;
+    width: fit-content;
+    justify-content: center;
+    margin: 0 auto;
 }
 
 .btn {
@@ -584,6 +587,8 @@
     letter-spacing: 0.3px;
     position: relative;
     overflow: hidden;
+    width: auto;
+    flex-shrink: 0;
 }
 
 .btn::before {

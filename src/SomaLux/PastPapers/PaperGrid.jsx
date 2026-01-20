@@ -39,6 +39,7 @@ export const PaperGrid = React.memo(({
   const searchInputRef = useRef(null);
   const searchDebounceRef = useRef(null);
   const [localSearchValue, setLocalSearchValue] = useState(searchTerm);
+  const [bubbles, setBubbles] = useState({});
   
   const handleSearchChange = useCallback((e) => {
     const value = e.target.value;
@@ -54,7 +55,35 @@ export const PaperGrid = React.memo(({
       setSearchTerm(value);
     }, 300);
   }, [setSearchTerm]);
-  
+
+  const createBubbles = useCallback((paperId) => {
+    const newBubbles = [];
+    const hearts = ['❤️', '💕', '💖', '💗', '💓', '💞', '💝'];
+    
+    for (let i = 0; i < 8; i++) {
+      const randomOffset = (Math.random() - 0.5) * 140;
+      const randomRotate = Math.random() * 360;
+      newBubbles.push({
+        id: Math.random(),
+        heart: hearts[i % hearts.length],
+        delay: i * 60,
+        randomOffset: randomOffset,
+        randomRotate: randomRotate
+      });
+    }
+    
+    setBubbles(prev => ({ ...prev, [paperId]: newBubbles }));
+    
+    // Clear bubbles after animation
+    setTimeout(() => {
+      setBubbles(prev => {
+        const updated = { ...prev };
+        delete updated[paperId];
+        return updated;
+      });
+    }, 2600);
+  }, []);
+
   const totalPages = Math.max(1, Math.ceil(filteredPapers.length / pageSize));
 
   return (
@@ -254,37 +283,57 @@ export const PaperGrid = React.memo(({
                       </span>
                       {user && (
                         <>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleLike?.(paper.id);
-                            }}
-                            title={paperLikes[paper.id] ? "Unlike" : "Like"}
-                            style={{
-                              fontSize: '0.55rem',
-                              color: paperLikes[paper.id] ? '#ef4444' : '#8696a0',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '2px',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              padding: '0',
-                              margin: '0',
-                              lineHeight: '1',
-                              fontFamily: 'inherit',
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            {paperLikes[paper.id] ? <AiFillHeart size={11} /> : <AiOutlineHeart size={11} />}
-                            {formatNumber(paperLikesCounts[paper.id] || 0)}
-                          </button>
+                          <div style={{ position: 'relative', display: 'inline-flex', overflow: 'visible', width: 'fit-content' }}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleLike?.(paper.id);
+                                createBubbles(paper.id);
+                              }}
+                              className={`love-buttonpast ${paperLikes[paper.id] ? 'activepast' : ''}`}
+                              title={paperLikes[paper.id] ? "Unlike" : "Like"}
+                              style={{
+                                fontSize: '0.55rem',
+                                color: paperLikes[paper.id] ? '#ef4444' : '#8696a0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '2px',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '0',
+                                margin: '0',
+                                lineHeight: '1',
+                                fontFamily: 'inherit',
+                                transition: 'all 0.2s',
+                                position: 'relative',
+                                isolation: 'isolate'
+                              }}
+                            >
+                              {paperLikes[paper.id] ? <AiFillHeart size={11} /> : <AiOutlineHeart size={11} />}
+                              {formatNumber(paperLikesCounts[paper.id] || 0)}
+                              {bubbles[paper.id] && bubbles[paper.id].map((bubble) => (
+                                <div
+                                  key={bubble.id}
+                                  className="love-bubble heart"
+                                  style={{
+                                    animationDelay: `${bubble.delay}ms`,
+                                    '--random-x': `${bubble.randomOffset}px`,
+                                    '--random-rotate': `${bubble.randomRotate}deg`
+                                  }}
+                                >
+                                  {bubble.heart}
+                                </div>
+                              ))}
+                            </button>
+                          </div>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               onToggleBookmark?.(paper.id);
                             }}
+                            className={`bookmark-buttonpast ${paperBookmarks.includes(paper.id) ? 'activepast' : ''}`}
                             title={paperBookmarks.includes(paper.id) ? "Remove bookmark" : "Bookmark"}
                             style={{
                               background: 'none',
@@ -370,7 +419,9 @@ export const PaperGrid = React.memo(({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onToggleLike?.(paper.id);
+                                createBubbles(paper.id);
                               }}
+                              className={`love-buttonpast ${paperLikes[paper.id] ? 'activepast' : ''}`}
                               title={paperLikes[paper.id] ? "Unlike" : "Like"}
                               style={{
                                 fontSize: '0.55rem',
@@ -386,17 +437,33 @@ export const PaperGrid = React.memo(({
                                 margin: '0',
                                 lineHeight: '1',
                                 fontFamily: 'inherit',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                position: 'relative',
+                                isolation: 'isolate'
                               }}
                             >
                               {paperLikes[paper.id] ? <AiFillHeart size={11} /> : <AiOutlineHeart size={11} />}
                               {formatNumber(paperLikesCounts[paper.id] || 0)}
+                              {bubbles[paper.id] && bubbles[paper.id].map((bubble) => (
+                                <div
+                                  key={bubble.id}
+                                  className="love-bubble heart"
+                                  style={{
+                                    animationDelay: `${bubble.delay}ms`,
+                                    '--random-x': `${bubble.randomOffset}px`,
+                                    '--random-rotate': `${bubble.randomRotate}deg`
+                                  }}
+                                >
+                                  {bubble.heart}
+                                </div>
+                              ))}
                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onToggleBookmark?.(paper.id);
                               }}
+                              className={`bookmark-buttonpast ${paperBookmarks.includes(paper.id) ? 'activepast' : ''}`}
                               title={paperBookmarks.includes(paper.id) ? "Remove bookmark" : "Bookmark"}
                               style={{
                                 background: 'none',
@@ -424,33 +491,29 @@ export const PaperGrid = React.memo(({
 
           {/* Pagination Controls */}
           <div
+            className="actions"
             style={{
-              display: 'flex',
-              justifyContent: 'center',
+              marginTop: 10,
+              justifyContent: 'space-between',
               alignItems: 'center',
-              gap: '12px',
-              marginTop: '24px',
-              marginBottom: '20px'
+              gap: '16px'
             }}
           >
             <button className="btn" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}>
-              <FiChevronLeft size={16} /> Prev
+              ← Prev
             </button>
 
             <span
               style={{
-                color: '#666',
-                fontSize: '0.9rem',
-                fontWeight: '500',
-                minWidth: '150px',
-                textAlign: 'center'
+                color: '#cfd8dc',
+                fontSize: 12
               }}
             >
               Page {currentPage} of {totalPages}
             </span>
 
             <button className="btn" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>
-              Next <FiChevronRight size={16} />
+              Next →
             </button>
           </div>
     </>

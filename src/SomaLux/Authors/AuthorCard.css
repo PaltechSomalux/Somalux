@@ -1,4 +1,33 @@
 /* Authors.css - Adjusted for better visibility */
+
+/* Like button click animation */
+@keyframes likeClickPulse {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.15);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes likeHeartBeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.3);
+  }
+  50% {
+    transform: scale(1);
+  }
+}
+
 .author-card {
   display: flex;
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
@@ -336,7 +365,7 @@
   gap: 8px;
   padding: 8px 16px;
   border-radius: 12px;
-  border: 2px solid #e2e8f0;
+  border: none;
   background: white;
   color: #4a5568;
   font-weight: 600;
@@ -349,21 +378,26 @@
 
 .like-button:hover,
 .love-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border-color: #cbd5e0;
+  transform: none;
+  box-shadow: none;
 }
 
 .like-button.active {
   background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
   color: white;
   border-color: transparent;
+  animation: likeClickPulse 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .love-button.active {
   background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
   color: white;
   border-color: transparent;
+  animation: likeClickPulse 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.love-button.active svg {
+  animation: likeHeartBeat 0.6s ease-in-out;
 }
 
 .like-button svg,

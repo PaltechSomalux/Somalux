@@ -9,6 +9,26 @@ import { getPastPaperCountByUniversity } from '../Books/Admin/pastPapersApi';
 import { formatNumber } from './formatNumber';
 import './PaperPanel.css';
 
+// Floating bubbles component for university likes
+const UniversityFloatingBubbles = ({ bubbles }) => {
+  return (
+    <>
+      {bubbles.map((bubble) => (
+        <div
+          key={bubble.id}
+          className="university-love-bubble"
+          style={{
+            animationDelay: `${bubble.delay}ms`,
+            '--random-x': `${bubble.randomOffset}px`
+          }}
+        >
+          {bubble.heart}
+        </div>
+      ))}
+    </>
+  );
+};
+
 // Memoized university card component to prevent unnecessary re-renders
 const UniversityCard = React.memo(({
   uni,
@@ -20,7 +40,9 @@ const UniversityCard = React.memo(({
   user,
   onUniversitySelect,
   onToggleLike,
-  setShowSubscriptionModal
+  setShowSubscriptionModal,
+  bubbleMap,
+  onHandleLike
 }) => (
   <motion.div
     key={uni.id}
@@ -107,32 +129,39 @@ const UniversityCard = React.memo(({
             <MdVerified size={12} />
           </span>
         )}
-        {user && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleLike?.(uni.id);
-            }}
-            title={universityLikes[uni.id] ? "Unlike university" : "Like university"}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              borderRadius: '3px',
-              padding: '2px 4px',
-              color: universityLikes[uni.id] ? '#FF1493' : '#8696a0',
-              cursor: 'pointer',
-              fontSize: '0.8rem',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '2px'
-            }}
-          >
-            {universityLikes[uni.id] ? <AiFillHeart size={12} /> : <AiOutlineHeart size={12} />}
-            <span style={{ fontSize: '0.65rem' }}>{formatNumber(universityLikesCounts[uni.id] || 0)}</span>
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+          {user && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onHandleLike?.(uni.id);
+              }}
+              title={universityLikes[uni.id] ? "Unlike university" : "Like university"}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderRadius: '3px',
+                padding: '2px 4px',
+                color: universityLikes[uni.id] ? '#FF1493' : '#8696a0',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '2px',
+                position: 'relative',
+                isolation: 'isolate'
+              }}
+            >
+              {universityLikes[uni.id] ? <AiFillHeart size={12} /> : <AiOutlineHeart size={12} />}
+              <UniversityFloatingBubbles bubbles={bubbleMap[uni.id] || []} />
+            </button>
+          )}
+          <span style={{ fontSize: '0.65rem', color: '#8696a0' }}>
+            {formatNumber(universityLikesCounts[uni.id] || 0)}
+          </span>
+        </div>
       </div>
     </div>
   </motion.div>
@@ -167,6 +196,39 @@ export const UniversityGrid = React.memo(({
 }) => {
   const [paperCounts, setPaperCounts] = useState({});
   const [isLoading, setIsLoading] = useState(true);
+  const [bubbleMap, setBubbleMap] = useState({}); // Track bubbles by university ID
+
+  const handleUniversityLike = useCallback((uniId) => {
+    // Create floating bubbles
+    const hearts = ['❤️', '💕', '💖', '💗', '💓', '💞', '💝', '💟'];
+    const newBubbles = [];
+    
+    for (let i = 0; i < 10; i++) {
+      const randomOffset = (Math.random() - 0.5) * 140;
+      newBubbles.push({
+        id: Math.random(),
+        heart: hearts[i % hearts.length],
+        delay: i * 60,
+        randomOffset: randomOffset
+      });
+    }
+    
+    setBubbleMap(prev => ({
+      ...prev,
+      [uniId]: newBubbles
+    }));
+    
+    // Clear bubbles after animation
+    setTimeout(() => {
+      setBubbleMap(prev => ({
+        ...prev,
+        [uniId]: []
+      }));
+    }, 4200);
+    
+    // Call the actual toggle like function
+    onToggleLike?.(uniId);
+  }, [onToggleLike]);
 
   // Initialize paperCounts with 0 for all universities to prevent flash
   const initialCounts = useMemo(() => {
@@ -308,6 +370,8 @@ export const UniversityGrid = React.memo(({
                     onUniversitySelect={onUniversitySelect}
                     onToggleLike={onToggleLike}
                     setShowSubscriptionModal={setShowSubscriptionModal}
+                    bubbleMap={bubbleMap}
+                    onHandleLike={handleUniversityLike}
                   />
                 </React.Fragment>
               );
@@ -327,6 +391,8 @@ export const UniversityGrid = React.memo(({
                 onUniversitySelect={onUniversitySelect}
                 onToggleLike={onToggleLike}
                 setShowSubscriptionModal={setShowSubscriptionModal}
+                bubbleMap={bubbleMap}
+                onHandleLike={handleUniversityLike}
               />
             );
           })}

@@ -2,6 +2,23 @@
  * Lightning-fast book data fetching with query optimization
  */
 
+/**
+ * Calculate weighted engagement score for a book
+ * Higher score = more popular/engaged book
+ * @param {Object} book - Book object with views_count, downloads_count, likes_count
+ * @returns {number} Engagement score
+ */
+export function calculateEngagementScore(book) {
+  const views = book.views_count || 0;
+  const downloads = book.downloads_count || 0;
+  const likes = book.likes_count || 0;
+  
+  // Weighted formula: Downloads are HIGHEST priority (10x weight)
+  // This reflects that actual downloads = proven user value
+  // Weight: Downloads (10x) + Likes (2x) + Views (1x)
+  return (downloads * 10) + (likes * 2) + views;
+}
+
 export async function fetchBooksOptimized(supabase, page = 1, booksPerPage = 20) {
   try {
     const from = (page - 1) * booksPerPage;
@@ -14,11 +31,11 @@ export async function fetchBooksOptimized(supabase, page = 1, booksPerPage = 20)
         .from('books')
         .select('*', { count: 'exact', head: true }),
       
-      // Optimized book query - only essential fields
+      // Optimized book query - only essential fields (including likes_count)
       supabase
         .from('books')
         .select(
-          'id, title, author, description, category_id, cover_image_url, file_url, views_count, downloads_count, pages, rating, rating_count, created_at',
+          'id, title, author, description, category_id, cover_image_url, file_url, views_count, downloads_count, likes_count, pages, rating, rating_count, created_at',
           { head: false }
         )
         .order('created_at', { ascending: false })
@@ -31,12 +48,19 @@ export async function fetchBooksOptimized(supabase, page = 1, booksPerPage = 20)
     ]);
 
     const count = countResult.count || 0;
-    const books = booksResult.data || [];
+    let books = booksResult.data || [];
     const categories = categoriesResult.data || [];
 
     if (countResult.error) throw countResult.error;
     if (booksResult.error) throw booksResult.error;
     if (categoriesResult.error) throw categoriesResult.error;
+
+    // Sort books dynamically by engagement score (downloads, views, likes)
+    books.sort((a, b) => {
+      const scoreA = calculateEngagementScore(a);
+      const scoreB = calculateEngagementScore(b);
+      return scoreB - scoreA; // Descending order (highest engagement first)
+    });
 
     return {
       books,
@@ -68,6 +92,48 @@ export async function fetchBookDetailsBatch(supabase, bookIds) {
   } catch (error) {
     console.error('Batch fetch error:', error);
     return [];
+  }
+}
+
+/**
+ * Fetch all books sorted by engagement score (downloads + views + likes)
+ * This is the primary display method for the book listing
+ */
+export async function fetchAllBooksEngagementSorted(supabase, booksPerPage = 20) {
+  try {
+    // Fetch all books with engagement metrics
+    const { data: books, error, count } = await supabase
+      .from('books')
+      .select(
+        'id, title, author, description, category_id, cover_image_url, file_url, views_count, downloads_count, likes_count, pages, rating, rating_count, created_at',
+        { count: 'exact' }
+      );
+
+    if (error) throw error;
+
+    // Fetch categories
+    const { data: categories, error: catError } = await supabase
+      .from('categories')
+      .select('id, name');
+
+    if (catError) throw catError;
+
+    // Sort by engagement score dynamically
+    const sortedBooks = (books || []).sort((a, b) => {
+      const scoreA = calculateEngagementScore(a);
+      const scoreB = calculateEngagementScore(b);
+      return scoreB - scoreA; // Highest engagement first
+    });
+
+    return {
+      books: sortedBooks,
+      categories: categories || [],
+      totalCount: count || 0,
+      hasMore: false
+    };
+  } catch (error) {
+    console.error('Engagement-sorted fetch error:', error);
+    throw error;
   }
 }
 

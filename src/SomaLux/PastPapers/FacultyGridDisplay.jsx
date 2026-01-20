@@ -7,6 +7,24 @@ import { FaSearch } from 'react-icons/fa';
 import { formatNumber } from './formatNumber';
 import './PaperPanel.css';
 
+// Floating bubbles component for likes
+const FloatingBubbles = ({ bubbles }) => (
+  <div>
+    {bubbles.map((bubble) => (
+      <div
+        key={bubble.id}
+        className="paper-love-bubble heart"
+        style={{
+          '--random-x': `${bubble.randomOffset}px`,
+          animationDelay: `${bubble.delay}ms`,
+        }}
+      >
+        {bubble.heart}
+      </div>
+    ))}
+  </div>
+);
+
 // Color palette moved outside component to prevent recreation
 const COLOR_GRADIENTS = [
   { light: '#1a47a0', dark: '#2563eb' },      // Blue
@@ -40,6 +58,33 @@ export const FacultyGridDisplay = React.memo(({
   user
 }) => {
   const [facultySearchTerm, setFacultySearchTerm] = useState('');
+  const [bubbleMap, setBubbleMap] = useState({});
+
+  const handleFacultyLike = useCallback((faculty) => {
+    const hearts = ['❤️', '💕', '💖', '💗', '💓', '💞', '💝', '💟'];
+    const newBubbles = Array.from({ length: 10 }, (_, i) => ({
+      id: `${faculty}-${Date.now()}-${i}`,
+      heart: hearts[Math.floor(Math.random() * hearts.length)],
+      delay: i * 60,
+      randomOffset: (Math.random() - 0.5) * 140,
+    }));
+
+    setBubbleMap(prev => ({
+      ...prev,
+      [faculty]: newBubbles,
+    }));
+
+    // Call the actual toggle like function
+    onToggleLike?.(faculty);
+
+    // Clear bubbles after animation completes
+    setTimeout(() => {
+      setBubbleMap(prev => ({
+        ...prev,
+        [faculty]: [],
+      }));
+    }, 4200);
+  }, [onToggleLike]);
 
   // Count papers per faculty for selected university
   const facultyPaperCounts = useMemo(() => {
@@ -203,7 +248,7 @@ export const FacultyGridDisplay = React.memo(({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onToggleLike?.(faculty);
+                          handleFacultyLike(faculty);
                         }}
                         style={{
                           background: 'none',
@@ -214,12 +259,14 @@ export const FacultyGridDisplay = React.memo(({
                           alignItems: 'center',
                           gap: '4px',
                           fontSize: '0.75rem',
-                          padding: 0
+                          padding: 0,
+                          position: 'relative',
                         }}
                         title={isLiked ? 'Unlike' : 'Like'}
                       >
                         {isLiked ? <AiFillHeart size={14} /> : <AiOutlineHeart size={14} />}
                         <span>{formatNumber(likeCount)}</span>
+                        <FloatingBubbles bubbles={bubbleMap[faculty] || []} />
                       </button>
                     </div>
                   </div>

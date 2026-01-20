@@ -14,6 +14,62 @@
   --border-color: #2a3942;
 }
 
+/* Like button animations */
+@keyframes bookLikeClickPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes bookLikeHeartBeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.15);
+  }
+  50% {
+    transform: scale(1);
+  }
+}
+
+@keyframes floatUpRandom {
+  0% {
+    opacity: 1;
+    transform: translateY(0) translateX(0) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-280px) translateX(var(--random-x, 0)) scale(0.8);
+  }
+}
+
+/* Love bubbles */
+.love-bubble {
+  position: absolute;
+  pointer-events: none;
+  font-size: 0.5rem;
+  font-weight: bold;
+  z-index: 9999;
+  bottom: 50%;
+  right: 50%;
+  will-change: transform, opacity;
+  animation: floatUpRandom 4s ease-out forwards;
+}
+
+.love-bubble.heart {
+  color: #f15e6c;
+}
+
 .containerBKP {
   max-width: 100%;
   margin-top: 0;
@@ -346,7 +402,7 @@
 .book-cardBKP {
   background: var(--bg-dark);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
   border: none;
@@ -356,6 +412,7 @@
   position: relative;
   height: 100%;
   padding: 0;
+  z-index: 1;
 }
 
 .book-cardBKP:hover {
@@ -500,7 +557,7 @@
 }
 
 .view-countBKP:hover {
-  background: rgba(134, 150, 160, 0.1);
+  background: transparent;
 }
 
 @media (min-width: 768px) {
@@ -536,7 +593,7 @@
 }
 
 .downloads-countBKP:hover {
-  background: rgba(134, 150, 160, 0.1);
+  background: transparent;
 }
 
 @media (min-width: 768px) {
@@ -589,7 +646,9 @@
   gap: 2px;
   margin-top: auto;
   height: auto;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
+  z-index: 10;
 }
 
 @media (min-width: 420px) {
@@ -635,6 +694,7 @@
 
 .love-buttonBKP.activeBKP {
   color: var(--error);
+  animation: bookLikeClickPulse 0.4s ease-out;
 }
 
 .love-buttonBKP.activeBKP svg,
@@ -643,7 +703,7 @@
 }
 
 .love-buttonBKP:hover {
-  background: rgba(134, 150, 160, 0.1);
+  background: transparent;
 }
 
 @media (min-width: 768px) {
@@ -691,7 +751,7 @@
 }
 
 .wishlist-buttonBKP:hover {
-  background: rgba(134, 150, 160, 0.1);
+  background: transparent;
 }
 
 @media (min-width: 768px) {

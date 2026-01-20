@@ -165,7 +165,7 @@ export async function fetchBooks({ page = 1, pageSize = 10, search = '', categor
     
     let query = supabase
       .from('books')
-      .select('id, title, author, description, category_id, cover_image_url, file_url, file_size, pages, uploaded_by, created_at, views_count, downloads_count, comments_count, likes_count', { count: 'exact' })
+      .select('id, title, author, description, category_id, cover_image_url, file_url, file_size, pages, uploaded_by, created_at, views_count, downloads_count, likes_count, comments_count', { count: 'exact' })
       .order(dbSortCol, { ascending: (sort.dir || 'desc') === 'asc' })
       .range(from, to);
 

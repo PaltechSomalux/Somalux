@@ -57,18 +57,64 @@ const ReactionButtonsBKP = ({
   onLove,
   isLoved
 }) => {
+  const [bubbles, setBubbles] = React.useState([]);
+  const containerRef = React.useRef(null);
+
+  const handleLoveClick = (e) => {
+    e.stopPropagation();
+    onLove(itemId);
+    
+    // Create more subtle floating bubbles with random offsets
+    const newBubbles = [];
+    const hearts = ['❤️', '💕', '💖', '💗', '💓', '💞', '💝', '💟'];
+    
+    for (let i = 0; i < 10; i++) {
+      // Random horizontal offset between -70 and 70
+      const randomOffset = (Math.random() - 0.5) * 140;
+      
+      newBubbles.push({
+        id: Math.random(),
+        heart: hearts[i % hearts.length],
+        delay: i * 60,
+        randomOffset: randomOffset
+      });
+    }
+    setBubbles(newBubbles);
+    
+    // Clear bubbles after animation
+    setTimeout(() => setBubbles([]), 4200);
+  };
+
   return (
-    <button
-      className={`love-buttonBKP ${isLoved ? 'activeBKP' : ''}`}
-      onClick={(e) => {
-        e.stopPropagation();
-        onLove(itemId);
+    <div 
+      ref={containerRef}
+      style={{ 
+        position: 'relative', 
+        display: 'inline-flex',
+        overflow: 'visible'
       }}
-      title="Love this book"
     >
-      {isLoved ? <FaHeart color="red" size={10} /> : <FaRegHeart size={10} />}
-      <span className="countBKP">{loves || 0}</span>
-    </button>
+      <button
+        className={`love-buttonBKP ${isLoved ? 'activeBKP' : ''}`}
+        onClick={handleLoveClick}
+        title="Love this book"
+      >
+        {isLoved ? <FaHeart color="red" size={10} /> : <FaRegHeart size={10} />}
+        <span className="countBKP">{loves || 0}</span>
+      </button>
+      {bubbles.map((bubble) => (
+        <div
+          key={bubble.id}
+          className="love-bubble heart"
+          style={{
+            animationDelay: `${bubble.delay}ms`,
+            '--random-x': `${bubble.randomOffset}px`
+          }}
+        >
+          {bubble.heart}
+        </div>
+      ))}
+    </div>
   );
 };
 
@@ -652,7 +698,9 @@ export const BookPanel = ({ demoMode = false }) => {
       console.log(`📡 Fetching page ${page} from network...`);
       console.log('🔍 Supabase URL:', process.env.REACT_APP_SUPABASE_URL || 'using fallback');
       console.log('🔑 Supabase Key available:', !!process.env.REACT_APP_SUPABASE_ANON_KEY);
-      // Fetch ALL books for pagination
+      
+      // Fetch ALL books sorted by engagement (downloads, views, likes)
+      // This ensures books are displayed by highest engagement dynamically
       const result = await fetchBooksOptimized(supabase, 1, 50000);
       
       const { books: rows, categories: cats, totalCount: count } = result;
@@ -1483,7 +1531,7 @@ export const BookPanel = ({ demoMode = false }) => {
         // Fetch the single book row by id
         const { data: row, error } = await supabase
           .from('books')
-          .select('id, title, author, description, category_id, categories(id,name), year, language, isbn, cover_image_url, file_url, created_at, views_count, downloads_count, pages, publisher, rating, rating_count')
+          .select('id, title, author, description, category_id, categories(id,name), year, language, isbn, cover_image_url, file_url, created_at, views_count, downloads_count, likes_count, pages, publisher, rating, rating_count')
           .eq('id', focusedBookId)
           .maybeSingle();
 
@@ -1533,9 +1581,8 @@ export const BookPanel = ({ demoMode = false }) => {
         // Fetch a reasonable number of matching books (up to 1000)
         const { data: rows, error } = await supabase
           .from('books')
-          .select('id, title, author, description, category_id, categories(id,name), year, language, isbn, cover_image_url, file_url, created_at, views_count, downloads_count, pages, publisher, rating, rating_count')
+          .select('id, title, author, description, category_id, categories(id,name), year, language, isbn, cover_image_url, file_url, created_at, views_count, downloads_count, likes_count, pages, publisher, rating, rating_count')
           .eq('category_id', categoryFilterId)
-          .order('created_at', { ascending: false })
           .limit(1000);
 
         if (error) {
@@ -1546,10 +1593,21 @@ export const BookPanel = ({ demoMode = false }) => {
 
         const { data: cats } = await supabase.from('categories').select('id,name');
         const catMap = new Map((cats || []).map(c => [c.id, c.name]));
-        const mapped = (rows || []).map(r => mapRowToUi(r, catMap, 50));
+        
+        // Import calculateEngagementScore for sorting
+        const { calculateEngagementScore } = await import('./utils/optimizedQueries');
+        
+        // Sort books by engagement (downloads, views, likes) before mapping
+        const sortedRows = (rows || []).sort((a, b) => {
+          const scoreA = calculateEngagementScore(a);
+          const scoreB = calculateEngagementScore(b);
+          return scoreB - scoreA; // Highest engagement first
+        });
+        
+        const mapped = sortedRows.map(r => mapRowToUi(r, catMap, 50));
         if (mounted) {
           setFilteredByCategory(mapped);
-          console.log('BookPanel: fetched category-specific books', { categoryFilterId, count: mapped.length });
+          console.log('BookPanel: fetched category-specific books sorted by engagement', { categoryFilterId, count: mapped.length });
         }
       } catch (err) {
         console.error('Failed to fetch books for category filter:', err);
@@ -1673,14 +1731,22 @@ export const BookPanel = ({ demoMode = false }) => {
         supabase.from('categories').select('id, name'),
         supabase
           .from('books')
-          .select('id, title, author, description, category_id, categories(id,name), year, language, isbn, cover_image_url, file_url, created_at, views_count, downloads_count, pages, publisher, rating, rating_count')
+          .select('id, title, author, description, category_id, categories(id,name), year, language, isbn, cover_image_url, file_url, created_at, views_count, downloads_count, likes_count, pages, publisher, rating, rating_count')
           .or(`title.ilike.%${q}%,author.ilike.%${q}%,description.ilike.%${q}%,isbn.ilike.%${q}%`)
-          .order('created_at', { ascending: false })
           .range(from, to)
       ]);
 
       const catMap = new Map((cats || []).map(c => [c.id, c.name]));
-      const mapped = (rows || []).map(r => mapRowToUi(r, catMap, 50));
+      
+      // Import and sort by engagement score
+      const { calculateEngagementScore } = await import('./utils/optimizedQueries');
+      const sortedRows = (rows || []).sort((a, b) => {
+        const scoreA = calculateEngagementScore(a);
+        const scoreB = calculateEngagementScore(b);
+        return scoreB - scoreA; // Highest engagement first
+      });
+      
+      const mapped = sortedRows.map(r => mapRowToUi(r, catMap, 50));
 
       // Replace books with search results (only pages loaded)
       if (page === 1) {
@@ -1733,13 +1799,21 @@ export const BookPanel = ({ demoMode = false }) => {
       // Use direct query search
       const { data: rows } = await supabase
         .from('books')
-        .select('id, title, author, description, category_id, categories(id,name), year, language, isbn, cover_image_url, file_url, created_at, views_count, downloads_count, pages, publisher, rating, rating_count')
+        .select('id, title, author, description, category_id, categories(id,name), year, language, isbn, cover_image_url, file_url, created_at, views_count, downloads_count, likes_count, pages, publisher, rating, rating_count')
         .or(`title.ilike.%${q}%,author.ilike.%${q}%,description.ilike.%${q}%,isbn.ilike.%${q}%`)
-        .order('created_at', { ascending: false })
         .range(from, from + BOOKS_PER_PAGE - 1);
       const { data: cats } = await supabase.from('categories').select('id, name');
       const catMap = new Map((cats || []).map(c => [c.id, c.name]));
-      const mapped = (rows || []).map(r => mapRowToUi(r, catMap, 50));
+      
+      // Sort by engagement score
+      const { calculateEngagementScore } = await import('./utils/optimizedQueries');
+      const sortedRows = (rows || []).sort((a, b) => {
+        const scoreA = calculateEngagementScore(a);
+        const scoreB = calculateEngagementScore(b);
+        return scoreB - scoreA; // Highest engagement first
+      });
+      
+      const mapped = sortedRows.map(r => mapRowToUi(r, catMap, 50));
       setSearchCachedPage(term, page, mapped);
       return mapped;
     } catch (err) {
@@ -3229,17 +3303,16 @@ export const BookPanel = ({ demoMode = false }) => {
 
             return (
               <div>
-                <div className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '24px', marginBottom: '20px' }}>
+                <div className="actions" style={{ marginTop: 10, justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
                   <button
                     className="btn"
                     disabled={currentPage <= 1}
                     onClick={() => handlePageChange(currentPage - 1)}
                   >
-                    <FiChevronLeft size={16} />
-                    Prev
+                    ← Prev
                   </button>
 
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#666', minWidth: '80px', textAlign: 'center' }}>
+                  <span style={{ color: '#cfd8dc', fontSize: 12 }}>
                     Page {currentPage} of {computedTotal}
                   </span>
 
@@ -3248,8 +3321,7 @@ export const BookPanel = ({ demoMode = false }) => {
                     disabled={currentPage >= computedTotal}
                     onClick={() => handlePageChange(currentPage + 1)}
                   >
-                    Next
-                    <FiChevronRight size={16} />
+                    Next →
                   </button>
                 </div>
 

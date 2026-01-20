@@ -442,6 +442,9 @@
     display: flex;
     gap: 4px;
     flex-wrap: wrap;
+    width: fit-content;
+    justify-content: center;
+    margin: 0 auto;
 }
 
 .btn {
@@ -455,6 +458,8 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
+    width: auto;
+    flex-shrink: 0;
 }
 
 .btn.primary {
