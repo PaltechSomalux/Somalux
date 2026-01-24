@@ -398,24 +398,25 @@ export const PaperPanel = ({ demoMode = false }) => {
     }
   }, []);
 
-  // Check authentication status and load user profile with subscription_tier
+  // Check authentication status and load user profile with subscription_tier and role
   useEffect(() => {
     const checkUser = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
-          // Fetch user profile to get subscription_tier
-          const { data: profile } = await supabase
+          // Fetch user profile to get subscription_tier and role
+          const { data: profile, error } = await supabase
             .from('profiles')
-            .select('subscription_tier')
+            .select('subscription_tier, role')
             .eq('id', user.id)
             .single();
           
           // Merge profile data with auth user
           setUser({
             ...user,
-            subscription_tier: profile?.subscription_tier || 'basic'
+            subscription_tier: profile?.subscription_tier || 'basic',
+            role: profile?.role || 'viewer'
           });
         } else {
           setUser(null);
@@ -432,17 +433,18 @@ export const PaperPanel = ({ demoMode = false }) => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        // Fetch user profile to get subscription_tier
-        const { data: profile } = await supabase
+        // Fetch user profile to get subscription_tier and role
+        const { data: profile, error } = await supabase
           .from('profiles')
-          .select('subscription_tier')
+          .select('subscription_tier, role')
           .eq('id', session.user.id)
           .single();
         
         // Merge profile data with auth user
         setUser({
           ...session.user,
-          subscription_tier: profile?.subscription_tier || 'basic'
+          subscription_tier: profile?.subscription_tier || 'basic',
+          role: profile?.role || 'viewer'
         });
         setAuthModalOpen(false);
       } else {
@@ -451,10 +453,69 @@ export const PaperPanel = ({ demoMode = false }) => {
       setIsAuthLoading(false);
     });
 
+    // Setup realtime listener for profile changes (e.g., role updates)
+    let profileSubscription = null;
+    const setupProfileListener = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser?.id) {
+        profileSubscription = supabase
+          .channel(`public:profiles:id=eq.${currentUser.id}`)
+          .on('postgres_changes', 
+            { 
+              event: 'UPDATE', 
+              schema: 'public', 
+              table: 'profiles',
+              filter: `id=eq.${currentUser.id}`
+            },
+            (payload) => {
+              console.log('[PastPapers] Profile updated:', payload);
+              if (payload.new) {
+                setUser(prev => ({
+                  ...prev,
+                  role: payload.new.role || prev?.role || 'viewer',
+                  subscription_tier: payload.new.subscription_tier || prev?.subscription_tier || 'basic'
+                }));
+              }
+            }
+          )
+          .subscribe();
+      }
+    };
+
+    setupProfileListener();
+
     return () => {
       authListener?.subscription?.unsubscribe();
+      if (profileSubscription?.unsubscribe && typeof profileSubscription.unsubscribe === 'function') {
+        try { profileSubscription.unsubscribe(); } catch (e) {}
+      }
     };
   }, []);
+
+  // Track user activity - updates last_active_at for metrics
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const trackActivity = async () => {
+      try {
+        await fetch(`${API_URL}/api/user/activity`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id })
+        });
+      } catch (e) {
+        console.warn('Failed to track activity:', e);
+      }
+    };
+
+    // Track immediately on user login
+    trackActivity();
+
+    // Then track every 5 minutes during active session
+    const interval = setInterval(trackActivity, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   // Load faculty views and likes from database
   useEffect(() => {

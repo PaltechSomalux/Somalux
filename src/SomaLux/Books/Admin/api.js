@@ -114,13 +114,34 @@ export async function fetchUserRankingAdmin(userId) {
 // Fetch all users (for PDF export)
 export async function fetchAllUsers() {
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, display_name, email, role')
-      .order('role', { ascending: true })
-      .order('display_name', { ascending: true });
-    if (error) throw error;
-    return data || [];
+    let allUsers = [];
+    const pageSize = 1000;
+    let page = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, email, role', { count: 'exact' })
+        .order('role', { ascending: true })
+        .order('display_name', { ascending: true })
+        .range(from, to);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        allUsers = allUsers.concat(data);
+      }
+      
+      hasMore = data && data.length === pageSize;
+      page++;
+    }
+    
+    console.log('[fetchAllUsers] Total users fetched:', allUsers.length);
+    return allUsers;
   } catch (e) {
     console.error('Error fetching users for PDF:', e);
     return [];
@@ -530,11 +551,40 @@ export async function fetchStats() {
       (async () => {
         try {
           const authUsers = await fetchAuthenticatedUsers();
+          console.log('[fetchStats] fetchAuthenticatedUsers returned:', authUsers?.length || 0, 'users');
           return authUsers || [];
         } catch (e) {
-          console.warn('[fetchStats] fetchAuthenticatedUsers failed, falling back to profiles count:', e?.message || e);
-          const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true });
-          return { count: count || 0 };
+          console.warn('[fetchStats] fetchAuthenticatedUsers failed, falling back to profile pagination:', e?.message || e);
+          // Fallback: Paginate through all profiles to get accurate count
+          let allProfiles = [];
+          let pageSize = 1000;
+          let page = 0;
+          let hasMore = true;
+          
+          while (hasMore) {
+            const from = page * pageSize;
+            const to = from + pageSize - 1;
+            
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('id')
+              .range(from, to);
+            
+            if (error) {
+              console.error('[fetchStats] Error fetching profiles on page', page, ':', error);
+              break;
+            }
+            
+            if (data && data.length > 0) {
+              allProfiles = allProfiles.concat(data);
+            }
+            
+            hasMore = data && data.length === pageSize;
+            page++;
+          }
+          
+          console.log('[fetchStats] Fallback: fetched', allProfiles.length, 'total profiles via pagination');
+          return allProfiles;
         }
       })(),
       supabase.from('books').select('downloads_count'),
@@ -554,7 +604,7 @@ export async function fetchStats() {
           const { data } = await supabase.from('past_paper_views').select('id, viewed_at').gte('viewed_at', oldestMonthIso);
           return data || [];
         } catch (e) {
-          console.warn('[fetchStats] past_paper_views query failed:', e?.message || e);
+          console.warn('[fetchStats] past_paper_views query failed - table may not exist:', e?.message || e);
           return [];
         }
       })(),
@@ -604,7 +654,7 @@ export async function fetchStats() {
           console.log('[fetchStats] Downloads from past_paper_downloads table:', downloadCounts);
           return { data: Object.entries(downloadCounts).map(([paperId, count]) => ({ paper_id: paperId, downloads_count: count })) };
         } catch (e) {
-          console.warn('[fetchStats] Error querying past_paper_downloads:', e?.message || e);
+          console.warn('[fetchStats] Error querying past_paper_downloads - table may not exist:', e?.message || e);
           return { data: [] };
         }
       })()
@@ -672,7 +722,8 @@ export async function fetchStats() {
         console.log('[fetchStats] Total past papers downloads from past_papers.downloads_count:', ppCount);
         return ppCount;
       } catch (e) {
-        console.warn('[fetchStats] Error calculating past papers downloads:', e);
+        console.warn('[fetchStats] Error calculating past papers downloads - table may not exist:', e);
+        // Fallback to past_papers table
         return totals(pastPapersDownloadsRes, 'downloads_count');
       }
     })();
@@ -830,20 +881,40 @@ export async function fetchStats() {
 
 export async function fetchProfiles() {
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('[fetchProfiles] Supabase error:', error);
-      throw error;
+    let allProfiles = [];
+    const pageSize = 1000;
+    let page = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, display_name, avatar_url, bio, created_at, updated_at, last_active_at, subscription_tier, subscription_started_at, subscription_expires_at, role')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      
+      if (error) {
+        console.error('[fetchProfiles] Supabase error on page', page, ':', error);
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        allProfiles = allProfiles.concat(data);
+      }
+      
+      hasMore = data && data.length === pageSize;
+      page++;
     }
     
+    console.log('[fetchProfiles] Total profiles fetched:', allProfiles.length);
+    
     // Map full_name to display_name for compatibility with existing code
-    return (data || []).map(p => ({
+    return (allProfiles || []).map(p => ({
       ...p,
-      display_name: p.full_name || p.email?.split('@')[0] || ''
+      display_name: p.full_name || p.display_name || p.email?.split('@')[0] || ''
     }));
   } catch (e) {
     console.error('[fetchProfiles] Error:', e?.message || e);

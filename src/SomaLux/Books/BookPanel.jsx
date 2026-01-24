@@ -870,11 +870,23 @@ export const BookPanel = ({ demoMode = false }) => {
         // Fetch the user's role and activity metadata from the profiles table
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('role, created_at, last_active_at, subscription_tier')
+          .select('created_at, last_active_at, subscription_tier, role')
           .eq('id', session.user.id)
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.warn('Error fetching profile:', error);
+          // If profile fetch fails, still set user with session data
+          const userData = {
+            ...session.user,
+            role: 'viewer',
+            subscription_tier: 'basic'
+          };
+          userCache = userData;
+          setUser(userData);
+          setLoadingUser(false);
+          return;
+        }
 
         // Set user with the role information and cache it
         const userData = {
@@ -1025,9 +1037,40 @@ export const BookPanel = ({ demoMode = false }) => {
       fetchUserWithRole(session);
     });
 
+    // Setup realtime listener for profile changes (e.g., role updates)
+    let profileSubscription = null;
+    if (user?.id) {
+      profileSubscription = supabase
+        .channel(`public:profiles:id=eq.${user.id}`)
+        .on('postgres_changes', 
+          { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'profiles',
+            filter: `id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('[BookPanel] Profile updated:', payload);
+            if (payload.new?.role) {
+              // Refresh user with new role data
+              setUser(prev => ({
+                ...prev,
+                role: payload.new.role,
+                subscription_tier: payload.new.subscription_tier || prev?.subscription_tier
+              }));
+              userCache = { ...userCache, role: payload.new.role, subscription_tier: payload.new.subscription_tier };
+            }
+          }
+        )
+        .subscribe();
+    }
+
     return () => {
       if (subscription?.unsubscribe && typeof subscription.unsubscribe === 'function') {
         try { subscription.unsubscribe(); } catch (e) {}
+      }
+      if (profileSubscription?.unsubscribe && typeof profileSubscription.unsubscribe === 'function') {
+        try { profileSubscription.unsubscribe(); } catch (e) {}
       }
     };
   }, []);
@@ -1071,6 +1114,31 @@ export const BookPanel = ({ demoMode = false }) => {
     const interval = setInterval(fetchSubmissionsCount, 30000);
     return () => clearInterval(interval);
   }, [user]);
+
+  // Track user activity - updates last_active_at for metrics
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const trackActivity = async () => {
+      try {
+        await fetch(`${API_URL}/api/user/activity`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id })
+        });
+      } catch (e) {
+        console.warn('Failed to track activity:', e);
+      }
+    };
+
+    // Track immediately on mount
+    trackActivity();
+
+    // Then track every 5 minutes during active session
+    const interval = setInterval(trackActivity, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   // Fetch personalized recommendations - memoized to prevent flickering
   const fetchRecommendations = useCallback(async () => {

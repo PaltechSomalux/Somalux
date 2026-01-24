@@ -73,8 +73,7 @@ export async function fetchPastPapers({
         uploaded_by,
         title,
         university_id,
-        universities:university_id(id, name),
-        profiles:uploaded_by(id, full_name, email)
+        universities:university_id(id, name)
       `, { count: 'exact' })
       .order(dbSortCol, { ascending: (sort.dir || 'desc') === 'asc' })
       .range(from, to);
@@ -933,7 +932,6 @@ export async function fetchUploadHistory({
         unit_name,
         year,
         uploaded_by,
-        profiles:uploaded_by(id, full_name, email),
         error_message,
         is_duplicate,
         created_at

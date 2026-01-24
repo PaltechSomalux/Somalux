@@ -224,29 +224,76 @@ app.post('/api/user/session/logout', async (req, res) => {
   }
 });
 
+// Track user activity - updates last_active_at when user interacts with app
+app.post('/api/user/activity', async (req, res) => {
+  try {
+    const { userId } = req.body || {};
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+
+    // Update profiles table with current timestamp
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .update({ 
+        last_active_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error updating activity:', error?.message);
+      return res.status(500).json({ error: error?.message || 'Failed to update activity' });
+    }
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Error in activity tracking:', e);
+    res.status(500).json({ error: e.message || 'Failed to track activity' });
+  }
+});
+
 // Get all authenticated users with detailed status
 app.get('/api/admin/authenticated-users', async (req, res) => {
   try {
     console.log('[authenticated-users] Endpoint called');
 
-    // Fetch all profiles first
-    const { data: profiles, error: profilesError } = await supabaseAdmin
-      .from('profiles')
-      .select('*');
+    // Fetch all profiles with pagination (handle 1000+ users)
+    let allProfiles = [];
+    let pageSize = 1000;
+    let page = 0;
+    let hasMore = true;
 
-    if (profilesError) {
-      console.error('[authenticated-users] Error fetching profiles:', profilesError);
-      throw profilesError;
+    while (hasMore) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+      
+      const { data: profiles, error: profilesError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .range(from, to);
+
+      if (profilesError) {
+        console.error('[authenticated-users] Error fetching profiles on page', page, ':', profilesError);
+        throw profilesError;
+      }
+
+      if (profiles && profiles.length > 0) {
+        allProfiles = allProfiles.concat(profiles);
+      }
+
+      hasMore = profiles && profiles.length === pageSize;
+      page++;
     }
 
-    console.log('[authenticated-users] Profiles count:', profiles?.length || 0);
+    console.log('[authenticated-users] Total profiles fetched with pagination:', allProfiles.length);
 
     // Use profiles as the authoritative source of all users
     // The profiles table contains all registered users from auth
     let authUsers = [];
     try {
       // Map profiles to auth user format for consistency
-      authUsers = (profiles || []).map(p => ({
+      authUsers = (allProfiles || []).map(p => ({
         id: p.id,
         email: p.email,
         created_at: p.created_at,
@@ -278,7 +325,7 @@ app.get('/api/admin/authenticated-users', async (req, res) => {
     });
 
     // Create a map of existing profiles by user_id
-    const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+    const profileMap = new Map((allProfiles || []).map(p => [p.id, p]));
 
     // Enrich auth users with profile and session data
     const enrichedUsers = (authUsers || []).map(authUser => {
@@ -611,24 +658,34 @@ app.patch('/api/elib/users/:id/tier', async (req, res) => {
     
     const updateData = { subscription_tier };
     
-    // Set subscription dates if upgrading to premium tiers
+    // Set subscription dates based on tier
+    const now = new Date();
     if (subscription_tier === 'premium' || subscription_tier === 'premium_pro') {
-      const now = new Date();
       updateData.subscription_started_at = now.toISOString();
-      updateData.subscription_expires_at = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(); // 1 year
-    } else if (subscription_tier === 'basic') {
+      // Set expiration 1 year from now
+      updateData.subscription_expires_at = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString();
+      console.log(`[PATCH /api/elib/users/:id/tier] Premium tier - set expiration to 1 year`);
+    } else {
+      // For free/basic tiers, clear subscription dates
       updateData.subscription_started_at = null;
       updateData.subscription_expires_at = null;
+      console.log(`[PATCH /api/elib/users/:id/tier] Non-premium tier - clearing subscription dates`);
     }
+    
+    console.log(`[PATCH /api/elib/users/:id/tier] Update payload:`, updateData);
     
     const { data, error } = await supabaseAdmin.from('profiles').update(updateData).eq('id', id).select().maybeSingle();
     
     if (error) {
-      console.error(`[PATCH /api/elib/users/:id/tier] Supabase error:`, error);
-      throw error;
+      console.error(`[PATCH /api/elib/users/:id/tier] Supabase error:`, JSON.stringify(error, null, 2));
+      throw new Error(`Database update failed: ${error.message || JSON.stringify(error)}`);
     }
     
-    console.log(`[PATCH /api/elib/users/:id/tier] Success. Data:`, data);
+    if (!data) {
+      console.warn(`[PATCH /api/elib/users/:id/tier] No data returned from update for user ${id}`);
+    }
+    
+    console.log(`[PATCH /api/elib/users/:id/tier] Success. Updated user:`, data?.id);
     await logAudit({ actor: req.headers['x-actor-email'] || 'public', action: 'update_tier', entity: 'profiles', record_id: id, details: { subscription_tier }, ip: req.ip });
     res.json({ ok: true, data });
   } catch (e) { 
