@@ -870,7 +870,7 @@ export const BookPanel = ({ demoMode = false }) => {
         // Fetch the user's role and activity metadata from the profiles table
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('created_at, last_active_at, subscription_tier, role')
+          .select('created_at, last_active_at, subscription_tier, role, display_name, full_name')
           .eq('id', session.user.id)
           .single();
 
@@ -892,7 +892,8 @@ export const BookPanel = ({ demoMode = false }) => {
         const userData = {
           ...session.user,
           role: profile?.role || 'viewer',
-          subscription_tier: profile?.subscription_tier || 'basic'
+          subscription_tier: profile?.subscription_tier || 'basic',
+          display_name: profile?.full_name || profile?.display_name || session.user.email?.split('@')[0] || 'User'
         };
         userCache = userData;
         setUser(userData);
@@ -1305,16 +1306,16 @@ export const BookPanel = ({ demoMode = false }) => {
         setBookReactions(reactions);
       }
 
-      // Load comments for all books
+      // Load comments for all books with user profile data
       const { data: comments } = await supabase
         .from('book_comments')
-        .select('*')
+        .select('*, profiles:user_id(full_name, display_name, email)')
         .order('created_at', { ascending: false });
 
-      // Load all replies
+      // Load all replies with user profile data
       const { data: replies } = await supabase
         .from('book_replies')
-        .select('*')
+        .select('*, profiles:user_id(full_name, display_name, email)')
         .order('created_at', { ascending: true });
 
       // Load likes for all comments
@@ -1348,7 +1349,7 @@ export const BookPanel = ({ demoMode = false }) => {
 
             repliesByComment[reply.comment_id].push({
               id: reply.id,
-              user: reply.user_email || 'Anonymous',
+              user: reply.profiles?.full_name || reply.profiles?.display_name || reply.user_name || reply.user_email?.split('@')[0] || 'Anonymous',
               text: reply.text,
               timestamp: reply.created_at,
               liked: false,
@@ -1390,7 +1391,8 @@ export const BookPanel = ({ demoMode = false }) => {
           }
           commentsByBook[comment.book_id].push({
             id: comment.id,
-            user: comment.user_email || 'Anonymous',
+            user: comment.profiles?.full_name || comment.profiles?.display_name || comment.user_name || comment.user_email?.split('@')[0] || 'Anonymous',
+            userId: comment.user_id,
             text: comment.text,
             media,
             timestamp: comment.created_at,
@@ -1408,6 +1410,165 @@ export const BookPanel = ({ demoMode = false }) => {
       console.error('Failed to load user data:', error);
     }
   };
+
+  // Load comments for a specific book
+  const loadCommentsForBook = async (bookId) => {
+    if (!bookId) return;
+
+    try {
+      console.log('Loading comments for book:', bookId);
+      
+      // Load comments for this specific book with user profile data
+      const { data: comments, error: commentsError } = await supabase
+        .from('book_comments')
+        .select('*, profiles:user_id(full_name, display_name, email)')
+        .eq('book_id', bookId)
+        .order('created_at', { ascending: false });
+
+      if (commentsError) {
+        console.error('Error fetching comments:', commentsError);
+        throw commentsError;
+      }
+
+      console.log('Loaded comments for book', bookId, ':', comments?.length || 0, 'comments');
+
+      if (comments && comments.length > 0) {
+        const commentIds = comments.map(c => c.id);
+
+        // Load replies for these comments
+        const { data: replies, error: repliesError } = await supabase
+          .from('book_replies')
+          .select('*, profiles:user_id(full_name, display_name, email)')
+          .in('comment_id', commentIds)
+          .order('created_at', { ascending: true });
+
+        if (repliesError) {
+          console.error('Error fetching replies:', repliesError);
+          throw repliesError;
+        }
+
+        // Load likes for these comments
+        const { data: commentLikesRows, error: likesError } = await supabase
+          .from('book_comment_likes')
+          .select('comment_id, user_id')
+          .in('comment_id', commentIds);
+
+        if (likesError) {
+          console.error('Error fetching likes:', likesError);
+          throw likesError;
+        }
+
+        // Group replies by comment_id
+        const repliesByComment = {};
+        if (replies) {
+          replies.forEach(reply => {
+            if (!repliesByComment[reply.comment_id]) {
+              repliesByComment[reply.comment_id] = [];
+            }
+
+            const hasValidUrl =
+              typeof reply.media_url === 'string' &&
+              (reply.media_url.startsWith('http://') || reply.media_url.startsWith('https://'));
+            const hasValidType =
+              reply.media_type === 'image' ||
+              reply.media_type === 'video' ||
+              reply.media_type === 'audio' ||
+              reply.media_type === 'file';
+
+            const media = hasValidUrl && hasValidType
+              ? { type: reply.media_type, url: reply.media_url }
+              : null;
+
+            repliesByComment[reply.comment_id].push({
+              id: reply.id,
+              user: reply.profiles?.full_name || reply.profiles?.display_name || reply.user_name || reply.user_email?.split('@')[0] || 'Anonymous',
+              text: reply.text,
+              timestamp: reply.created_at,
+              liked: false,
+              media,
+            });
+          });
+        }
+
+        // Build like counts and current user's liked map
+        const likeCountsExcludingSelf = {};
+        const userLikedMap = {};
+        if (commentLikesRows) {
+          commentLikesRows.forEach(like => {
+            const isSelf = user && like.user_id === user.id;
+            if (isSelf) {
+              userLikedMap[like.comment_id] = true;
+            } else {
+              likeCountsExcludingSelf[like.comment_id] = (likeCountsExcludingSelf[like.comment_id] || 0) + 1;
+            }
+          });
+        }
+
+        // Map comments
+        const mappedComments = comments.map(comment => {
+          const hasValidUrl =
+            typeof comment.media_url === 'string' &&
+            (comment.media_url.startsWith('http://') || comment.media_url.startsWith('https://'));
+          const hasValidType =
+            comment.media_type === 'image' ||
+            comment.media_type === 'video' ||
+            comment.media_type === 'audio' ||
+            comment.media_type === 'file';
+
+          const media = hasValidUrl && hasValidType
+            ? { type: comment.media_type, url: comment.media_url }
+            : null;
+
+          return {
+            id: comment.id,
+            user: comment.profiles?.full_name || comment.profiles?.display_name || comment.user_name || comment.user_email?.split('@')[0] || 'Anonymous',
+            userId: comment.user_id,
+            text: comment.text,
+            media,
+            timestamp: comment.created_at,
+            liked: userLikedMap[comment.id] || false,
+            replies: repliesByComment[comment.id] || [],
+            likes: likeCountsExcludingSelf[comment.id] || 0,
+          };
+        });
+
+        // Update state with comments for this book
+        setMediaComments(prev => ({
+          ...prev,
+          [bookId]: mappedComments,
+        }));
+
+        // Update likes map
+        setCommentLikes(prev => ({
+          ...prev,
+          ...userLikedMap,
+        }));
+
+        console.log('Successfully loaded and mapped comments for book', bookId);
+      } else {
+        // No comments for this book
+        console.log('No comments found for book', bookId);
+        setMediaComments(prev => ({
+          ...prev,
+          [bookId]: [],
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to load comments for book:', error);
+      // Set empty comments on error so modal still works
+      setMediaComments(prev => ({
+        ...prev,
+        [bookId]: [],
+      }));
+    }
+  };
+
+  // Load comments when a book is selected
+  useEffect(() => {
+    if (selectedBook?.id) {
+      loadCommentsForBook(selectedBook.id);
+    }
+  }, [selectedBook?.id, user?.id]);
 
   // Bulk download functions
   const toggleBookSelection = (bookId) => {
@@ -2385,6 +2546,7 @@ export const BookPanel = ({ demoMode = false }) => {
           book_id: selectedBook.id,
           user_id: user.id,
           user_email: user.email,
+          user_name: user.display_name || user.email?.split('@')[0] || 'User',
           text: commentData.text.trim(),
           media_url: mediaUrl,
           media_type: mediaType,
@@ -2401,7 +2563,8 @@ export const BookPanel = ({ demoMode = false }) => {
           ...(Array.isArray(prev[selectedBook.id]) ? prev[selectedBook.id] : []),
           {
             id: data.id,
-            user: user.email || 'Anonymous',
+            user: user.display_name || user.email?.split('@')[0] || 'User',
+            userId: user.id,
             text: data.text,
             media: data.media_url ? { type: data.media_type, url: data.media_url } : null,
             timestamp: data.created_at,
@@ -2514,6 +2677,7 @@ export const BookPanel = ({ demoMode = false }) => {
           comment_id: commentId,
           user_id: user.id,
           user_email: user.email,
+          user_name: user.display_name || user.email?.split('@')[0] || 'User',
           text: replyData.text,
           media_url: mediaUrl,
           media_type: mediaType,
@@ -2530,7 +2694,7 @@ export const BookPanel = ({ demoMode = false }) => {
         if (commentIndex !== -1) {
           const newReply = {
             id: data.id,
-            user: user.email || 'Anonymous',
+            user: user.display_name || user.email?.split('@')[0] || 'User',
             text: data.text,
             media: data.media_url ? { type: data.media_type, url: data.media_url } : null,
             timestamp: data.created_at,
@@ -3606,7 +3770,7 @@ export const BookPanel = ({ demoMode = false }) => {
                 <div style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem', marginTop: '0' }}>
                   <CommentsSection
                   currentMedia={{ id: selectedBook.id }}
-                  currentUser={user?.email || 'Anonymous'}
+                  currentUser={user}
                   showComments={true}
                   commentsRef={null}
                   mediaComments={mediaComments}

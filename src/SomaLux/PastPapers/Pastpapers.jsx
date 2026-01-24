@@ -408,7 +408,7 @@ export const PaperPanel = ({ demoMode = false }) => {
           // Fetch user profile to get subscription_tier and role
           const { data: profile, error } = await supabase
             .from('profiles')
-            .select('subscription_tier, role')
+            .select('subscription_tier, role, display_name, full_name')
             .eq('id', user.id)
             .single();
           
@@ -416,7 +416,8 @@ export const PaperPanel = ({ demoMode = false }) => {
           setUser({
             ...user,
             subscription_tier: profile?.subscription_tier || 'basic',
-            role: profile?.role || 'viewer'
+            role: profile?.role || 'viewer',
+            display_name: profile?.full_name || profile?.display_name || user.email?.split('@')[0] || 'User'
           });
         } else {
           setUser(null);
@@ -436,7 +437,7 @@ export const PaperPanel = ({ demoMode = false }) => {
         // Fetch user profile to get subscription_tier and role
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('subscription_tier, role')
+          .select('subscription_tier, role, display_name, full_name')
           .eq('id', session.user.id)
           .single();
         
@@ -444,7 +445,8 @@ export const PaperPanel = ({ demoMode = false }) => {
         setUser({
           ...session.user,
           subscription_tier: profile?.subscription_tier || 'basic',
-          role: profile?.role || 'viewer'
+          role: profile?.role || 'viewer',
+          display_name: profile?.full_name || profile?.display_name || session.user.email?.split('@')[0] || 'User'
         });
         setAuthModalOpen(false);
       } else {
@@ -473,7 +475,8 @@ export const PaperPanel = ({ demoMode = false }) => {
                 setUser(prev => ({
                   ...prev,
                   role: payload.new.role || prev?.role || 'viewer',
-                  subscription_tier: payload.new.subscription_tier || prev?.subscription_tier || 'basic'
+                  subscription_tier: payload.new.subscription_tier || prev?.subscription_tier || 'basic',
+                  display_name: payload.new.full_name || payload.new.display_name || prev?.display_name || 'User'
                 }));
               }
             }
@@ -945,13 +948,20 @@ export const PaperPanel = ({ demoMode = false }) => {
     const loadCommentsForPaper = async () => {
       if (!selectedPaper) return;
       try {
+        console.log('Loading comments for paper:', selectedPaper.id);
+        
         const { data: comments, error: commentsError } = await supabase
           .from('past_paper_comments')
-          .select('*')
+          .select('*, profiles:user_id(full_name, display_name, email)')
           .eq('paper_id', selectedPaper.id)
           .order('created_at', { ascending: true });
 
-        if (commentsError) throw commentsError;
+        if (commentsError) {
+          console.error('Error fetching comments:', commentsError);
+          throw commentsError;
+        }
+
+        console.log('Loaded comments for paper', selectedPaper.id, ':', comments?.length || 0, 'comments');
 
         const commentRows = comments || [];
         const commentIds = commentRows.map(c => c.id);
@@ -961,11 +971,14 @@ export const PaperPanel = ({ demoMode = false }) => {
         if (commentIds.length > 0) {
           const { data: replies, error: repliesError } = await supabase
             .from('past_paper_replies')
-            .select('*')
+            .select('*, profiles:user_id(full_name, display_name, email)')
             .in('comment_id', commentIds)
             .order('created_at', { ascending: true });
 
-          if (repliesError) throw repliesError;
+          if (repliesError) {
+            console.error('Error fetching replies:', repliesError);
+            throw repliesError;
+          }
           replyRows = replies || [];
         }
 
@@ -977,7 +990,10 @@ export const PaperPanel = ({ demoMode = false }) => {
             .select('comment_id, user_id')
             .in('comment_id', commentIds);
 
-          if (likesError) throw likesError;
+          if (likesError) {
+            console.error('Error fetching likes:', likesError);
+            throw likesError;
+          }
           likeRows = likes || [];
         }
 
@@ -986,7 +1002,7 @@ export const PaperPanel = ({ demoMode = false }) => {
           if (!repliesByComment[r.comment_id]) repliesByComment[r.comment_id] = [];
           repliesByComment[r.comment_id].push({
             id: r.id,
-            user: r.user_email || 'Anonymous',
+            user: r.profiles?.full_name || r.profiles?.display_name || r.user_name || r.user_email?.split('@')[0] || 'Anonymous',
             text: r.text,
             timestamp: r.created_at,
             liked: false,
@@ -1008,7 +1024,8 @@ export const PaperPanel = ({ demoMode = false }) => {
 
         const mappedComments = commentRows.map(c => ({
           id: c.id,
-          user: c.user_email || 'Anonymous',
+          user: c.profiles?.full_name || c.profiles?.display_name || c.user_name || c.user_email?.split('@')[0] || 'Anonymous',
+          userId: c.user_id,
           text: c.text,
           timestamp: c.created_at,
           liked: false,
@@ -1024,8 +1041,15 @@ export const PaperPanel = ({ demoMode = false }) => {
         }));
 
         setCommentLikes(userLikedMap);
+        
+        console.log('Successfully loaded and mapped comments for paper', selectedPaper.id);
       } catch (e) {
         console.error('Failed to load past paper comments:', e);
+        // Set empty array on error so modal still works
+        setMediaComments(prev => ({
+          ...prev,
+          [selectedPaper?.id]: [],
+        }));
       }
     };
 
@@ -1080,6 +1104,7 @@ export const PaperPanel = ({ demoMode = false }) => {
           paper_id: selectedPaper.id,
           user_id: user.id,
           user_email: user.email,
+          user_name: user.display_name || user.email?.split('@')[0] || 'User',
           text: commentData.text,
           media_url: mediaUrl,
           media_type: mediaType,
@@ -1096,7 +1121,8 @@ export const PaperPanel = ({ demoMode = false }) => {
           ...(Array.isArray(prev[selectedPaper.id]) ? prev[selectedPaper.id] : []),
           {
             id: data.id,
-            user: user.email || 'Anonymous',
+            user: user.display_name || user.email?.split('@')[0] || 'User',
+            userId: user.id,
             text: data.text,
             timestamp: data.created_at,
             liked: false,
@@ -1222,6 +1248,7 @@ export const PaperPanel = ({ demoMode = false }) => {
           comment_id: commentId,
           user_id: user.id,
           user_email: user.email,
+          user_name: user.display_name || user.email?.split('@')[0] || 'User',
           text: replyData.text,
           media_url: mediaUrl,
           media_type: mediaType,
@@ -1238,7 +1265,7 @@ export const PaperPanel = ({ demoMode = false }) => {
         if (idx !== -1) {
           const newReply = {
             id: data.id,
-            user: user.email || 'Anonymous',
+            user: user.display_name || user.email?.split('@')[0] || 'User',
             text: data.text,
             timestamp: data.created_at,
             liked: false,
@@ -2124,7 +2151,7 @@ export const PaperPanel = ({ demoMode = false }) => {
                   <div>
                     <CommentsSection
                       currentMedia={{ id: String(selectedPaper.id) }}
-                      currentUser={user?.email || 'User'}
+                      currentUser={user}
                       showComments={true}
                       commentsRef={commentsRef}
                       mediaComments={mediaComments}

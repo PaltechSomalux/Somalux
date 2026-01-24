@@ -892,7 +892,7 @@ export async function fetchProfiles() {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, display_name, avatar_url, bio, created_at, updated_at, last_active_at, subscription_tier, subscription_started_at, subscription_expires_at, role')
+        .select('id, email, display_name, full_name, avatar_url, bio, created_at, updated_at, last_active_at, subscription_tier, subscription_started_at, subscription_expires_at, role')
         .order('created_at', { ascending: false })
         .range(from, to);
       

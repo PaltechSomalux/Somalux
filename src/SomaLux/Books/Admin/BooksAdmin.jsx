@@ -40,6 +40,7 @@ const AdsManagement = React.lazy(() => import('./pages/AdvancedAdsManagement'));
 const AdAnalytics = React.lazy(() => import('./pages/AdAnalytics'));
 const Rankings = React.lazy(() => import('./pages/Rankings'));
 const StorageCleanup = React.lazy(() => import('./pages/StorageCleanup'));
+const SendEmails = React.lazy(() => import('./pages/SendEmails'));
 
 export const BooksAdmin = () => {
   const navigate = useNavigate();
@@ -235,6 +236,10 @@ export const BooksAdmin = () => {
                   <FiSettings /> <span className="nav-label">SYSTEM</span>
                 </div>
 
+                <NavLink to="/books/admin/send-emails" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                  <BiSpeaker /> <span className="nav-label">Send Emails</span>
+                </NavLink>
+
                 <NavLink to="/books/admin/rankings" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                   <FiBarChart2 /> <span className="nav-label">Rankings</span>
                 </NavLink>
@@ -409,6 +414,7 @@ export const BooksAdmin = () => {
                 {/* System Routes */}
                 {isAdmin && (
                   <>
+                    <Route path="send-emails" element={<SendEmails />} />
                     <Route path="rankings" element={<Rankings />} />
                     <Route path="ads" element={<AdsManagement />} />
                     <Route path="users" element={<Users isSuperAdmin={isSuperAdmin} />} />

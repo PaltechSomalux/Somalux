@@ -230,8 +230,8 @@ const Users = ({ isSuperAdmin }) => {
         const ra = roleOrder[a.role] ?? 3;
         const rb = roleOrder[b.role] ?? 3;
         if (ra !== rb) return ra - rb;
-        const nameA = (a.display_name || a.email || '').toLowerCase();
-        const nameB = (b.display_name || b.email || '').toLowerCase();
+        const nameA = (a.full_name || a.display_name || a.email || '').toLowerCase();
+        const nameB = (b.full_name || b.display_name || b.email || '').toLowerCase();
         return nameA.localeCompare(nameB);
       });
 
@@ -265,6 +265,7 @@ const Users = ({ isSuperAdmin }) => {
     let filtered = rows.filter(u => {
       const matchSearch = !search || 
         (u.email && u.email.toLowerCase().includes(search.toLowerCase())) ||
+        (u.full_name && u.full_name.toLowerCase().includes(search.toLowerCase())) ||
         (u.display_name && u.display_name.toLowerCase().includes(search.toLowerCase()));
       const matchRole = !roleFilter || u.role === roleFilter;
       const matchActive = !activeFilter || u.status === activeFilter;
@@ -274,10 +275,14 @@ const Users = ({ isSuperAdmin }) => {
     // Apply sorting
     if (sortBy === 'latest_login') {
       filtered.sort((a, b) => {
-        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        const dateA = a.last_active_at ? new Date(a.last_active_at).getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0);
+        const dateB = b.last_active_at ? new Date(b.last_active_at).getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0);
         const diff = dateB - dateA;
-        return sortDir === 'desc' ? diff : -diff;
+        if (diff !== 0) return sortDir === 'desc' ? diff : -diff;
+        // Tiebreaker: sort by name
+        const nameA = (a.full_name || a.display_name || a.email || '').toLowerCase();
+        const nameB = (b.full_name || b.display_name || b.email || '').toLowerCase();
+        return nameA.localeCompare(nameB);
       });
     } else {
       // Default ranking sort
@@ -290,8 +295,8 @@ const Users = ({ isSuperAdmin }) => {
         const ra = roleOrder[a.role] ?? 3;
         const rb = roleOrder[b.role] ?? 3;
         if (ra !== rb) return ra - rb;
-        const nameA = (a.display_name || a.email || '').toLowerCase();
-        const nameB = (b.display_name || b.email || '').toLowerCase();
+        const nameA = (a.full_name || a.display_name || a.email || '').toLowerCase();
+        const nameB = (b.full_name || b.display_name || b.email || '').toLowerCase();
         return nameA.localeCompare(nameB);
       });
     }
@@ -410,21 +415,21 @@ const Users = ({ isSuperAdmin }) => {
                     {u.avatar_url ? (
                       <img
                         src={u.avatar_url}
-                        alt={u.display_name || u.email || 'User avatar'}
+                        alt={u.full_name || u.display_name || u.email || 'User avatar'}
                         style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                         onError={(e) => {
                           e.target.style.display = 'none';
                           if (e.target.parentElement) {
-                            const initials = (u.display_name || u.email || '?').charAt(0).toUpperCase();
+                            const initials = (u.full_name || u.display_name || u.email || '?').charAt(0).toUpperCase();
                             e.target.parentElement.textContent = initials;
                           }
                         }}
                       />
                     ) : (
-                      (u.display_name || u.email || '?').charAt(0).toUpperCase()
+                      (u.full_name || u.display_name || u.email || '?').charAt(0).toUpperCase()
                     )}
                   </div>
-                  <span>{u.display_name || '—'}</span>
+                  <span>{u.full_name || u.display_name || '—'}</span>
                 </div>
               </td>
               <td>{u.email}</td>
@@ -506,10 +511,11 @@ const Users = ({ isSuperAdmin }) => {
                 )}
               </td>
               <td>
-                <div className="actions">
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <button
                     className="btn"
                     onClick={() => navigate(`/books/admin/users/${u.id}`)}
+                    style={{ padding: '4px 8px', fontSize: '12px', whiteSpace: 'nowrap', width: 'auto', minWidth: 'auto', maxWidth: 'max-content' }}
                   >
                     Details
                   </button>
@@ -518,29 +524,13 @@ const Users = ({ isSuperAdmin }) => {
                     const elevated = u.role === 'admin' || u.role === 'editor';
                     if (!elevated && !hasUploads) return null;
                     return (
-                      <>
-                        <button
-                          className="btn"
-                          onClick={() => navigate(`/books/admin/users/${u.id}?tab=uploads`)}
-                          style={{ marginLeft: 8 }}
-                        >
-                          View uploads
-                        </button>
-                        {!elevated && hasUploads && (
-                          <span
-                            style={{
-                              marginLeft: 6,
-                              padding: '2px 6px',
-                              borderRadius: 8,
-                              fontSize: 10,
-                              background: '#202c33',
-                              color: '#8696a0',
-                            }}
-                          >
-                            had admin/editor access
-                          </span>
-                        )}
-                      </>
+                      <button
+                        className="btn"
+                        onClick={() => navigate(`/books/admin/users/${u.id}?tab=uploads`)}
+                        style={{ padding: '4px 8px', fontSize: '12px', whiteSpace: 'nowrap', width: 'auto', minWidth: 'auto', maxWidth: 'max-content' }}
+                      >
+                        View uploads
+                      </button>
                     );
                   })()}
                 </div>

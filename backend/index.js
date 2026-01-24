@@ -33,6 +33,8 @@ import featureFlagsRouter from './routes/featureFlags.js';
 import pastPapersDownloaderRoutes from './routes/pastPapersDownloaderRoutes.js';
 import pastPaperExtractRoute from './routes/pastPaperExtractRoute.js';
 import firstPageExtractRoute from './routes/firstPageExtractRoute.js';
+import emailNotificationsRouter from './routes/emailNotifications.js';
+import { recordFirstLogin } from './utils/firstLoginTracking.js';
 
 
 // Express Setup MUST be before any app.use/app.post calls
@@ -44,6 +46,9 @@ app.use(express.static('public')); // Serve static files from public folder (for
 
 // Feature Flags Routes
 app.use(featureFlagsRouter);
+
+// Email Notifications Routes (Admin sending emails to users)
+app.use('/api/admin', emailNotificationsRouter);
 
 // Past Papers Downloader Routes
 app.use('/api/elib/pastpapers', pastPapersDownloaderRoutes);
@@ -179,6 +184,11 @@ app.post('/api/user/session/login', async (req, res) => {
       })
       .catch(e => console.warn('Failed to record user session:', e?.message));
 
+    // Record first login (non-blocking) - NEW FEATURE
+    // This only creates a record on the very first login, subsequent logins are ignored
+    recordFirstLogin(userId, supabaseAdmin, req)
+      .catch(e => console.warn('Failed to record first login:', e?.message));
+
     // Return immediately without waiting
     res.json({ ok: true });
   } catch (e) {
@@ -250,6 +260,99 @@ app.post('/api/user/activity', async (req, res) => {
   } catch (e) {
     console.error('Error in activity tracking:', e);
     res.status(500).json({ error: e.message || 'Failed to track activity' });
+  }
+});
+
+// Get user's first login information
+app.get('/api/user/first-login-info', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('first_login_tracking')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      // Not found is not an error in this case
+      if (error.code === 'PGRST116') {
+        return res.json({ data: null, message: 'No first login record found' });
+      }
+      console.error('Error fetching first login info:', error?.message);
+      return res.status(500).json({ error: error?.message || 'Failed to fetch first login info' });
+    }
+
+    res.json({ data });
+  } catch (e) {
+    console.error('Error in first login info endpoint:', e);
+    res.status(500).json({ error: e.message || 'Failed to fetch first login info' });
+  }
+});
+
+// Get first login statistics (admin only)
+app.get('/api/admin/first-login-statistics', async (req, res) => {
+  try {
+    // Verify user is admin (optional - add proper auth check if needed)
+    
+    // Total first logins recorded
+    const { count: totalRecords } = await supabaseAdmin
+      .from('first_login_tracking')
+      .select('*', { count: 'exact', head: true });
+
+    // Device type breakdown
+    const { data: allRecords } = await supabaseAdmin
+      .from('first_login_tracking')
+      .select('device_type, browser, operating_system, first_login_date')
+      .order('first_login_date', { ascending: false })
+      .limit(10000); // Get recent records
+
+    const deviceBreakdown = {};
+    const browserBreakdown = {};
+    const osBreakdown = {};
+    
+    allRecords?.forEach(record => {
+      if (record.device_type) {
+        deviceBreakdown[record.device_type] = (deviceBreakdown[record.device_type] || 0) + 1;
+      }
+      if (record.browser) {
+        browserBreakdown[record.browser] = (browserBreakdown[record.browser] || 0) + 1;
+      }
+      if (record.operating_system) {
+        osBreakdown[record.operating_system] = (osBreakdown[record.operating_system] || 0) + 1;
+      }
+    });
+
+    // First logins by date (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const { data: recentLogins, error: dateError } = await supabaseAdmin
+      .from('first_login_tracking')
+      .select('first_login_date')
+      .gte('first_login_date', thirtyDaysAgo.toISOString().split('T')[0]);
+
+    const dateBreakdown = {};
+    recentLogins?.forEach(record => {
+      const date = record.first_login_date;
+      dateBreakdown[date] = (dateBreakdown[date] || 0) + 1;
+    });
+
+    res.json({
+      total_first_logins: totalRecords || 0,
+      device_breakdown: deviceBreakdown,
+      browser_breakdown: browserBreakdown,
+      os_breakdown: osBreakdown,
+      recent_logins_30_days: recentLogins?.length || 0,
+      logins_by_date: dateBreakdown
+    });
+  } catch (e) {
+    console.error('Error in first login statistics endpoint:', e);
+    res.status(500).json({ error: e.message || 'Failed to fetch statistics' });
   }
 });
 

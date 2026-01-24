@@ -159,14 +159,16 @@ const Comment = ({ comment, mediaId, currentUser, onDelete, onLikeToggle, onRepl
                   <button
                     onClick={() => handleMenuAction('delete')}
                     className="menu-item-comments"
-                    disabled={comment.user !== currentUser}
+                    disabled={!comment.userId || comment.userId !== currentUser?.id}
+                    title={!comment.userId ? 'Unable to delete' : comment.userId !== currentUser?.id ? 'You can only delete your own comments' : 'Delete this comment'}
                   >
                     Delete
                   </button>
                   <button
                     onClick={() => handleMenuAction('edit')}
                     className="menu-item-comments"
-                    disabled={comment.user !== currentUser}
+                    disabled={!comment.userId || comment.userId !== currentUser?.id}
+                    title={!comment.userId ? 'Unable to edit' : comment.userId !== currentUser?.id ? 'You can only edit your own comments' : 'Edit this comment'}
                   >
                     Edit
                   </button>
@@ -179,7 +181,8 @@ const Comment = ({ comment, mediaId, currentUser, onDelete, onLikeToggle, onRepl
                   <button
                     onClick={() => handleMenuAction('pin')}
                     className="menu-item-comments"
-                    disabled={comment.user !== currentUser}
+                    disabled={!comment.userId || comment.userId !== currentUser?.id}
+                    title={!comment.userId ? 'Unable to pin' : comment.userId !== currentUser?.id ? 'You can only pin your own comments' : 'Pin this comment'}
                   >
                     Pin
                   </button>
@@ -189,7 +192,7 @@ const Comment = ({ comment, mediaId, currentUser, onDelete, onLikeToggle, onRepl
           </div>
         </div>
       </div>
-      <p className="comment-text-comments">{comment.text}</p>
+      <p className="comment-text-comments">{comment.text?.trim() || '(Empty comment)'}</p>
       {comment.media && (
         <div className="comment-media-comments">
           {comment.media.type === 'image' ? (
@@ -518,6 +521,7 @@ Comment.propTypes = {
   comment: PropTypes.shape({
     id: PropTypes.string.isRequired,
     user: PropTypes.string.isRequired,
+    userId: PropTypes.string,
     text: PropTypes.string.isRequired,
     timestamp: PropTypes.string.isRequired,
     liked: PropTypes.bool,

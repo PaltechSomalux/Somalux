@@ -43,6 +43,8 @@ const UserDetails = () => {
   const [comments, setComments] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [uploads, setUploads] = useState([]);
+  const [pastPapers, setPastPapers] = useState([]);
+  const [universities, setUniversities] = useState([]);
   const [readingSessions, setReadingSessions] = useState([]);
   const [readingGoals, setReadingGoals] = useState([]);
   const [readingStats, setReadingStats] = useState(null);
@@ -52,6 +54,7 @@ const UserDetails = () => {
   const [authorFollows, setAuthorFollows] = useState([]);
   const [authorRatings, setAuthorRatings] = useState([]);
   const [authorStats, setAuthorStats] = useState([]);
+  const [firstLogin, setFirstLogin] = useState(null);
   const [activeTab, setActiveTab] = useState(() => {
     const params = new URLSearchParams(location.search);
     const t = params.get('tab');
@@ -80,166 +83,237 @@ const UserDetails = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const [
-          profileRes,
-          viewsRes,
-          downloadsRes,
-          likesRes,
-          commentsRes,
-          subsRes,
-          uploadsRes,
-          sessionsRes,
-          goalsRes,
-          statsRes,
-          streakRes,
-          userAchRes,
-          authorLikesRes,
-          authorFollowsRes,
-          authorRatingsRes,
-          authorStatsRes,
-        ] = await Promise.all([
-          supabase
-            .from('profiles')
-            .select('id, email, display_name, role, created_at, avatar_url, subscription_tier')
-            .eq('id', id)
-            .maybeSingle(),
+        // First, get profile data with username
+        const profileRes = await supabase
+          .from('profiles')
+          .select('id, email, username, display_name, full_name, role, created_at, avatar_url, subscription_tier')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (profileRes.error) throw profileRes.error;
+        setProfile(profileRes.data || null);
+        console.log('✅ Profile loaded:', profileRes.data);
+        console.log('👤 Profile keys:', Object.keys(profileRes.data || {}));
+        console.log('📝 Username field:', profileRes.data?.username);
+        console.log('📝 Display name field:', profileRes.data?.display_name);
+        console.log('📝 Full name field:', profileRes.data?.full_name);
+        console.log('👮 Role field (raw):', profileRes.data?.role);
+        console.log('👮 Role type:', typeof profileRes.data?.role);
+        console.log('👮 Role JSON:', JSON.stringify(profileRes.data?.role));
+
+        // Get likes, downloads, comments, views data
+        const [viewsRes, likesRes, downloadsRes, commentsRes, uploadsRes, pastPapersRes, universitiesRes, firstLoginRes] = await Promise.all([
           supabase
             .from('book_views')
             .select('id, book_id, viewed_at')
             .eq('user_id', id)
             .order('viewed_at', { ascending: false }),
           supabase
-            .from('book_downloads')
-            .select('id, book_id, downloaded_at')
-            .eq('user_id', id)
-            .order('downloaded_at', { ascending: false }),
-          supabase
             .from('book_likes')
             .select('id, book_id, created_at')
             .eq('user_id', id)
             .order('created_at', { ascending: false }),
+          supabase
+            .from('book_downloads')
+            .select('id, book_id, downloaded_at')
+            .eq('user_id', id)
+            .order('downloaded_at', { ascending: false }),
           supabase
             .from('book_comments')
             .select('id, book_id, text, created_at')
             .eq('user_id', id)
             .order('created_at', { ascending: false }),
           supabase
-            .from('subscriptions')
-            .select('id, product, plan_id, price_kes, status, start_at, end_date, created_at')
-            .eq('user_id', id)
-            .order('start_at', { ascending: false }),
-          supabase
             .from('books')
             .select('id, title, author, created_at, views_count, downloads_count, year, language, publisher')
             .eq('uploaded_by', id)
             .order('created_at', { ascending: false }),
           supabase
-            .from('reading_sessions')
-            .select('id, book_id, pages_read, progress_percent, started_at, ended_at')
-            .eq('user_id', id)
-            .order('started_at', { ascending: false }),
-          supabase
-            .from('reading_goals')
-            .select('id, goal_type, target_books, current_progress, year, month, is_active, created_at, updated_at')
-            .eq('user_id', id)
+            .from('past_papers')
+            .select('id, title, unit_code, unit_name, created_at')
+            .eq('uploaded_by', id)
             .order('created_at', { ascending: false }),
           supabase
-            .from('user_reading_stats')
-            .select('total_books_completed, total_books_started, genres_explored, total_pages_read, avg_pages_per_book, updated_at')
+            .from('universities')
+            .select('id, name, code, created_at')
+            .eq('uploaded_by', id)
+            .order('created_at', { ascending: false }),
+          // Fetch first login info - with better error handling
+          supabase
+            .from('first_login_tracking')
+            .select('id, user_id, first_login_at, first_login_date, first_login_time, timezone, device_type, browser, operating_system, ip_address, user_agent, location')
             .eq('user_id', id)
             .maybeSingle(),
-          supabase
-            .from('reading_streaks')
-            .select('current_streak, longest_streak, updated_at')
-            .eq('user_id', id)
-            .maybeSingle(),
-          supabase
-            .from('user_achievements')
-            .select('id, achievement_code, earned_at, metadata, achievements(title, code, tier)')
-            .eq('user_id', id)
-            .order('earned_at', { ascending: false }),
-          supabase
-            .from('author_likes')
-            .select('id, author_name, created_at')
-            .eq('user_id', id)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('author_follows')
-            .select('id, author_name, created_at')
-            .eq('follower_id', id)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('author_ratings')
-            .select('id, author_name, rating, created_at, updated_at')
-            .eq('user_id', id)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('author_stats')
-            .select('author_name, books_count, average_rating, rating_count, likes_count, loves_count, followers_count, updated_at'),
         ]);
 
-        if (profileRes.error) throw profileRes.error;
-        setProfile(profileRes.data || null);
-
         const viewsData = viewsRes.error ? [] : viewsRes.data || [];
-        const downloadsData = downloadsRes.error ? [] : downloadsRes.data || [];
         const likesData = likesRes.error ? [] : likesRes.data || [];
+        const downloadsData = downloadsRes.error ? [] : downloadsRes.data || [];
         const commentsData = commentsRes.error ? [] : commentsRes.data || [];
-        const subsData = subsRes.error ? [] : subsRes.data || [];
         const uploadsData = uploadsRes.error ? [] : uploadsRes.data || [];
-        const sessionsData = sessionsRes.error ? [] : sessionsRes.data || [];
-        const goalsData = goalsRes.error ? [] : goalsRes.data || [];
-        const statsData = statsRes.error ? null : statsRes.data || null;
-        const streakData = streakRes.error ? null : streakRes.data || null;
-        const userAchData = userAchRes.error ? [] : userAchRes.data || [];
-        const authorLikesData = authorLikesRes.error ? [] : authorLikesRes.data || [];
-        const authorFollowsData = authorFollowsRes.error ? [] : authorFollowsRes.data || [];
-        const authorRatingsData = authorRatingsRes.error ? [] : authorRatingsRes.data || [];
-        const authorStatsData = authorStatsRes.error ? [] : authorStatsRes.data || [];
+        const pastPapersData = pastPapersRes.error ? [] : pastPapersRes.data || [];
+        const universitiesData = universitiesRes.error ? [] : universitiesRes.data || [];
+        
+        // Log any errors
+        if (viewsRes.error) console.error('❌ Views error:', viewsRes.error);
+        if (likesRes.error) console.error('❌ Likes error:', likesRes.error);
+        if (downloadsRes.error) console.error('❌ Downloads error:', downloadsRes.error);
+        if (commentsRes.error) console.error('❌ Comments error:', commentsRes.error);
+        if (uploadsRes.error) console.error('❌ Uploads error:', uploadsRes.error);
+        if (pastPapersRes.error) console.error('❌ Past Papers error:', pastPapersRes.error);
+        if (universitiesRes.error) console.error('❌ Universities error:', universitiesRes.error);
+        if (firstLoginRes.error) console.error('❌ First Login error:', firstLoginRes.error);
+        
+        // Get first login data
+        const firstLoginData = firstLoginRes.error ? null : firstLoginRes.data;
+        console.log('🔑 First login response:', firstLoginRes);
+        console.log('🔑 First login data:', firstLoginData);
+        console.log('🔑 First login data keys:', Object.keys(firstLoginData || {}));
+        console.log('🔑 First login error:', firstLoginRes.error);
+        console.log('🔑 First login status:', firstLoginRes.status);
+        if (firstLoginData) {
+          console.log('🔑 First login has data:');
+          console.log('  - first_login_at:', firstLoginData.first_login_at);
+          console.log('  - device_type:', firstLoginData.device_type);
+          console.log('  - browser:', firstLoginData.browser);
+          console.log('  - operating_system:', firstLoginData.operating_system);
+          console.log('  - ip_address:', firstLoginData.ip_address);
+          console.log('  - timezone:', firstLoginData.timezone);
+        }
 
-        // Collect unique book ids to hydrate titles once (views, downloads, sessions, likes, comments)
+        // Log errors if any
+        if (likesRes.error) console.error('Likes fetch error:', likesRes.error);
+        if (downloadsRes.error) console.error('Downloads fetch error:', downloadsRes.error);
+        if (commentsRes.error) console.error('Comments fetch error:', commentsRes.error);
+        if (firstLoginRes.error) console.error('🔴 First login fetch error:', firstLoginRes.error);
+
+        console.log('Data fetched - Likes:', likesData.length, 'Downloads:', downloadsData.length, 'Comments:', commentsData.length);
+        
+        // DEBUG: Show raw downloads data
+        if (downloadsData.length > 0) {
+          console.log('📥 First download record:', downloadsData[0]);
+          console.log('📥 Download record keys:', Object.keys(downloadsData[0]));
+          console.log('📥 All download book_ids:', downloadsData.map(d => d.book_id));
+        } else {
+          console.log('⚠️ No downloads data');
+        }
+        
+        if (likesData.length > 0) {
+          console.log('❤️ First like record:', likesData[0]);
+          console.log('❤️ Like record keys:', Object.keys(likesData[0]));
+        }
+
+        // Collect ALL unique book IDs from likes, views, downloads, comments
         const bookIds = Array.from(
           new Set([
+            ...likesData.map((l) => l.book_id).filter(Boolean),
             ...viewsData.map((v) => v.book_id).filter(Boolean),
             ...downloadsData.map((d) => d.book_id).filter(Boolean),
-            ...sessionsData.map((s) => s.book_id).filter(Boolean),
-            ...likesData.map((l) => l.book_id).filter(Boolean),
             ...commentsData.map((c) => c.book_id).filter(Boolean),
-          ]),
+          ])
         );
 
+        console.log('Total unique book IDs to fetch:', bookIds.length);
+        console.log('Book IDs from downloads:', downloadsData.map((d) => d.book_id).filter(Boolean));
+        console.log('Book IDs from views:', viewsData.map((v) => v.book_id).filter(Boolean));
+        console.log('Book IDs from likes:', likesData.map((l) => l.book_id).filter(Boolean));
+
+        // Fetch all books in one query (with batching if too many IDs)
         let booksMap = new Map();
         if (bookIds.length > 0) {
-          const { data: booksData } = await supabase
-            .from('books')
-            .select('id, title, author, cover_url')
-            .in('id', bookIds);
-          if (booksData) {
-            booksMap = new Map(booksData.map((b) => [b.id, b]));
+          console.log('Fetching', bookIds.length, 'books from IDs');
+          
+          // Batch requests if there are too many IDs (Supabase has limits)
+          const batchSize = 30; // Reduced from 50 to be safer
+          const batches = [];
+          
+          for (let i = 0; i < bookIds.length; i += batchSize) {
+            const batch = bookIds.slice(i, i + batchSize);
+            batches.push(
+              (async () => {
+                try {
+                  const { data, error } = await supabase
+                    .from('books')
+                    .select('id, title, author')
+                    .in('id', batch);
+                  
+                  if (error) {
+                    console.error(`🔴 Error in batch (${batch.length} items):`, error.message);
+                    return [];
+                  }
+                  
+                  console.log(`✅ Batch loaded: ${data?.length || 0} books`);
+                  return data || [];
+                } catch (err) {
+                  console.error('🔴 Catch error in batch:', err);
+                  return [];
+                }
+              })()
+            );
+          }
+
+          try {
+            const results = await Promise.all(batches);
+            let allBooks = results.flat();
+            
+            if (allBooks.length > 0) {
+              booksMap = new Map(allBooks.map((b) => [b.id, b]));
+              console.log('✅ Books map populated with:', booksMap.size, 'entries');
+              allBooks.forEach((b) => console.log(`  ✓ ${b.id.substring(0, 8)}: "${b.title}" by ${b.author}`));
+            } else {
+              console.log('⚠️ No books found in batches');
+            }
+          } catch (err) {
+            console.error('🔴 Error in Promise.all:', err);
+          }
+        } else {
+          console.log('⚠️ No book IDs found in user data');
+        }
+
+        // Enrich all datasets with book data
+        const withBook = (row) => ({
+          ...row,
+          book: booksMap.get(row.book_id) || null,
+        });
+
+        const enrichedLikes = likesData.map(withBook);
+        const enrichedViews = viewsData.map(withBook);
+        const enrichedDownloads = downloadsData.map(withBook);
+        const enrichedComments = commentsData.map(withBook);
+
+        console.log('✅ After enrichment - Likes with books:', enrichedLikes.filter(l => l.book).length);
+        console.log('✅ After enrichment - Views with books:', enrichedViews.filter(v => v.book).length);
+        console.log('✅ After enrichment - Downloads with books:', enrichedDownloads.filter(d => d.book).length);
+        
+        // Show first enriched download
+        if (enrichedDownloads.length > 0) {
+          console.log('📥 First enriched download:', enrichedDownloads[0]);
+          console.log('📥 Has book?', enrichedDownloads[0].book ? 'YES' : 'NO');
+          if (enrichedDownloads[0].book) {
+            console.log('📥 Book title:', enrichedDownloads[0].book.title);
           }
         }
 
-        // Enrich datasets with book info
-        const withBook = (row) => {
-          const book = booksMap.get(row.book_id) || null;
-          return { ...row, book };
-        };
-
-        setViews(viewsData.map(withBook));
-        setDownloads(downloadsData.map(withBook));
-        setReadingSessions(sessionsData.map(withBook));
-        setLikes(likesData.map(withBook));
-        setComments(commentsData.map(withBook));
-        setSubscriptions(subsData || []);
+        setLikes(enrichedLikes);
+        setViews(enrichedViews);
+        setDownloads(enrichedDownloads);
+        setComments(enrichedComments);
         setUploads(uploadsData || []);
-        setReadingGoals(goalsData || []);
-        setReadingStats(statsData);
-        setReadingStreak(streakData);
-        setAchievements(userAchData || []);
-        setAuthorLikes(authorLikesData || []);
-        setAuthorFollows(authorFollowsData || []);
-        setAuthorRatings(authorRatingsData || []);
-        setAuthorStats(authorStatsData || []);
+        setPastPapers(pastPapersData || []);
+        setUniversities(universitiesData || []);
+        setFirstLogin(firstLoginData);
+
+        // Set empty arrays for removed tables
+        setSubscriptions([]);
+        setReadingSessions([]);
+        setReadingGoals([]);
+        setReadingStats(null);
+        setReadingStreak(null);
+        setAchievements([]);
+        setAuthorLikes([]);
+        setAuthorFollows([]);
+        setAuthorRatings([]);
+        setAuthorStats([]);
       } catch (err) {
         console.error('Failed to load user details', err);
       } finally {
@@ -273,8 +347,10 @@ const UserDetails = () => {
   const viewsCount = views.length;
   const downloadsCount = downloads.length;
   const uploadsCount = uploads.length;
+  const pastPapersCount = pastPapers.length;
+  const universitiesCount = universities.length;
 
-  const totalEngagement = viewsCount + likesCount + commentsCount + downloadsCount + uploadsCount;
+  const totalEngagement = viewsCount + likesCount + commentsCount + downloadsCount + uploadsCount + pastPapersCount + universitiesCount;
 
   const engagementShare = (value) => {
     if (!totalEngagement) return 0;
@@ -337,6 +413,118 @@ const UserDetails = () => {
     if (activeTab === 'overview') {
       return (
         <div>
+          {/* User Profile & First Login Details */}
+          <div style={{ marginBottom: 16, padding: 12, borderRadius: 12, background: '#111b21', border: '1px solid #202c33' }}>
+            <div style={{ color: '#e9edef', fontSize: 14, fontWeight: 600, marginBottom: 12 }}>📋 User Profile & Login Details</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+              {/* Email */}
+              <div style={{ padding: 8, borderRadius: 8, background: 'rgba(0,0,0,0.2)' }}>
+                <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>📧 Email</div>
+                <div style={{ color: '#e9edef', fontSize: 13, fontWeight: 500 }}>{profile?.email || '—'}</div>
+              </div>
+
+              {/* Username */}
+              <div style={{ padding: 8, borderRadius: 8, background: 'rgba(0,0,0,0.2)' }}>
+                <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>👥 Username</div>
+                <div style={{ color: '#e9edef', fontSize: 13, fontWeight: 500 }}>
+                  {profile?.username || profile?.display_name || profile?.full_name || '—'}
+                </div>
+              </div>
+
+              {/* Role */}
+              <div style={{ padding: 8, borderRadius: 8, background: 'rgba(0,0,0,0.2)' }}>
+                <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>👤 Role</div>
+                <div style={{ color: '#e9edef', fontSize: 13, fontWeight: 500 }}>
+                  {profile?.role ? profile.role
+                    .split('_')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ') : '—'}
+                </div>
+              </div>
+
+              {/* Account Created */}
+              <div style={{ padding: 8, borderRadius: 8, background: 'rgba(0,0,0,0.2)' }}>
+                <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>📅 Account Created</div>
+                <div style={{ color: '#e9edef', fontSize: 13, fontWeight: 500 }}>
+                  {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+                </div>
+              </div>
+
+              {/* Subscription Tier */}
+              <div style={{ padding: 8, borderRadius: 8, background: 'rgba(0,0,0,0.2)' }}>
+                <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>💎 Subscription</div>
+                <div style={{ color: '#e9edef', fontSize: 13, fontWeight: 500, textTransform: 'capitalize' }}>
+                  {latestSubscription?.status || profile?.subscription_tier || 'None'}
+                </div>
+              </div>
+
+              {/* First Login Date */}
+              <div style={{ padding: 8, borderRadius: 8, background: 'rgba(0, 168, 132, 0.1)', border: '1px solid rgba(0, 168, 132, 0.3)' }}>
+                <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>🔓 First Login (Member Since)</div>
+                <div style={{ color: '#00a884', fontSize: 13, fontWeight: 600 }}>
+                  {firstLogin?.first_login_at 
+                    ? new Date(firstLogin.first_login_at).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+                    : firstLogin?.first_login_date
+                    ? firstLogin.first_login_date
+                    : '—'
+                  }
+                </div>
+                <div style={{ color: '#7a8a94', fontSize: 10, marginTop: 4 }}>
+                  {firstLogin?.timezone 
+                    ? `Timezone: ${firstLogin.timezone}` 
+                    : firstLogin?.first_login_time 
+                    ? `Time: ${firstLogin.first_login_time?.substring(0, 8)} UTC` 
+                    : ''}
+                </div>
+              </div>
+
+              {/* First Login Time - REMOVED, now combined above */}
+
+              {/* Device Type */}
+              <div style={{ padding: 8, borderRadius: 8, background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
+                <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>📱 Device</div>
+                <div style={{ color: '#8b5cf6', fontSize: 13, fontWeight: 600, textTransform: 'capitalize' }}>
+                  {firstLogin?.device_type || '—'}
+                </div>
+              </div>
+
+              {/* Browser */}
+              <div style={{ padding: 8, borderRadius: 8, background: 'rgba(255, 204, 0, 0.1)', border: '1px solid rgba(255, 204, 0, 0.3)' }}>
+                <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>🌐 Browser</div>
+                <div style={{ color: '#FFCC00', fontSize: 13, fontWeight: 600 }}>
+                  {firstLogin?.browser || '—'}
+                </div>
+              </div>
+
+              {/* Operating System */}
+              <div style={{ padding: 8, borderRadius: 8, background: 'rgba(241, 94, 108, 0.1)', border: '1px solid rgba(241, 94, 108, 0.3)' }}>
+                <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>🖥️ OS</div>
+                <div style={{ color: '#f15e6c', fontSize: 13, fontWeight: 600 }}>
+                  {firstLogin?.operating_system || '—'}
+                </div>
+              </div>
+
+              {/* IP Address */}
+              <div style={{ padding: 8, borderRadius: 8, background: 'rgba(52, 183, 241, 0.1)', border: '1px solid rgba(52, 183, 241, 0.3)' }}>
+                <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>🌍 IP Address</div>
+                <div style={{ color: '#34B7F1', fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>
+                  {firstLogin?.ip_address || '—'}
+                </div>
+              </div>
+
+              {/* Account Age */}
+              <div style={{ padding: 8, borderRadius: 8, background: 'rgba(0,0,0,0.2)' }}>
+                <div style={{ color: '#8696a0', fontSize: 11, marginBottom: 4 }}>⏱️ Account Age</div>
+                <div style={{ color: '#e9edef', fontSize: 13, fontWeight: 500 }}>
+                  {profile?.created_at ? (() => {
+                    const days = Math.floor((new Date() - new Date(profile.created_at)) / (1000 * 60 * 60 * 24));
+                    return `${days} days`;
+                  })() : '—'}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
             {[{
               label: 'Books Viewed',
@@ -359,10 +547,20 @@ const UserDetails = () => {
               color: '#8b5cf6',
               bg: 'rgba(139,92,246,0.1)',
             }, {
-              label: 'Uploads',
+              label: 'Books Uploaded',
               value: uploadsCount,
               color: '#f15e6c',
               bg: 'rgba(241,94,108,0.1)',
+            }, {
+              label: 'Past Papers',
+              value: pastPapersCount,
+              color: '#FF9500',
+              bg: 'rgba(255,149,0,0.1)',
+            }, {
+              label: 'Universities',
+              value: universitiesCount,
+              color: '#5AC8FA',
+              bg: 'rgba(90,200,250,0.1)',
             }].map((card, idx) => {
               const pct = engagementShare(card.value);
               return (
@@ -397,6 +595,61 @@ const UserDetails = () => {
                 </div>
               );
             })}
+          </div>
+
+          {/* Reading Stats & Achievements */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            {[{
+              label: 'Reading Streak',
+              value: readingStreak?.current_streak || 0,
+              subtext: `Best: ${readingStreak?.longest_streak || 0} days`,
+              color: '#00a884',
+              bg: 'rgba(0,168,132,0.1)',
+              icon: '🔥'
+            }, {
+              label: 'Total Pages Read',
+              value: readingStats?.total_pages_read || 0,
+              subtext: `Avg: ${readingStats?.avg_pages_per_book ? Math.round(readingStats.avg_pages_per_book) : 0} per book`,
+              color: '#34B7F1',
+              bg: 'rgba(52,183,241,0.1)',
+              icon: '📖'
+            }, {
+              label: 'Books Completed',
+              value: readingStats?.total_books_completed || 0,
+              subtext: `Started: ${readingStats?.total_books_started || 0}`,
+              color: '#8b5cf6',
+              bg: 'rgba(139,92,246,0.1)',
+              icon: '✅'
+            }, {
+              label: 'Achievements',
+              value: achievements.length,
+              subtext: `Genres: ${readingStats?.genres_explored || 0}`,
+              color: '#FFCC00',
+              bg: 'rgba(255,204,0,0.1)',
+              icon: '🏆'
+            }].map((card, idx) => (
+              <div
+                key={idx}
+                style={{
+                  padding: 10,
+                  borderRadius: 12,
+                  background: '#111b21',
+                  minWidth: 180,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  border: `1px solid ${card.bg.replace('0.1', '0.3')}`
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 16 }}>{card.icon}</span>
+                  <div style={{ color: '#8696a0', fontSize: 11, flex: 1 }}>{card.label}</div>
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: card.color }}>{card.value}</div>
+                <div style={{ fontSize: 10, color: '#8696a0' }}>{card.subtext}</div>
+              </div>
+            ))}
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -667,7 +920,7 @@ const UserDetails = () => {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Book</th>
+                  <th>Book Title</th>
                   <th>Author</th>
                   <th>Liked At</th>
                 </tr>
@@ -675,11 +928,27 @@ const UserDetails = () => {
               <tbody>
                 {likes.map((like) => (
                   <tr key={like.id}>
-                    <td>{like.book?.title || 'Unknown'}</td>
-                    <td>{like.book?.author || '—'}</td>
-                    <td>
+                    <td style={{ wordWrap: 'break-word', maxWidth: 300 }}>
+                      {like.book?.title && like.book?.id ? (
+                        <a href={`/book/${like.book.id}`} style={{ color: '#00a884', textDecoration: 'none', fontWeight: 500 }}>
+                          {like.book.title}
+                        </a>
+                      ) : (
+                        <span style={{ color: '#8696a0' }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ color: like.book?.author ? '#e9edef' : '#8696a0' }}>
+                      {like.book?.author || '—'}
+                    </td>
+                    <td style={{ fontSize: 12, color: '#8696a0' }}>
                       {like.created_at
-                        ? new Date(like.created_at).toLocaleString()
+                        ? new Date(like.created_at).toLocaleString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })
                         : '—'}
                     </td>
                   </tr>
@@ -1053,11 +1322,14 @@ const UserDetails = () => {
               </div>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 600 }}>
-                  {profile.display_name || '—'}
+                  {profile.username || profile.display_name || profile.full_name || '—'}
                 </div>
                 <div style={{ color: '#8696a0', fontSize: 13 }}>{profile.email}</div>
                 <div style={{ color: '#8696a0', fontSize: 12 }}>
-                  Role: <strong>{profile.role || 'viewer'}</strong>
+                  Role: <strong>{profile?.role ? profile.role
+                    .split('_')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ') : 'Viewer'}</strong>
                   {profile.created_at && (
                     <>
                       {' '}
