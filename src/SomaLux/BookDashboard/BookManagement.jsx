@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BookCategories } from "../Categories/BookCategories";
 import { BookPanel } from "../Books/BookPanel";
-import { Authors } from '../Authors/Authors';
 import { PaperPanel } from "../PastPapers/Pastpapers";
+import ChatMeWrapper from "../../components/ChatMe/ChatMeWrapper";
 import {Profile} from './Profile';   // ← imported here
 import VerificationBadge from "../Books/Admin/components/VerificationBadge";
 import VerificationTierModal from "../Books/VerificationTierModal";
@@ -16,6 +16,7 @@ export const BookManagement = () => {
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [currentUserTier, setCurrentUserTier] = useState('basic');
+  const [isChatSelected, setIsChatSelected] = useState(false);
   const contentRef = useRef(null);
 
   // Determine active tab from URL path
@@ -25,7 +26,7 @@ export const BookManagement = () => {
     const match = path.match(/\/BookManagement\/([a-z]+)/);
     if (match) {
       const tabName = match[1];
-      if (['categories', 'authors', 'pastpapers'].includes(tabName)) {
+      if (['categories', 'pastpapers', 'chatme'].includes(tabName)) {
         return tabName;
       }
     }
@@ -46,18 +47,28 @@ export const BookManagement = () => {
               <BookCategories />
             </React.Suspense>
           );
-        case 'authors':
-          console.log('[BookManagement] About to render Authors');
-          return (
-            <React.Suspense fallback={<div style={{ padding: '20px', color: '#888' }}>Loading Authors...</div>}>
-              <Authors />
-            </React.Suspense>
-          );
         case 'pastpapers':
           console.log('[BookManagement] About to render PaperPanel');
           return (
             <React.Suspense fallback={<div style={{ padding: '20px', color: '#888' }}>Loading Past Papers...</div>}>
               <PaperPanel />
+            </React.Suspense>
+          );
+        case 'chatme':
+          console.log('[BookManagement] About to render ChatMe');
+          return (
+            <React.Suspense fallback={<div style={{ padding: '20px', color: '#888' }}>Loading ChatMe...</div>}>
+              <ChatMeWrapper 
+                onChatSelected={(chat) => {
+                  setIsChatSelected(!!chat);
+                }}
+                onChatWindowActive={(isActive) => {
+                  setIsChatSelected(isActive);
+                }}
+                onBackFromChat={() => {
+                  setIsChatSelected(false);
+                }}
+              />
             </React.Suspense>
           );
         case 'books':
@@ -88,8 +99,8 @@ export const BookManagement = () => {
   const tabs = [
     { id: 'books',      label: 'Books' },
     { id: 'categories', label: 'Categories' },
-    { id: 'authors',    label: 'Authors' },
     { id: 'pastpapers', label: 'Past Papers' },
+    { id: 'chatme',     label: 'ChatMe' },
   ];
 
   const swipeHandlers = useSwipeTabs(tabs, activeTab, (tabId) => {
@@ -167,44 +178,52 @@ export const BookManagement = () => {
     };
   }, []);
 
+  // Check if chat is selected to hide header and tabs
+  const isFullScreenChat = activeTab === 'chatme' && isChatSelected;
+
   return (
-    <div className={`book-management ${isScrolled ? 'scrolled' : ''}`}>
-      {/* Header */}
-      <div className="book-management-header">
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', paddingTop: '2px' }}>
-          <h2 className="header-title">Somalux</h2>
-          <div style={{ marginTop: '8px' }}>
-            <VerificationBadge tier={currentUserTier} size="sm" showLabel={false} showTooltip={true} />
+    <div className={`book-management ${isScrolled ? 'scrolled' : ''} ${isFullScreenChat ? 'fullscreen-chat' : ''}`}>
+      {/* Header - Hide when chat is selected */}
+      {!isFullScreenChat && (
+        <div className="book-management-header">
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', paddingTop: '2px' }}>
+            <h2 className="header-title">Somalux</h2>
+            <div style={{ marginTop: '8px' }}>
+              <VerificationBadge tier={currentUserTier} size="sm" showLabel={false} showTooltip={true} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Reusable Profile component */}
+            <Profile />
           </div>
         </div>
+      )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Reusable Profile component */}
-          <Profile />
+      {/* Tab Bar - Hide when chat is selected */}
+      {!isFullScreenChat && (
+        <div className="tools-scroll-container-convert">
+          <div className="tool-group-convert">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                data-tab-id={tab.id}
+                className={`tool-button-convert ${activeTab === tab.id ? 'active-convert' : ''}`}
+                onClick={() => navigateToTab(tab.id)}
+              >
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
-
-      {/* Tab Bar */}
-      <div className="tools-scroll-container-convert">
-        <div className="tool-group-convert">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              data-tab-id={tab.id}
-              className={`tool-button-convert ${activeTab === tab.id ? 'active-convert' : ''}`}
-              onClick={() => navigateToTab(tab.id)}
-            >
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* Main Content */}
       <div
-        className="file-converter-content-convert"
+        className={`file-converter-content-convert ${isFullScreenChat ? 'fullscreen-chat-content' : ''}`}
         ref={contentRef}
         {...swipeHandlers}
+        data-active-tab={activeTab}
       >
         {renderActiveComponent()}
       </div>

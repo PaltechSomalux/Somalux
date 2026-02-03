@@ -1,0 +1,267 @@
+/**
+ * ChatIntegration Styles
+ * Makes ChatMe component blend seamlessly with BookManagement system
+ * Overrides and adapts ChatMe styles to match the main system's design
+ */
+
+/* ===== INTEGRATION CONTAINER ===== */
+.chat-integration-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--bg-main, #0c1317);
+  color: var(--text-main, #eef2f5);
+  font-family: "Inter", "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+
+/* ===== ADAPT CHATME CONTAINER ===== */
+.chat-integration-container .chatme-main-container {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-main, #0c1317);
+  display: flex;
+  flex-direction: row;
+  border: none;
+}
+
+/* ===== CHAT LIST STYLING ===== */
+.chat-integration-container .chatme-chat-list {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-main, #0c1317);
+  border: none;
+  min-width: unset;
+  max-width: unset;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ===== CHAT WINDOW STYLING ===== */
+.chat-integration-container .chat-window {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-main, #0c1317);
+  border: none;
+}
+
+/* ===== HEADER INTEGRATION ===== */
+.chat-integration-container .chatme-header {
+  background: var(--bg-card, #111a20);
+  border-bottom: 1px solid var(--border-light, rgba(255, 255, 255, 0.08));
+  padding: 16px;
+  border-radius: 0;
+}
+
+.chat-integration-container .chatme-header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-main, #eef2f5);
+  margin: 0;
+}
+
+/* ===== CHAT LIST ITEMS ===== */
+.chat-integration-container .chat-item {
+  background: var(--bg-main, #0c1317);
+  border-bottom: 1px solid var(--border-light, rgba(255, 255, 255, 0.08));
+  transition: background 0.2s ease;
+  padding: 12px 16px;
+}
+
+.chat-integration-container .chat-item:hover {
+  background: var(--bg-soft, #1a2329);
+}
+
+.chat-integration-container .chat-item.active {
+  background: var(--bg-soft, #1a2329);
+  border-left: 3px solid var(--primary, #00a884);
+}
+
+/* ===== INPUT FIELDS ===== */
+.chat-integration-container input[type="text"],
+.chat-integration-container input[type="search"],
+.chat-integration-container textarea {
+  background: var(--bg-soft, #1a2329);
+  color: var(--text-main, #eef2f5);
+  border: 1px solid var(--border-light, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: inherit;
+}
+
+.chat-integration-container input[type="text"]::placeholder,
+.chat-integration-container input[type="search"]::placeholder,
+.chat-integration-container textarea::placeholder {
+  color: var(--text-muted, #9ba6b1);
+}
+
+.chat-integration-container input[type="text"]:focus,
+.chat-integration-container input[type="search"]:focus,
+.chat-integration-container textarea:focus {
+  outline: none;
+  border-color: var(--primary, #00a884);
+  background: var(--bg-soft, #1a2329);
+}
+
+/* ===== BUTTONS ===== */
+.chat-integration-container button {
+  background: var(--primary, #00a884);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  font-family: inherit;
+}
+
+.chat-integration-container button:hover {
+  background: var(--primary-hover, #009374);
+}
+
+.chat-integration-container button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== SECONDARY BUTTONS ===== */
+.chat-integration-container .secondary-btn {
+  background: var(--bg-soft, #1a2329);
+  color: var(--text-main, #eef2f5);
+  border: 1px solid var(--border-light, rgba(255, 255, 255, 0.08));
+}
+
+.chat-integration-container .secondary-btn:hover {
+  background: var(--bg-card, #111a20);
+  border-color: var(--primary, #00a884);
+}
+
+/* ===== MODALS & DROPDOWNS ===== */
+.chat-integration-container .modal,
+.chat-integration-container .dropdown {
+  background: var(--bg-card, #111a20);
+  border: 1px solid var(--border-light, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.chat-integration-container .modal-content,
+.chat-integration-container .dropdown-content {
+  color: var(--text-main, #eef2f5);
+}
+
+/* ===== SCROLLBAR STYLING ===== */
+.chat-integration-container ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.chat-integration-container ::-webkit-scrollbar-track {
+  background: var(--bg-main, #0c1317);
+}
+
+.chat-integration-container ::-webkit-scrollbar-thumb {
+  background: var(--border-light, rgba(255, 255, 255, 0.15));
+  border-radius: 4px;
+}
+
+.chat-integration-container ::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light, rgba(255, 255, 255, 0.25));
+}
+
+/* ===== RESPONSIVE ADJUSTMENTS ===== */
+@media (max-width: 1024px) {
+  .chat-integration-container .chatme-main-container {
+    flex-direction: column;
+  }
+
+  .chat-integration-container .chatme-chat-list {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-light, rgba(255, 255, 255, 0.08));
+    max-height: 50%;
+  }
+}
+
+@media (max-width: 768px) {
+  .chat-integration-container {
+    height: 100%;
+    width: 100%;
+  }
+
+  .chat-integration-container .chatme-main-container {
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .chat-integration-container .chatme-chat-list {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+  }
+}
+
+/* ===== OVERRIDE CHATME SPECIFIC STYLES ===== */
+.chat-integration-container .chatme-main-container.mobile-view .chatme-chat-list {
+  position: relative !important;
+  fixed: none !important;
+  z-index: auto !important;
+  transform: none !important;
+}
+
+/* Remove ChatMe's fixed positioning on mobile */
+.chat-integration-container .chatme-chat-list {
+  position: relative !important;
+}
+
+/* ===== TEXT AND TYPOGRAPHY ===== */
+.chat-integration-container h1,
+.chat-integration-container h2,
+.chat-integration-container h3,
+.chat-integration-container h4,
+.chat-integration-container h5,
+.chat-integration-container h6 {
+  color: var(--text-main, #eef2f5);
+  margin: 0 0 8px 0;
+}
+
+.chat-integration-container p {
+  color: var(--text-muted, #9ba6b1);
+  margin: 0;
+}
+
+/* ===== BADGES AND INDICATORS ===== */
+.chat-integration-container .badge,
+.chat-integration-container .indicator {
+  background: var(--primary, #00a884);
+  color: white;
+  border-radius: 12px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chat-integration-container .online-indicator {
+  background: var(--primary, #00a884);
+}
+
+.chat-integration-container .typing-indicator {
+  background: var(--accent, #6366f1);
+}
+
+/* ===== ANIMATIONS ===== */
+.chat-integration-container * {
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* Prevent double transitions */
+.chat-integration-container button,
+.chat-integration-container input {
+  transition: background 0.2s ease, border-color 0.2s ease;
+}

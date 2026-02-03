@@ -79,10 +79,7 @@ const ADMIN_EMAILS = ['campuslives254@gmail.com', 'paltechsomalux@gmail.com'];
             id: authUser.id,
             email: authUser.email,
             role: 'admin',
-            full_name: authUser.email.split('@')[0],
-            avatar_url: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            full_name: authUser.email.split('@')[0]
           })
           .select()
           .maybeSingle();

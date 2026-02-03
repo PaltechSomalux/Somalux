@@ -35,6 +35,8 @@ import pastPaperExtractRoute from './routes/pastPaperExtractRoute.js';
 import firstPageExtractRoute from './routes/firstPageExtractRoute.js';
 import emailNotificationsRouter from './routes/emailNotifications.js';
 import { recordFirstLogin } from './utils/firstLoginTracking.js';
+import { initializeChatMeFirebase, setupChatMeWebSocket, setupChatMeFCMRoutes } from './chatme-integration.js';
+import chatmeMessagesRouter from './routes/chatmeMessages.js';
 
 
 // Express Setup MUST be before any app.use/app.post calls
@@ -58,6 +60,9 @@ app.use('/api/past-papers', pastPaperExtractRoute);
 
 // First Page Academic Header Extraction Routes (NEW - High Accuracy)
 app.use('/api/past-papers', firstPageExtractRoute);
+
+// ChatMe Messaging Routes
+app.use('/api', chatmeMessagesRouter);
 
 // FCM topic management - DISABLED (Firebase not used)
 app.post('/subscribe-topic', async (req, res) => {
@@ -590,6 +595,18 @@ if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
   global.supabaseAdmin = null;
 }
 
+// --- ChatMe Firebase Initialization ---
+let admin = null;
+try {
+  const chatMeFirebaseResult = await initializeChatMeFirebase();
+  if (chatMeFirebaseResult && chatMeFirebaseResult.admin) {
+    admin = chatMeFirebaseResult.admin;
+    console.log('🔥 ChatMe Firebase initialized');
+  }
+} catch (error) {
+  console.warn('⚠️ ChatMe Firebase initialization skipped:', error.message);
+}
+
 // Build a per-request Supabase client using the caller's JWT so that RLS policies
 // (that depend on auth.uid()) evaluate correctly for user-scoped writes/reads.
 function createClientFromRequest(req) {
@@ -613,6 +630,68 @@ async function logAudit({ actor = 'public', action, entity, record_id = null, de
     console.warn('Audit log insert failed:', e?.message || e);
   }
 }
+
+// --- Middleware to check if user is suspended ---
+async function checkSuspensionStatus(req, res, next) {
+  try {
+    // Extract user ID from JWT in Authorization header
+    const token = req.headers?.authorization?.replace('Bearer ', '');
+    if (!token || !supabaseAdmin) {
+      return next(); // No token or Supabase not configured, skip check
+    }
+
+    // Decode JWT to get user_id (without verifying signature, we trust Supabase auth)
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return next(); // Invalid JWT format, skip check
+    }
+
+    let decoded;
+    try {
+      // Decode the payload (second part)
+      const payload = parts[1];
+      const decodedString = Buffer.from(payload, 'base64').toString('utf-8');
+      decoded = JSON.parse(decodedString);
+    } catch (e) {
+      return next(); // Failed to decode JWT, skip check
+    }
+
+    const userId = decoded.sub; // Supabase uses 'sub' for user ID
+    if (!userId) {
+      return next(); // No user ID in JWT, skip check
+    }
+
+    // Check if user is suspended
+    const { data: profile, error } = await supabaseAdmin
+      .from('profiles')
+      .select('is_suspended, suspended_reason')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Error checking suspension status:', error.message);
+      return next(); // Error checking, allow request to proceed
+    }
+
+    // If user is suspended, return 403 Forbidden
+    if (profile && profile.is_suspended) {
+      return res.status(403).json({
+        error: 'Account suspended',
+        message: 'Your account has been suspended and you do not have access to this resource.',
+        suspended_reason: profile.suspended_reason || 'No reason provided',
+        suspended: true
+      });
+    }
+
+    next(); // User is not suspended, proceed
+  } catch (err) {
+    console.error('Unexpected error in checkSuspensionStatus:', err);
+    next(); // Unexpected error, allow request to proceed for safety
+  }
+}
+
+// Apply suspension check middleware to all API routes
+app.use('/api/', checkSuspensionStatus);
 
 // Minimal open proxy (no auth restriction yet) — use service role for DB writes
 // Books: create
@@ -797,6 +876,144 @@ app.patch('/api/elib/users/:id/tier', async (req, res) => {
   }
 });
 
+// Users: suspend/unsuspend user (super_admin only)
+app.patch('/api/elib/users/:id/suspend', async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
+  try {
+    const { id } = req.params;
+    const { suspended, reason } = req.body || {};
+    
+    // Get the requesting user's email from headers and verify they are super_admin
+    const actorEmail = req.headers['x-actor-email'];
+    if (!actorEmail) {
+      return res.status(401).json({ error: 'Unauthorized: No actor email provided' });
+    }
+
+    // Check if the requesting user is a super_admin
+    const { data: actorProfile, error: actorError } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('email', actorEmail)
+      .maybeSingle();
+
+    if (actorError || !actorProfile) {
+      console.error(`[PATCH /api/elib/users/:id/suspend] Error fetching actor profile:`, actorError);
+      return res.status(401).json({ error: 'Unauthorized: Could not verify user permissions' });
+    }
+
+    if (actorProfile.role !== 'super_admin') {
+      console.warn(`[PATCH /api/elib/users/:id/suspend] User ${actorEmail} with role ${actorProfile.role} attempted to suspend user ${id}`);
+      return res.status(403).json({ error: 'Forbidden: Only super admins can suspend users' });
+    }
+
+    console.log(`[PATCH /api/elib/users/:id/suspend] Updating suspend status for user ${id} to ${suspended}, reason: ${reason}`);
+    
+    const updateData = { 
+      is_suspended: Boolean(suspended),
+      suspended_reason: suspended ? (reason || 'System suspension') : null,
+      suspended_at: suspended ? new Date().toISOString() : null
+    };
+    
+    const { data, error } = await supabaseAdmin.from('profiles').update(updateData).eq('id', id).select().maybeSingle();
+    
+    if (error) {
+      console.error(`[PATCH /api/elib/users/:id/suspend] Supabase error:`, JSON.stringify(error, null, 2));
+      throw new Error(`Database update failed: ${error.message || JSON.stringify(error)}`);
+    }
+    
+    if (!data) {
+      console.warn(`[PATCH /api/elib/users/:id/suspend] No data returned from update for user ${id}`);
+    }
+    
+    console.log(`[PATCH /api/elib/users/:id/suspend] Success. Updated user:`, data?.id);
+    await logAudit({ 
+      actor: actorEmail, 
+      action: suspended ? 'suspend_user' : 'unsuspend_user', 
+      entity: 'profiles', 
+      record_id: id, 
+      details: { is_suspended: suspended, reason }, 
+      ip: req.ip 
+    });
+
+    // Send email notification if user is being suspended
+    if (suspended && data?.email) {
+      try {
+        const userEmail = data.email;
+        const suspensionReason = reason || 'Your account has been suspended due to violation of our terms of service.';
+        
+        const emailHtml = buildBrandedEmailHtml(`
+          <h2 style="color: #ff6b6b; margin-bottom: 20px;">Account Suspended</h2>
+          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+            Your SomaLux account has been suspended and is no longer accessible.
+          </p>
+          <div style="background-color: #f5f5f5; border-left: 4px solid #ff6b6b; padding: 16px; margin: 20px 0; border-radius: 4px;">
+            <p style="margin: 0; color: #333;"><strong>Reason for Suspension:</strong></p>
+            <p style="margin: 8px 0 0 0; color: #666;">${suspensionReason}</p>
+          </div>
+          <p style="font-size: 14px; line-height: 1.6; margin-bottom: 20px; color: #666;">
+            If you believe this is a mistake or would like to appeal this decision, please contact our support team at 
+            <a href="mailto:support@somalux.com" style="color: #007bff; text-decoration: none;">support@somalux.com</a>
+          </p>
+          <p style="font-size: 14px; color: #999; margin-top: 30px;">
+            This is an automated notification. Please do not reply to this email.
+          </p>
+        `);
+
+        await sendEmail({
+          to: userEmail,
+          subject: 'Your SomaLux Account Has Been Suspended',
+          html: emailHtml
+        });
+
+        console.log(`[PATCH /api/elib/users/:id/suspend] Suspension notification email sent to ${userEmail}`);
+      } catch (emailError) {
+        console.warn(`[PATCH /api/elib/users/:id/suspend] Failed to send suspension email:`, emailError?.message || emailError);
+        // Don't fail the suspension if email fails to send
+      }
+    }
+
+    // Send email notification if user is being unsuspended
+    if (!suspended && data?.email) {
+      try {
+        const userEmail = data.email;
+        
+        const emailHtml = buildBrandedEmailHtml(`
+          <h2 style="color: #4caf50; margin-bottom: 20px;">Account Restored</h2>
+          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+            Good news! Your SomaLux account has been restored and is now active again.
+          </p>
+          <p style="font-size: 14px; line-height: 1.6; margin-bottom: 20px; color: #666;">
+            You can now log in and resume using all SomaLux features and services normally.
+          </p>
+          <p style="font-size: 14px; line-height: 1.6; margin-bottom: 20px; color: #666;">
+            If you have any questions or concerns, please contact our support team at 
+            <a href="mailto:support@somalux.com" style="color: #007bff; text-decoration: none;">support@somalux.com</a>
+          </p>
+          <p style="font-size: 14px; color: #999; margin-top: 30px;">
+            This is an automated notification. Please do not reply to this email.
+          </p>
+        `);
+
+        await sendEmail({
+          to: userEmail,
+          subject: 'Your SomaLux Account Has Been Restored',
+          html: emailHtml
+        });
+
+        console.log(`[PATCH /api/elib/users/:id/suspend] Account restoration email sent to ${userEmail}`);
+      } catch (emailError) {
+        console.warn(`[PATCH /api/elib/users/:id/suspend] Failed to send restoration email:`, emailError?.message || emailError);
+        // Don't fail the unsuspension if email fails to send
+      }
+    }
+
+    res.json({ ok: true, data });
+  } catch (e) { 
+    console.error(`[PATCH /api/elib/users/:id/suspend] Catch error:`, e?.message || e);
+    res.status(500).json({ error: e.message || 'update failed' }); 
+  }
+});
+
 // Audit logs: list (basic pagination and filters)
 app.get('/api/elib/audit', async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase not configured on server' });
@@ -823,6 +1040,21 @@ const userChannels = new Map();
 const clients = new Map(); // chatId -> Map<userId, ws>
 const onlineUsers = new Map(); // chatId -> Set<userId>
 const lastMessageTimestamps = new Map(); // userId -> lastKnownTimestamp for deltas
+const userChatSessions = new Map(); // userId_chatId -> ws (track joined sessions to prevent duplicates)
+const messageStats = new Map(); // Track only ACTUAL sent/received messages (not joins/leaves)
+
+// Message counter - only for actual sent messages
+function countMessage(userId, chatId, direction) {
+  if (!messageStats.has(chatId)) {
+    messageStats.set(chatId, { sent: new Set(), received: new Set() });
+  }
+  const stats = messageStats.get(chatId);
+  if (direction === 'sent') {
+    stats.sent.add(userId);
+  } else if (direction === 'received') {
+    stats.received.add(userId);
+  }
+}
 
 // WebSocket setup function - will be called after server starts
 function setupWebSocket() {
@@ -852,6 +1084,14 @@ function setupWebSocket() {
               console.error("❌ join invalid: missing chatId/userId");
               return;
             }
+            
+            // Check if this user is already joined to this specific chat
+            const sessionKey = `${userId}_${chatId}`;
+            if (userChatSessions.has(sessionKey)) {
+              // Silently skip duplicate joins - frontend may send multiple join messages
+              return;
+            }
+            
             currentChatId = chatId;
             currentUserId = userId;
             if (!clients.has(chatId)) {
@@ -862,6 +1102,7 @@ function setupWebSocket() {
             onlineUsers.get(chatId).add(userId);
             ws.userId = userId;
             ws.userName = message.userName || userId; // Store userName for groups
+            userChatSessions.set(sessionKey, ws); // Mark as joined
 
             console.log(`👥 User ${userId} (${ws.userName}) joined ${chatId} (online: ${onlineUsers.get(chatId).size})`);
 
@@ -869,9 +1110,8 @@ function setupWebSocket() {
             const otherOnline = Array.from(onlineUsers.get(chatId)).filter(u => u !== userId);
             ws.send(JSON.stringify({ type: "users_online", data: otherOnline }));
 
-            // Delta fetch recent messages
-            const lastTs = lastMessageTimestamps.get(userId) || 0;
-            await fetchRecentMessages(chatId, ws, lastTs, message.isGroup);
+            // DO NOT fetch recent messages automatically - prevents loops
+            // Client can request with 'get_messages' type if needed
             lastMessageTimestamps.set(userId, Date.now());
 
             // Broadcast join
@@ -887,6 +1127,9 @@ function setupWebSocket() {
               console.error("❌ leave invalid: missing chatId/userId");
               return;
             }
+            let leaveSessionKey = `${userId}_${chatId}`;
+            userChatSessions.delete(leaveSessionKey); // Remove session tracking
+            
             console.log(`👋 User ${userId} (${ws.userName}) left ${chatId}`);
             // Remove from clients and online users
             const room = clients.get(chatId);
@@ -965,6 +1208,76 @@ function setupWebSocket() {
             console.log(`📖 Read broadcast ${userId} in ${chatId}: ${messageIds.length} msgs`);
             break;
 
+          case "get_messages":
+            // Client explicitly requests recent messages
+            if (!chatId || !userId) {
+              console.warn('get_messages missing chatId or userId');
+              return;
+            }
+            try {
+              const { since } = message;
+              const lastTs = since || lastMessageTimestamps.get(userId) || 0;
+              await fetchRecentMessages(chatId, ws, lastTs, message.isGroup);
+              console.log(`📜 Sent recent messages for ${chatId} on explicit request`);
+            } catch (err) {
+              console.error('Error fetching messages:', err);
+            }
+            break;
+
+          case "send_message":
+            // Handle incoming messages from user
+            // ONLY broadcast to OTHER users - sender should NOT receive echo
+            if (!chatId || !userId) {
+              console.warn('send_message missing chatId or userId');
+              return;
+            }
+            try {
+              const { messageId, text, messageType, timestamp, selectedOptions } = message;
+              
+              if (!text && !selectedOptions) {
+                console.warn('send_message missing text or selectedOptions');
+                return;
+              }
+
+              // Count this as a SENT message for the sender
+              countMessage(userId, chatId, 'sent');
+
+              // Broadcast ONLY to other users in the chat (never send back to sender)
+              const room = clients.get(chatId);
+              if (room) {
+                let broadcastCount = 0;
+                room.forEach((clientWs, otherUserId) => {
+                  // CRITICAL: Only send to OTHER users, NOT the sender
+                  if (otherUserId !== userId && clientWs.readyState === clientWs.OPEN) {
+                    clientWs.send(JSON.stringify({
+                      type: 'new_message',
+                      data: {
+                        id: messageId,
+                        chatId,
+                        userId,
+                        userName: ws.userName || userId,
+                        text,
+                        messageType,
+                        timestamp,
+                        selectedOptions,
+                        status: 'delivered'
+                      }
+                    }));
+                    // Count as received for each recipient
+                    countMessage(otherUserId, chatId, 'received');
+                    broadcastCount++;
+                  }
+                });
+                const stats = messageStats.get(chatId);
+                console.log(`💬 Message from ${userId} in ${chatId}: sent=1, received=${broadcastCount}, unique_senders=${stats.sent.size}, unique_receivers=${stats.received.size}`);
+              } else {
+                console.log(`💬 Message from ${userId} for ${chatId} but no active room`);
+              }
+            } catch (err) {
+              console.error('Error handling send_message:', err);
+            }
+            break;
+
           case "poll_voted":
             // Broadcast poll vote updates to other clients in the same chat/group
             if (!chatId || !userId) {
@@ -1011,6 +1324,13 @@ function setupWebSocket() {
     });
 
     ws.on("close", () => {
+      // Clean up ALL sessions for this WebSocket (not just current chat)
+      for (let [key, wsRef] of userChatSessions.entries()) {
+        if (wsRef === ws) {
+          userChatSessions.delete(key);
+        }
+      }
+      
       if (currentChatId && currentUserId) {
         const room = clients.get(currentChatId);
         if (room) {
@@ -1044,26 +1364,44 @@ function setupWebSocket() {
 // Delta recent messages (supports both 1-on-1 and groups)
 async function fetchRecentMessages(chatId, ws, since = 0, isGroup = false) {
   try {
-    // FIXED: Use Timestamp.fromDate for since
+    if (!supabaseAdmin) {
+      console.error("❌ Recent msgs error: Supabase not initialized");
+      return;
+    }
 
+    const sinceMs = Number(since) || 0;
+    const sinceDate = sinceMs > 0 ? new Date(sinceMs).toISOString() : null;
 
-    // For groups, use "groups" collection, for 1-on-1 use "chats" collection
-    const collection = isGroup ? "groups" : "chats";
-    const q = db.collection(collection).doc(chatId).collection("messages")
-      .orderBy("timestamp", "desc")
-      .limit(100)  // FIXED: Increased for fuller initial load
-      .where("timestamp", ">", sinceTimestamp);
+    // Query messages from Supabase using chat_id column
+    let query = supabaseAdmin
+      .from('messages')
+      .select('*')
+      .eq('chat_id', chatId)
+      .eq('is_deleted', false)  // Filter out deleted messages
+      .order('created_at', { ascending: false })
+      .limit(100);
 
-    const snapshot = await q.get();
-    const recent = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      timestamp: doc.data().timestamp.toDate(),
-      groupId: isGroup ? chatId : undefined,  // Include groupId for groups
-      chatId: chatId  // Include chatId for all messages
+    // Filter by timestamp if since provided
+    if (sinceDate) {
+      query = query.gt('created_at', sinceDate);
+    }
+
+    const { data: messages, error } = await query;
+
+    if (error) {
+      console.error("❌ Recent msgs query error:", error);
+      return;
+    }
+
+    const recent = (messages || []).map((msg) => ({
+      id: msg.id,
+      ...msg,
+      timestamp: new Date(msg.created_at),
+      chatId: msg.chat_id
     }));
+
     ws.send(JSON.stringify({ type: "recent_messages", data: recent }));
-    console.log(`📜 Sent ${recent.length} recent ${isGroup ? 'group' : '1-on-1'} msgs since ${since} to ${chatId}`);
+    console.log(`📜 Sent ${recent.length} recent msgs since ${since} to ${chatId}`);
   } catch (error) {
     console.error("❌ Recent msgs error:", error);
   }
@@ -1125,6 +1463,65 @@ app.get("/group/:groupId/messages", async (req, res) => {
 // /group-messages/read - DISABLED (Chat system not available)
 app.post("/group-messages/read", async (req, res) => {
   return res.status(503).json({ error: "Chat system not available" });
+});
+
+// /api/messages/latest-batch - Fetch latest messages for multiple chats
+app.post("/api/messages/latest-batch", async (req, res) => {
+  try {
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase not configured' });
+    }
+
+    const { chatIds, limit = 20 } = req.body;
+    
+    if (!Array.isArray(chatIds) || chatIds.length === 0) {
+      return res.status(400).json({ error: 'chatIds must be a non-empty array' });
+    }
+
+    // Fetch latest messages for each chat
+    const results = {};
+    
+    for (const chatId of chatIds) {
+      try {
+        // Fetch all messages and filter in code for text content
+        const { data: messages, error } = await supabaseAdmin
+          .from('messages')
+          .select('id, text, message, sender, senderId, timestamp, created_at, deleted_by, status')
+          .eq('chat_id', chatId)
+          .order('created_at', { ascending: false })
+          .limit(limit);
+
+        if (error) {
+          console.warn(`⚠️ Error fetching messages for ${chatId}:`, error);
+          results[chatId] = [];
+          continue;
+        }
+
+        // Filter for messages with actual text content
+        const textMessages = messages?.filter(m => {
+          const hasText = m?.text || m?.message;
+          return hasText && typeof hasText === 'string' && hasText.trim().length > 0;
+        }) || [];
+
+        // Return the first text message (should be the most recent)
+        if (textMessages.length > 0) {
+          results[chatId] = [textMessages[0]];
+          console.log(`✅ Found text message for ${chatId}: "${textMessages[0].text || textMessages[0].message}"`);
+        } else {
+          results[chatId] = [];
+          console.log(`⚠️ No text messages found for ${chatId}, got ${messages?.length || 0} total messages`);
+        }
+      } catch (err) {
+        console.error(`❌ Error querying messages for ${chatId}:`, err);
+        results[chatId] = [];
+      }
+    }
+
+    res.json({ ok: true, data: results });
+  } catch (error) {
+    console.error('❌ /api/messages/latest-batch error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch messages' });
+  }
 });
 
 // === BULK UPLOAD ENDPOINTS ===
@@ -6568,3 +6965,12 @@ server = app.listen(PORT, () => {
 wss = new WebSocketServer({ server });
 global.wss = wss; // Store reference for feature flags broadcasting
 setupWebSocket();
+// Setup ChatMe WebSocket and FCM routes (unified backend)
+if (admin) {
+  console.log('🔗 Integrating ChatMe into unified WebSocket server...');
+  await setupChatMeWebSocket(wss);
+  await setupChatMeFCMRoutes(app, admin);
+  console.log('✅ ChatMe integrated into main backend');
+} else {
+  console.warn('⚠️ ChatMe Firebase not available; messaging features disabled');
+}

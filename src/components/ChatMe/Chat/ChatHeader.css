@@ -1,0 +1,561 @@
+.chatHeader-contactAvatar.serrated {
+  overflow: visible; /* allow serrated ring to show outside */
+}
+
+.chatHeader-contactAvatar.serrated::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(var(--avatar-size) + 10px);
+  height: calc(var(--avatar-size) + 10px);
+  border-radius: 50%;
+  /* Create serrated ring with repeating conic gradient */
+  background: repeating-conic-gradient(
+    var(--accent-color) 0deg 12deg,
+    transparent 12deg 24deg
+  );
+  /* Punch a hole in the middle to form a ring */
+  -webkit-mask: radial-gradient(circle at center, transparent 42%, black 43%);
+  mask: radial-gradient(circle at center, transparent 42%, black 43%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .chatHeader-contactAvatar.serrated::after {
+    width: calc(var(--mobile-avatar-size) + 10px);
+    height: calc(var(--mobile-avatar-size) + 10px);
+  }
+}
+/* ChatHeader.css */
+.chatHeader-header {
+  --header-bg: #0b1216;
+  --header-border: #2a3942;
+  --text-primary: #e9edef;
+  --text-secondary: #8696a0;
+  --accent-color: #00a884;
+  --icon-hover-bg: rgba(255, 255, 255, 0.02);
+  --online-dot: #00a884;
+  --avatar-size: 50px;
+  --mobile-avatar-size: 44px;
+  --icon-size: 22px; /* Reduced icon size for compact header */
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  height: 54px;
+  box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  margin-top: 0;
+  z-index: 100;
+  font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.chatHeader-contactInfo {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.chatHeader-contactAvatar {
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.chatHeader-contactAvatar:hover {
+  opacity: 0.9;
+}
+
+.chatHeader-contactAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.chatHeader-avatarPlaceholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: #008069;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.chatHeader-contactDetails {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chatHeader-contactDetails h3 {
+  font-size: 11px;
+  font-weight: 500;
+  color: #aebac1;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.chatHeader-status {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chatHeader-typingIndicator {
+  color: white;
+  font-style: italic;
+}
+
+.chatHeader-onlineStatus {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chatHeader-onlineDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: var(--online-dot);
+  border-radius: 50%;
+}
+
+.chatHeader-chatMenuContainer {
+  position: relative;
+  margin-left: 16px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1001;
+}
+
+.chatHeader-iconButton {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--icon-size);
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+  min-width: 40px;
+}
+
+.chatHeader-backButton {
+  margin-right: 8px;
+  color: var(--accent-color);
+  margin-left: -8px;
+  width: 36px;
+  height: 36px;
+}
+
+.chatHeader-menuButton:hover {
+  background-color: transparent;
+}
+
+.chatHeader-callButton {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 2px;
+  padding: 0;
+}
+
+.chatHeader-callButton svg {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--text-secondary);
+}
+
+/* Accent styles for voice and video separate if needed */
+.chatHeader-callButton.voice {
+  background: transparent;
+}
+.chatHeader-callButton.video {
+  background: transparent;
+}
+
+/* Ensure buttons match other icon sizes on mobile */
+@media (max-width: 768px) {
+  .chatHeader-callButton {
+    width: 36px;
+    height: 36px;
+  }
+  .chatHeader-callButton svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* New: Pinned Messages Styles */
+.chatHeader-pinned-container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  padding: 8px 16px;
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chatHeader-pinned-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+.chatHeader-pinned-icon {
+  color: var(--accent-color);
+}
+
+.chatHeader-pinned-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
+}
+
+.chatHeader-pinned-list::-webkit-scrollbar {
+  display: none;
+  /* Chrome/Safari */
+}
+
+.chatHeader-pinned-item {
+  flex: 0 0 auto;
+  min-width: 120px;
+  background: #1f2c34;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: background 0.2s;
+  border: 1px solid transparent;
+}
+
+.chatHeader-pinned-item:hover {
+  background: #2a3942;
+  border-color: var(--accent-color);
+}
+
+.chatHeader-pinned-text {
+  font-size: 11px;
+  color: var(--text-primary);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+.chatHeader-pinned-time {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+/* Avatar Fullscreen Styles */
+.chatHeader-avatarFullscreenOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.chatHeader-avatarFullscreenContainer {
+  position: relative;
+  max-width: 100vw;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: scaleUp 0.3s ease;
+}
+
+@keyframes scaleUp {
+  from {
+    transform: scale(0.95);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+.chatHeader-avatarFullscreenImage {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 8px;
+}
+
+.chatHeader-avatarFullscreenFooter {
+  margin-top: 20px;
+  color: var(--accent-color);
+  text-align: center;
+  width: 100%;
+}
+
+.chatHeader-avatarFullscreenFooter h3 {
+  color: white;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  margin-bottom: 0px;
+}
+
+.chatHeader-avatarActions {
+  display: flex;
+  gap: 16px;
+  color: white;
+  margin-top: 10px;
+  justify-content: center;
+}
+
+.chatHeader-avatarActionButton {
+  background: transparent;
+  border: none;
+  color: rgb(223, 215, 215);
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 100px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chatHeader-avatarActionButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.chatHeader-avatarCloseButton {
+  position: absolute;
+  top: -40px;
+  margin-left: 5%;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 15px;
+  transition: opacity 0.2s ease;
+  opacity: 0.7;
+}
+
+.chatHeader-avatarCloseButton:hover {
+  opacity: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .chatHeader-header {
+    padding: 8px 12px;
+    height: 54px;
+  }
+
+  .chatHeader-contactAvatar {
+    width: var(--mobile-avatar-size);
+    height: var(--mobile-avatar-size);
+  }
+
+  .chatHeader-contactDetails h3 {
+    font-size: 14px;
+  }
+
+  .chatHeader-status {
+    font-size: 12px;
+  }
+
+  .chatHeader-pinned-container {
+    padding: 6px 12px;
+  }
+
+  .chatHeader-pinned-item {
+    min-width: 100px;
+  }
+
+  .chatHeader-pinned-text {
+    font-size: 10px;
+  }
+
+  .chatHeader-pinned-time {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 384px) {
+  .chatHeader-header {
+    padding: 8px;
+  }
+
+  /* Hide call buttons on small screens */
+  .chatHeader-callButton {
+    display: none;
+  }
+
+  /* Ensure back button is visible */
+  .chatHeader-backButton {
+    margin-right: 8px;
+    margin-left: 0;
+    display: flex;
+    z-index: 1001;
+  }
+
+  .chatHeader-contactInfo {
+    flex: 1;
+  }
+
+  /* Adjust menu container spacing */
+  .chatHeader-chatMenuContainer {
+    margin-left: 8px;
+  }
+}
+
+/* Add this to your existing ChatHeader.css */
+/* Add this to your existing ChatHeader.css */
+
+/* Typing Indicator Animation in Header */
+.chatHeader-typingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.typing-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background-color: #00a884;
+  /* Blue color */
+  animation: typing-bounce 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-bounce {
+
+  0%,
+  80%,
+  100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+/* Ensure it fits well in the status area */
+.chatHeader-status {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  /* Adjust based on theme */
+}
+
+.chatHeader-status .chatHeader-typingIndicator {
+  margin-left: 4px;
+}
+
+/* Light Mode Adjustments for Header */
+@media (prefers-color-scheme: light) {
+  .chatHeader-header {
+    --header-bg: #f0f2f5;
+    --header-border: #e5e7eb;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --online-dot: #25D366;
+  }
+
+  .chatHeader-contactDetails h3 {
+    color: #111827;
+  }
+
+  .chatHeader-status {
+    color: #6b7280;
+  }
+
+  .chatHeader-typingIndicator {
+    color: #111827;
+  }
+
+  .chatHeader-onlineStatus {
+    color: #6b7280;
+  }
+
+  .chatHeader-avatarPlaceholder {
+    background-color: #25D366;
+    color: white;
+  }
+}

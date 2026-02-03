@@ -245,6 +245,7 @@ const FolderSelectModal = ({ isOpen, onClose, onFolderSelect, currentFolder }) =
           {/* Create Folder Section */}
           {showNewFolderInput && (
             <div className="create-folder-section">
+              <div className="create-folder-title">New folder</div>
               <div className="new-folder-input">
                 <select
                   value={parentFolder}

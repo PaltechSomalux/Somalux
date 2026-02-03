@@ -1,0 +1,622 @@
+/* GroupHeaderChatmeGroups.css */
+.groupHeaderChatmeGroups-header {
+  /* Ensure header icons are visible */
+  --icon-color: #aebac1;
+  --icon-color-light: #54656f;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  min-height: 65px;
+  box-sizing: border-box;
+  position: absolute; /* bound to .imo-chat-screen container */
+  top: 5px;
+  left: 0;
+  right: 0;
+  z-index: 120;
+  font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.groupHeaderChatmeGroups-header.dark-theme {
+  --header-bg: #0b1216;
+  --header-border: #2a3942;
+  --text-primary: #e9edef;
+  --text-secondary: #8696a0;
+  --accent-color: #00a884;
+  --icon-hover-bg: rgba(255, 255, 255, 0.02);
+  --online-dot: #00a884;
+  --avatar-bg: #008069;
+  --pinned-bg: #1f2c34;
+  --pinned-hover-bg: #2a3942;
+  background-color: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  color: var(--text-primary);
+}
+
+.groupHeaderChatmeGroups-header.light-theme {
+  --header-bg: #f0f2f5;
+  --header-border: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --accent-color: #25D366;
+  --icon-hover-bg: rgba(0, 0, 0, 0.05);
+  --online-dot: #25D366;
+  --avatar-bg: #25D366;
+  --pinned-bg: #f9fafb;
+  --pinned-hover-bg: #f3f4f6;
+  background-color: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  color: var(--text-primary);
+}
+
+.groupHeaderChatmeGroups-backButton {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.groupHeaderChatmeGroups-backButton:hover {
+  background-color: var(--icon-hover-bg);
+}
+
+.groupHeaderChatmeGroups-leftSection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.groupHeaderChatmeGroups-contactInfo {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.groupHeaderChatmeGroups-contactAvatar {
+  --avatar-size: 40px;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.groupHeaderChatmeGroups-contactAvatar:hover {
+  opacity: 0.9;
+}
+
+.groupHeaderChatmeGroups-contactAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.groupHeaderChatmeGroups-avatarPlaceholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  /* fixed var name for avatar background */
+  background-color: var(--avatar-bg);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.groupHeaderChatmeGroups-contactDetails {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.groupHeaderChatmeGroups-contactDetails h3 {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.groupHeaderChatmeGroups-status {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.groupHeaderChatmeGroups-typingIndicator {
+  color: var(--text-primary);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.groupHeaderChatmeGroups-onlineStatus {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+}
+
+.groupHeaderChatmeGroups-onlineDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: var(--online-dot);
+  border-radius: 50%;
+}
+
+.groupHeaderChatmeGroups-status-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.groupHeaderChatmeGroups-member-count {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.groupHeaderChatmeGroups-last-activity {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.groupHeaderChatmeGroups-chatMenuContainer {
+  display: flex;
+  align-items: center;
+  color: white;
+  margin-left: auto;
+  /* Ensure menu and icons are always visible */
+  z-index: 999;
+  position: relative;
+}
+
+.groupHeaderChatmeGroups-iconButton {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 50% !important;
+  color: var(--icon-color) !important;
+  padding: 8px !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+  isolation: isolate !important;
+}
+
+.groupHeaderChatmeGroups-iconButton:hover {
+  background-color: var(--icon-hover-bg);
+}
+
+.groupHeaderChatmeGroups-voiceButton,
+.groupHeaderChatmeGroups-videoButton,
+.groupHeaderChatmeGroups-menuButton {
+  margin-left: 8px;
+}
+
+/* Force icon visibility with stronger rules */
+.groupHeaderChatmeGroups-iconButton svg {
+  width: 24px !important;
+  height: 24px !important;
+  display: block !important;
+  position: relative !important;
+  z-index: 2 !important;
+  pointer-events: none !important;
+}
+
+.groupHeaderChatmeGroups-iconButton path,
+.groupHeaderChatmeGroups-iconButton line,
+.groupHeaderChatmeGroups-iconButton circle,
+.groupHeaderChatmeGroups-iconButton polyline {
+  stroke: currentColor !important;
+  stroke-width: 2.5px !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  fill: none !important;
+}
+
+/* Ensure light theme icons are visible */
+.groupHeaderChatmeGroups-header.light-theme .groupHeaderChatmeGroups-iconButton {
+  color: var(--icon-color-light) !important;
+}
+
+/* Force visibility properties */
+.groupHeaderChatmeGroups-iconButton,
+.groupHeaderChatmeGroups-iconButton svg,
+.groupHeaderChatmeGroups-iconButton path {
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+}
+
+/* Force svg visibility and ensure Feather icons use the button color */
+.groupHeaderChatmeGroups-iconButton {
+  color: var(--text-secondary) !important;
+}
+
+.groupHeaderChatmeGroups-iconButton svg {
+  width: 24px !important;
+  height: 24px !important;
+  display: block;
+}
+
+.groupHeaderChatmeGroups-iconButton svg,
+.groupHeaderChatmeGroups-iconButton svg * {
+  stroke: currentColor !important;
+  fill: none !important;
+  stroke-width: 2.5px !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 768px) {
+  .groupHeaderChatmeGroups-iconButton svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+}
+
+/* Pinned Messages Styles */
+.groupHeaderChatmeGroups-pinned-container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  padding: 8px 16px;
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.groupHeaderChatmeGroups-pinned-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+.groupHeaderChatmeGroups-pinned-icon {
+  color: var(--accent-color);
+}
+
+.groupHeaderChatmeGroups-pinned-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.groupHeaderChatmeGroups-pinned-list::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.groupHeaderChatmeGroups-pinned-item {
+  flex: 0 0 auto;
+  min-width: 120px;
+  background: var(--pinned-bg);
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  position: relative;
+}
+
+.groupHeaderChatmeGroups-pinned-item:hover {
+  background: var(--pinned-hover-bg);
+  border-color: var(--accent-color);
+}
+
+.groupHeaderChatmeGroups-pinned-content {
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.groupHeaderChatmeGroups-pinned-text {
+  font-size: 11px;
+  color: var(--text-primary);
+  line-height: 1.2;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.groupHeaderChatmeGroups-pinned-time {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.groupHeaderChatmeGroups-pinned-unpin {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.groupHeaderChatmeGroups-pinned-unpin:hover {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.groupHeaderChatmeGroups-pinned-item:hover .groupHeaderChatmeGroups-pinned-unpin {
+  opacity: 1;
+}
+
+.groupHeaderChatmeGroups-pinned-label {
+  color: var(--accent-color);
+}
+
+/* Avatar Fullscreen Styles */
+.groupHeaderChatmeGroups-avatarFullscreenOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeInChatmeGroups 0.3s ease;
+}
+
+@keyframes fadeInChatmeGroups {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.groupHeaderChatmeGroups-avatarFullscreenContainer {
+  position: relative;
+  max-width: 100vw;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: scaleUpChatmeGroups 0.3s ease;
+}
+
+@keyframes scaleUpChatmeGroups {
+  from {
+    transform: scale(0.95);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.groupHeaderChatmeGroups-avatarFullscreenImage {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 8px;
+}
+
+.groupHeaderChatmeGroups-avatarFullscreenFooter {
+  margin-top: 20px;
+  color: var(--accent-color);
+  text-align: center;
+  width: 100%;
+}
+
+.groupHeaderChatmeGroups-avatarFullscreenFooter h3 {
+  color: var(--text-primary);
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  margin-bottom: 0;
+}
+
+.groupHeaderChatmeGroups-avatarActions {
+  display: flex;
+  gap: 16px;
+  color: var(--text-primary);
+  margin-top: 10px;
+  justify-content: center;
+}
+
+.groupHeaderChatmeGroups-avatarActions button {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.groupHeaderChatmeGroups-avatarActions button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.groupHeaderChatmeGroups-avatarCloseButton {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 15px;
+  transition: opacity 0.2s ease;
+  opacity: 0.7;
+}
+
+.groupHeaderChatmeGroups-avatarCloseButton:hover {
+  opacity: 1;
+}
+
+/* Typing Indicator Animation */
+.typing-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background-color: var(--accent-color);
+  animation: typing-bounce 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .groupHeaderChatmeGroups-header {
+    padding: 8px 12px;
+    height: 54px;
+  }
+
+  .groupHeaderChatmeGroups-header.dark-theme {
+    --mobile-avatar-size: 36px;
+  }
+
+  .groupHeaderChatmeGroups-header.light-theme {
+    --mobile-avatar-size: 36px;
+  }
+
+  .groupHeaderChatmeGroups-backButton {
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    margin-right: 6px;
+  }
+
+  .groupHeaderChatmeGroups-leftSection {
+    gap: 6px;
+  }
+
+  .groupHeaderChatmeGroups-contactInfo {
+    gap: 12px;
+  }
+
+  .groupHeaderChatmeGroups-contactAvatar {
+    width: var(--mobile-avatar-size);
+    height: var(--mobile-avatar-size);
+  }
+
+  .groupHeaderChatmeGroups-contactDetails h3 {
+    font-size: 14px;
+  }
+
+  .groupHeaderChatmeGroups-status {
+    font-size: 12px;
+  }
+
+  .groupHeaderChatmeGroups-iconButton {
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .groupHeaderChatmeGroups-voiceButton,
+  .groupHeaderChatmeGroups-videoButton,
+  .groupHeaderChatmeGroups-menuButton {
+    margin-left: 6px;
+  }
+
+  .groupHeaderChatmeGroups-pinned-container {
+    padding: 6px 12px;
+  }
+
+  .groupHeaderChatmeGroups-pinned-item {
+    min-width: 100px;
+  }
+
+  .groupHeaderChatmeGroups-pinned-text {
+    font-size: 10px;
+  }
+
+  .groupHeaderChatmeGroups-pinned-time {
+    font-size: 9px;
+  }
+
+  .groupHeaderChatmeGroups-avatarCloseButton {
+    left: 20px;
+    transform: none;
+  }
+}

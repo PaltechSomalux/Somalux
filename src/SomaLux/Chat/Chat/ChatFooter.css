@@ -1,0 +1,827 @@
+/* WhatsApp Chat Footer - Contained within chat window */
+.chat-footer-vibe {
+  --footer-icon-size: 24px;
+  --footer-button-size: 44px;
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  padding: 10px 16px;
+  z-index: 1000;
+  background-color: transparent;
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+  border-top: 1px solid #2a3942;
+}
+
+.footer-content-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.footer-content-vibe {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  width: 100%;
+  background-color: transparent;
+}
+
+
+/* Merged Reply Preview + Input Container (ONLY when replying) */
+.reply-input-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: calc(100% - 104px); /* Account for buttons (44px + 44px + 16px gaps) */
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  background-color: #161b1d;
+  animation: fadeIn-vibe 0.15s ease-out;
+  z-index: 1001;
+}
+
+/* Reply Preview Section (when merged) - NO BORDER */
+/* Reply Preview Section (when merged) */
+/* Reply preview container (top area) */
+.reply-preview {
+  background-color: #161b1d;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  animation: slideDown-vibe 0.2s ease-out;
+  border-radius: 10px 10px 0 0; /* Smooth top corners */
+}
+
+/* ✅ Reply content with blue border only */
+.reply-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  border-left: 1px solid rgb(0, 140, 255); /* Bright WhatsApp blue */
+  border-bottom-left-radius: 10px;
+  padding-left: 10px;
+}
+
+/* Sender name (You / contact) */
+.reply-sender {
+  font-weight: 600;
+  color: #34B7F1;
+  font-size: 0.85em;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+/* The replied text */
+.reply-text {
+  font-size: 0.85em;
+  color: #e9edef;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  /* -webkit-line-clamp: 2; max 2 lines */
+  line-height: 1.2;
+}
+
+/* Cancel button */
+.reply-cancel-button {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #8696a0;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.reply-cancel-button:hover {
+  color: #e9edef;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+/* Input Field Section (within merged container) */
+.message-input-section {
+  flex: 1;
+  border-radius: 0 0 20px 20px;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Input Field - With Smooth Blinking Light Green Cursor */
+.message-input-vibe {
+  flex: 1;
+  outline: none;
+  font-size: 15px;
+  position: relative;
+  background-color: #161b1d !important;
+  color: #e9edef !important;
+  border: none;
+  border-radius: 20px;
+  padding: 9px 12px;
+  min-height: 40px;
+  max-height: 100px;
+  max-width: 100%;
+  resize: none;
+  width: 100%;
+  box-sizing: border-box;
+  caret-color: #90EE90; /* Light green cursor */
+}
+
+/* Simulate smooth blinking cursor with pseudo-element */
+.message-input-vibe::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: #90EE90;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: blink-cursor-smooth 1s ease-in-out infinite; /* Smooth, regular blinking */
+}
+
+/* Smooth blinking cursor animation */
+@keyframes blink-cursor-smooth {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.message-input-vibe:focus {
+  border-color: transparent;
+}
+
+.message-input-vibe::placeholder {
+  color: #8696a0;
+  opacity: 0.8;
+}
+
+/* Buttons */
+.icon-button-vibe {
+  background-color: rgba(255, 68, 68, 0.15);
+  border: 2px solid #ff4444;
+  color: #ff4444;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+  box-shadow: 0 0 12px rgba(255, 68, 68, 0.4);
+}
+
+.icon-button-vibe svg {
+  color: #ff4444 !important;
+  stroke: #ff4444 !important;
+  fill: #ff4444 !important;
+}
+
+.icon-button-vibe:hover {
+  background-color: #2a3942;
+  color: #ff6666;
+  transform: scale(1.1);
+}
+
+.icon-button-vibe:hover svg {
+  color: #ff6666 !important;
+  stroke: #ff6666 !important;
+  fill: #ff6666 !important;
+}
+
+.send-button-vibe {
+  background-color: rgba(255, 68, 68, 0.15);
+  border: 2px solid #ff4444;
+  color: #ff4444;
+  font-size: 24px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+  box-shadow: 0 0 12px rgba(255, 68, 68, 0.4);
+}
+
+.send-button-vibe svg {
+  width: 24px;
+  height: 24px;
+  color: #ff4444 !important;
+  stroke: #ff4444 !important;
+  fill: #ff4444 !important;
+}
+
+.send-button-vibe:hover {
+  transform: scale(1.15);
+  background-color: transparent;
+  color: #ff6666;
+}
+
+.send-button-vibe:hover svg {
+  color: #ff6666 !important;
+  stroke: #ff6666 !important;
+  fill: #ff6666 !important;
+}}
+
+/* WhatsApp-style Attachment Options */
+.whatsapp-attachment-options-vibe {
+  position: absolute !important;
+  top: -210px !important;
+  left: 68px !important;
+  right: 68px !important;
+  width: calc(100% - 136px) !important;
+  max-height: 200px !important;
+  background-color: red !important;
+  border-radius: 16px !important;
+  padding: 12px !important;
+  z-index: 2000 !important;
+  animation: fadeIn-vibe 0.15s ease-out !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7) !important;
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
+}
+
+.whatsapp-options-grid-vibe {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+.whatsapp-option-vibe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.whatsapp-option-vibe:hover {
+  background-color: #2a3942;
+}
+
+.whatsapp-option-vibe span {
+  font-size: 12px;
+  margin-top: 5px;
+  color: #e9edef;
+}
+
+.whatsapp-option-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+  padding: 0;
+  line-height: 1;
+}
+
+.whatsapp-option-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.whatsapp-option-icon.camera-vibe {
+  background-color: #D3396D;
+}
+
+.whatsapp-option-icon.gallery-vibe {
+  background-color: #25D366;
+}
+
+.whatsapp-option-icon.document-vibe {
+  background-color: #128C7E;
+}
+
+.whatsapp-option-icon.poll-vibe {
+  background-color: #34B7F1;
+}
+
+.whatsapp-option-icon.contact-vibe {
+  background-color: #075E54;
+}
+
+.whatsapp-option-icon.location-vibe {
+  background-color: #ED4D6E;
+}
+
+.whatsapp-option-icon.payment-vibe {
+  background-color: #4CAF50;
+}
+
+/* Emoji Picker */
+.emoji-picker-vibe {
+  position: absolute;
+  bottom: 100%;
+  right: 16px;
+  z-index: 1100;
+  border: 1px solid #2a3942;
+  background-color: #0b1216;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Animations */
+@keyframes fadeIn-vibe {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown-vibe {
+  from { 
+    opacity: 0; 
+    transform: translateY(-10px); 
+    max-height: 0; 
+    padding: 0 12px;
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+    max-height: 60px; 
+    padding: 8px 12px;
+  }
+}
+
+/* Responsive Adjustments */
+/* Ensure icons stay large on all screen sizes */
+@media (min-width: 769px) {
+  .chat-footer-vibe {
+    --footer-icon-size: 24px;
+    --footer-button-size: 44px;
+  }
+  
+  .icon-button-vibe svg,
+  .send-button-vibe svg,
+  .whatsapp-option-icon svg {
+    width: var(--footer-icon-size);
+    height: var(--footer-icon-size);
+  }
+}
+
+@media (max-width: 768px) {
+  .chat-footer-vibe {
+    padding: 8px 12px;
+    --footer-icon-size: 24px;
+    --footer-button-size: 44px;
+  }
+
+  .whatsapp-attachment-options-vibe {
+    left: 8px;
+  }
+
+  .emoji-picker-vibe {
+    right: 8px;
+  }
+
+  .reply-input-container {
+    max-width: calc(100% - 92px);
+  }
+
+  .message-input-vibe {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .whatsapp-attachment-options-vibe {
+    width: calc(100% - 136px) !important;
+    right: 68px !important;
+    top: -210px !important;
+    bottom: auto !important;
+  }
+
+  .icon-button-vibe {
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+  }
+
+  .send-button-vibe {
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+  }
+
+  .emoji-picker-vibe {
+    bottom: 60px;
+    width: 100%;
+  }
+
+  .reply-preview {
+    padding: 6px 10px;
+  }
+
+  .reply-sender {
+    font-size: 0.85em;
+  }
+
+  .reply-text {
+    font-size: 0.8em;
+    padding-left: 10px;
+  }
+
+  .reply-cancel-button {
+    font-size: 1.2em; /* Slightly smaller but still larger */
+    width: 24px;
+    height: 24px;
+    top: 6px;
+    right: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); /* Adjusted shadow */
+  }
+}
+
+@media (max-width: 480px) {
+  .chat-footer-vibe {
+    padding: 6px 8px;
+    --footer-icon-size: 24px;
+    --footer-button-size: 44px;
+  }
+
+  .footer-content-vibe {
+    gap: 6px;
+  }
+
+  .icon-button-vibe svg,
+  .send-button-vibe svg,
+  .whatsapp-option-icon svg {
+    width: var(--footer-icon-size);
+    height: var(--footer-icon-size);
+  }
+
+  .whatsapp-attachment-options-vibe {
+    left: 4px;
+    width: calc(100% - 8px);
+    margin-bottom: 4px;
+  }
+
+  .emoji-picker-vibe {
+    right: 4px;
+    margin-bottom: 4px;
+  }
+
+  .reply-input-container {
+    max-width: calc(100% - 84px);
+  }
+
+  .whatsapp-attachment-options-vibe {
+    width: calc(100% - 136px) !important;
+    left: 68px !important;
+    right: 68px !important;
+    bottom: auto !important;
+    top: -210px !important;
+  }
+
+  .send-button-vibe {
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+  }
+
+  .reply-preview {
+    padding: 5px 8px;
+  }
+
+  .reply-sender {
+    font-size: 0.8em;
+  }
+
+  .reply-text {
+    font-size: 0.75em;
+    padding-left: 8px;
+  }
+
+  .reply-cancel-button {
+    font-size: 1.1em;
+    width: 22px;
+    height: 22px;
+    top: 5px;
+    right: 5px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); /* Adjusted shadow */
+  }
+}
+
+/* Link Preview Styles in Footer */
+/* 🔧 Fixed: Link Preview Styles (Dark WhatsApp Look) */
+.link-preview {
+  margin-bottom: 8px;
+  border: 1px solid #2a3942;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+  background: #1e262a; /* consistent dark grey background */
+  max-width: 100%;
+  position: relative;
+  color: #e9edef;
+  transition: background-color 0.2s ease;
+}
+
+.link-preview:hover {
+  background: #2a3942; /* hover effect similar to message bubbles */
+}
+
+.link-preview.fallback {
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+}
+
+.fallback-link {
+  color: #34B7F1;
+  text-decoration: underline;
+  font-size: 11px;
+}
+
+.preview-remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  color: white;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  font-size: 12px;
+  transition: background 0.2s ease;
+}
+
+.preview-remove-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.preview-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #111b21; /* dark fallback */
+}
+
+.preview-content {
+  flex: 1;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.x-header {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #8696a0;
+}
+
+.x-name {
+  font-weight: bold;
+  color: #e9edef;
+}
+
+.x-handle,
+.x-platform {
+  color: #667781;
+}
+
+.preview-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 3px 0;
+  color: #ffffff;
+  line-height: 1.3;
+}
+
+.preview-desc {
+  font-size: 11px;
+  color: #b1b3b5;
+  margin: 0 0 3px 0;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+}
+
+.preview-link {
+  font-size: 10px;
+  color: #34B7F1;
+  text-decoration: none;
+  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-link:hover {
+  text-decoration: underline;
+}
+
+.preview-loading {
+  padding: 10px;
+  color: #667781;
+  font-size: 11px;
+  text-align: center;
+  width: 100%;
+}
+
+/* Attachment preview tray */
+.attachment-previews {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 6px 0;
+  margin-bottom: 6px;
+}
+
+.attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1e262a;
+  border: 1px solid #2a3942;
+  border-radius: 12px;
+  padding: 4px 8px 4px 4px;
+  min-width: 0;
+}
+
+.attachment-remove {
+  appearance: none;
+  border: none;
+  background: rgba(0,0,0,0.35);
+  color: #e9edef;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.attachment-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #111b21;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #e9edef;
+  flex-shrink: 0;
+}
+.attachment-thumb.video { background: #0b3a4b; }
+.attachment-thumb.audio { background: #2a1f3a; }
+.attachment-thumb.doc   { background: #1f2c34; }
+
+.attachment-name {
+  max-width: 160px;
+  font-size: 11px;
+  color: #c8d1d6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .attachment-name { max-width: 100px; }
+  .attachment-thumb { width: 28px; height: 28px; }
+}
+
+/* Backtick color picker */
+.colors-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background-color: #161b1d;
+  border: 1px solid #2a3942;
+  border-radius: 8px 8px 0 0;
+  padding: 8px;
+  z-index: 1003;
+  margin-bottom: 4px;
+}
+
+.colors-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.color-swatch {
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 8px;
+  padding: 8px 6px;
+  text-transform: capitalize;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.color-swatch:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+.color-swatch:focus,
+.color-swatch.active {
+  outline: none;
+  box-shadow: 0 0 0 2px #34B7F1 inset, 0 0 0 2px rgba(52,183,241,0.5);
+}
+
+/* Live input preview overlay */
+.input-preview-wrapper {
+  position: relative;
+}
+
+.input-preview {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: #e9edef;
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: hidden;
+}
+
+.input-preview .inline-highlight {
+  border-radius: 4px;
+}
+
+.message-input-vibe.with-preview {
+  position: relative;
+  background: transparent;
+  color: transparent; /* Text invisible, caret still visible via caret-color */
+  caret-color: #90EE90;
+}
+
+.input-placeholder {
+  color: #8696a0;
+  opacity: 0.9;
+}
+
+/* Inline colored highlight for preview */
+.inline-highlight {
+  display: inline-block;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.color-yellow { background-color: #FFF59D; color: #111; }
+.color-green  { background-color: #A5D6A7; color: #0b2e13; }
+.color-blue   { background-color: #90CAF9; color: #0b1f3a; }
+.color-red    { background-color: #EF9A9A; color: #3a0b0b; }
+.color-purple { background-color: #CE93D8; color: #2a0b2e; }
+.color-orange { background-color: #FFCC80; color: #3a240b; }
+.color-teal   { background-color: #80CBC4; color: #0b2e2b; }
+.color-pink   { background-color: #F48FB1; color: #3a0b1f; }
+.color-gray   { background-color: #CFD8DC; color: #101314; }

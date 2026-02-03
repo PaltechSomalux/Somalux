@@ -1,0 +1,46 @@
+.imo-search-bar {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  background-color: transparent;
+  margin-left: 75%;
+}
+
+.imo-search-bar input {
+  width: 50%;
+  border: 1px solid #ddd;
+  border-radius: 15px;
+  font-size: 14px;
+background-color: transparent;
+
+}
+
+.imo-search-bar input:focus {
+  border-color: #4dfe9d;
+  
+}
+
+.imo-cancel-search {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.imo-cancel-search:hover {
+  color: #666;
+  background-color: #f0f0f0;
+}

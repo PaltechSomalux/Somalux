@@ -73,18 +73,15 @@ export const Profile = ({ user: propUser = null }) => {
   const markProfileActive = async (user) => {
     if (!user || !user.id) return;
     try {
-      const nowIso = new Date().toISOString();
       // Non-blocking fire-and-forget profile update
+      // Only update fields that exist in the profiles table schema
       await supabase
         .from('profiles')
         .upsert(
           {
             id: user.id,
             email: user.email,
-            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || null,
-            is_active: true,
-            last_active_at: nowIso,
-            deactivated_at: null,
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || null
           },
           { returning: 'minimal' }
         );
@@ -96,13 +93,12 @@ export const Profile = ({ user: propUser = null }) => {
   const markProfileSignedOut = async (user) => {
     if (!user || !user.id) return;
     try {
-      const nowIso = new Date().toISOString();
       // Non-blocking fire-and-forget profile update
+      // Only fields in profiles table schema: id, email, full_name, role, created_at, updated_at
       await supabase
         .from('profiles')
         .update({
-          is_active: false,
-          deactivated_at: nowIso,
+          email: user.email
         })
         .eq('id', user.id);
     } catch (e) {
@@ -188,39 +184,10 @@ export const Profile = ({ user: propUser = null }) => {
 
   useEffect(() => { refreshPending(authUser?.id); }, [authUser?.id]);
 
-  // Fetch subscription tier
+  // Set default tier (subscription_tier column doesn't exist in profiles table)
   useEffect(() => {
-    const fetchUserTier = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setCurrentUserTier('basic');
-          return;
-        }
-
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('subscription_tier')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching subscription tier:', error);
-          setCurrentUserTier('basic');
-          return;
-        }
-
-        setCurrentUserTier(profile?.subscription_tier || 'basic');
-      } catch (err) {
-        console.error('Error fetching user tier:', err);
-        setCurrentUserTier('basic');
-      }
-    };
-
-    if (authUser?.id) {
-      fetchUserTier();
-    }
-  }, [authUser?.id]);
+    setCurrentUserTier('basic');
+  }, []);
 
   // Auth initialization
   useEffect(() => {
@@ -243,38 +210,13 @@ export const Profile = ({ user: propUser = null }) => {
 
         const avatarFromAuth = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
         
-        // Sync avatar from auth metadata to profiles table if not already there (non-blocking)
-        if (avatarFromAuth) {
-          (async () => {
-            try {
-              const { error } = await supabase
-                .from('profiles')
-                .update({ avatar_url: avatarFromAuth })
-                .eq('id', user.id);
-              if (!error) console.log('✅ Avatar synced to profiles table');
-              else console.warn('⚠️ Failed to sync avatar to profiles table:', error);
-            } catch (e) {
-              console.warn('⚠️ Avatar sync error:', e);
-            }
-          })();
-        }
-        
+        // Note: avatar_url column doesn't exist in profiles table schema
+        // Only sync profile with basic fields
         if (avatarFromAuth) {
           await loadAvatar(avatarFromAuth);
         } else {
-          try {
-            const { data: prof } = await supabase
-              .from('profiles')
-              .select('avatar_url')
-              .eq('id', user.id)
-              .single();
-            if (prof?.avatar_url) {
-              await loadAvatar(prof.avatar_url);
-            } else {
-              const stored = JSON.parse(localStorage.getItem('userProfile') || '{}');
-              if (stored.avatar) setProfileImage(stored.avatar);
-            }
-          } catch (_) {}
+          const stored = JSON.parse(localStorage.getItem('userProfile') || '{}');
+          if (stored.avatar) setProfileImage(stored.avatar);
         }
       }
     })();

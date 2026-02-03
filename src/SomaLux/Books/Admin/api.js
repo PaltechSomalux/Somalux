@@ -892,7 +892,7 @@ export async function fetchProfiles() {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, display_name, full_name, avatar_url, bio, created_at, updated_at, last_active_at, subscription_tier, subscription_started_at, subscription_expires_at, role')
+        .select('id, email, display_name, full_name, avatar_url, bio, created_at, updated_at, last_active_at, subscription_tier, subscription_started_at, subscription_expires_at, role, is_suspended, suspended_reason, suspended_at')
         .order('created_at', { ascending: false })
         .range(from, to);
       
@@ -1148,6 +1148,26 @@ export async function updateUserRole(id, role) {
     return payload?.data || null;
   } catch (error) {
     console.error('[updateUserRole] Error:', error?.message || error);
+    throw error;
+  }
+}
+
+export async function suspendUser(id, suspended, reason = '') {
+  const origin = getBackendOrigin();
+  try {
+    const res = await fetch(`${origin}/api/elib/users/${encodeURIComponent(id)}/suspend`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ suspended, reason }),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(errText || `Failed to suspend user (status ${res.status})`);
+    }
+    const payload = await res.json().catch(() => ({}));
+    return payload?.data || null;
+  } catch (error) {
+    console.error('[suspendUser] Error:', error?.message || error);
     throw error;
   }
 }

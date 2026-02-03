@@ -25,6 +25,7 @@
   color: var(--text-main);
   font-family: "Inter", "Segoe UI", sans-serif;
   transition: background 0.3s ease;
+  position: relative;
 }
 
 /* ================= HEADER ================= */
@@ -126,6 +127,76 @@
 }
 
 /* ================= MAIN CONTENT ================= */
+/* ================= FULLSCREEN CHAT MODE ================= */
+
+/* Hide header and tabs when in fullscreen chat */
+.book-management.fullscreen-chat {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 200;
+  margin: 0;
+  padding: 0;
+}
+
+.book-management.fullscreen-chat .book-management-header {
+  display: none !important;
+}
+
+.book-management.fullscreen-chat .tools-scroll-container-convert {
+  display: none !important;
+}
+
+/* Fullscreen chat content - takes entire viewport */
+.book-management.fullscreen-chat .file-converter-content-convert.fullscreen-chat-content {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 100vh !important;
+  min-width: 100vw !important;
+  overflow: hidden;
+  z-index: 200;
+  background: #0c1317;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure no scrolling interference */
+.book-management.fullscreen-chat body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* ================= RESPONSIVE CHAT LAYOUTS ================= */
+
+/* Mobile and Desktop - Fullscreen chat is handled above */
+@media (max-width: 768px) {
+  .book-management.fullscreen-chat .file-converter-content-convert.fullscreen-chat-content {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+@media (min-width: 769px) {
+  .book-management.fullscreen-chat .file-converter-content-convert.fullscreen-chat-content {
+    width: 100vw;
+    height: 100vh;
+  }
+}
+
+/* ================= MAIN CONTENT ================= */
 
 .file-converter-content-convert {
   padding: 24px 20px;
@@ -139,6 +210,28 @@
   -webkit-user-select: none;
   /* Smooth transitions for tab changes */
   transition: opacity 0.3s ease;
+  overflow-y: auto;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Fixed layout for ChatMe tab - no scrolling, fills viewport */
+.book-management .file-converter-content-convert[data-active-tab="chatme"] {
+  position: absolute;
+  top: 102px;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: calc(100vh - 102px);
+  margin-top: 0;
+  padding: 0;
+  min-height: auto;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  background-color: #0b1216;
 }
 
 @keyframes fadeIn {
@@ -170,6 +263,27 @@
   .file-converter-content-convert {
     padding: 18px;
     margin-top: 100px;
+    min-height: auto;
+    overflow-y: auto;
+  }
+
+  /* Fixed layout for ChatMe on mobile */
+  .book-management .file-converter-content-convert[data-active-tab="chatme"] {
+    position: absolute;
+    top: 98px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: calc(100vh - 98px);
+    margin-top: 0;
+    padding: 0;
+    min-height: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+    background-color: #0b1216;
   }
 
   /* Mobile-specific swipe optimizations */

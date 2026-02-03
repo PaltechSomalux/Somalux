@@ -117,10 +117,8 @@ export const Database = {
         .insert({
           id: userId,
           email: userData.email,
-          full_name: userData.fullName,
-          username: userData.username,
-          role: isSuperAdmin ? 'admin' : 'viewer',
-          ...userData
+          full_name: userData.fullName || userData.username || userData.email,
+          role: isSuperAdmin ? 'admin' : 'viewer'
         })
         .select()
         .single();

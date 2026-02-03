@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchProfiles, fetchUploadCountsByUser, updateUserRole, fetchUserRankingsAdmin, fetchAuthenticatedUsers } from '../api';
+import { fetchProfiles, fetchUploadCountsByUser, updateUserRole, fetchUserRankingsAdmin, fetchAuthenticatedUsers, suspendUser } from '../api';
 import { FiSearch } from 'react-icons/fi';
 import UsersAnalytics from './UsersAnalytics';
 import UserTierModal from './UserTierModal';
@@ -12,12 +12,16 @@ const Users = ({ isSuperAdmin }) => {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
+  const [suspensionFilter, setSuspensionFilter] = useState('');
   const [sortBy, setSortBy] = useState('latest_login'); // 'ranking' or 'latest_login'
   const [sortDir, setSortDir] = useState('desc'); // 'asc' or 'desc'
   const [page, setPage] = useState(1);
   const [pageSize] = useState(15);
   const [showTierModal, setShowTierModal] = useState(false);
   const [selectedUserTier, setSelectedUserTier] = useState(null);
+  const [suspendReason, setSuspendReason] = useState('');
+  const [suspendingUser, setSuspendingUser] = useState(null);
+  const [showSuspendDialog, setShowSuspendDialog] = useState(false);
   const navigate = useNavigate();
 
   const SUPERADMIN_EMAILS = ['campuslives254@gmail.com', 'paltechsomalux@gmail.com'];
@@ -261,6 +265,33 @@ const Users = ({ isSuperAdmin }) => {
     }
   };
 
+  const handleSuspendClick = (user) => {
+    setSuspendingUser(user);
+    setSuspendReason('');
+    setShowSuspendDialog(true);
+  };
+
+  const confirmSuspend = async () => {
+    if (!suspendingUser) return;
+    
+    setSaving((s) => ({ ...s, [suspendingUser.id]: true }));
+    try {
+      const isSuspended = !suspendingUser.is_suspended;
+      console.log('[Users.confirmSuspend] Suspending user:', suspendingUser.id, 'suspended:', isSuspended);
+      await suspendUser(suspendingUser.id, isSuspended, suspendReason);
+      console.log('[Users.confirmSuspend] User suspension updated successfully');
+      setShowSuspendDialog(false);
+      setSuspendingUser(null);
+      setSuspendReason('');
+      await load();
+    } catch (error) {
+      console.error('[Users.confirmSuspend] Error updating suspension:', error?.message || error);
+      alert(`Failed to suspend user: ${error?.message || 'Unknown error'}`);
+    } finally { 
+      setSaving((s) => ({ ...s, [suspendingUser?.id]: false })); 
+    }
+  };
+
   const filteredRows = useMemo(() => {
     let filtered = rows.filter(u => {
       const matchSearch = !search || 
@@ -269,7 +300,11 @@ const Users = ({ isSuperAdmin }) => {
         (u.display_name && u.display_name.toLowerCase().includes(search.toLowerCase()));
       const matchRole = !roleFilter || u.role === roleFilter;
       const matchActive = !activeFilter || u.status === activeFilter;
-      return matchSearch && matchRole && matchActive;
+      const matchSuspension = !suspensionFilter || 
+        (suspensionFilter === 'suspended' && u.is_suspended) ||
+        (suspensionFilter === 'active' && !u.is_suspended);
+
+      return matchSearch && matchRole && matchActive && matchSuspension;
     });
 
     // Apply sorting
@@ -302,7 +337,7 @@ const Users = ({ isSuperAdmin }) => {
     }
 
     return filtered;
-  }, [rows, search, roleFilter, activeFilter, sortBy, sortDir]);
+  }, [rows, search, roleFilter, activeFilter, suspensionFilter, sortBy, sortDir]);
 
   const paginatedRows = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -314,7 +349,7 @@ const Users = ({ isSuperAdmin }) => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, roleFilter, activeFilter, sortBy, sortDir]);
+  }, [search, roleFilter, activeFilter, suspensionFilter, sortBy, sortDir]);
 
   const handleTierClick = (user) => {
     if (!user || !user.id) return;
@@ -346,17 +381,25 @@ const Users = ({ isSuperAdmin }) => {
         </div>
         <select
           className="select"
-          value={roleFilter ? `role:${roleFilter}` : activeFilter ? `active:${activeFilter}` : `sort:${sortBy}:${sortDir}`}
+          value={roleFilter ? `role:${roleFilter}` : activeFilter ? `active:${activeFilter}` : suspensionFilter ? `suspension:${suspensionFilter}` : `sort:${sortBy}:${sortDir}`}
           onChange={(e) => {
             const value = e.target.value;
             if (value.startsWith('role:')) {
               setRoleFilter(value.substring(5));
               setActiveFilter('');
+              setSuspensionFilter('');
               setSortBy('ranking');
               setSortDir('desc');
             } else if (value.startsWith('active:')) {
               setActiveFilter(value.substring(7));
               setRoleFilter('');
+              setSuspensionFilter('');
+              setSortBy('ranking');
+              setSortDir('desc');
+            } else if (value.startsWith('suspension:')) {
+              setSuspensionFilter(value.substring(11));
+              setRoleFilter('');
+              setActiveFilter('');
               setSortBy('ranking');
               setSortDir('desc');
             } else if (value.startsWith('sort:')) {
@@ -365,6 +408,7 @@ const Users = ({ isSuperAdmin }) => {
               setSortDir(parts[1]);
               setRoleFilter('');
               setActiveFilter('');
+              setSuspensionFilter('');
             }
           }}
           style={{ minWidth: 200, width: 'auto' }}
@@ -377,6 +421,7 @@ const Users = ({ isSuperAdmin }) => {
           <option value="active:online">Online</option>
           <option value="active:offline">Offline</option>
           <option value="active:signed_out">Signed Out</option>
+          <option value="suspension:suspended">Suspended</option>
           <option value="sort:ranking:desc">Ranking (High to Low)</option>
           <option value="sort:ranking:asc">Ranking (Low to High)</option>
           <option value="sort:latest_login:desc">Login (Newest)</option>
@@ -519,6 +564,24 @@ const Users = ({ isSuperAdmin }) => {
                   >
                     Details
                   </button>
+                  {isSuperAdmin && (
+                    <button
+                      className="btn"
+                      onClick={() => handleSuspendClick(u)}
+                      disabled={!!saving[u.id]}
+                      title={u.is_suspended ? 'Unsuspend user' : 'Suspend user for misuse'}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: '12px',
+                        whiteSpace: 'nowrap',
+                        width: 'auto',
+                        minWidth: 'auto',
+                        maxWidth: 'max-content',
+                      }}
+                    >
+                      {u.is_suspended ? 'Unsuspend' : 'Suspend'}
+                    </button>
+                  )}
                   {(() => {
                     const hasUploads = (u.uploadCount || 0) > 0;
                     const elevated = u.role === 'admin' || u.role === 'editor';
@@ -555,6 +618,87 @@ const Users = ({ isSuperAdmin }) => {
           user={selectedUserTier}
           onClose={() => setShowTierModal(false)}
         />
+      )}
+
+      {showSuspendDialog && suspendingUser && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+        }}>
+          <div style={{
+            backgroundColor: '#202c33',
+            borderRadius: 8,
+            padding: 20,
+            maxWidth: 400,
+            width: '90%',
+            border: '1px solid #405d75',
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', color: '#e9edef' }}>
+              {suspendingUser.is_suspended ? 'Unsuspend User' : 'Suspend User'}
+            </h3>
+            <p style={{ margin: '0 0 12px 0', color: '#8696a0', fontSize: 14 }}>
+              {suspendingUser.is_suspended 
+                ? `Re-enable ${suspendingUser.email}?` 
+                : `Are you sure you want to suspend ${suspendingUser.email}?`}
+            </p>
+            
+            {!suspendingUser.is_suspended && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ color: '#8696a0', fontSize: 13, display: 'block', marginBottom: 6 }}>
+                  Reason for suspension (optional):
+                </label>
+                <textarea
+                  value={suspendReason}
+                  onChange={(e) => setSuspendReason(e.target.value)}
+                  placeholder="e.g., Violates terms of service, Malicious behavior, etc."
+                  className="input"
+                  style={{
+                    width: '100%',
+                    minHeight: 80,
+                    resize: 'vertical',
+                    padding: 10,
+                    boxSizing: 'border-box',
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+            )}
+            
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                className="btn"
+                onClick={() => {
+                  setShowSuspendDialog(false);
+                  setSuspendingUser(null);
+                  setSuspendReason('');
+                }}
+                style={{ minWidth: 80 }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn"
+                onClick={confirmSuspend}
+                disabled={!!saving[suspendingUser?.id]}
+                style={{
+                  minWidth: 80,
+                  backgroundColor: suspendingUser.is_suspended ? '#2a5f2a' : '#5f2a2a',
+                  borderColor: suspendingUser.is_suspended ? '#00a884' : '#ff6b6b',
+                }}
+              >
+                {suspendingUser.is_suspended ? 'Unsuspend' : 'Suspend'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

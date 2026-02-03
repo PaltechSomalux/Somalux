@@ -1,0 +1,208 @@
+/* === Base Modal Overlay === */
+.chatlock-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(17, 25, 40, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1500;
+}
+
+/* === Modal Container === */
+.chatlock-modal {
+  background: var(--chatlock-bg);
+  color: var(--chatlock-text);
+  padding: 22px;
+  border-radius: 14px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  transition: all 0.3s ease;
+  animation: slideUp 0.3s ease-out;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* === Modal Header === */
+.chatlock-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--chatlock-border);
+  padding-bottom: 8px;
+}
+
+.chatlock-modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--chatlock-text);
+}
+
+.chatlock-close-btn {
+  background: none;
+  border: none;
+  color: var(--chatlock-muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.chatlock-close-btn:hover {
+  color: var(--chatlock-accent);
+}
+
+/* === Inputs === */
+.chatlock-pin-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chatlock-pin-field {
+  padding: 10px;
+  font-size: 1rem;
+  border: 1px solid var(--chatlock-border);
+  border-radius: 10px;
+  background: var(--chatlock-input-bg);
+  color: var(--chatlock-text);
+  outline: none;
+  transition: 0.2s;
+}
+
+.chatlock-pin-field:focus {
+  border-color: var(--chatlock-accent);
+  background: var(--chatlock-input-focus);
+}
+
+/* === Error Message === */
+.chatlock-error {
+  color: var(--chatlock-error);
+  font-size: 0.9rem;
+  margin: 8px 0;
+}
+
+/* === Buttons === */
+.chatlock-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.chatlock-btn-secondary {
+  padding: 8px 18px;
+  background: var(--chatlock-btn-secondary);
+  color: var(--chatlock-text);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.25s;
+}
+
+.chatlock-btn-secondary:hover {
+  background: var(--chatlock-btn-secondary-hover);
+}
+
+.chatlock-btn-primary {
+  padding: 8px 18px;
+  background: var(--chatlock-accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.25s;
+}
+
+.chatlock-btn-primary:hover {
+  background: var(--chatlock-accent-hover);
+}
+
+/* === Toast === */
+.chatlock-toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 500;
+  font-size: 0.9rem;
+  z-index: 1600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.chatlock-toast.success {
+  background: #2ecc71;
+}
+
+.chatlock-toast.error {
+  background: #e74c3c;
+}
+
+.chatlock-toast.info {
+  background: #3498db;
+}
+
+/* === Light Theme Variables === */
+:root {
+  --chatlock-bg: #ffffff;
+  --chatlock-text: #1a1a1a;
+  --chatlock-muted: #555;
+  --chatlock-border: #e0e0e0;
+  --chatlock-input-bg: #f7f7f7;
+  --chatlock-input-focus: #fff;
+  --chatlock-btn-secondary: #f2f2f2;
+  --chatlock-btn-secondary-hover: #e5e5e5;
+  --chatlock-accent: #007bff;
+  --chatlock-accent-hover: #0062d9;
+  --chatlock-error: #e74c3c;
+}
+
+/* === Dark Theme Variables === */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --chatlock-bg: #1e1e1e;
+    --chatlock-text: #f1f1f1;
+    --chatlock-muted: #aaa;
+    --chatlock-border: #333;
+    --chatlock-input-bg: #2a2a2a;
+    --chatlock-input-focus: #252525;
+    --chatlock-btn-secondary: #2e2e2e;
+    --chatlock-btn-secondary-hover: #3a3a3a;
+    --chatlock-accent: #25d366; /* WhatsApp green accent */
+    --chatlock-accent-hover: #1eb15a;
+    --chatlock-error: #ff5c5c;
+  }
+}
+
+/* === Animations === */
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

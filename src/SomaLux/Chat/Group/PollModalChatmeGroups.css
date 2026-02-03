@@ -1,0 +1,278 @@
+/* Poll Modal Overlay */
+.poll-modalChatmeGroups-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.poll-modalChatmeGroups {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.poll-modalChatmeGroups-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.poll-modalChatmeGroups-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.poll-modalChatmeGroups-title svg {
+  color: #007bff;
+  font-size: 24px;
+}
+
+.poll-modalChatmeGroups-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+}
+
+.poll-modalChatmeGroups-close:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+/* Content */
+.poll-modalChatmeGroups-content {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.poll-inputChatmeGroups-group {
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.poll-inputChatmeGroups-group label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.poll-questionChatmeGroups-input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.poll-questionChatmeGroups-input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.poll-charChatmeGroups-count {
+  position: absolute;
+  right: 12px;
+  bottom: -20px;
+  font-size: 12px;
+  color: #999;
+}
+
+/* Options Section */
+.poll-optionsChatmeGroups-section {
+  margin-bottom: 24px;
+}
+
+.poll-optionsChatmeGroups-section label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.poll-optionChatmeGroups-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.poll-optionChatmeGroups-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.poll-optionChatmeGroups-input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.poll-removeChatmeGroups-option {
+  background: #fee;
+  border: none;
+  color: #e74c3c;
+  padding: 0 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.poll-removeChatmeGroups-option:hover {
+  background: #fdd;
+}
+
+.poll-addChatmeGroups-option {
+  background: #f0f8ff;
+  border: 2px dashed #007bff;
+  color: #007bff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  font-weight: 500;
+  transition: background 0.2s, border-color 0.2s;
+  width: 100%;
+}
+
+.poll-addChatmeGroups-option:hover {
+  background: #e6f2ff;
+  border-color: #0056b3;
+}
+
+/* Settings */
+.poll-settingsChatmeGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.poll-checkboxChatmeGroups-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  user-select: none;
+}
+
+.poll-checkboxChatmeGroups-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #007bff;
+}
+
+/* Footer */
+.poll-modalChatmeGroups-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.poll-cancelChatmeGroups-btn,
+.poll-createChatmeGroups-btn {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.poll-cancelChatmeGroups-btn {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.poll-cancelChatmeGroups-btn:hover {
+  background: #e0e0e0;
+}
+
+.poll-createChatmeGroups-btn {
+  background: #007bff;
+  color: white;
+}
+
+.poll-createChatmeGroups-btn:hover {
+  background: #0056b3;
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+  .poll-modalChatmeGroups {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .poll-modalChatmeGroups-header {
+    padding: 16px;
+  }
+
+  .poll-modalChatmeGroups-content {
+    padding: 16px;
+  }
+
+  .poll-modalChatmeGroups-title {
+    font-size: 18px;
+  }
+}

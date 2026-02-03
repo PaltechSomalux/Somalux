@@ -373,10 +373,10 @@
       <div class="splash-video-container">
         <video autoplay muted loop playsinline id="splashVideo">
           <source src="one.mp4" type="video/mp4">
-          <source src="one.webm" type="video/webm">
+          <source src="/one.webm" type="video/webm">
         </video>
         <div class="splash-fallback">
-          <img src="Paltech White.png" alt="Paltech Logo" class="splash-logo">
+          <img src="/Paltech White.png" alt="Paltech Logo" class="splash-logo">
           <h2>Paltech</h2>
         </div>
       </div>
@@ -482,7 +482,7 @@
       (function() {
         const videos = [];
         for (let i = 1; i <= 12; i++) {
-          videos.push(`Vids/${i}.mp4`);
+          videos.push(`/Vids/${i}.mp4`);
         }
         const randomVideo = videos[Math.floor(Math.random() * videos.length)];
         const sourceElement = document.querySelector('#splashVideo source[type="video/mp4"]');
@@ -504,7 +504,7 @@
           // This helps cache the videos for offline support
           const videos = [];
           for (let i = 1; i <= 12; i++) {
-            videos.push(`Vids/${i}.mp4`);
+            videos.push(`/Vids/${i}.mp4`);
           }
           // Pre-warm the cache with video URLs
           videos.forEach(video => {

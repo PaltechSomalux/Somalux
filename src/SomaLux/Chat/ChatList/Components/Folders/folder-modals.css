@@ -1,0 +1,260 @@
+/* Folder modals: create and rename - Modernized styles with consistent, compact design */
+
+.chatme-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.chatme-modal.folder-modal {
+  max-width: 340px;
+  width: 100%;
+  border-radius: 8px;
+  background: #0b1216;
+  color: #e9edef;
+  overflow: hidden;
+  height: fit-content;
+  max-height: 70vh;
+  animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid #2a3942;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.folder-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: none;
+  flex-shrink: 0;
+}
+
+.folder-modal__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.folder-modal__title {
+  margin: 0;
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e9edef;
+  text-align: left;
+}
+
+.chatme-modal-close {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(233, 237, 239, 0.6); /* Light for dark bg */
+  transition: all 0.15s ease; /* Smooth hover */
+  flex-shrink: 0;
+}
+
+.chatme-modal-close:hover {
+  background: rgba(0, 168, 132, 0.1);
+  color: #e9edef;
+}
+
+.chatme-modal-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.folder-modal__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  flex: 0 1 auto;
+}
+
+.folder-modal__label {
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.9;
+  color: #8696a0;
+  text-align: center;
+  width: 100%;
+}
+
+.folder-modal__inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 8px;
+}
+
+/* Enhanced input styling for modern feel, no icon */
+.folder-modal .chatme-search-input,
+.folder-modal__input {
+  padding: 7px 10px !important;
+  height: 32px;
+  border-radius: 4px;
+  width: 100%;
+  max-width: 240px;
+  border: 1px solid #2a3942;
+  font-size: 11px;
+  transition: all 0.15s ease;
+  background: #111b21;
+  color: #e9edef;
+  margin: 0 auto;
+}
+
+.folder-modal .chatme-search-input:focus,
+.folder-modal__input:focus {
+  outline: none;
+  border-color: rgba(0, 168, 132, 0.5); /* Green accent on focus */
+  box-shadow: none;
+}
+
+.folder-modal .chatme-search-input::placeholder {
+  color: rgba(233, 237, 239, 0.4); /* Light placeholder */
+  opacity: 0.6;
+}
+
+.folder-modal__inputWrap + .folder-modal__count {
+  display: none;
+}
+
+.folder-modal__inputWrap .folder-modal__count {
+  display: block;
+  font-size: 12px;
+  opacity: 0.6;
+  color: rgba(233, 237, 239, 0.5);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.folder-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.folder-modal__actions {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  width: auto;
+}
+
+.folder-modal__actions button {
+  flex: none;
+}
+
+.folder-modal .chatme-all-btn,
+.folder-modal .add-btn {
+  padding: 7px 12px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  transition: all 0.12s ease;
+  border: none;
+  cursor: pointer;
+  justify-content: center;
+  white-space: nowrap;
+  height: 30px;
+  display: flex;
+  align-items: center;
+}
+
+.folder-modal .chatme-all-btn {
+  background: transparent;
+  color: #8696a0;
+  border: 1px solid #2a3942;
+}
+
+.folder-modal .chatme-all-btn:hover:not(:disabled) {
+  background: rgba(0, 191, 165, 0.08);
+  border-color: #00bfa5;
+  color: #00bfa5;
+}
+
+.folder-modal .add-btn {
+  background: #00bfa5;
+  color: #0b1216;
+  border: none;
+}
+
+.folder-modal .add-btn:hover:not(:disabled) {
+  background: #00a890;
+}
+
+.folder-modal .add-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .chatme-modal.folder-modal {
+    width: 95%;
+    max-width: 340px;
+    margin: 0 auto;
+    height: fit-content;
+  }
+  
+  .folder-modal__content {
+    padding: 7px;
+  }
+  
+  .folder-modal__header {
+    padding: 7px 10px;
+  }
+
+  .folder-modal__actions {
+    width: 100%;
+    display: flex;
+    gap: 5px;
+  }
+
+  .folder-modal__actions button {
+    flex: 1;
+    padding: 6px 8px !important;
+    font-size: 10px !important;
+    height: 28px;
+  }
+}

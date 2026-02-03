@@ -1,0 +1,165 @@
+/* Login Modal - WhatsApp-Inspired Dark Theme */
+.login-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.login-modal-inner {
+  position: relative;
+  background: #0b1216;                          /* main background */
+  color: #e9edef;                               /* primary text */
+  width: 100%;
+  max-width: 420px;
+  padding: 60px 44px;
+  border-radius: 24px;
+  text-align: center;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+  border: 1px solid #2a3942;                    /* border color */
+  animation: scaleIn 0.4s ease-out;
+}
+
+/* Close Button */
+.close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8696a0;                               /* muted text */
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #e9edef;
+  transform: scale(1.05);
+}
+
+/* Welcome Title */
+.welcome-title {
+  margin: 0 0 56px;
+  line-height: 1.15;
+}
+
+.welcome-main {
+  display: block;
+  font-size: 42px;
+  font-weight: 800;
+  background: linear-gradient(90deg, #00a884, #25D366);  /* WhatsApp green gradient */
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.welcome-sub {
+  display: block;
+  font-size: 24px;
+  font-weight: 600;
+  color: #8696a0;                               /* secondary text */
+  margin-top: 10px;
+}
+
+/* Google Button - adapted to theme */
+.google-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 20px;
+  background: white;
+  color: #111b21;
+  font-weight: 600;
+  font-size: 16px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  margin: 8px 0;
+}
+
+.google-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.25);
+}
+
+.google-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Error Message */
+.error-message {
+  background: rgba(255, 107, 107, 0.18);        /* red-tinted error bg */
+  color: #fca5a5;
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin: 20px 0;
+  font-size: 14px;
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+/* Legal Text */
+.legal-text {
+  margin-top: 36px;
+  font-size: 13px;
+  color: #8696a0;
+  line-height: 1.6;
+}
+
+.legal-text a {
+  color: #00a884;                               /* accent green */
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.legal-text a:hover {
+  color: #25D366;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .login-modal-inner {
+    padding: 56px 36px;
+  }
+  .welcome-main {
+    font-size: 36px;
+  }
+  .welcome-sub {
+    font-size: 22px;
+  }
+}

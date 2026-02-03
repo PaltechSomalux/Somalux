@@ -1,0 +1,1038 @@
+/* Plus badge for current user avatar */
+.chatme-avatar-plus {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  background: #1cc459;
+  color: #fff;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  padding: 0;
+  z-index: 1002;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+  pointer-events: none;
+  /* Place relative to avatar container, not inside avatar image wrapper */
+}
+.chatme-avatar-container {
+  position: relative;
+}
+/* src/KissMe/Components/ChatItem.css */
+
+/* Base Chat Item Styles */
+.chatme-chat-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #0b1216;
+  transition: background-color 0.2s ease, border 0.2s ease;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* Only show border on last item */
+.chatme-chat-list > .chatme-chat-item:last-child {
+  border-bottom: 1px solid #2a3942;
+}
+
+/* Interactive States */
+.chatme-chat-item:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.chatme-chat-item.chatme-pinned {
+  background-color: rgba(0, 168, 132, 0.08);
+}
+
+.chatme-chat-item.chatme-archived {
+  opacity: 0.8;
+}
+
+.chatme-chat-item.deleting {
+  opacity: 0;
+  transform: translateX(-30px);
+  transition: all 0.3s ease-out;
+}
+
+
+/* Selected State (for multi-select only) */
+.chatme-chat-item.chatme-selected {
+  border: none;/* Visible green border */
+  background-color: #182229; /* Distinct background for selected items */
+  border-radius: 4px; /* Optional: slight rounding for aesthetics */
+}
+
+/* Checkbox for Selection Mode */
+.chatme-checkbox-container {
+  display: none; /* Hidden by default */
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.chatme-chat-item.selection-mode .chatme-checkbox-container {
+  display: block; /* Show checkbox only in selection mode */
+}
+
+.chatme-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #25D366; /* Green checkbox to match theme */
+  cursor: pointer;
+}
+
+/* Avatar Styles */
+.chatme-avatar-container {
+  position: relative;
+  margin-right: 15px;
+  flex-shrink: 0;
+   z-index: 0 !important;
+}
+
+.chatme-avatar-image-wrapper {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.chatme-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-color: #2a3942;
+}
+
+.chatme-avatar-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: #2a3942;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  color: #d1d7db;
+  font-size: 19px;
+  user-select: none;
+}
+
+.chatme-online-dot {
+  position: absolute !important;
+  bottom: 3.7px !important;
+  right: 1.7px !important;
+  width: 9px !important;
+  height: 9px !important;
+  border-radius: 50% !important;
+  background-color: rgb(7, 179, 7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.199) !important;  /* Dark mode bg match */
+  z-index: 1001 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;  /* Depth */
+}
+
+/* Disappearing messages badge (small clock) */
+.chatme-disappearing-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px; /* Avoid clash with online dot on right */
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0b1216; /* match list bg */
+  border: 2px solid #0b1216;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #aebac1;
+  z-index: 1002;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .chatme-disappearing-badge {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Chat Content Styles */
+.chatme-chat-content {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chatme-chat-info-container {
+  flex-grow: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chatme-chat-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.chatme-chat-name {
+  font-weight: 500;
+  color: #b8bcc4;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chatme-chat-time {
+  font-size: 10px;
+  color: #8696a0;
+  flex-shrink: 0;
+  margin-left: 10px;
+  white-space: nowrap;
+}
+
+.chatme-last-message-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.chatme-last-message {
+  font-size: 11px;
+  color: #8696a0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-grow: 1;
+  max-width: calc(100% - 80px);
+}
+
+.chatme-message-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chatme-message-text.typing {
+  font-style: italic;
+  color: #25D366;
+}
+
+/* Typing Indicator Styles */
+.chatme-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #00a884;
+  font-style: italic;
+}
+
+.chatme-typing-dot {
+  width: 4px;
+  height: 4px;
+  background: #00a884;
+  border-radius: 50%;
+  animation: chatme-typing-bounce 1.4s infinite ease-in-out;
+}
+
+.chatme-typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.chatme-typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.chatme-typing-text {
+  font-size: 10px;
+  color: #00a884;
+}
+
+@keyframes chatme-typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+/* Unread Count Badge */
+.chatme-unread-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background-color: #25D366;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 10px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+/* Status Indicator Styles - Tick colors */
+.chatme-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  line-height: 1;
+  margin-right: 4px;
+  color: #8696A0; /* Default grey for sent/delivered */
+  font-weight: 600;
+}
+
+.chatme-status-indicator.sent {
+  color: #8696A0; /* Single grey tick */
+}
+
+.chatme-status-indicator.delivered {
+  color: #8696A0; /* Double grey ticks */
+}
+
+.chatme-status-indicator.read {
+  color: #53BDEB; /* Double blue ticks (WhatsApp style) */
+}
+
+/* Status Icons */
+.chatme-lock-icon,
+.chatme-pin-icon,
+.chatme-muted-icon,
+.chatme-unmuted-icon {
+  color: #8696a0;
+  font-size: 9px;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chatme-lock-icon,
+.chatme-pin-icon {
+  margin-right: 2px;
+}
+
+/* Options Wrapper */
+.chatme-options-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.chatme-chat-options-button {
+  background: none;
+  border: none;
+  padding: 8px;
+  color: #8696a0;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: all 0.2s ease;
+  width: 32px;
+  height: 32px;
+}
+
+.chatme-chat-item:hover .chatme-chat-options-button {
+  opacity: 1;
+}
+
+.chatme-chat-options-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #e9edef;
+}
+
+.chatme-chat-options-button svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Options Menu */
+.chatme-chat-options-menu {
+  position: fixed;
+  background-color: #111b21;
+  border-radius: 12px;
+  color: white;
+  z-index: 1000;
+  width: max-content;
+  min-width: 200px;
+  max-width: 240px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 1px solid #2a3942;
+  animation: chatme-fadeInScale 0.15s ease-out;
+  overflow: hidden;
+  padding: 8px 0;
+}
+
+@keyframes chatme-fadeInScale {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Menu Button Base Structure */
+.chatme-menu-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  box-sizing: border-box;
+  position: relative;
+  color: #e9edef;
+  font-size: 11px;
+}
+
+.chatme-menu-button:hover {
+  background-color: #1a2833;
+}
+
+/* Icon Alignment */
+.chatme-menu-icon-wrapper {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.chatme-menu-icon-wrapper svg {
+  width: 12px;
+  height: 12px;
+  color: inherit;
+}
+
+/* Text Alignment */
+.chatme-menu-text-wrapper {
+  flex: 1;
+  text-align: left;
+  font-size: 10px;
+  line-height: 1.3;
+  color: inherit;
+}
+
+/* Delete Button Specific Styles */
+.chatme-delete-button {
+  border-top: 1px solid #2a3942 !important;
+  color: #e9edef !important;
+  margin-top: 4px;
+  padding-top: 10px;
+}
+
+.chatme-delete-button:hover {
+  background-color: #1a2833 !important;
+}
+
+.chatme-delete-button .chatme-menu-icon-wrapper svg {
+  color: #e9edef;
+}
+
+/* Delete Confirmation Dialog Styles */
+.chatme-delete-confirmation {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  backdrop-filter: blur(4px);
+}
+
+.chatme-delete-confirm-content {
+  background: #111b21;
+  padding: 24px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid #2a3942;
+  animation: chatme-confirmSlideIn 0.2s ease-out;
+}
+
+@keyframes chatme-confirmSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.chatme-delete-confirm-icon {
+  width: 48px;
+  height: 48px;
+  color: #e9edef;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chatme-delete-confirm-content h3 {
+  margin: 0 0 8px 0;
+  color: #e9edef;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.chatme-delete-confirm-content p {
+  margin: 0 0 20px 0;
+  color: #8696a0;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.chatme-delete-confirm-content strong {
+  color: #e9edef;
+}
+
+.chatme-delete-confirm-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.chatme-confirm-cancel-btn,
+.chatme-confirm-delete-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  min-width: 80px;
+}
+
+.chatme-confirm-cancel-btn {
+  background: #2a3942;
+  color: #e9edef;
+  border: 1px solid #404d56;
+}
+
+.chatme-confirm-cancel-btn:hover {
+  background: #3d4a52;
+  border-color: #5a6b78;
+}
+
+.chatme-confirm-delete-btn {
+  background: #3d2c2c;
+  color: #e9edef;
+  border: 1px solid #5a3a3a;
+}
+
+.chatme-confirm-delete-btn:hover {
+  background: #4a3535;
+  border-color: #6a4a4a;
+}
+
+/* Light Mode Styles */
+@media (prefers-color-scheme: light) {
+  .chatme-chat-item {
+    background-color: #ffffff;
+  }
+
+  .chatme-chat-list > .chatme-chat-item:last-child {
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .chatme-chat-item:hover {
+    background-color: #f9fafb;
+  }
+
+  .chatme-chat-item.chatme-pinned {
+    background-color: rgba(0, 168, 132, 0.1);
+  }
+
+  .chatme-chat-item.active-chat {
+    background-color: rgba(37, 211, 102, 0.08);
+    border-left: 3px solid #25D366;
+  }
+
+  .chatme-chat-item.active-chat::before {
+    background-color: #25D366;
+  }
+
+  .chatme-chat-item.active-chat:hover {
+    background-color: rgba(37, 211, 102, 0.12);
+  }
+
+  .chatme-chat-item.chatme-selected {
+    border: 2px solid #25D366;
+    background-color: #f3f4f6;
+  }
+
+  .chatme-chat-item.chatme-archived {
+    opacity: 0.7;
+  }
+
+  .chatme-chat-name {
+    color: #111827;
+  }
+
+  .chatme-last-message {
+    color: #6b7280;
+  }
+
+  .chatme-unread-count {
+    background-color: #25D366;
+    color: #fff;
+    z-index: 10;
+  }
+
+  .chatme-avatar-circle {
+    background-color: #f3f4f6;
+    color: #374151;
+  }
+
+  .chatme-online-dot {
+    border-color: #ffffff;
+  }
+
+  .chatme-chat-time {
+    color: #6b7280;
+  }
+
+  .chatme-status-indicator {
+    color: #6b7280;
+  }
+
+  .chatme-status-indicator.read {
+    color: #25D366;
+  }
+
+  .chatme-lock-icon,
+  .chatme-pin-icon,
+  .chatme-muted-icon,
+  .chatme-unmuted-icon {
+    color: #9ca3af;
+  }
+
+  .chatme-chat-options-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: #111827;
+  }
+
+  .chatme-chat-options-menu {
+    background-color: #ffffff;
+    color: #111827;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e5e7eb;
+  }
+
+  .chatme-menu-button {
+    color: #374151;
+  }
+
+  .chatme-menu-button:hover {
+    background-color: #f9fafb;
+  }
+
+  .chatme-delete-button {
+    color: #dc2626 !important;
+    border-top: 1px solid #e5e7eb !important;
+  }
+
+  .chatme-delete-button:hover {
+    background-color: rgba(220, 38, 38, 0.1) !important;
+  }
+
+  .chatme-delete-button .chatme-menu-icon-wrapper svg {
+    color: #dc2626;
+  }
+
+  .chatme-menu-text-wrapper {
+    color: #374151;
+  }
+
+  .chatme-delete-confirm-content {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+
+  .chatme-delete-confirm-content h3 {
+    color: #111827;
+  }
+
+  .chatme-delete-confirm-content p {
+    color: #6b7280;
+  }
+
+  .chatme-delete-confirm-content strong {
+    color: #111827;
+  }
+
+  .chatme-confirm-cancel-btn {
+    background: #f9fafb;
+    color: #374151;
+    border-color: #d1d5db;
+  }
+
+  .chatme-confirm-cancel-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+  }
+
+  .chatme-confirm-delete-btn {
+    background: #dc2626;
+    border-color: #b91c1c;
+  }
+
+  .chatme-confirm-delete-btn:hover {
+    background: #b91c1c;
+    border-color: #991b1b;
+  }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .chatme-chat-item {
+    padding: 10px 12px;
+  }
+
+  .chatme-chat-options-button {
+    opacity: 1;
+    font-size: 14px;
+    margin-right: -2px;
+  }
+
+  .chatme-avatar-image-wrapper,
+  .chatme-avatar-circle {
+    width: 45px;
+    height: 45px;
+    font-size: 17px;
+  }
+
+  .chatme-checkbox {
+    width: 16px;
+    height: 16px;
+  }
+
+  .chatme-chat-name {
+    font-size: 13px;
+  }
+
+  .chatme-last-message {
+    font-size: 10px;
+  }
+
+  .chatme-chat-time {
+    font-size: 11px;
+  }
+
+  .chatme-unread-count {
+    min-width: 18px;
+    height: 18px;
+    font-size: 11px;
+    padding: 0 5px;
+    z-index: 10;
+  }
+
+  .chatme-chat-options-menu {
+    min-width: 160px;
+    max-width: 200px;
+  }
+
+  .chatme-menu-button {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .chatme-menu-icon-wrapper {
+    width: 22px;
+    height: 22px;
+    margin-right: 10px;
+  }
+
+  .chatme-menu-icon-wrapper svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .chatme-menu-text-wrapper {
+    font-size: 13px;
+  }
+
+  .chatme-delete-confirm-content {
+    padding: 20px;
+    max-width: 280px;
+  }
+
+  .chatme-confirm-cancel-btn,
+  .chatme-confirm-delete-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chatme-chat-item {
+    padding: 8px 5px;
+  }
+
+  .chatme-avatar-image-wrapper,
+  .chatme-avatar-circle {
+    width: 45px;
+    height: 45px;
+    font-size: 15px;
+    margin-right: -1px;
+  }
+
+  .chatme-checkbox {
+    width: 14px;
+    height: 14px;
+  }
+
+  .chatme-chat-name {
+    font-size: 12px;
+  }
+
+  .chatme-last-message {
+    font-size: 10px;
+    max-width: calc(100% - 60px);
+  }
+
+  .chatme-chat-time {
+    font-size: 10px;
+  }
+
+  .chatme-unread-count {
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
+    padding: 0 4px;
+    z-index: 10;
+  }
+
+  .chatme-chat-options-menu {
+    min-width: 140px;
+    max-width: 180px;
+    left: auto !important;
+    right: 10px !important;
+  }
+
+  .chatme-menu-button {
+    padding: 8px 12px;
+  }
+
+  .chatme-menu-icon-wrapper {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+  }
+
+  .chatme-menu-icon-wrapper svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .chatme-menu-text-wrapper {
+    font-size: 12px;
+  }
+
+  .chatme-delete-confirm-content {
+    padding: 16px;
+    max-width: 260px;
+    margin: 20px;
+  }
+
+  .chatme-delete-confirm-content h3 {
+    font-size: 18px;
+  }
+
+  .chatme-delete-confirm-content p {
+    font-size: 13px;
+  }
+
+  .chatme-delete-confirm-buttons {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .chatme-confirm-cancel-btn,
+  .chatme-confirm-delete-btn {
+    width: 100%;
+    padding: 10px;
+  }
+}
+
+/* Chat Lock Modal Styles */
+.chatlock-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(5px);
+}
+
+.chatlock-modal {
+  background: #111b21;
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 320px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid #2a3942;
+}
+
+.chatlock-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.chatlock-modal-header h3 {
+  margin: 0;
+  color: #e9edef;
+  font-size: 20px;
+}
+
+.chatlock-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #8696a0;
+}
+
+.chatlock-pin-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.chatlock-pin-field {
+  padding: 12px 16px;
+  border: 2px solid #2a3942;
+  border-radius: 8px;
+  font-size: 18px;
+  text-align: center;
+  letter-spacing: 4px;
+  color: #e9edef;
+  background: #182229;
+  transition: border-color 0.2s;
+}
+
+.chatlock-pin-field:focus {
+  outline: none;
+  border-color: #25D366;
+}
+
+.chatlock-error {
+  color: #e53e3e;
+  text-align: center;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.chatlock-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.chatlock-btn-primary,
+.chatlock-btn-secondary {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chatlock-btn-primary {
+  background: #25D366;
+  color: #fff;
+}
+
+.chatlock-btn-primary:hover {
+  background: #1ebb55;
+}
+
+.chatlock-btn-secondary {
+  background: #182229;
+  color: #e9edef;
+  border: 1px solid #2a3942;
+}
+
+.chatlock-btn-secondary:hover {
+  background: #2a3942;
+}
+
+.chatme-last-message-row.locked {
+  opacity: 0.6;
+  font-style: italic;
+  color: #888;
+}
+
+.chatme-locked-text {
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.locked-label {
+  opacity: 0.6;
+  font-size: 0.8rem;
+}
+
+.chatme-avatar-fallback-icon {
+  font-size: 40px; /* or same as your avatar size */
+  color: #aaa; /* neutral gray */
+}
