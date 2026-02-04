@@ -1972,11 +1972,7 @@ export const PaperPanel = ({ demoMode = false }) => {
         <header className="headerpast">
           <h1 className="titlepast">Past Papers</h1>
         </header>
-      ) : (
-        <header className="headerpast">
-          <h1 className="titlepast">{universityFilter} Past Papers</h1>
-        </header>
-      )}
+      ) : null}
 
       {/* Show Universities Grid if no university is selected */}
       {!universityFilter ? (
@@ -2025,8 +2021,8 @@ export const PaperPanel = ({ demoMode = false }) => {
             />
           ) : (
             <>
-          {/* Back Button - Responsive Header */}
-          <div className="back-header-pastpast" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid rgba(134, 150, 160, 0.2)' }}>
+          {/* Back Button integrated with Header Title */}
+          <header className="headerpast" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.95, borderBottom: '0.5px solid rgba(134, 150, 160, 0.15)', paddingBottom: '12px' }}>
             <button 
               onClick={() => {
                 setUniversityFilter(null);
@@ -2035,11 +2031,12 @@ export const PaperPanel = ({ demoMode = false }) => {
               }}
               className="back-button-past"
               title="Back to universities"
+              style={{ margin: 0, padding: 0, display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}
             >
               <FiChevronLeft size={18} /> Back
             </button>
-            <span style={{ color: '#8696a0' }}>|</span>
-          </div>
+            <h1 className="titlepast" style={{ margin: 0, flex: 1, textAlign: 'center' }}>{universityFilter} Exam Papers</h1>
+          </header>
 
           {/* Search and Filter Controls - Matching BookPanel Layout */}
           <PaperGrid

@@ -1,7 +1,7 @@
 // Full ChatMe.jsx - With Supabase integration
 /* eslint-disable no-undef */
 // TODO: Replace remaining Firebase function calls (collection, doc, query, where, orderBy, etc.) with Supabase service methods
-import React, { useEffect, useMemo, useRef, useState ,useCallback} from 'react';
+import React, { useEffect, useMemo, useRef, useState ,useCallback, useLayoutEffect} from 'react';
 import { supabase } from '../../../supabase';
 import { SupabaseChatService } from '../services/SupabaseChatService';
 import { useChatLock } from './Components/utils/ChatLockProvider';
@@ -55,8 +55,35 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
   // Fallback value while selfChatId is loading
   const effectiveYourselfChatId = yourselfChatId || currentUser?.id || 'yourself';
   
-  const [chats, setChats] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Load chats from cache immediately - ZERO DELAY
+  const [chats, setChats] = useState(() => {
+    try {
+      const cached = localStorage.getItem('chatme_chats_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      return !localStorage.getItem('chatme_chats_cache');
+    } catch {
+      return true;
+    }
+  });
+  
+  // Synchronously inject cached data into DOM before React renders
+  useLayoutEffect(() => {
+    const cached = localStorage.getItem('chatme_chats_cache');
+    if (cached && isLoading) {
+      try {
+        const chatsData = JSON.parse(cached);
+        setChats(chatsData);
+        setIsLoading(false);
+      } catch {}
+    }
+  }, []);
+
   const [contacts, setContacts] = useState([]);
   const [viewingProfile, setViewingProfile] = useState(null);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -734,7 +761,7 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
   // This ensures both mobile and desktop views fetch chats
   // from the same UnifiedChatService, preventing data inconsistencies
   
-  // Main chat fetching using unified service
+  // Main chat fetching using unified service - Show cache INSTANTLY, load in background
   useEffect(() => {
     if (!currentUser?.id) {
       setChats([]);
@@ -761,9 +788,15 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
         setChats(transformedChats);
         setIsLoading(false);
 
-        // Set up real-time message listeners for each chat
+        // Cache chats silently
+        try {
+          localStorage.setItem('chatme_chats_cache', JSON.stringify(transformedChats));
+        } catch (e) {}
+
+        // Background updates - ZERO DELAY to initial render
         if (transformedChats.length > 0) {
-          setupMessageListeners(transformedChats);
+          // Defer with long timeout so UI renders first
+          setTimeout(() => setupMessageListeners(transformedChats), 500);
         }
       } catch (error) {
         console.error('❌ ChatMe: Error processing unified chats:', error?.message || String(error), error?.stack);

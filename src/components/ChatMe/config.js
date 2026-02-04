@@ -9,8 +9,8 @@ const API_CONFIG = {
   },
   // Production
   production: {
-    WEBSOCKET_URL: process.env.REACT_APP_WEBSOCKET_URL || 'wss://api.somalux.com/chatme',
-    API_BASE: process.env.REACT_APP_API_BASE || 'https://api.somalux.com',
+    WEBSOCKET_URL: process.env.REACT_APP_WEBSOCKET_URL || 'wss://somalux.co.ke/chatme',
+    API_BASE: process.env.REACT_APP_API_BASE || 'https://somalux.co.ke',
   }
 };
 

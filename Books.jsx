@@ -183,7 +183,7 @@ const Books = ({ userProfile }) => {
         <div className="panel-title">Books Management</div>
 
         <div className="grid-2" style={{ marginBottom: 6 }}>
-          <div className="panel" style={{ padding: '6px 8px' }}>
+          <div className="panel" style={{ padding: '6px 8px', maxWidth: '150px' }}>
             <label className="label" style={{ marginBottom: '0.2rem' }}>Search</label>
             <input className="input" value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} placeholder="Search by title..." style={{ fontSize: '0.9rem' }} />
           </div>

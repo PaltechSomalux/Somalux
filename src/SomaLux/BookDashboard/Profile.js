@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { UserCircle, SignOut, Bookmark, IdentificationCard } from "@phosphor-icons/react";
 import { useNavigate } from 'react-router-dom';
-import { FiTrendingUp, FiUpload, FiBarChart2 } from 'react-icons/fi';
+import { FiTrendingUp, FiUpload, FiBarChart2, FiStar } from 'react-icons/fi';
 import { statsCache, userCache } from "../Books/utils/cacheManager";
 import { supabase } from "../Books/supabaseClient";
 import { ProfileAvatar } from "./ProfileAvatar";
 import { AuthModals } from "./AuthModals";
 import VerificationTierModal from "../Books/VerificationTierModal";
+import VerificationBadge from "../Books/Admin/components/VerificationBadge";
 import QRCodeShare from "../../components/QRCodeShare";
 import "./Profile.css";
 
@@ -373,31 +374,109 @@ export const Profile = ({ user: propUser = null }) => {
               padding: '0',
               marginTop: '8px',
               display: 'flex',
-              gap: '24px',
+              gap: '8px',
               alignItems: 'center',
-              justifyContent: 'flex-end',
+              justifyContent: 'space-between',
             }}>
+              {/* Upload Button */}
+              {authUser && (
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    navigate('/user/upload');
+                  }}
+                  style={{
+                    padding: '5px 6px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: '#e9edef',
+                    backgroundColor: '#0b1216',
+                    border: '1px solid #2a3942',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    minWidth: '65px',
+                    textAlign: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1a2332';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#0b1216';
+                  }}
+                  title="Upload content"
+                >
+                  <FiUpload size={14} />
+                  Upload
+                </button>
+              )}
+
+              {/* Upgrade Button */}
+              {authUser && currentUserTier === 'basic' && (
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setShowVerificationModal(true);
+                  }}
+                  style={{
+                    padding: '5px 6px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: '#e9edef',
+                    backgroundColor: '#0b1216',
+                    border: '1px solid #2a3942',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    minWidth: '65px',
+                    textAlign: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1a2332';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#0b1216';
+                  }}
+                  title="Upgrade account"
+                >
+                  <VerificationBadge tier="premium" size="sm" showLabel={false} showTooltip={false} />
+                  Upgrade
+                </button>
+              )}
+
               {/* Grid Actions Button */}
               {authUser && (
                 <button
                   onClick={() => setShowActionsGrid(!showActionsGrid)}
                   style={{
-                    padding: '4px 6px',
+                    padding: '6px 6px',
                     fontSize: '11px',
                     fontWeight: '600',
-                    color: '#00a884',
-                    backgroundColor: showActionsGrid ? 'rgba(0, 168, 132, 0.2)' : 'transparent',
-                    border: '1px solid #00a884',
+                    color: '#e9edef',
+                    backgroundColor: showActionsGrid ? '#1a2332' : '#0b1216',
+                    border: '1px solid #2a3942',
                     borderRadius: '3px',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     whiteSpace: 'nowrap',
+                    minWidth: '65px',
+                    textAlign: 'center',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(0, 168, 132, 0.1)';
+                    e.currentTarget.style.backgroundColor = '#1a2332';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = showActionsGrid ? 'rgba(0, 168, 132, 0.2)' : 'transparent';
+                    e.currentTarget.style.backgroundColor = showActionsGrid ? '#1a2332' : '#0b1216';
                   }}
                   title="Quick actions"
                 >
@@ -447,16 +526,10 @@ export const Profile = ({ user: propUser = null }) => {
               <div style={{
                 display: 'flex',
                 flexDirection: 'row',
-                gap: '16px',
-                justifyContent: 'space-between'
+                gap: '8px',
+                alignItems: 'center',
+                justifyContent: 'space-between',
               }}>
-                {/* Left Column - 2 buttons */}
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  flex: 1
-                }}>
                 {/* Stats */}
                 <button
                   onClick={() => {
@@ -465,76 +538,27 @@ export const Profile = ({ user: propUser = null }) => {
                     navigate('/books/reading-dashboard');
                   }}
                   style={{
-                    padding: '5px 9px',
-                    background: 'transparent',
-                    border: '1px solid #00a884',
-                    color: '#00a884',
+                    padding: '4px 6px',
+                    background: '#0b1216',
+                    border: '1px solid #2a3942',
+                    color: '#e9edef',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    fontSize: '10px',
+                    fontSize: '11px',
                     fontWeight: '600',
-                    borderRadius: '4px',
+                    borderRadius: '3px',
                     whiteSpace: 'nowrap',
-                    width: '100%',
-                    justifyContent: 'center'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(0, 168, 132, 0.1)';
+                    e.currentTarget.style.backgroundColor = '#1a2332';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.backgroundColor = '#0b1216';
                   }}
+                  title="View statistics"
                 >
-                  <FiBarChart2 size={13} />
-                  Stats
+                  📊 Stats
                 </button>
-
-                {/* Upload */}
-                <button
-                  onClick={() => {
-                    setShowActionsGrid(false);
-                    setIsOpen(false);
-                    navigate('/user/upload');
-                  }}
-                  style={{
-                    padding: '5px 9px',
-                    background: 'transparent',
-                    border: '1px solid #34B7F1',
-                    color: '#34B7F1',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    fontSize: '10px',
-                    fontWeight: '600',
-                    borderRadius: '4px',
-                    whiteSpace: 'nowrap',
-                    width: '100%',
-                    justifyContent: 'center'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(52, 183, 241, 0.1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                  }}
-                >
-                  <FiUpload size={13} />
-                  Upload
-                </button>
-                </div>
-
-                {/* Right Column - 3 buttons */}
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  flex: 1
-                }}>
 
                 {/* QR Code */}
                 <button
@@ -543,68 +567,27 @@ export const Profile = ({ user: propUser = null }) => {
                     setShowQRCode(true);
                   }}
                   style={{
-                    padding: '5px 9px',
-                    background: 'transparent',
-                    border: '1px solid #a78bfa',
-                    color: '#a78bfa',
+                    padding: '4px 6px',
+                    background: '#0b1216',
+                    border: '1px solid #2a3942',
+                    color: '#e9edef',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    fontSize: '10px',
+                    fontSize: '11px',
                     fontWeight: '600',
-                    borderRadius: '4px',
+                    borderRadius: '3px',
                     whiteSpace: 'nowrap',
-                    width: '100%',
-                    justifyContent: 'center'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(167, 139, 250, 0.1)';
+                    e.currentTarget.style.backgroundColor = '#1a2332';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.backgroundColor = '#0b1216';
                   }}
+                  title="Show QR code"
                 >
-                  📱
-                  <span>QR Code</span>
+                  📱 QR Code
                 </button>
-
-                {/* Upgrade */}
-                {currentUserTier === 'basic' && (
-                  <button
-                    onClick={() => {
-                      setShowActionsGrid(false);
-                      setShowVerificationModal(true);
-                    }}
-                    style={{
-                      padding: '5px 9px',
-                      background: 'transparent',
-                      border: '1px solid #f59e0b',
-                      color: '#f59e0b',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      fontSize: '10px',
-                      fontWeight: '600',
-                      borderRadius: '4px',
-                      whiteSpace: 'nowrap',
-                      width: '100%',
-                      justifyContent: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    ⬆️
-                    <span>Upgrade</span>
-                  </button>
-                )}
 
                 {/* Sign Out */}
                 <button
@@ -613,33 +596,27 @@ export const Profile = ({ user: propUser = null }) => {
                     setShowSignOutModal(true);
                   }}
                   style={{
-                    padding: '5px 9px',
-                    background: 'transparent',
-                    border: '1px solid #ff6b6b',
-                    color: '#ff6b6b',
+                    padding: '4px 6px',
+                    background: '#0b1216',
+                    border: '1px solid #f87171',
+                    color: '#f87171',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    fontSize: '10px',
+                    fontSize: '11px',
                     fontWeight: '600',
-                    borderRadius: '4px',
+                    borderRadius: '3px',
                     whiteSpace: 'nowrap',
-                    width: '100%',
-                    justifyContent: 'center'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 107, 107, 0.1)';
+                    e.currentTarget.style.backgroundColor = 'rgba(248, 113, 113, 0.1)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.backgroundColor = '#0b1216';
                   }}
+                  title="Sign out"
                 >
-                  🚪
-                  <span>Sign Out</span>
+                  🚪 Sign Out
                 </button>
-                </div>
               </div>
             </div>
           )}

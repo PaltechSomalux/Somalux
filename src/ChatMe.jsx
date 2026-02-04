@@ -39,21 +39,13 @@ const ChatMe = ({ userProfile, onChatWindowActive, onChatSelected }) => {
     <div 
       style={{ 
         width: '100%', 
-        height: '100vh',
-        height: '100dvh',
-        maxHeight: '100vh',
-        maxHeight: '100dvh',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 1,
+        height: '100%',
         display: 'flex',
         flexDirection: 'column',
         margin: 0,
         padding: 0,
-        overflow: 'hidden'
+        overflow: 'hidden',
+        boxSizing: 'border-box'
       }}
     >
       <ChatMeApp onChatWindowActive={onChatWindowActive} onChatSelected={onChatSelected} />

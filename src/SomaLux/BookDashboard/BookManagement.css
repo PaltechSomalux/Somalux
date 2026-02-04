@@ -21,11 +21,18 @@
 /* Wrapper */
 .book-management {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-main);
   color: var(--text-main);
   font-family: "Inter", "Segoe UI", sans-serif;
   transition: background 0.3s ease;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 /* ================= HEADER ================= */
@@ -199,20 +206,46 @@
 /* ================= MAIN CONTENT ================= */
 
 .file-converter-content-convert {
-  padding: 24px 20px;
-  min-height: calc(100vh - 150px);
-  margin-top: 105px;
   animation: fadeIn 0.4s ease-in-out;
-  /* Enable touch scrolling */
-  -webkit-overflow-scrolling: touch;
   /* Prevent unwanted text selection during swipe */
   user-select: none;
   -webkit-user-select: none;
   /* Smooth transitions for tab changes */
   transition: opacity 0.3s ease;
-  overflow-y: auto;
   box-sizing: border-box;
   position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background-color: #0b1216;
+}
+
+/* Default scrollable layout for non-chat tabs */
+.file-converter-content-convert:not([data-active-tab="chatme"]) {
+  padding: 8px 8px;
+  margin: 125px 0 0 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  /* Hide scrollbars but keep scrolling */
+  scrollbar-width: none;
+  /* Enable touch scrolling */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+/* Hide webkit scrollbars */
+.file-converter-content-convert:not([data-active-tab="chatme"])::-webkit-scrollbar {
+  display: none;
+}
+
+/* Ensure child elements don't prevent scrolling */
+.file-converter-content-convert:not([data-active-tab="chatme"]) > * {
+  width: 100%;
 }
 
 /* Fixed layout for ChatMe tab - no scrolling, fills viewport */
@@ -260,11 +293,24 @@
     top: 50px;
   }
 
-  .file-converter-content-convert {
-    padding: 18px;
-    margin-top: 100px;
-    min-height: auto;
-    overflow-y: auto;
+  /* Non-chat tabs scrolling - CRITICAL: Small gap instead of edge-to-edge */
+  .file-converter-content-convert:not([data-active-tab="chatme"]) {
+    padding: 8px 8px !important;
+    margin: 115px 0 0 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    /* Hide scrollbars */
+    scrollbar-width: none;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    flex: 1 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Hide webkit scrollbars on mobile */
+  .file-converter-content-convert:not([data-active-tab="chatme"])::-webkit-scrollbar {
+    display: none;
   }
 
   /* Fixed layout for ChatMe on mobile */
@@ -296,11 +342,6 @@
     /* Increase touch target size for mobile */
     min-width: 70px;
     padding: 12px 16px;
-  }
-
-  .file-converter-content-convert {
-    /* Ensure touch events work properly */
-    touch-action: pan-y;
   }
 }
 
