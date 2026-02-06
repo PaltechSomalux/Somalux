@@ -274,36 +274,36 @@ export const ChatList = ({
             </div>
             <div className="chatme-header-buttons">
               <button
-                className="chatme-all-btn"
+                className="folder-tab"
                 onClick={() => {
                   setShowArchived(false);
                   if (typeof onShowAll === 'function') onShowAll();
                 }}
                 style={{
                   fontWeight: (!showArchived && activeTab === 'all') ? 600 : 500,
-                  color: (!showArchived && activeTab === 'all') ? 'var(--accent, #00a884)' : '#ffffff',
+                  color: (!showArchived && activeTab === 'all') ? '#00a884' : '#aebac1',
                 }}
               >
                 All
               </button>
               <button
-                className="chatme-archive-btn"
+                className="folder-tab"
                 onClick={() => onShowFolders && onShowFolders()}
                 title="Folders"
                 style={{
                   fontWeight: (activeTab === 'folders') ? 600 : 500,
-                  color: (activeTab === 'folders') ? 'var(--accent, #00a884)' : '#ffffff',
+                  color: (activeTab === 'folders') ? '#00a884' : '#aebac1',
                 }}
               >
                 {activeFolderName && activeFolderName.trim() ? activeFolderName : 'Folders'}
               </button>
               {hasArchivedChats && (
                 <button
-                  className="chatme-archive-btn"
+                  className="folder-tab"
                   onClick={() => setShowArchived(!showArchived)}
                   style={{
                     fontWeight: (showArchived && activeTab === 'all') ? 600 : 500,
-                    color: (showArchived && activeTab === 'all') ? 'var(--accent, #00a884)' : '#ffffff',
+                    color: (showArchived && activeTab === 'all') ? '#00a884' : '#aebac1',
                   }}
                 >
                   {showArchived ? 'Archived' : 'Archived'}

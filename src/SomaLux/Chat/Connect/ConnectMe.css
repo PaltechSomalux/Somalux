@@ -304,7 +304,7 @@
   top: 0;
   min-height: 64px;
   z-index: 100;
-  border-bottom: 1px solid #2a3942;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   margin-bottom: 40px;
 }
 
@@ -453,6 +453,8 @@
   transition: color 0.2s ease;
   position: relative;
   border: none;
+  outline: none;
+  box-shadow: none;
 }
 
 .mobile-tabConnect.active {
@@ -513,12 +515,25 @@
   width: 26px;
   height: 26px;
   margin-bottom: 3px;
+  border: none;
+  outline: none;
+  box-shadow: none;
 }
 
 .mobile-tabConnect span {
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.2px;
+}
+
+.mobile-tab-labelConnect {
+  color: #999;
+  display: block;
+  margin-top: 2px;
+}
+
+.mobile-tabConnect.active .mobile-tab-labelConnect {
+  color: #00a884;
 }
 
 /* ===== RESPONSIVE ===== */

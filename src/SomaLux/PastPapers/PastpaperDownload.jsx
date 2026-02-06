@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import { supabase } from '../Books/supabaseClient';
 import { trackPastPaperDownload } from '../Books/Admin/pastPapersApi';
+import { trackPaperDownload } from '../Books/utils/savedItemsService';
 import { downloadOptimizer } from '../../utils/DownloadOptimizer';
 import { checkDownloadLimit, recordDownload } from '../../utils/downloadLimitService';
 import DownloadLimitModal from '../Books/DownloadLimitModal';
@@ -189,6 +190,10 @@ export const Download = ({
         await trackPastPaperDownload(paper.id);
         // Record in download history
         await recordDownload(user, 'paper', paper.id, paper.title || paper.course);
+        // Track in saved items for authenticated users
+        if (user?.id) {
+          await trackPaperDownload(user.id, paper.id);
+        }
       }
 
       setDownloading(false);

@@ -867,7 +867,7 @@ const MyGroupsInner = ({ searchQuery: externalSearchQuery, onGroupViewChange }) 
                 if (activeTab === 'folders' && selectedFolder) {
                   return (
                     <div className="group-header-top" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <button className="group-all-btn" onClick={() => { setSelectedFolder(null); }} title="Back" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center' }}><FiArrowLeft size={80} /></button>
+                      <button className="group-all-btn" onClick={() => { setSelectedFolder(null); }} title="Back" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', height: '40px', width: '40px', cursor: 'pointer', color: '#00a884' }}><FiArrowLeft size={32} /></button>
                       <h2 style={{ margin: 0, color: '#ccc', fontSize: '16px' }}>{selectedFolder?.name || ''}</h2>
                       <input
                         type="text"

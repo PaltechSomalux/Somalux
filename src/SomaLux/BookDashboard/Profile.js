@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import { UserCircle, SignOut, Bookmark, IdentificationCard } from "@phosphor-icons/react";
 import { useNavigate } from 'react-router-dom';
-import { FiTrendingUp, FiUpload, FiBarChart2, FiStar } from 'react-icons/fi';
+import { FiTrendingUp, FiUpload, FiDownload, FiBarChart2, FiStar } from 'react-icons/fi';
 import { statsCache, userCache } from "../Books/utils/cacheManager";
 import { supabase } from "../Books/supabaseClient";
 import { ProfileAvatar } from "./ProfileAvatar";
@@ -22,6 +23,9 @@ export const Profile = ({ user: propUser = null }) => {
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [showActionsGrid, setShowActionsGrid] = useState(false);
+  const [showSavedModal, setShowSavedModal] = useState(false);
+  const [savedItems, setSavedItems] = useState([]);
+  const [loadingSavedItems, setLoadingSavedItems] = useState(false);
 
   const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -141,6 +145,18 @@ export const Profile = ({ user: propUser = null }) => {
       document.body.style.overflow = "unset";
     };
   }, [showActionsGrid]);
+
+  // Prevent body scroll when Saved modal is open
+  useEffect(() => {
+    if (showSavedModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [showSavedModal]);
 
   // Load data from storage
   const loadDataFromStorage = () => {
@@ -309,6 +325,130 @@ export const Profile = ({ user: propUser = null }) => {
 
   const totalBadgeCount = (favorites || 0) + (notifications || 0);
 
+  // Handle body scroll when saved modal is open
+  useEffect(() => {
+    if (showSavedModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showSavedModal]);
+
+  // Fetch saved items (downloaded books and papers)
+  const fetchSavedItems = async () => {
+    if (!authUser?.id) return;
+    
+    setLoadingSavedItems(true);
+    try {
+      // Fetch downloaded books
+      const { data: bookDownloads, error: booksError } = await supabase
+        .from('user_book_downloads')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .order('downloaded_at', { ascending: false });
+
+      // Fetch downloaded papers
+      const { data: paperDownloads, error: papersError } = await supabase
+        .from('user_paper_downloads')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .order('downloaded_at', { ascending: false });
+
+      const combined = [];
+
+      // Batch fetch book details if we have book downloads
+      if (bookDownloads && Array.isArray(bookDownloads) && bookDownloads.length > 0) {
+        const bookIds = bookDownloads.map(b => b.book_id);
+        const { data: booksData } = await supabase
+          .from('books')
+          .select('id, title, cover_image_url, author')
+          .in('id', bookIds);
+
+        const booksMap = {};
+        if (booksData) {
+          booksData.forEach(book => {
+            booksMap[book.id] = book;
+          });
+        }
+
+        bookDownloads.forEach(download => {
+          const book = booksMap[download.book_id];
+          combined.push({
+            id: download.id,
+            downloadId: download.id,
+            type: 'book',
+            title: book?.title || `Book #${download.book_id}`,
+            author: book?.author || 'Unknown',
+            image: book?.cover_image_url || null,
+            downloadedAt: download.downloaded_at
+          });
+        });
+      }
+
+      // Batch fetch paper details if we have paper downloads
+      if (paperDownloads && Array.isArray(paperDownloads) && paperDownloads.length > 0) {
+        const paperIds = paperDownloads.map(p => p.paper_id);
+        const { data: papersData } = await supabase
+          .from('past_papers')
+          .select('id, title, cover_image_url, universities(name)')
+          .in('id', paperIds);
+
+        const papersMap = {};
+        if (papersData) {
+          papersData.forEach(paper => {
+            papersMap[paper.id] = paper;
+          });
+        }
+
+        paperDownloads.forEach(download => {
+          const paper = papersMap[download.paper_id];
+          const universityName = paper?.universities?.name || 'Unknown';
+          
+          combined.push({
+            id: download.id,
+            downloadId: download.id,
+            type: 'paper',
+            title: paper?.title || `Paper #${download.paper_id}`,
+            university: universityName,
+            image: paper?.cover_image_url || null,
+            downloadedAt: download.downloaded_at
+          });
+        });
+      }
+
+      setSavedItems(combined);
+    } catch (error) {
+      // Silently handle errors
+      setSavedItems([]);
+    } finally {
+      setLoadingSavedItems(false);
+    }
+  };
+
+  const handleDeleteSavedItem = async (item) => {
+    try {
+      const table = item.type === 'book' ? 'user_book_downloads' : 'user_paper_downloads';
+      
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .eq('id', item.downloadId);
+
+      if (error) {
+        console.error('Delete error:', error);
+        return;
+      }
+
+      // Remove from UI
+      setSavedItems(savedItems.filter(i => i.id !== item.id));
+    } catch (error) {
+      console.error('Error deleting saved item:', error);
+    }
+  };
+
   return (
     <>
       <div className="chrome-profile" ref={dropdownRef}>
@@ -373,10 +513,11 @@ export const Profile = ({ user: propUser = null }) => {
             <div style={{
               padding: '0',
               marginTop: '8px',
-              display: 'flex',
-              gap: '8px',
-              alignItems: 'center',
-              justifyContent: 'space-between',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '6px',
+              rowGap: '8px',
+              alignItems: 'stretch',
             }}>
               {/* Upload Button */}
               {authUser && (
@@ -396,8 +537,6 @@ export const Profile = ({ user: propUser = null }) => {
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     whiteSpace: 'nowrap',
-                    minWidth: '65px',
-                    textAlign: 'center',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -434,8 +573,6 @@ export const Profile = ({ user: propUser = null }) => {
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     whiteSpace: 'nowrap',
-                    minWidth: '65px',
-                    textAlign: 'center',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -469,8 +606,9 @@ export const Profile = ({ user: propUser = null }) => {
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     whiteSpace: 'nowrap',
-                    minWidth: '65px',
-                    textAlign: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#1a2332';
@@ -499,6 +637,7 @@ export const Profile = ({ user: propUser = null }) => {
                     cursor: 'pointer',
                     transition: 'background-color 0.2s',
                     whiteSpace: 'nowrap',
+                    gridColumn: '1 / -1'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#008069';
@@ -517,107 +656,147 @@ export const Profile = ({ user: propUser = null }) => {
           {showActionsGrid && (
             <div style={{
               padding: '12px',
-              background: '#0d1217',
+              background: '#0a0e11',
               borderRadius: '8px',
               border: 'none',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-              marginTop: '12px'
+              boxShadow: 'none',
+              marginTop: '-4px',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '6px',
+              rowGap: '14px'
             }}>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'row',
-                gap: '8px',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-                {/* Stats */}
-                <button
-                  onClick={() => {
-                    setShowActionsGrid(false);
-                    setIsOpen(false);
-                    navigate('/books/reading-dashboard');
-                  }}
-                  style={{
-                    padding: '4px 6px',
-                    background: '#0b1216',
-                    border: '1px solid #2a3942',
-                    color: '#e9edef',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    borderRadius: '3px',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1a2332';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0b1216';
-                  }}
-                  title="View statistics"
-                >
-                  📊 Stats
-                </button>
+              {/* Stats */}
+              <button
+                onClick={() => {
+                  setShowActionsGrid(false);
+                  setIsOpen(false);
+                  navigate('/books/reading-dashboard');
+                }}
+                style={{
+                  padding: '5px 6px',
+                  background: '#0b1216',
+                  border: '1px solid #2a3942',
+                  color: '#e9edef',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  borderRadius: '3px',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#1a2332';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#0b1216';
+                }}
+                title="View statistics"
+              >
+                📊 Stats
+              </button>
 
-                {/* QR Code */}
-                <button
-                  onClick={() => {
-                    setShowActionsGrid(false);
-                    setShowQRCode(true);
-                  }}
-                  style={{
-                    padding: '4px 6px',
-                    background: '#0b1216',
-                    border: '1px solid #2a3942',
-                    color: '#e9edef',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    borderRadius: '3px',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1a2332';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0b1216';
-                  }}
-                  title="Show QR code"
-                >
-                  📱 QR Code
-                </button>
+              {/* QR Code */}
+              <button
+                onClick={() => {
+                  setShowActionsGrid(false);
+                  setShowQRCode(true);
+                }}
+                style={{
+                  padding: '5px 6px',
+                  background: '#0b1216',
+                  border: '1px solid #2a3942',
+                  color: '#e9edef',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  borderRadius: '3px',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#1a2332';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#0b1216';
+                }}
+                title="Show QR code"
+              >
+                📱 QR Code
+              </button>
 
-                {/* Sign Out */}
-                <button
-                  onClick={() => {
-                    setShowActionsGrid(false);
-                    setShowSignOutModal(true);
-                  }}
-                  style={{
-                    padding: '4px 6px',
-                    background: '#0b1216',
-                    border: '1px solid #f87171',
-                    color: '#f87171',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    borderRadius: '3px',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(248, 113, 113, 0.1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0b1216';
-                  }}
-                  title="Sign out"
-                >
-                  🚪 Sign Out
-                </button>
-              </div>
+              {/* Saved - Takes full width */}
+              <button
+                onClick={() => {
+                  setShowActionsGrid(false);
+                  setShowSavedModal(true);
+                  fetchSavedItems();
+                }}
+                style={{
+                  padding: '5px 6px',
+                  background: '#0b1216',
+                  border: '1px solid #2a3942',
+                  color: '#e9edef',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  borderRadius: '3px',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#1a2332';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#0b1216';
+                }}
+                title="View saved files"
+              >
+                <FiDownload size={14} />
+                Saved
+              </button>
+
+              {/* Sign Out */}
+              <button
+                onClick={() => {
+                  setShowActionsGrid(false);
+                  setShowSignOutModal(true);
+                }}
+                style={{
+                  padding: '5px 6px',
+                  background: '#0b1216',
+                  border: '1px solid #f87171',
+                  color: '#f87171',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  borderRadius: '3px',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(248, 113, 113, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#0b1216';
+                }}
+                title="Sign out"
+              >
+                🚪 Sign Out
+              </button>
             </div>
           )}
 
@@ -700,6 +879,227 @@ export const Profile = ({ user: propUser = null }) => {
             />
           </div>
         </div>
+      )}
+
+      {/* Saved Items Panel - Using Portal for full-screen display */}
+      {showSavedModal && ReactDOM.createPortal(
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#0a0e11',
+            zIndex: 99999,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+          }}
+          onClick={() => setShowSavedModal(false)}
+        >
+          <div 
+            style={{
+              width: '100%',
+              minHeight: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              backgroundColor: '#0a0e11',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '16px 24px',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: '#0a0e11',
+              position: 'sticky',
+              top: 0,
+              zIndex: 1001,
+            }}>
+              <div style={{ textAlign: 'center', flex: 1 }}>
+                <h1 style={{ margin: 0, color: '#8696a0', fontSize: 24, fontWeight: 700 }}>
+                  Downloads
+                </h1>
+              </div>
+              <button
+                onClick={() => setShowSavedModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#8696a0',
+                  fontSize: 32,
+                  cursor: 'pointer',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'color 0.2s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#e9edef'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#8696a0'}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{
+              padding: '0 12px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              width: '100%',
+              overflowY: 'auto',
+            }}>
+            {loadingSavedItems ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '400px',
+                color: '#8696a0',
+                fontSize: '16px',
+                width: '100%'
+              }}>
+                Loading...
+              </div>
+            ) : savedItems.length === 0 ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'column',
+                gap: '16px',
+                width: '100%',
+                minHeight: '400px',
+                padding: '40px 16px'
+              }}>
+                <div style={{
+                  fontSize: '80px'
+                }}>
+                  📚
+                </div>
+                <p style={{ fontSize: '20px', margin: 0, color: '#e9edef', fontWeight: 600 }}>No saved files yet</p>
+                <p style={{ fontSize: '15px', margin: 0, color: '#8696a0', textAlign: 'center', maxWidth: '400px' }}>
+                  Start exploring books and papers, then click save to build your personal collection
+                </p>
+              </div>
+            ) : (
+              <div style={{
+                width: '100%',
+                overflow: 'auto',
+                display: 'flex',
+                justifyContent: 'center'
+              }}>
+                <div style={{
+                  padding: '0',
+                  width: '100%'
+                }}>
+                  <table style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: '14px',
+                    border: '1px solid #1f2937'
+                  }}>
+                    <thead>
+                      <tr style={{ borderBottom: 'none', backgroundColor: '#050709' }}>
+                        <th style={{ padding: '4px 6px', textAlign: 'left', color: '#8696a0', fontWeight: 500, fontSize: '12px', borderRight: '1px solid #1f2937' }}>Cover</th>
+                        <th style={{ padding: '4px 6px', textAlign: 'left', color: '#8696a0', fontWeight: 500, fontSize: '12px', borderRight: '1px solid #1f2937' }}>Title</th>
+                        <th style={{ padding: '4px 6px', textAlign: 'left', color: '#8696a0', fontWeight: 500, fontSize: '12px', borderRight: '1px solid #1f2937' }}>Author/University</th>
+                        <th style={{ padding: '4px 6px', textAlign: 'center', color: '#8696a0', fontWeight: 500, fontSize: '12px', borderRight: '1px solid #1f2937' }}>Type</th>
+                        <th style={{ padding: '4px 6px', textAlign: 'left', color: '#8696a0', fontWeight: 500, fontSize: '12px', borderRight: '1px solid #1f2937' }}>Downloaded</th>
+                        <th style={{ padding: '4px 6px', textAlign: 'center', color: '#8696a0', fontWeight: 500, fontSize: '12px' }}>Delete</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {savedItems.map((item) => (
+                        <tr 
+                          key={item.id}
+                          style={{
+                            borderBottom: '1px solid #0f1419',
+                            transition: 'background-color 0.2s',
+                            backgroundColor: 'transparent'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0a0e11'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          <td style={{ padding: '4px 6px', textAlign: 'left', borderRight: '1px solid #1f2937' }}>
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.title}
+                                style={{
+                                  width: '40px',
+                                  height: '50px',
+                                  borderRadius: '4px',
+                                  objectFit: 'cover',
+                                  border: '1px solid #1f2937'
+                                }}
+                                onError={(e) => e.target.style.display = 'none'}
+                              />
+                            ) : (
+                              <div style={{
+                                width: '40px',
+                                height: '50px',
+                                borderRadius: '4px',
+                                backgroundColor: '#1f2937',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '20px'
+                              }}>
+                                {item.type === 'book' ? '📕' : '📄'}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '4px 6px', textAlign: 'left', color: '#8696a0', fontWeight: 500, borderRight: '1px solid #1f2937' }}>
+                            {item.title}
+                          </td>
+                          <td style={{ padding: '4px 6px', textAlign: 'left', color: '#a8b4ba', fontSize: '13px', borderRight: '1px solid #1f2937' }}>
+                            {item.type === 'book' ? item.author : item.university}
+                          </td>
+                          <td style={{ padding: '4px 6px', textAlign: 'center', color: '#00a884', fontSize: '12px', fontWeight: 600, borderRight: '1px solid #1f2937' }}>
+                            {item.type === 'book' ? 'Book' : 'Paper'}
+                          </td>
+                          <td style={{ padding: '4px 6px', textAlign: 'left', color: '#8696a0', fontSize: '13px', borderRight: '1px solid #1f2937' }}>
+                            {new Date(item.downloadedAt).toLocaleString()}
+                          </td>
+                          <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                            <button
+                              onClick={() => handleDeleteSavedItem(item)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#ff4b4b',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                transition: 'color 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = '#ff6b6b';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = '#ff4b4b';
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </>
   );

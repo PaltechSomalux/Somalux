@@ -1730,9 +1730,9 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
                       className="chatme-all-btn"
                       onClick={() => { setSelectedFolder(null); setFromFolderId(null); }}
                       title="Back"
-                      style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '28px', width: '28px', lineHeight: 1 }}
+                      style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '40px', width: '40px', lineHeight: 1, cursor: 'pointer', color: '#00a884' }}
                     >
-                      <FiArrowLeft size={80} />
+                      <FiArrowLeft size={32} />
                     </button>
                     <h2 style={{ margin: 0, flexShrink: 0, color: '#ccc', fontSize: '16px' }}>
                       {(selectedFolder?.name) || (folders.find(f => f.id === fromFolderId)?.name) || ''}
@@ -1781,33 +1781,33 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
                   </div>
                   <div className="chatme-header-buttons">
                     <button
-                      className="chatme-all-btn"
+                      className="folder-tab"
                       onClick={() => { setShowArchived(false); setActiveTab('all'); }}
                       style={{
                         fontWeight: (activeTab === 'all' && !showArchived) ? 600 : 500,
-                        color: (activeTab === 'all' && !showArchived) ? 'var(--accent, #00a884)' : '#ffffff',
+                        color: (activeTab === 'all' && !showArchived) ? '#00a884' : '#aebac1',
                       }}
                     >
                       All
                     </button>
                     <button
-                      className="chatme-archive-btn"
+                      className="folder-tab"
                       onClick={() => setActiveTab('folders')}
                       title="Folders"
                       style={{
                         fontWeight: (activeTab === 'folders') ? 600 : 500,
-                        color: (activeTab === 'folders') ? 'var(--accent, #00a884)' : '#ffffff',
+                        color: (activeTab === 'folders') ? '#00a884' : '#aebac1',
                       }}
                     >
                       Folders
                     </button>
                     {chats.some(c => c.isArchived) && (
                       <button
-                        className="chatme-archive-btn"
+                        className="folder-tab"
                         onClick={() => { setShowArchived(!showArchived); setActiveTab('all'); }}
                         style={{
                           fontWeight: (showArchived && activeTab === 'all') ? 600 : 500,
-                          color: (showArchived && activeTab === 'all') ? 'var(--accent, #00a884)' : '#ffffff',
+                          color: (showArchived && activeTab === 'all') ? '#00a884' : '#aebac1',
                         }}
                       >
                         Archived

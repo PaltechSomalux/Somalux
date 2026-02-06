@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import { downloadOptimizer } from '../../utils/DownloadOptimizer';
 import { checkDownloadLimit, recordDownload } from '../../utils/downloadLimitService';
 import { getSelectedFolder, setSelectedFolder } from '../utils/downloadFolderManager';
+import { trackBookDownload, trackPaperDownload } from './utils/savedItemsService';
 import DownloadLimitModal from './DownloadLimitModal';
 import FolderSelectModal from '../PastPapersDownloader/FolderSelectModal';
 
@@ -189,8 +190,8 @@ export const Download = ({
   const [showFolderModal, setShowFolderModal] = useState(false);
   const abortControllerRef = useRef(null);
 
-  // Handle case where neither book nor file is provided
-  if (!book && !file) {
+  // Handle case where neither book, file, nor paper is provided
+  if (!book && !file && !paper) {
     return null;
   }
 
@@ -239,11 +240,35 @@ export const Download = ({
           );
           // Record the download
           await recordDownload(user, 'book', book.id, book.title);
+          // Track in saved items for authenticated users
+          if (user?.id) {
+            await trackBookDownload(user.id, book.id);
+          }
         } else {
           // Fallback to generating a sample text file (original behavior)
           await generateSampleDownload(book, selectedFolder);
           // Record the download
           await recordDownload(user, 'book_sample', book.id, book.title);
+          // Track in saved items for authenticated users
+          if (user?.id) {
+            await trackBookDownload(user.id, book.id);
+          }
+        }
+      }
+      // Track paper downloads
+      else if (paper) {
+        if (paper.downloadUrl) {
+          await highSpeedDownload(
+            paper.downloadUrl,
+            paper.downloadFilename || `${paper.title.replace(/\s+/g, '_')}.${paper.fileFormat || 'pdf'}`,
+            selectedFolder
+          );
+          // Record the download
+          await recordDownload(user, 'paper', paper.id, paper.title);
+          // Track in saved items for authenticated users
+          if (user?.id) {
+            await trackPaperDownload(user.id, paper.id);
+          }
         }
       }
 
@@ -326,10 +351,10 @@ export const Download = ({
       <IconDownloadButton
         onClick={handleDownload}
         disabled={downloading}
-        title={`Download ${book?.title || file?.filename || 'file'}`}
+        title={`Download ${book?.title || paper?.title || file?.filename || 'file'}`}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        aria-label={`Download ${book?.title || file?.filename || 'file'}`}
+        aria-label={`Download ${book?.title || paper?.title || file?.filename || 'file'}`}
       >
         <FiDownload size={18} />
       </IconDownloadButton>

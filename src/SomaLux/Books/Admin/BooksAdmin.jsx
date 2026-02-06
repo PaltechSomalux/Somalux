@@ -282,12 +282,38 @@ export const BooksAdmin = () => {
 
         {/* MOBILE BOTTOM BAR */}
         <nav className="admin-bottombar">
+          {/* PRIMARY TABS */}
           {isAdmin && (
             <NavLink to="/books/admin" end className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
               <FiBarChart2 /> <span>Overview</span>
             </NavLink>
           )}
 
+          {isAdmin && (
+            <NavLink to="/books/admin/users" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiUsers /> <span>Users</span>
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <NavLink to="/books/admin/verify" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiCheck /> <span>Verify</span>
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <NavLink to="/books/admin/send-emails" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <BiSpeaker /> <span>Send Emails</span>
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <NavLink to="/books/admin/ads" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <BiSpeaker /> <span>Ads</span>
+            </NavLink>
+          )}
+
+          {/* CONTENT TABS */}
           <NavLink to="/books/admin/content" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
             <FiGrid /> <span>Content</span>
           </NavLink>
@@ -323,12 +349,7 @@ export const BooksAdmin = () => {
             </NavLink>
           )}
 
-          {isAdmin && (
-            <NavLink to="/books/admin/send-emails" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
-              <BiSpeaker /> <span>Send Emails</span>
-            </NavLink>
-          )}
-
+          {/* ADDITIONAL TABS */}
           {isAdmin && (
             <NavLink to="/books/admin/rankings" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
               <FiBarChart2 /> <span>Rankings</span>
@@ -336,26 +357,8 @@ export const BooksAdmin = () => {
           )}
 
           {isAdmin && (
-            <NavLink to="/books/admin/ads" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
-              <BiSpeaker /> <span>Ads</span>
-            </NavLink>
-          )}
-
-          {isAdmin && (
             <NavLink to="/books/admin/search-analytics" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
               <FiSearch /> <span>Search</span>
-            </NavLink>
-          )}
-
-          {isAdmin && (
-            <NavLink to="/books/admin/users" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
-              <FiUsers /> <span>Users</span>
-            </NavLink>
-          )}
-
-          {isAdmin && (
-            <NavLink to="/books/admin/verify" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
-              <FiCheck /> <span>Verify</span>
             </NavLink>
           )}
 

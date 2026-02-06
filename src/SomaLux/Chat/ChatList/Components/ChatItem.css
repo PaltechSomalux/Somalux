@@ -1032,3 +1032,59 @@
   font-size: 40px; /* or same as your avatar size */
   color: #aaa; /* neutral gray */
 }
+
+/* Folder Context Menu */
+.folder-context-menu {
+  position: fixed;
+  background-color: #0b1216;
+  border: 1px solid #2a3942;
+  border-radius: 8px;
+  width: max-content;
+  max-width: 220px;
+  min-width: 120px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.folder-context-menu .context-menu-item {
+  padding: 10px 16px;
+  color: #e9edef;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: block;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  white-space: nowrap;
+  text-align: left;
+  width: 100%;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+
+.folder-context-menu .context-menu-item:last-child {
+  border-bottom: none;
+}
+
+.folder-context-menu .context-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.folder-context-menu .context-menu-item.delete {
+  color: #ff6b6b;
+  border-top: 1px solid #2a3942;
+}
+
+.folder-context-menu .context-menu-item.delete:hover {
+  background-color: rgba(255, 107, 107, 0.1);
+}
+
+/* Folder options button - no hover effects */
+.folder-options-button:hover {
+  background-color: transparent;
+  color: #8696a0;
+}

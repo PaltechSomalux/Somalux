@@ -27,7 +27,7 @@
   top: var(--navbar-height, 20px);
   min-height: var(--chatlist-header-height, 64px);
   z-index: 100;
-  border-bottom: 1px solid #2a3942;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   margin-bottom: var(--chatlist-header-gap, 40px);
 }
 
@@ -61,12 +61,6 @@
 /* Hide scrollbar for Chrome, Safari and Opera */
 .chatme-chat-list-items::-webkit-scrollbar {
   display: none;
-}
-  min-height: 0;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Ensure first list item starts below sticky header */
@@ -114,6 +108,42 @@
 .chatme-search-input::placeholder {
   color: #8696a0;
   font-size: 12px;
+}
+
+/* Folder Tabs Container */
+.chatme-folder-tabs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+/* Individual Folder Tab */
+.folder-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: #aebac1;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.folder-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #d4dfe5;
+}
+
+.folder-tab.active {
+  color: #00a884;
+  background: rgba(0, 168, 132, 0.15);
+  font-weight: 600;
 }
 
 /* Header Buttons */
@@ -1421,8 +1451,25 @@
     color: white;
   }
 
-  .delete-btn:hover {
+  .chatme-delete-btn:hover {
     background-color: #b91c1c;
+  }
+}
+
+/* Light Mode Folder Tabs */
+@media (prefers-color-scheme: light) {
+  .folder-tab {
+    color: #6b7280;
+  }
+
+  .folder-tab:hover {
+    background: rgba(0, 0, 0, 0.03);
+    color: #374151;
+  }
+
+  .folder-tab.active {
+    color: #25D366;
+    background: rgba(37, 211, 102, 0.1);
   }
 }
 

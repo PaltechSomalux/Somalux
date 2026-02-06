@@ -706,7 +706,7 @@ select option {
 
     .admin-bottombar {
         display: flex;
-        gap: 4px;
+        gap: 8px;
         align-items: center;
         justify-content: flex-start;
         position: fixed;
@@ -716,7 +716,7 @@ select option {
         height: 56px;
         background: #0a0f13;
         box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.5);
-        padding: 4px 6px;
+        padding: 4px 8px;
         z-index: 10;
         overflow-x: auto;
         overflow-y: hidden;
@@ -738,11 +738,11 @@ select option {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 2px;
+        gap: 4px;
         color: #cfd8dc;
         text-decoration: none;
         font-size: 9px;
-        padding: 3px 4px;
+        padding: 6px 8px;
         min-width: max-content;
         white-space: nowrap;
         flex-shrink: 0;

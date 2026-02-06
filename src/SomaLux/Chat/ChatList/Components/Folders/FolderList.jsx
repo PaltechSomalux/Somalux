@@ -1,18 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { FiFolder, FiLock } from 'react-icons/fi';
+import { FiFolder, FiLock, FiMoreVertical } from 'react-icons/fi';
 import { BiPin } from 'react-icons/bi';
 
 export const FolderList = ({ folders, onOpen, onRename, onDelete, chatsMap, searchQuery, onTogglePinFolder, onLockFolders, onUnlockFolders }) => {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [showMenu, setShowMenu] = useState(null); // Track which folder's menu is open
+  const [menuPosition, setMenuPosition] = useState({});
   const pressTimer = useRef(null);
+  const menuButtonRefs = useRef({});
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
         setSelectionMode(false);
         setSelectedIds(new Set());
+        setShowMenu(null);
+        setMenuPosition({});
       }
     };
     window.addEventListener('keydown', onKey);
@@ -43,6 +48,86 @@ export const FolderList = ({ folders, onOpen, onRename, onDelete, chatsMap, sear
   };
 
   const selectAll = () => setSelectedIds(new Set(folders.map(f => f.id)));
+
+  const handleMenuToggle = (folderId, e) => {
+    e.stopPropagation();
+    if (showMenu === folderId) {
+      setShowMenu(null);
+      setMenuPosition({});
+    } else {
+      const buttonRef = menuButtonRefs.current[folderId];
+      if (buttonRef) {
+        const buttonRect = buttonRef.getBoundingClientRect();
+        const top = buttonRect.bottom + window.scrollY;
+        const right = window.innerWidth - buttonRect.right;
+        setMenuPosition({
+          top: `${top}px`,
+          right: `${right}px`
+        });
+        setShowMenu(folderId);
+      }
+    }
+  };
+
+  const handleMenuAction = (action, folder, e) => {
+    e.stopPropagation();
+    console.log('FolderList: handleMenuAction called', { action, folderId: folder.id, folderName: folder.name });
+    setShowMenu(null);
+    setMenuPosition({});
+
+    switch (action) {
+      case 'rename':
+        console.log('FolderList: calling onRename with folder', folder);
+        if (onRename) {
+          onRename(folder);
+        } else {
+          console.warn('FolderList: onRename callback not provided');
+        }
+        break;
+      case 'lock':
+        if (folder.isLocked) {
+          if (onUnlockFolders) onUnlockFolders([folder]);
+        } else {
+          if (onLockFolders) onLockFolders([folder]);
+        }
+        break;
+      case 'delete':
+        console.log('FolderList: calling onDelete with folder', folder);
+        if (onDelete) {
+          onDelete([folder]);
+        } else {
+          console.warn('FolderList: onDelete callback not provided');
+        }
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!showMenu) return;
+    const onDown = (e) => {
+      const menuButton = menuButtonRefs.current[showMenu];
+      // Only close if clicking outside both the button AND the menu
+      if (menuButton && !menuButton.contains(e.target)) {
+        // Check if the click is on a menu item (which should have the context-menu-item class)
+        const isMenuItemClick = e.target.closest('.folder-context-menu');
+        if (!isMenuItemClick) {
+          setShowMenu(null);
+          setMenuPosition({});
+        }
+      }
+    };
+    // Use setTimeout to delay the listener so it doesn't interfere with the initial click
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', onDown);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', onDown);
+    };
+  }, [showMenu]);
 
   const selectedCount = selectedIds.size;
   const selectedFolders = folders.filter(f => selectedIds.has(f.id));
@@ -170,18 +255,41 @@ export const FolderList = ({ folders, onOpen, onRename, onDelete, chatsMap, sear
               </div>
             </div>
             {!selectionMode && (
-              <div className="chatme-options-wrapper" style={{ marginLeft: 'auto' }}>
+              <div className="chatme-options-wrapper" style={{ marginLeft: 'auto', position: 'relative' }}>
                 <button
-                  className="chatme-chat-options-button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (typeof onTogglePinFolder === 'function') onTogglePinFolder(f);
-                  }}
-                  title={f.isPinned ? 'Unpin folder' : 'Pin folder'}
-                  aria-label={f.isPinned ? 'Unpin folder' : 'Pin folder'}
+                  ref={(el) => menuButtonRefs.current[f.id] = el}
+                  className="chatme-chat-options-button folder-options-button"
+                  onClick={(e) => handleMenuToggle(f.id, e)}
+                  title="Folder options"
+                  aria-label="Folder options"
                 >
-                  <BiPin style={{ transform: f.isPinned ? 'rotate(45deg)' : 'none' }} />
+                  <FiMoreVertical />
                 </button>
+                {showMenu === f.id && (
+                  <div className="folder-context-menu" style={menuPosition}>
+                    <button 
+                      className="context-menu-item" 
+                      onClick={(e) => handleMenuAction('rename', f, e)}
+                      type="button"
+                    >
+                      Rename
+                    </button>
+                    <button 
+                      className="context-menu-item" 
+                      onClick={(e) => handleMenuAction('lock', f, e)}
+                      type="button"
+                    >
+                      {f.isLocked ? 'Unlock' : 'Lock'}
+                    </button>
+                    <button 
+                      className="context-menu-item delete" 
+                      onClick={(e) => handleMenuAction('delete', f, e)}
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

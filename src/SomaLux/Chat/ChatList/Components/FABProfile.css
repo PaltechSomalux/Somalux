@@ -51,15 +51,15 @@
   bottom: 64px;
   right: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(130px, 1fr));
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
   gap: 10px;
   padding: 14px;
   background-color: #0b1216;
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 4px rgba(0, 0, 0, 0.5); /* Replaced border */
   animation: fabMenuFadeInFABP 0.2s ease-out;
-  min-width: fit-content;
-  width: max-content;
+  min-width: 300px;
+  width: 300px;
   z-index: 1001;
   transform-origin: bottom right;
 }
@@ -419,11 +419,13 @@
   }
 
   .fab-menu-FABP {
-    grid-template-columns: repeat(2, minmax(110px, 1fr));
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
     gap: 8px;
     padding: 12px;
     bottom: 60px;
     right: 0;
+    min-width: 260px;
+    width: 260px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 4px rgba(0, 0, 0, 0.5); /* Replaced border */
   }
 

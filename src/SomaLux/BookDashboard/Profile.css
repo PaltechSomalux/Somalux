@@ -37,7 +37,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #111b21;
+  border: 2px solid #0b141a;
 }
 
 /* ===============================
@@ -48,12 +48,12 @@
   top: 48px;
   right: 0;
   width: 300px;
-  background: #111b21;
+  background: #0a0e11;
   border: none;
   border-radius: 12px;
   padding: 10px;
   z-index: 9999;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: none;
   animation: dropdownFade 0.2s ease-out;
   max-height: 80vh;
   overflow-y: auto;
@@ -239,7 +239,7 @@
 }
 
 .profile-signout-modal {
-  background: #111b21 !important;
+  background: #0b141a !important;
   border: 1px solid #2a3942 !important;
   border-radius: 18px !important;
   width: 100% !important;
