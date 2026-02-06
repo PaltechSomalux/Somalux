@@ -1,7 +1,5 @@
 import React from 'react';
 import { FiX } from 'react-icons/fi';
-import { signInWithPopup } from 'firebase/auth';
-import { auth, provider } from '../firebase';
 import './LoginModal.css';
 
 export const LoginModal = ({
@@ -26,8 +24,8 @@ export const LoginModal = ({
       if (onGoogleSignIn) {
         await onGoogleSignIn();
       } else {
-        // This is the key fix: wrap in try/catch + proper cleanup
-        await signInWithPopup(auth, provider);
+        // Firebase sign-in removed - using Supabase auth instead
+        throw new Error('Please use onGoogleSignIn prop for Supabase authentication');
       }
       setShowLogin(false);
     } catch (error) {

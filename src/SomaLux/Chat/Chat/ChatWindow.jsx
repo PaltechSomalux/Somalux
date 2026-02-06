@@ -11,7 +11,8 @@ import { SettingsPanel } from './SettingsPanel';
 import { WallpaperUI } from './Wallpaper';
 import { useChatActions } from './useChatActions';
 import { useLongPress } from '../ChatList/Components/utils/useLongPress';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
+// Firebase imports removed - using Supabase instead
+// import { collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import './ChatWindow.css';
 import { DisappearingMessagesModal } from './DisappearingMessagesModal';

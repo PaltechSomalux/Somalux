@@ -95,34 +95,26 @@ export const FolderList = ({ folders, onOpen, onRename, onDelete, chatsMap, sear
 `}
       </style>
       {selectionMode && (
-        <div className="chatme-selection-bar" style={{ position: 'sticky', top: 0, zIndex: 5, display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderBottom: '1px solid #eee', flexWrap: 'wrap' }}>
-          <strong>{selectedCount}</strong>
-          <span>selected</span>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        <div style={{ position: 'sticky', top: 0, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '0', padding: '10px 14px', borderBottom: '1px solid #2a3942', background: '#0b1216' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <strong style={{ fontSize: '14px', color: '#fff', fontWeight: '600' }}>{selectedCount}</strong>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0', justifyContent: 'space-between', flex: 1, marginLeft: '12px' }}>
             {selectedCount === 1 ? (
               <>
-                <button className="chatme-all-btn" onClick={() => onRename && onRename(selectedFolders[0])}>Rename</button>
+                <button className="chatme-all-btn" onClick={() => { onRename && onRename(selectedFolders[0]); cancelSelection(); }} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: 'rgb(156, 153, 153)', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Rename</button>
                 {anySelectedUnlocked && (
-                  <button className="chatme-all-btn" onClick={() => typeof onLockFolders === 'function' && onLockFolders(selectedFolders)}>Lock</button>
+                  <button className="chatme-all-btn" onClick={() => { typeof onLockFolders === 'function' && onLockFolders(selectedFolders); cancelSelection(); }} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: 'rgb(156, 153, 153)', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Lock</button>
                 )}
                 {anySelectedLocked && (
-                  <button className="chatme-all-btn" onClick={() => typeof onUnlockFolders === 'function' && onUnlockFolders(selectedFolders)}>Unlock</button>
+                  <button className="chatme-all-btn" onClick={() => { typeof onUnlockFolders === 'function' && onUnlockFolders(selectedFolders); cancelSelection(); }} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: 'rgb(156, 153, 153)', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Unlock</button>
                 )}
-                <button className="chatme-archive-btn danger" onClick={() => onDelete && onDelete(selectedFolders)}>Delete</button>
               </>
             ) : (
-              <>
-                <button className="chatme-all-btn" onClick={selectAll}>Select All</button>
-                {anySelectedUnlocked && (
-                  <button className="chatme-all-btn" onClick={() => typeof onLockFolders === 'function' && onLockFolders(selectedFolders)}>Lock</button>
-                )}
-                {anySelectedLocked && (
-                  <button className="chatme-all-btn" onClick={() => typeof onUnlockFolders === 'function' && onUnlockFolders(selectedFolders)}>Unlock</button>
-                )}
-                <button className="chatme-archive-btn danger" onClick={() => onDelete && onDelete(selectedFolders)}>Delete</button>
-              </>
+              <button className="chatme-all-btn" onClick={() => { selectAll(); }} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '4px', color: 'rgb(156, 153, 153)', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Select All</button>
             )}
-            <button className="chatme-all-btn" onClick={cancelSelection}>Cancel</button>
+            <button className="chatme-archive-btn" onClick={() => { onDelete && onDelete(selectedFolders); cancelSelection(); }} style={{ padding: '8px 16px', background: 'rgba(255,59,48,0.1)', border: 'none', borderRadius: '4px', color: '#ff6b5b', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Delete</button>
+            <button className="chatme-all-btn" onClick={cancelSelection} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid #2a3942', borderRadius: '4px', color: 'rgb(156, 153, 153)', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Cancel</button>
           </div>
         </div>
       )}
@@ -159,7 +151,7 @@ export const FolderList = ({ folders, onOpen, onRename, onDelete, chatsMap, sear
                     return sum + (c?.unreadCount || 0);
                   }, 0);
                   return unread > 0 ? (
-                    <span className="folder-unread-badge">{unread}</span>
+                    <span className="folder-unread-badge" style={{ fontSize: '7px', background: '#ff6b6b' }}>{unread}</span>
                   ) : null;
                 })()}
               </div>
@@ -171,7 +163,7 @@ export const FolderList = ({ folders, onOpen, onRename, onDelete, chatsMap, sear
                   {f.isLocked && <FiLock size={14} />}
                   {f.isPinned && <BiPin size={16} />}
                 </div>
-                <div className="chatme-timestamp">{(f.members || []).length} chats</div>
+                <div className="chatme-timestamp" style={{ fontSize: '10px', color: '#999' }}>{(f.members || []).length} chats</div>
 
               </div>
               <div className="chatme-chat-preview">

@@ -5,14 +5,16 @@ import { ChatLockProvider } from './ChatList/Components/utils/ChatLockProvider';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 // Firebase & FCM
-import { onMessage } from 'firebase/messaging';
+// Firebase imports removed - using Supabase instead
+// import { onMessage } from 'firebase/messaging';
 import { messaging } from './firebase';
 import { auth, db } from './firebase';
 import { LoginModal } from './Chat/LoginModal';
 import { showGlobalToast } from './utils/toastBus';
 import { useFCMToken } from './hooks/useFCMToken';
 import { WebSocketProvider, useSharedWebSocket } from './Group/WebSocketProvider';
-import { doc, getDoc } from 'firebase/firestore';
+// Firebase imports removed - using Supabase instead
+// import { doc, getDoc } from 'firebase/firestore';
 
 // ConnectMe
 import { ConnectMe } from './Connect/ConnectMe';

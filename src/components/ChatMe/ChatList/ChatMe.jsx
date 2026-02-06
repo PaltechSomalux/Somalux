@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useRef, useState ,useCallback, useLayoutEffect} from 'react';
 import { supabase } from '../../../supabase';
 import { SupabaseChatService } from '../services/SupabaseChatService';
+import { SupabaseFolderService } from '../services/SupabaseFolderService';
 import { useChatLock } from './Components/utils/ChatLockProvider';
 import { FormatTime, FormatMessageTime } from './Components/TimeFormatters';
 import { ChatList } from './Components/ChatList';
@@ -331,8 +332,10 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
       // Optimistic update so the modal list removes immediately
       setSelectedFolder((prev) => prev ? { ...prev, members: Array.from(new Set([...(prev.members || []), uid])) } : prev);
       setFolders((prev) => prev.map((f) => f.id === selectedFolder.id ? { ...f, members: Array.from(new Set([...(f.members || []), uid])) } : f));
-      const ref = doc(db, 'userFolders', currentUser.uid, 'folders', selectedFolder.id);
-      await updateDoc(ref, { members: arrayUnion(uid) });
+      
+      // Use Supabase folder service instead of Firebase
+      const folderService = new SupabaseFolderService();
+      await folderService.addChatToFolder(selectedFolder.id, currentUser.id, uid);
     } catch (e) {
       console.error('ChatMe: addChatToFolder error', e);
     }
@@ -341,8 +344,12 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
   const removeChatFromFolder = async (uid) => {
     if (!currentUser?.id || !selectedFolder) return;
     try {
-      const ref = doc(db, 'userFolders', currentUser.uid, 'folders', selectedFolder.id);
-      await updateDoc(ref, { members: arrayRemove(uid) });
+      // Use Supabase folder service instead of Firebase
+      const folderService = new SupabaseFolderService();
+      await folderService.removeChatFromFolder(selectedFolder.id, uid);
+      // Optimistic update
+      setSelectedFolder((prev) => prev ? { ...prev, members: (prev.members || []).filter((m) => m !== uid) } : prev);
+      setFolders((prev) => prev.map((f) => f.id === selectedFolder.id ? { ...f, members: (f.members || []).filter((m) => m !== uid) } : f));
     } catch (e) {
       console.error('ChatMe: removeChatFromFolder error', e);
     }
@@ -354,8 +361,12 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
       // Optimistic update
       setSelectedFolder((prev) => prev ? { ...prev, members: (prev.members || []).filter((m) => !uids.includes(m)) } : prev);
       setFolders((prev) => prev.map((f) => f.id === selectedFolder.id ? { ...f, members: (f.members || []).filter((m) => !uids.includes(m)) } : f));
-      const ref = doc(db, 'userFolders', currentUser.uid, 'folders', selectedFolder.id);
-      await updateDoc(ref, { members: arrayRemove(...uids) });
+      
+      // Use Supabase folder service instead of Firebase
+      const folderService = new SupabaseFolderService();
+      for (const uid of uids) {
+        await folderService.removeChatFromFolder(selectedFolder.id, uid);
+      }
     } catch (e) {
       console.error('ChatMe: removeChatsFromFolder error', e);
     }
@@ -366,7 +377,7 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
     try {
       const targets = foldersToDelete.length > 0 ? foldersToDelete : [selectedFolder];
       for (const f of targets) {
-        await deleteDoc(doc(db, 'userFolders', currentUser.uid, 'folders', f.id));
+        await SupabaseFolderService.deleteChatFolder(f.folder_id, currentUser.id);
       }
       if (targets.find((f) => f.id === selectedFolder?.id)) {
         setSelectedFolder(null);
@@ -381,7 +392,7 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
   const renameCurrentFolder = async (newName) => {
     if (!currentUser?.id || !selectedFolder || !newName) return;
     try {
-      await updateDoc(doc(db, 'userFolders', currentUser.uid, 'folders', selectedFolder.id), { name: newName });
+      await SupabaseFolderService.updateChatFolder(selectedFolder.folder_id || selectedFolder.id, currentUser.id, { name: newName });
       setShowFolderRename(false);
     } catch (e) {
       console.error('ChatMe: renameCurrentFolder error', e);
@@ -1721,9 +1732,9 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
                       title="Back"
                       style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '28px', width: '28px', lineHeight: 1 }}
                     >
-                      <FiArrowLeft />
+                      <FiArrowLeft size={80} />
                     </button>
-                    <h2 style={{ margin: 0, flexShrink: 0 }}>
+                    <h2 style={{ margin: 0, flexShrink: 0, color: '#ccc', fontSize: '16px' }}>
                       {(selectedFolder?.name) || (folders.find(f => f.id === fromFolderId)?.name) || ''}
                     </h2>
                     <input
@@ -1773,7 +1784,6 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
                       className="chatme-all-btn"
                       onClick={() => { setShowArchived(false); setActiveTab('all'); }}
                       style={{
-                        borderBottom: (activeTab === 'all' && !showArchived) ? '2px solid var(--accent, #00a884)' : '2px solid transparent',
                         fontWeight: (activeTab === 'all' && !showArchived) ? 600 : 500,
                         color: (activeTab === 'all' && !showArchived) ? 'var(--accent, #00a884)' : '#ffffff',
                       }}
@@ -1785,7 +1795,6 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
                       onClick={() => setActiveTab('folders')}
                       title="Folders"
                       style={{
-                        borderBottom: (activeTab === 'folders') ? '2px solid var(--accent, #00a884)' : '2px solid transparent',
                         fontWeight: (activeTab === 'folders') ? 600 : 500,
                         color: (activeTab === 'folders') ? 'var(--accent, #00a884)' : '#ffffff',
                       }}
@@ -1797,7 +1806,6 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
                         className="chatme-archive-btn"
                         onClick={() => { setShowArchived(!showArchived); setActiveTab('all'); }}
                         style={{
-                          borderBottom: (showArchived && activeTab === 'all') ? '2px solid var(--accent, #00a884)' : '2px solid transparent',
                           fontWeight: (showArchived && activeTab === 'all') ? 600 : 500,
                           color: (showArchived && activeTab === 'all') ? 'var(--accent, #00a884)' : '#ffffff',
                         }}

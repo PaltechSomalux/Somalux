@@ -24,7 +24,6 @@ export const PaperGrid = React.memo(({
   user,
   onPaperSelect,
   onUploadClick,
-  onAdminClick,
   paperLikes = {},
   paperLikesCounts = {},
   onToggleLike,
@@ -120,16 +119,6 @@ export const PaperGrid = React.memo(({
           >
             <FiFilter /> {activeFilter !== 'all' && '• '}Filters
           </button>
-
-          {((user?.role === 'admin' || user?.role === 'editor') || ['campuslives254@gmail.com', 'paltechsomalux@gmail.com'].includes(user?.email)) && (
-            <button
-              onClick={onAdminClick}
-              className="filter-buttonpast"
-              title="Open Admin Dashboard"
-            >
-              {user?.role === 'admin' || ['campuslives254@gmail.com', 'paltechsomalux@gmail.com'].includes(user?.email) ? 'Admin' : 'Editor'}
-            </button>
-          )}
 
           {user && (
             <button

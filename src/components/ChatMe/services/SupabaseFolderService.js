@@ -63,7 +63,7 @@ class SupabaseFolderServiceClass {
       const foldersWithMembers = await Promise.all(
         (folders || []).map(async (folder) => {
           const { data: members, error: membersError } = await supabase
-            .from('chat_folder_members')
+            .from('chat_folder_assignments')
             .select('chat_id')
             .eq('folder_id', folder.folder_id);
 
@@ -143,7 +143,7 @@ class SupabaseFolderServiceClass {
     try {
       // Delete all members first
       const { error: membersError } = await supabase
-        .from('chat_folder_members')
+        .from('chat_folder_assignments')
         .delete()
         .eq('folder_id', folderId);
 
@@ -177,7 +177,7 @@ class SupabaseFolderServiceClass {
   async addChatToFolder(folderId, userId, chatId) {
     try {
       const { data, error } = await supabase
-        .from('chat_folder_members')
+        .from('chat_folder_assignments')
         .insert({
           folder_id: folderId,
           user_id: userId,
@@ -204,7 +204,7 @@ class SupabaseFolderServiceClass {
   async removeChatFromFolder(folderId, chatId) {
     try {
       const { error } = await supabase
-        .from('chat_folder_members')
+        .from('chat_folder_assignments')
         .delete()
         .eq('folder_id', folderId)
         .eq('chat_id', chatId);
@@ -227,7 +227,7 @@ class SupabaseFolderServiceClass {
   async getFolderChats(folderId, userId) {
     try {
       const { data: members, error } = await supabase
-        .from('chat_folder_members')
+        .from('chat_folder_assignments')
         .select('chat_id')
         .eq('folder_id', folderId)
         .eq('user_id', userId);

@@ -17,7 +17,8 @@ import {
   listenIncomingCallsFor
 } from '../Connect/Calls/signaling';
 
-import { onMessage } from 'firebase/messaging';
+// Firebase imports removed - using Supabase instead
+// import { onMessage } from 'firebase/messaging';
 import { messaging } from '../firebase';
 import useWebSocket from 'react-use-websocket';
 

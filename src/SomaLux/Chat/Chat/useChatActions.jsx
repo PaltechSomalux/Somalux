@@ -9,7 +9,8 @@ import {
   writeBatch,
   doc,
   getDoc,
-} from "firebase/firestore";
+// } from "firebase/firestore";
+// Firebase imports removed - using Supabase instead
 import { db } from "../firebase";
 
 const getChatId = (idA, idB) => {

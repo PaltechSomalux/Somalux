@@ -280,33 +280,28 @@ export const ChatList = ({
                   if (typeof onShowAll === 'function') onShowAll();
                 }}
                 style={{
-                  borderBottom: (!showArchived && activeTab === 'all') ? '2px solid var(--accent, #00a884)' : '2px solid transparent',
                   fontWeight: (!showArchived && activeTab === 'all') ? 600 : 500,
                   color: (!showArchived && activeTab === 'all') ? 'var(--accent, #00a884)' : '#ffffff',
                 }}
               >
                 All
               </button>
-              {hasFolders && (
-                <button
-                  className="chatme-archive-btn"
-                  onClick={() => onShowFolders && onShowFolders()}
-                  title="Folders"
-                  style={{
-                    borderBottom: (activeTab === 'folders') ? '2px solid var(--accent, #00a884)' : '2px solid transparent',
-                    fontWeight: (activeTab === 'folders') ? 600 : 500,
-                    color: (activeTab === 'folders') ? 'var(--accent, #00a884)' : '#ffffff',
-                  }}
-                >
-                  {activeFolderName && activeFolderName.trim() ? activeFolderName : 'Folders'}
-                </button>
-              )}
+              <button
+                className="chatme-archive-btn"
+                onClick={() => onShowFolders && onShowFolders()}
+                title="Folders"
+                style={{
+                  fontWeight: (activeTab === 'folders') ? 600 : 500,
+                  color: (activeTab === 'folders') ? 'var(--accent, #00a884)' : '#ffffff',
+                }}
+              >
+                {activeFolderName && activeFolderName.trim() ? activeFolderName : 'Folders'}
+              </button>
               {hasArchivedChats && (
                 <button
                   className="chatme-archive-btn"
                   onClick={() => setShowArchived(!showArchived)}
                   style={{
-                    borderBottom: (showArchived && activeTab === 'all') ? '2px solid var(--accent, #00a884)' : '2px solid transparent',
                     fontWeight: (showArchived && activeTab === 'all') ? 600 : 500,
                     color: (showArchived && activeTab === 'all') ? 'var(--accent, #00a884)' : '#ffffff',
                   }}

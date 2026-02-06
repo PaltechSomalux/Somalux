@@ -1,6 +1,7 @@
 // src/utils/fcmTopics.js
 import { messaging } from '../firebase';
-import { getToken } from 'firebase/messaging';
+// Firebase imports removed - using Supabase instead
+// import { getToken } from 'firebase/messaging';
 
 // Format group ID into a valid FCM topic
 export const getGroupTopic = (groupId) => `group_${groupId.replace(/[^a-zA-Z0-9-]/g, '_')}`;

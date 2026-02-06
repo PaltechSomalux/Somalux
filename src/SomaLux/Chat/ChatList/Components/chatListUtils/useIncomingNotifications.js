@@ -14,7 +14,8 @@ import {
   getDoc,
   setDoc,
   serverTimestamp,
-} from 'firebase/firestore';
+// } from 'firebase/firestore';
+// Firebase imports removed - using Supabase instead
 import { getChatId } from './chatUtils';
 
 export const useIncomingNotifications = (currentUserUid, users, setUsers, showToast) => {

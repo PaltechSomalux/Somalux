@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { FiLock, FiUsers, FiMoreVertical, FiStar, FiPlus } from 'react-icons/fi';
+import { FiLock, FiUsers, FiMoreVertical, FiStar, FiPlus, FiArrowLeft } from 'react-icons/fi';
 import { IoNotificationsOffOutline } from 'react-icons/io5';
 import { BsCheck2All } from 'react-icons/bs';
 import {Groups} from "../Group/Groups";
@@ -392,7 +392,8 @@ const MyGroupsInner = ({ searchQuery: externalSearchQuery, onGroupViewChange }) 
 
   // Fallback to 'all' if current tab becomes unavailable
   useEffect(() => {
-    if (activeTab === 'folders' && !hasFolders) setActiveTab('all');
+    // Allow folders tab to be accessible even when empty
+    // if (activeTab === 'folders' && !hasFolders) setActiveTab('all');
     if (activeTab === 'archived' && !hasArchived) setActiveTab('all');
   }, [activeTab, hasFolders, hasArchived]);
 
@@ -866,8 +867,8 @@ const MyGroupsInner = ({ searchQuery: externalSearchQuery, onGroupViewChange }) 
                 if (activeTab === 'folders' && selectedFolder) {
                   return (
                     <div className="group-header-top" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <button className="group-all-btn" onClick={() => { setSelectedFolder(null); }} title="Back" style={{ padding: '8px 12px' }}>&larr;</button>
-                      <h2 style={{ margin: 0 }}>{selectedFolder?.name || ''}</h2>
+                      <button className="group-all-btn" onClick={() => { setSelectedFolder(null); }} title="Back" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center' }}><FiArrowLeft size={80} /></button>
+                      <h2 style={{ margin: 0, color: '#ccc', fontSize: '16px' }}>{selectedFolder?.name || ''}</h2>
                       <input
                         type="text"
                         placeholder={`Search ${selectedFolder?.name || 'folder'} ...`}
@@ -897,32 +898,27 @@ const MyGroupsInner = ({ searchQuery: externalSearchQuery, onGroupViewChange }) 
                         className="group-all-btn"
                         onClick={() => setActiveTab('all')}
                         style={{
-                          borderBottom: (activeTab === 'all') ? '2px solid var(--accent, #00a884)' : '2px solid transparent',
                           fontWeight: (activeTab === 'all') ? 600 : 500,
                           color: (activeTab === 'all') ? 'var(--accent, #00a884)' : '#ffffff',
                         }}
                       >
                         All Groups
                       </button>
-                      {hasFolders && (
-                        <button
-                          className="group-archive-btn"
-                          onClick={() => setActiveTab('folders')}
-                          style={{
-                            borderBottom: (activeTab === 'folders') ? '2px solid var(--accent, #00a884)' : '2px solid transparent',
-                            fontWeight: (activeTab === 'folders') ? 600 : 500,
-                            color: (activeTab === 'folders') ? 'var(--accent, #00a884)' : '#ffffff',
-                          }}
-                        >
-                          Folders
-                        </button>
-                      )}
+                      <button
+                        className="group-archive-btn"
+                        onClick={() => setActiveTab('folders')}
+                        style={{
+                          fontWeight: (activeTab === 'folders') ? 600 : 500,
+                          color: (activeTab === 'folders') ? 'var(--accent, #00a884)' : '#ffffff',
+                        }}
+                      >
+                        Folders
+                      </button>
                       {hasArchived && (
                         <button
                           className="group-archive-btn"
                           onClick={() => setActiveTab('archived')}
                           style={{
-                            borderBottom: (activeTab === 'archived') ? '2px solid var(--accent, #00a884)' : '2px solid transparent',
                             fontWeight: (activeTab === 'archived') ? 600 : 500,
                             color: (activeTab === 'archived') ? 'var(--accent, #00a884)' : '#ffffff',
                           }}
@@ -980,8 +976,7 @@ const MyGroupsInner = ({ searchQuery: externalSearchQuery, onGroupViewChange }) 
               </>
             ) : (
               <>
-                {/* If no folders, show nothing (per requirement) */}
-                {folders.length > 0 && (
+                {folders.length > 0 ? (
                   <>
                     <GroupFolderList
                       folders={folders}
@@ -996,6 +991,21 @@ const MyGroupsInner = ({ searchQuery: externalSearchQuery, onGroupViewChange }) 
                     />
                     <button className="fab-create-group" onClick={handleCreateFolder} title="Create folder">+</button>
                   </>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    color: '#888',
+                    textAlign: 'center',
+                    padding: '20px'
+                  }}>
+                    <p style={{ fontSize: '16px', marginBottom: '10px' }}>No folders created yet</p>
+                    <p style={{ fontSize: '14px', marginBottom: '20px', color: '#666' }}>Create a folder to organize your groups</p>
+                    <button className="fab-create-group" onClick={handleCreateFolder} title="Create folder">+</button>
+                  </div>
                 )}
               </>
             ))

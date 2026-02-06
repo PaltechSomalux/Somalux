@@ -1,4 +1,5 @@
-import { doc, setDoc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
+// Firebase imports removed - using Supabase instead
+// import { doc, setDoc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 export const PRIVACY_FIELDS = [

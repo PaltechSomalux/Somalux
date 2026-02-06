@@ -357,7 +357,8 @@ class SupabaseGroupServiceClass {
    */
   async createGroupFolder(userId, name) {
     try {
-      const folderId = `group_folder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Generate a proper UUID for the folder ID
+      const folderId = crypto.randomUUID();
       const { data, error } = await supabase
         .from('user_group_folders')
         .insert({

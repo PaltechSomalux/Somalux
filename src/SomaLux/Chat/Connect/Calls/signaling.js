@@ -1,5 +1,6 @@
-import { collection, doc, addDoc, setDoc, onSnapshot, updateDoc, serverTimestamp, query, orderBy, where } from 'firebase/firestore';
-import { db } from '../../firebase';
+// Firebase imports removed - using Supabase instead
+// import { collection, doc, addDoc, setDoc, onSnapshot, updateDoc, serverTimestamp, query, orderBy, where } from 'firebase/firestore';
+// import { db } from '../../firebase';
 
 // Simple Firestore-based signaling helper (POC).
 // Writes a call document to `calls/{callId}` and signaling messages to `calls/{callId}/signals`.
@@ -56,6 +57,13 @@ export async function writeSignalDirect(callId, type, payload = {}) {
 }
 
 export function listenIncomingCallsFor(userId, contactId, onIncoming) {
+  // Firebase disabled - using Supabase instead
+  // This function is not available in Supabase mode
+  console.warn('listenIncomingCallsFor: Firebase signaling disabled');
+  return () => {}; // Return no-op unsubscribe
+}
+/*
+export function listenIncomingCallsFor(userId, contactId, onIncoming) {
   if (!userId) return () => {};
   const q = query(
     collection(db, 'calls'),
@@ -79,3 +87,4 @@ export function listenIncomingCallsFor(userId, contactId, onIncoming) {
   }, (err) => console.warn('listenIncomingCallsFor error', err));
   return unsub;
 }
+*/

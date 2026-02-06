@@ -13,7 +13,8 @@ import {
   getDoc,
   setDoc,
   serverTimestamp,
-} from 'firebase/firestore';
+// } from 'firebase/firestore';
+// Firebase imports removed - using Supabase instead
 // ❌ DISABLED: Firebase typing indicators - now using WebSocket only
 // import { listenForTyping } from '../../../Kiss/useTyping';
 import { getChatId } from './chatUtils'; // Assume utils file for shared functions

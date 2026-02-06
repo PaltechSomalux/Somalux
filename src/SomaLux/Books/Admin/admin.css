@@ -646,12 +646,52 @@ select option {
         margin-left: 0; 
         width: 100%;
         max-width: 100%;
-        padding-bottom: 80px;
+        padding-bottom: 70px;
         overflow-x: hidden;
     }
 
+    .admin-topbar {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 6px;
+        border-bottom: 1px solid #2a3942;
+        background: #0b1216;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 8px;
+        background: #111b21;
+        border: 1px solid #2a3942;
+        color: #e9edef;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        min-height: auto;
+    }
+
+    .back-link span {
+        display: none;
+    }
+
+    .back-link svg {
+        font-size: 16px;
+    }
+
+    .admin-breadcrumbs {
+        display: none;
+    }
+
     .admin-content {
-        padding: 16px;
+        padding: 12px;
         max-width: 100%;
     }
     
@@ -661,37 +701,54 @@ select option {
     }
 
     .panel {
-        padding: 16px;
+        padding: 12px;
     }
 
     .admin-bottombar {
         display: flex;
-        gap: 6px;
+        gap: 4px;
         align-items: center;
-        justify-content: space-around;
+        justify-content: flex-start;
         position: fixed;
         left: 0;
         right: 0;
         bottom: 0;
-        height: 64px;
-        background: #111b21;
-        border-top: 1px solid #2a3942;
-        padding: 6px 8px;
+        height: 56px;
+        background: #0a0f13;
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.5);
+        padding: 4px 6px;
         z-index: 10;
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-wrap: nowrap;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Hide scrollbar while keeping functionality */
+    .admin-bottombar {
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+    }
+    .admin-bottombar::-webkit-scrollbar {
+        display: none; /* Chrome, Safari and Opera */
     }
 
     .admin-bottombar .bottom-item {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 4px;
+        gap: 2px;
         color: #cfd8dc;
         text-decoration: none;
-        font-size: 11px;
-        padding: 4px 6px;
+        font-size: 9px;
+        padding: 3px 4px;
+        min-width: max-content;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
-    .admin-bottombar .bottom-item svg { font-size: 20px; }
+    .admin-bottombar .bottom-item svg { font-size: 16px; }
 
     .admin-bottombar .bottom-more { position: relative; }
     .admin-bottombar .more-btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px; border-radius: 8px; background: transparent; border: none; color: #cfd8dc; }

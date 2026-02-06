@@ -296,17 +296,9 @@ export const BooksAdmin = () => {
             <FiUpload /> <span>Upload</span>
           </NavLink>
 
-          {isAdmin && (
-            <NavLink to="/books/admin/ads" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
-              <BiSpeaker /> <span>Ads</span>
-            </NavLink>
-          )}
-
-          {isAdmin && (
-            <NavLink to="/books/admin/verify" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
-              <FiCheck /> <span>Verify</span>
-            </NavLink>
-          )}
+          <NavLink to="/books/admin/upload-history" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+            <FiClock /> <span>Upload History</span>
+          </NavLink>
 
           {canAccessContentFeatures && (
             <NavLink to="/books/admin/auto-upload" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
@@ -320,13 +312,64 @@ export const BooksAdmin = () => {
             </NavLink>
           )}
 
-          <NavLink to="/books/admin/upload-history" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
-            <FiClock /> <span>Upload History</span>
-          </NavLink>
-
           <NavLink to="/books/admin/categories" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
             <FiFolder /> <span>Categories</span>
           </NavLink>
+
+          {isAdmin && (
+            <NavLink to="/books/admin/submissions" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiUpload /> <span>Submissions</span>
+              <NotificationBadge count={pendingSubmissions} />
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <NavLink to="/books/admin/send-emails" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <BiSpeaker /> <span>Send Emails</span>
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <NavLink to="/books/admin/rankings" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiBarChart2 /> <span>Rankings</span>
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <NavLink to="/books/admin/ads" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <BiSpeaker /> <span>Ads</span>
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <NavLink to="/books/admin/search-analytics" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiSearch /> <span>Search</span>
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <NavLink to="/books/admin/users" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiUsers /> <span>Users</span>
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <NavLink to="/books/admin/verify" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiCheck /> <span>Verify</span>
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <NavLink to="/books/admin/storage" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiHardDrive /> <span>Storage</span>
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <NavLink to="/books/admin/settings" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiSettings /> <span>Settings</span>
+            </NavLink>
+          )}
         </nav>
 
         {/* MAIN AREA */}

@@ -1,6 +1,5 @@
 // src/hooks/useFCMToken.js
 import { useEffect, useState } from 'react';
-import { getAuth } from 'firebase/auth';
 import { supabase } from '../../../supabase';
 
 export const useFCMToken = () => {
@@ -12,9 +11,9 @@ export const useFCMToken = () => {
       if ('serviceWorker' in navigator && 'PushManager' in window) {
         setIsSupported(true);
         try {
-          // ✅ Get current user from auth
-          const auth = getAuth();
-          const currentUser = auth.currentUser;
+          // ✅ Get current user from Supabase auth
+          const { data: { user } } = await supabase.auth.getUser();
+          const currentUser = user;
 
           if (!currentUser) {
             console.log('useFCMToken: No user logged in, skipping push setup');

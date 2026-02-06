@@ -99,9 +99,9 @@ export const FolderDetail = ({ folder, chatsMap, onChatClick, onAddChats, onRemo
         </div>
       )}
       {filteredChats.length === 0 ? (
-        <div className="chatme-empty-state">
-          <p>Empty</p>
-          <button className="add-btn" onClick={onAddChats}>Add chats</button>
+        <div className="chatme-empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '20px', gap: '16px', minHeight: '200px' }}>
+          <p style={{ fontSize: '14px', color: '#999', margin: 0 }}>Empty</p>
+          <button className="add-btn" onClick={onAddChats} style={{ background: 'none', color: 'rgb(156, 153, 153)', fontSize: '12px', fontWeight: '300', cursor: 'pointer', padding: '6px 12px', border: 'none', borderRadius: '4px', display: 'inline-block' }}>Add chats</button>
         </div>
       ) : (
         filteredChats.map((chat) => (

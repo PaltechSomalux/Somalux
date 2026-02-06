@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { db, auth } from "../../../firebase";
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+// Firebase imports removed - using Supabase instead
+// import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import "./ChatLock.css";
 
 const ChatLockContext = createContext();

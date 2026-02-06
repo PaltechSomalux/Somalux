@@ -180,27 +180,53 @@
 /* Mobile: Keep controls in single horizontal line with proper spacing */
 @media (max-width: 520px) {
   .controlsBKP {
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
     align-items: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .search-containerBKP {
     flex: 1 1 auto;
-    min-width: 150px;
-    max-width: calc(100% - 60px);
-    max-width: 60%;
+    min-width: 120px;
+    max-width: calc(100% - 130px);
+    padding: 0.3rem 0.4rem;
   }
   .filter-wrapperBKP {
     display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    gap: 0.4rem;
+    flex-wrap: nowrap;
     align-items: center;
+    flex-shrink: 0;
   }
   .filter-wrapperBKP .filter-buttonBKP {
     flex-shrink: 0;
-    padding: 0.4rem 0.7rem;
-    font-size: 0.75rem;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
     white-space: nowrap;
+    min-width: fit-content;
+  }
+}
+
+/* Extra small phones - even tighter packing */
+@media (max-width: 380px) {
+  .controlsBKP {
+    gap: 0.3rem;
+  }
+  .search-containerBKP {
+    max-width: calc(100% - 120px);
+    padding: 0.25rem 0.3rem;
+  }
+  .filter-wrapperBKP {
+    gap: 0.3rem;
+  }
+  .filter-wrapperBKP .filter-buttonBKP {
+    padding: 0.45rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  .search-inputBKP {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
   }
 }
 

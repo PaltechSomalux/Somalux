@@ -11,8 +11,8 @@ import { SettingsPanel } from './SettingsPanel';
 import { WallpaperUI } from './Wallpaper';
 import { useChatActions } from './useChatActions';
 import { useLongPress } from '../ChatList/Components/utils/useLongPress';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+// Firebase imports removed - using Supabase instead
+// import { collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { supabase } from '../../../supabase';
 import './ChatWindow.css';
 import { DisappearingMessagesModal } from './DisappearingMessagesModal';
@@ -283,24 +283,25 @@ export const ChatWindow = ({
 
   // Load target user's privacy settings for visibility (e.g., last seen, profile photo)
   const [targetPrivacy, setTargetPrivacy] = useState(null);
-  useEffect(() => {
-    if (!contact?.id) { setTargetPrivacy(null); return; }
-    const ref = doc(db, 'users', contact.id);
-    const unsub = onSnapshot(ref, (snap) => {
-      if (snap.exists()) {
-        const d = snap.data() || {};
-        setTargetPrivacy({
-          lastSeen: d.lastSeen ?? 'everyone',
-          profilePhotoVisibility: d.profilePhotoVisibility ?? 'everyone',
-          aboutVisibility: d.aboutVisibility ?? 'everyone',
-          statusVisibility: d.statusVisibility ?? 'contacts',
-        });
-      } else {
-        setTargetPrivacy(null);
-      }
-    }, () => setTargetPrivacy(null));
-    return () => unsub();
-  }, [contact?.id]);
+  // Firebase Firestore listener disabled - using Supabase instead
+  // useEffect(() => {
+  //   if (!contact?.id) { setTargetPrivacy(null); return; }
+  //   const ref = doc(db, 'users', contact.id);
+  //   const unsub = onSnapshot(ref, (snap) => {
+  //     if (snap.exists()) {
+  //       const d = snap.data() || {};
+  //       setTargetPrivacy({
+  //         lastSeen: d.lastSeen ?? 'everyone',
+  //         profilePhotoVisibility: d.profilePhotoVisibility ?? 'everyone',
+  //         aboutVisibility: d.aboutVisibility ?? 'everyone',
+  //         statusVisibility: d.statusVisibility ?? 'contacts',
+  //       });
+  //     } else {
+  //       setTargetPrivacy(null);
+  //     }
+  //   }, () => setTargetPrivacy(null));
+  //   return () => unsub();
+  // }, [contact?.id]);
 
   // Log initial props
   useEffect(() => {
@@ -335,77 +336,16 @@ export const ChatWindow = ({
     }
 
     const fetchUserChats = async () => {
-      try {
-        // console.log('ChatWindow.jsx: Fetching user chats for forwarding:', {
-        //   currentUserId: currentUser.id,
-        //   path: `/userChats/${currentUser.id}/chats`,
-        //   timestamp: new Date().toISOString(),
-        // });
-
-        const userChatsQuery = query(collection(db, 'userChats', currentUser.id, 'chats'));
-        const snapshot = await getDocs(userChatsQuery);
-
-        const contactUids = snapshot.docs
-          .filter((doc) => doc.id !== 'trigger' && !doc.data().isDeleted)
-          .map((doc) => doc.id);
-
-        // console.log('ChatWindow.jsx: Retrieved contact UIDs:', {
-        //   contactUids,
-        //   count: contactUids.length,
-        // });
-
-        if (contactUids.length === 0) {
-          // console.log('ChatWindow.jsx: No contacts found for forwarding');
-          setAllUsers([]);
-          return;
-        }
-
-        const usersData = [];
-        for (const uid of contactUids) {
-          // console.log('ChatWindow.jsx: Processing contact UID:', { uid });
-          const userQuery = query(collection(db, 'users'), where('uid', '==', uid));
-          const userSnap = await getDocs(userQuery);
-
-          if (!userSnap.empty) {
-            const data = userSnap.docs[0].data();
-            const chatData = snapshot.docs.find((d) => d.id === uid)?.data() || {};
-            const chatId = getChatId(currentUser.id, uid);
-            if (!chatId) {
-              // console.warn('ChatWindow.jsx: Skipping invalid chatId for uid', { uid });
-              continue;
-            }
-
-
-            const userData = {
-              uid,
-              name: data.name || 'Unknown',
-              email: data.email || '',
-              bio: data.bio || '',
-              photoURL: data.photoURL || 'https://cdn-icons-png.flaticon.com/512/847/847969.png',
-              chatId,
-              isLocked: chatData.isLocked || false,
-              isMuted: chatData.isMuted || false,
-              isArchived: chatData.isArchived || false,
-              isPinned: chatData.isPinned || false,
-            };
-            usersData.push(userData);
-          } else {
-            // console.warn('ChatWindow.jsx: No user document found for UID:', { uid });
-          }
-        }
-
-        // Filter out current contact and self
-        const filteredUsers = usersData.filter((u) => u.uid !== contact?.id && u.uid !== currentUser.id);
-        setAllUsers(filteredUsers);
-      } catch (error) {
-        setAllUsers([]);
-      }
+      // Firebase Firestore disabled - using Supabase instead
+      setAllUsers([]);
     };
 
     fetchUserChats();
   }, [currentUser?.id, contact?.id]);
 
   // Load disappearing messages setting for this chat
+  // Firebase disabled - using Supabase instead
+  /*
   useEffect(() => {
     const chatId = getChatId(currentUser?.id, contact?.id);
     if (!chatId) return;
@@ -421,8 +361,11 @@ export const ChatWindow = ({
     });
     return () => unsub();
   }, [currentUser?.id, contact?.id]);
+  */
 
   // Load per-user keepMessages override (cache-first)
+  // Firebase disabled - using Supabase instead
+  /*
   useEffect(() => {
     const chatKey = `${currentUser?.id}_${contact?.id}`;
     if (!currentUser?.id || !contact?.id) return;
@@ -443,6 +386,7 @@ export const ChatWindow = ({
       } catch {}
     })();
   }, [currentUser?.id, contact?.id]);
+  */
 
   // Periodic cleanup of expired messages (per-user via deletedBy)
   useEffect(() => {
@@ -764,7 +708,7 @@ export const ChatWindow = ({
       const forwardedMessage = {
         sender: currentUser.id,
         receiver: userId,
-        timestamp: serverTimestamp(),
+        timestamp: new Date().toISOString(), // Use ISO string instead of serverTimestamp()
         status: 'sent',
         readBy: [],
         deletedBy: [],
@@ -1108,8 +1052,11 @@ export const ChatWindow = ({
             try {
               if (disappearingDays > 0 && disappearingSetBy && disappearingSetBy !== currentUser.id) {
                 // Limited mode: user can only keep messages (per-user override)
+                // Firebase disabled - using Supabase instead
+                /*
                 const keepRef = doc(db, 'userChats', currentUser.id, 'chats', contact.id);
                 await setDoc(keepRef, { keepMessages: true }, { merge: true });
+                */
                 setKeepMessages(true);
                 try { localStorage.setItem(`chat_keep_${currentUser.id}_${contact.id}`, 'true'); } catch {}
                 // Local-only system note (do not persist or WS)
@@ -1118,11 +1065,14 @@ export const ChatWindow = ({
                 }
               } else {
                 // Full control: set disappearing for chat
+                // Firebase disabled - using Supabase instead
+                /*
                 await setDoc(doc(db, 'chats', computedChatId), {
                   disappearingDurationDays: days,
                   disappearingSetAt: serverTimestamp(),
                   disappearingSetBy: currentUser.id,
                 }, { merge: true });
+                */
                 setDisappearingDays(days);
                 try { localStorage.setItem(`chat_disappear_days_${computedChatId}`, String(days)); } catch {}
 

@@ -1,5 +1,6 @@
-import { doc, setDoc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+// Firebase imports removed - using Supabase instead
+// import { doc, setDoc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { supabase } from '../../../supabase';
 
 export const PRIVACY_FIELDS = [
   'lastSeen',
@@ -35,23 +36,15 @@ function emitPrivacyUpdated(detail) {
 }
 
 export async function loadMyPrivacy({ preferCache = true } = {}) {
-  const user = auth.currentUser;
-  if (!user) return null;
-  if (preferCache) {
-    const cached = readCache();
-    if (cached) return cached;
-  }
-  const snap = await getDoc(doc(db, 'users', user.uid));
-  const data = snap.exists() ? snap.data() : null;
-  if (data) writeCache(data);
-  return data;
+  // Firestore disabled - using Supabase instead
+  const cached = readCache();
+  if (cached) return cached;
+  return null;
 }
 
 export async function savePrivacySetting(key, value) {
-  const user = auth.currentUser;
-  if (!user) throw new Error('No user');
+  // Firestore disabled - using Supabase instead
   if (!PRIVACY_FIELDS.includes(key)) throw new Error('Invalid privacy field');
-  await setDoc(doc(db, 'users', user.uid), { [key]: value, updatedAt: new Date() }, { merge: true });
   // Update cache and emit event for instant UI reflection
   const cached = readCache() || {};
   const next = { ...cached, [key]: value };
@@ -60,8 +53,7 @@ export async function savePrivacySetting(key, value) {
 }
 
 export async function resetPrivacyToDefaults() {
-  const user = auth.currentUser;
-  if (!user) throw new Error('No user');
+  // Firestore disabled - using Supabase instead
   const defaults = {
     lastSeen: 'everyone',
     profilePhotoVisibility: 'everyone',
@@ -70,7 +62,6 @@ export async function resetPrivacyToDefaults() {
     groupPrivacy: 'contacts',
     readReceipts: true,
   };
-  await setDoc(doc(db, 'users', user.uid), { ...defaults, updatedAt: new Date() }, { merge: true });
   writeCache(defaults);
   emitPrivacyUpdated({ reset: true, all: defaults });
 }

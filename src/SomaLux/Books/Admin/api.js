@@ -1135,9 +1135,16 @@ export async function fetchUploadCountsByUser() {
 export async function updateUserRole(id, role) {
   const origin = getBackendOrigin();
   try {
+    // Get current user's profile to pass actor email
+    const userProfile = await getCurrentUserProfile();
+    const actorEmail = userProfile?.email || 'admin';
+    
     const res = await fetch(`${origin}/api/elib/users/${encodeURIComponent(id)}/role`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-actor-email': actorEmail
+      },
       body: JSON.stringify({ role }),
     });
     if (!res.ok) {
@@ -1155,9 +1162,16 @@ export async function updateUserRole(id, role) {
 export async function suspendUser(id, suspended, reason = '') {
   const origin = getBackendOrigin();
   try {
+    // Get current user's profile to pass actor email
+    const userProfile = await getCurrentUserProfile();
+    const actorEmail = userProfile?.email || 'admin';
+    
     const res = await fetch(`${origin}/api/elib/users/${encodeURIComponent(id)}/suspend`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-actor-email': actorEmail
+      },
       body: JSON.stringify({ suspended, reason }),
     });
     if (!res.ok) {
