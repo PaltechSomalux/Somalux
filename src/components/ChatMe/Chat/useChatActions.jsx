@@ -137,12 +137,26 @@ export const useChatActions = ({
 
     console.log("useChatActions.js: handleSendMessage: Starting", logContext);
 
+    // FIXED: Check for pending attachments from unified send
+    let attachmentUrls = [];
+    try {
+      const pendingAttachments = sessionStorage.getItem('pendingAttachments');
+      if (pendingAttachments) {
+        const parsed = JSON.parse(pendingAttachments);
+        attachmentUrls = parsed.map(att => att.url);
+        sessionStorage.removeItem('pendingAttachments');
+        console.log("useChatActions.js: handleSendMessage: Found pending attachments", { count: attachmentUrls.length });
+      }
+    } catch (e) {
+      console.warn("useChatActions.js: handleSendMessage: Error parsing pending attachments:", e);
+    }
+
     if (isSending.current) {
       console.warn("useChatActions.js: handleSendMessage: Already sending, aborting", logContext);
       return;
     }
-    if (!newMessage?.trim()) {
-      console.warn("useChatActions.js: handleSendMessage: Empty message, aborting", logContext);
+    if (!newMessage?.trim() && attachmentUrls.length === 0) {
+      console.warn("useChatActions.js: handleSendMessage: Empty message and no attachments, aborting", logContext);
       return;
     }
     if (!currentUser?.id || !contact?.id) {
@@ -208,6 +222,7 @@ export const useChatActions = ({
         ...logContext,
         chatIdForSend,
         apiBase: API_BASE,
+        attachmentCount: attachmentUrls.length,
       });
 
       // FIXED: Optimistic timestamp as Date (matches parseTimestamp)
@@ -225,9 +240,13 @@ export const useChatActions = ({
         id: optimisticId,
         sender: senderId,  // FIXED: Use converted UUID so it matches database
         receiver: receiverId,  // FIXED: Use converted UUID so it matches database
+        sender_id: senderId,
+        recipient_id: receiverId,
         senderName: currentUser.name || currentUser.id,
         text: newMessage.trim(),
+        content: newMessage.trim(),
         timestamp: new Date(),  // FIXED: Use Date for consistency
+        created_at: new Date().toISOString(),
         replyingTo: replyingTo ? (replyingTo.id || replyingTo.messageId || null) : null,
         ...(replyContext ? { replyContext } : {}),
         status: "sent",
@@ -235,6 +254,15 @@ export const useChatActions = ({
         deletedBy: [],
         isPinned: false,
         ...(expiresAt ? { expiresAt } : {}),
+        // FIXED: Include attachments in optimistic message for unified send
+        ...(attachmentUrls.length > 0 ? { 
+          attachment_urls: attachmentUrls,
+          content_type: 'message_with_attachments',
+          metadata: {
+            attachmentCount: attachmentUrls.length,
+            uploadedAt: new Date().toISOString(),
+          }
+        } : {}),
       };
 
       console.log("useChatActions.js: handleSendMessage: Adding optimistic message to state", {
@@ -249,7 +277,16 @@ export const useChatActions = ({
         senderId: senderId,
         recipientId: receiverId,
         content: newMessage.trim(),
+        contentType: attachmentUrls.length > 0 ? 'message_with_attachments' : 'text',
         replyToId: replyingTo ? (replyingTo.id || replyingTo.messageId || null) : null,
+        // FIXED: Include attachment URLs in unified send
+        ...(attachmentUrls.length > 0 ? { 
+          attachmentUrls,
+          metadata: {
+            attachmentCount: attachmentUrls.length,
+            uploadedAt: new Date().toISOString(),
+          }
+        } : {}),
         // Only include fields that exist in database schema
         // Note: replyContext and expiresAt are not in the messages table, so excluded
       };
@@ -425,6 +462,10 @@ export const useChatActions = ({
           sender: doc.sender_id,
           receiver: doc.recipient_id,
           text: doc.content,
+          // FIXED: Include attachment_urls and metadata for unified message rendering
+          attachment_urls: doc.attachment_urls || [],
+          metadata: doc.metadata || {},
+          content_type: doc.content_type || 'text',
         }));
         const sorted = [...loaded].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         
@@ -522,7 +563,8 @@ export const useChatActions = ({
     }
   }, [newMessage, currentUser?.id, contact?.id, replyingTo, setNewMessage, setReplyingTo, messagesEndRef, setMessages]);
 
-  const handleFileUpload = useCallback(async (file) => {
+  const handleFileUpload = useCallback(async (file, options = {}) => {
+    const { skipMessageCreation = false } = options;
     const logContext = {
       function: "handleFileUpload",
       timestamp: new Date().toISOString(),
@@ -530,46 +572,113 @@ export const useChatActions = ({
       contactId: contact?.id,
       fileName: file?.name,
       fileType: file?.type,
+      skipMessageCreation,
     };
 
     console.log("useChatActions.js: handleFileUpload: Starting", logContext);
 
     if (!file || !currentUser?.id || !contact?.id) {
       console.error("useChatActions.js: handleFileUpload: Missing file or IDs", logContext);
-      return;
+      throw new Error("Missing file or user IDs");
     }
 
     const chatId = getChatId(currentUser.id, contact.id);
     if (!chatId) {
       console.error("useChatActions.js: handleFileUpload: Invalid chatId", { ...logContext, chatId });
-      return;
+      throw new Error("Invalid chat ID");
     }
 
     try {
-      const tempURL = URL.createObjectURL(file);
-      const message = {
-        sender_id: currentUser.id,
-        recipient_id: contact.id,
-        content: `[File] ${file.name}`,
-        fileName: file.name,
-        fileType: file.type,
-        fileURL: tempURL,
-        created_at: new Date().toISOString(),
-        status: "sent",
-      };
-      console.log("useChatActions.js: handleFileUpload: Preparing to save message", {
+      // Step 1: Upload file to Supabase Storage
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+      const timestamp = new Date().getTime();
+      const randomId = Math.random().toString(36).substring(2, 10);
+      const storagePath = `chat-files/${chatId}/${timestamp}_${randomId}_${file.name}`;
+
+      console.log("useChatActions.js: handleFileUpload: Uploading file to storage", {
         ...logContext,
-        message,
-        tablePath: `messages`,
+        storagePath,
+        fileSize: file.size,
       });
 
+      const { data: storageData, error: storageError } = await supabase.storage
+        .from('chat-files')
+        .upload(storagePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type || 'application/octet-stream',
+        });
+
+      if (storageError) {
+        throw new Error(`Storage upload failed: ${storageError.message}`);
+      }
+
+      // Step 2: Get public URL from storage
+      const { data: urlData } = supabase.storage
+        .from('chat-files')
+        .getPublicUrl(storagePath);
+
+      const fileURL = urlData?.publicUrl || `${process.env.REACT_APP_SUPABASE_URL}/storage/v1/object/public/chat-files/${storagePath}`;
+
+      console.log("useChatActions.js: handleFileUpload: File uploaded, getting URL", {
+        ...logContext,
+        fileURL,
+      });
+
+      // FIXED: If skipMessageCreation is true, just return the URL without creating a message
+      // This is used when sending files together with text as a unified message
+      if (skipMessageCreation) {
+        console.log("useChatActions.js: handleFileUpload: Skipping message creation, returning URL only", logContext);
+        return {
+          fileURL: fileURL,
+          filePath: storagePath,
+        };
+      }
+
+      // Step 3: Determine if this is an image for inline display
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      const isAudio = file.type.startsWith('audio/');
+
+      // Step 4: Create message object with proper structure for both storage and display
+      const message = {
+        sender_id: currentUser.id,
+        // If contact.id is from conversations table, use it directly. Otherwise use the normalized chat ID
+        chat_id: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(contact?.id || '')
+          ? contact.id
+          : normalizeChatIdForSupabase(chatId),
+        content: `[File] ${file.name}`,
+        content_type: isImage ? 'image' : (isVideo ? 'video' : (isAudio ? 'audio' : 'file')),
+        attachment_urls: [fileURL],
+        metadata: {
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          filePath: storagePath,
+          uploadedAt: new Date().toISOString(),
+        },
+        status: "sent",
+      };
+
+      console.log("useChatActions.js: handleFileUpload: Preparing to save message", {
+        ...logContext,
+        messageId: undefined,
+        storagePath,
+        contentType: message.content_type,
+      });
+
+      // Step 5: Save message to database
       const { data, error } = await supabase
         .from('messages')
-        .insert([{ ...message, conversation_id: normalizeChatIdForSupabase(chatId) }])
+        .insert([message])
         .select();
 
       if (error) {
-        throw error;
+        throw new Error(`Message insert failed: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error("No data returned after message insert");
       }
 
       console.log("useChatActions.js: handleFileUpload: Message saved to Supabase", {
@@ -577,27 +686,29 @@ export const useChatActions = ({
         messageId: data?.[0]?.id,
       });
 
-      const { error: updateError } = await supabase
-        .from('messages')
-        .update({ status: 'delivered' })
-        .eq('id', data?.[0]?.id);
-
-      if (updateError) {
-        throw updateError;
+      // Step 6: Add message to local state for immediate display
+      if (typeof setMessages === 'function' && data?.[0]) {
+        setMessages((prev) => [...prev, data[0]]);
+        console.log("useChatActions.js: handleFileUpload: Message added to local state", {
+          ...logContext,
+          messageId: data?.[0]?.id,
+        });
       }
 
-      console.log("useChatActions.js: handleFileUpload: Updated message status to delivered", {
-        ...logContext,
+      return {
         messageId: data?.[0]?.id,
-      });
+        fileURL: fileURL,
+        filePath: storagePath,
+      };
     } catch (err) {
       console.error("useChatActions.js: handleFileUpload: Failed", {
         ...logContext,
         error: err.message,
         stack: err.stack,
       });
+      throw err;
     }
-  }, [currentUser?.id, contact?.id]);
+  }, [currentUser?.id, contact?.id, setMessages]);
 
   const handleDeleteMessage = useCallback(async (messageId) => {
     const logContext = {

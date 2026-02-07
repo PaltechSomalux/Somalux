@@ -932,58 +932,118 @@ export const MessageItem = ({
         <div className="message-body" onClick={isEditing ? undefined : (e) => onClick?.(e, message)}>
           {isEditing ? (
             renderEditUI()
-          ) : displayText ? (
-            <div className="message-text">
-              {renderFormattedText()}
-              {isLongMessage && (
-                <button
-                  className="expand-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onToggleExpand) {
-                      onToggleExpand(message.id);
-                    }
-                  }}
-                  aria-label={isExpanded ? 'Show less' : 'Show more'}
-                >
-                  <span className="expand-icon">
-                    {isExpanded ? <FiChevronUp /> : <FiChevronDown />}
-                  </span>
-                  <span className="expand-text">{isExpanded ? 'Show less' : 'Show more'}</span>
-                </button>
-              )}
-              {renderLinkPreview()}
-            </div>
           ) : null}
 
-          {displayMessage.file && (
-            <div className={`message-file ${displayMessage.file.type.startsWith('image/') ? 'image-file' : 'document-file'}`}>
-              {displayMessage.file.type.startsWith('image/') ? (
-                <div className="image-container">
-                  <img src={displayMessage.file.url} alt={displayMessage.file.name} className="file-preview" />
-                  <div className="file-info-overlay">
-                    <span className="file-name">{displayMessage.file.name}</span>
-                    <span className="file-size">{Math.round(displayMessage.file.size / 1024)} KB</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="document-container">
-                  <div className="file-icon">{getFileIcon(displayMessage.file.type)}</div>
-                  <div className="file-details">
-                    <div className="file-name">{displayMessage.file.name}</div>
-                    <div className="file-meta">
-                      {Math.round(displayMessage.file.size / 1024)} KB • {displayMessage.file.type.split('/')[1]?.toUpperCase() || 'FILE'}
-                    </div>
-                  </div>
-                  <button
-                    className="download-btn"
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label="Download file"
+          {/* Display attachments from attachment_urls (new Supabase structure) - SHOW FIRST */}
+          {(message.attachment_urls && message.attachment_urls.length > 0) && (
+            <div className="message-attachments">
+              {message.attachment_urls.map((attachmentUrl, idx) => {
+                const fileMetadata = message.metadata;
+                const fileType = fileMetadata?.fileType || '';
+                const fileName = fileMetadata?.fileName || 'Attachment';
+                const fileSize = fileMetadata?.fileSize || 0;
+                const isImage = fileType.startsWith('image/') || attachmentUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                
+                return (
+                  <div 
+                    key={idx} 
+                    className={`message-attachment ${isImage ? 'attachment-image' : 'attachment-file'}`}
                   >
-                    <FiDownload />
+                    {isImage ? (
+                      <div className="image-attachment-container" style={{ position: 'relative' }}>
+                        <img 
+                          src={attachmentUrl} 
+                          alt={fileName} 
+                          className="attachment-image-preview"
+                          title={fileName}
+                          style={{ 
+                            display: 'block',
+                            maxWidth: '100%',
+                            height: 'auto',
+                          }}
+                          onError={(e) => {
+                            console.error('Failed to load image:', attachmentUrl);
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                        
+                        {/* Text caption BELOW image with timestamp on same line */}
+                        {displayText && !displayText.startsWith('[File]') && (
+                          <div className="image-caption-with-footer">
+                            <span className="image-caption-text">
+                              {parseInlineText(displayText)}
+                            </span>
+                            <span className="timestamp">{formatTimestamp(message.timestamp)}</span>
+                            {renderMessageStatus()}
+                          </div>
+                        )}
+                        
+                        {/* If no caption, just show footer below image */}
+                        {(!displayText || displayText.startsWith('[File]')) && (
+                          <div className="image-footer-only">
+                            <span className="timestamp">{formatTimestamp(message.timestamp)}</span>
+                            {renderMessageStatus()}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="file-attachment-container">
+                        <div className="attachment-file-icon">{getFileIcon(fileType)}</div>
+                        <div className="attachment-file-info">
+                          <div className="attachment-file-name">{fileName}</div>
+                          <div className="attachment-file-meta">
+                            {fileSize > 0 ? `${Math.round(fileSize / 1024)} KB` : ''} 
+                            {fileType ? ` • ${fileType.split('/')[1]?.toUpperCase() || 'FILE'}` : ''}
+                          </div>
+                        </div>
+                        <a
+                          href={attachmentUrl}
+                          download={fileName}
+                          className="attachment-download-btn"
+                          title="Download"
+                        >
+                          <FiDownload />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Display text content with inline footer - show only if not just a file message and no image attachment */}
+          {displayText && !displayText.startsWith('[File]') && 
+            !(message.attachment_urls && message.attachment_urls.length > 0 && 
+              (message.metadata?.fileType?.startsWith('image/') || 
+               (message.attachment_urls[0] && message.attachment_urls[0].match(/\.(jpg|jpeg|png|gif|webp)$/i)))) && (
+            <div className="message-text-with-footer">
+              <div className="message-text">
+                {renderFormattedText()}
+                {isLongMessage && (
+                  <button
+                    className="expand-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onToggleExpand) {
+                        onToggleExpand(message.id);
+                      }
+                    }}
+                    aria-label={isExpanded ? 'Show less' : 'Show more'}
+                  >
+                    <span className="expand-icon">
+                      {isExpanded ? <FiChevronUp /> : <FiChevronDown />}
+                    </span>
+                    <span className="expand-text">{isExpanded ? 'Show less' : 'Show more'}</span>
                   </button>
-                </div>
-              )}
+                )}
+              </div>
+              {renderLinkPreview()}
+              {/* Footer inline with text */}
+              <div className="message-footer-inline">
+                <span className="timestamp">{formatTimestamp(message.timestamp)}</span>
+                {renderMessageStatus()}
+              </div>
             </div>
           )}
 
@@ -1006,10 +1066,15 @@ export const MessageItem = ({
           {renderReactions(message.reactions)}
         </div>
 
-        <div className="message-footer">
-          <span className="timestamp">{formatTimestamp(message.timestamp)}</span>
-          {renderMessageStatus()}
-        </div>
+        {/* Only show footer outside if no text and no image attachment (text-only messages embed footer, image messages handle it) */}
+        {!displayText && !(message.attachment_urls && message.attachment_urls.length > 0 && 
+          (message.metadata?.fileType?.startsWith('image/') || 
+           (message.attachment_urls[0] && message.attachment_urls[0].match(/\.(jpg|jpeg|png|gif|webp)$/i)))) && (
+          <div className="message-footer">
+            <span className="timestamp">{formatTimestamp(message.timestamp)}</span>
+            {renderMessageStatus()}
+          </div>
+        )}
       </div>
 
       {(message.isPinned || message.edited || message.isPrivate) && (

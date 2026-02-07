@@ -207,11 +207,25 @@
   justify-content: center;
   flex: 1;
   color: var(--text-secondary);
+  opacity: 0.75;
+}
+
+.no-messages-placeholder h3 {
+  font-size: 14px;
+  margin: 8px 0 4px 0;
+  font-weight: 500;
+}
+
+.no-messages-placeholder p {
+  font-size: 12px;
+  margin: 0;
+  opacity: 0.9;
 }
 
 .no-messages-icon {
-  font-size: 48px;
-  margin-bottom: 10px;
+  font-size: 32px;
+  margin-bottom: 8px;
+  opacity: 0.8;
 }
 
 /* Date separator */

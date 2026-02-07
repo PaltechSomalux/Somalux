@@ -256,33 +256,64 @@ export const ChatFooter = ({
     textareaRef.current?.focus();
   };
 
-  const handleSendClick = () => {
+  const handleSendClick = async () => {
     if (isRecording) return;
     const hasText = !!newMessage.trim();
     const hasFiles = attachments.length > 0;
     if (!hasText && !hasFiles) return;
 
-    if (hasText) {
-      onSendMessage();
-    }
-    // send files queued
-    if (hasFiles) {
-      attachments.forEach((att) => {
-        try { onFileUpload(att.file); } catch (e) { /* noop */ }
-      });
-      // revoke and clear
-      attachments.forEach((att) => URL.revokeObjectURL(att.url));
+    try {
+      let attachmentData = [];
+
+      // Step 1: Upload all files/attachments first (without sending individual messages)
+      if (hasFiles) {
+        console.log('ChatFooter: Uploading', attachments.length, 'attachments...');
+        
+        for (const att of attachments) {
+          try {
+            // Use the new unified upload that returns URL without creating separate message
+            const result = await onFileUpload(att.file, { skipMessageCreation: true });
+            if (result && result.fileURL) {
+              attachmentData.push({
+                url: result.fileURL,
+                type: att.kind,
+                name: att.name
+              });
+            }
+          } catch (e) {
+            console.error('ChatFooter: Failed to upload attachment:', e);
+          }
+        }
+        
+        // Revoke object URLs after upload
+        attachments.forEach((att) => URL.revokeObjectURL(att.url));
+      }
+
+      // Step 2: Send message with attachments in one unified message (like WhatsApp)
+      // Pass attachment data to the send function so text and images are sent together
+      if (hasText || attachmentData.length > 0) {
+        // Store attachment data in window/session context for handleSendMessage to access
+        if (attachmentData.length > 0) {
+          sessionStorage.setItem('pendingAttachments', JSON.stringify(attachmentData));
+        }
+        onSendMessage();
+      }
+
+      // Step 3: Clear UI state
       setAttachments([]);
+      setNewMessage('');
+      if (setReplyingTo) setReplyingTo(null);
+      setShowMentions(false);
+      setShowFormatToolbar(false);
+      setShowHighlightPalette(false);
+      setMentionQuery('');
+      setPreviewData(null);
+      setDetectedUrls([]);
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    } catch (error) {
+      console.error('ChatFooter: Error in handleSendClick:', error);
+      alert('Error sending message: ' + error.message);
     }
-    setNewMessage('');
-    if (setReplyingTo) setReplyingTo(null);
-    setShowMentions(false);
-    setShowFormatToolbar(false);
-    setShowHighlightPalette(false);
-    setMentionQuery('');
-    setPreviewData(null);
-    setDetectedUrls([]);
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
   const handleVoiceClick = () => {
@@ -429,6 +460,21 @@ export const ChatFooter = ({
 
   const renderAttachmentPreviews = () => {
     if (attachments.length === 0 || isReplying) return null;
+    
+    // Show full-width image preview for the first image
+    const firstImage = attachments.find(att => att.kind === 'image');
+    if (firstImage) {
+      return (
+        <div className="link-preview">
+          <button className="preview-remove-btn" onClick={() => removeAttachment(firstImage.id)} aria-label="Remove">
+            <FiX />
+          </button>
+          <img src={firstImage.url} alt={firstImage.name} className="preview-image" />
+        </div>
+      );
+    }
+    
+    // For non-image attachments, show small chips
     return (
       <div className="attachment-previews">
         {attachments.map((att) => (
@@ -436,9 +482,7 @@ export const ChatFooter = ({
             <button className="attachment-remove" onClick={() => removeAttachment(att.id)} aria-label="Remove attachment">
               <FiX />
             </button>
-            {att.kind === 'image' ? (
-              <img src={att.url} alt={att.name} className="attachment-thumb" />
-            ) : att.kind === 'video' ? (
+            {att.kind === 'video' ? (
               <div className="attachment-thumb video">
                 <span>🎞️</span>
               </div>
@@ -561,6 +605,8 @@ export const ChatFooter = ({
       )}
 
       <div className="footer-content-container">
+        {renderLinkPreview()}
+        {renderAttachmentPreviews()}
         <div className="footer-content-vibe">
           <button
             className="icon-button-vibe attachment-icon"
@@ -633,8 +679,6 @@ export const ChatFooter = ({
             </div>
           ) : (
             <div className="input-wrapper" style={{ flex: 1, maxWidth: 'calc(100% - 98px)', position: 'relative' }}>
-              {renderLinkPreview()}
-              {renderAttachmentPreviews()}
               <div className="input-preview-wrapper">
                 <div className="input-preview">
                   {newMessage && newMessage.length > 0 ? (

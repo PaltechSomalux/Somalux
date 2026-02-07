@@ -1772,7 +1772,7 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
                     <h2>ChatMe</h2>
                     <input
                       type="text"
-                      placeholder="Search chats..."
+                      placeholder="Search folders..."
                       value={localSearchQuery}
                       onChange={(e) => setLocalSearchQuery(e.target.value)}
                       className="chatme-search-input"

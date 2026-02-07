@@ -471,7 +471,6 @@
   right: 0 !important;
   height: 50px !important;
   background-color: transparent !important;
-  background: transparent !important;
   display: flex !important;
   z-index: 10000 !important;
   border: none !important;
@@ -572,7 +571,7 @@
   left: 50%;
   top: 50%;
   font-size: 36px;
-  color: #00a884;
+  color: red !important;
   opacity: 0;
   animation: bubble-mobileConnect 60s ease-in-out infinite;
   z-index: 1;

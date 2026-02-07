@@ -34,7 +34,20 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP TRIGGER IF EXISTS tr_auto_create_user_chats ON public.conversations;
 CREATE TRIGGER tr_auto_create_user_chats
   AFTER INSERT ON public.conversations
-  FOR EACH ROW
+  FOR EACH ROWCompiled with problems:
+×
+ERROR in ./src/components/ChatMe/Chat/MessageItem.css (./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].oneOf[5].use[1]!./node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[1].oneOf[5].use[2]!./node_modules/source-map-loader/dist/cjs.js!./src/components/ChatMe/Chat/MessageItem.css)
+Module build failed (from ./node_modules/postcss-loader/dist/cjs.js):
+SyntaxError
+
+(195:1) C:\Intel\Magic\SomaLux\src\components\ChatMe\Chat\MessageItem.css Unknown word
+
+  193 | }
+  194 | 
+> 195 | .message-foflex;
+      | ^
+  196 |   align-items: center;
+  197 |   justify-content: flex-end;
   EXECUTE FUNCTION public.auto_create_user_chats();
 
 -- ============================================================================

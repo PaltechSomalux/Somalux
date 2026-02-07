@@ -30,20 +30,22 @@
 
 .message-content {
   max-width: 77% !important;
-  padding: 2px 5px !important;
+  padding: 0 !important;
   border-radius: 8px;
   position: relative;
   word-wrap: break-word;
-  background-color: #161b1d;
+  background-color: transparent !important;
   color: white;
   transition: background-color 0.2s ease;
   user-select: none;
   margin: 0 !important;
   width: fit-content;
   line-height: 1.3;
-  /* Prevent text selection by default */
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 4px;
+  flex-wrap: nowrap;
 }
 
 .message.selection-mode .message-content,
@@ -53,12 +55,12 @@
 }
 
 .message.sent .message-content {
-  background-color: #005c4b !important;
+  background-color: transparent !important;
   color: #ffffff !important;
 }
 
 .message.received .message-content {
-  background-color: #202c33 !important;
+  background-color: transparent !important;
   color: white !important;
   border: none !important;
 }
@@ -67,9 +69,18 @@
   font-size: 14px !important;
   line-height: 1.3;
   position: relative;
-  display: block;
-  padding-bottom: 0px;
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: 8px 12px;
+  background-color: #005c4b;
+  border-radius: 8px;
   order: 1;
+}
+
+.message.received .message-text {
+  background-color: #202c33;
 }
 
 .message-text .message-paragraph {
@@ -180,26 +191,29 @@
 
 .message-footer {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: flex-end;
-  gap: 3px;
-  padding: 0px 0 0 0;
-  font-size: 10px;
+  gap: 4px;
+  padding: 0;
+  font-size: 11px;
   color: rgb(167, 161, 161);
   min-height: 0px;
-  margin-top: 1px;
+  margin: 0;
   width: auto;
   order: 2;
+  white-space: nowrap;
 }
 
 .timestamp {
-  font-size: 9px !important;
-  color: rgb(167, 161, 161);
+  font-size: 10px !important;
+  color: rgba(255, 255, 255, 0.75);
   white-space: nowrap;
-  margin-left: 2px;
+  margin-left: 0;
   display: inline-block;
   padding: 0px;
   flex-shrink: 0;
+  font-weight: 400;
+  opacity: 0.75 !important;
 }
 
 .status-indicator {
@@ -1073,7 +1087,7 @@
 
   .preview-image {
     width: 100%;
-    height: 120px;
+    height: 180px;
     border-right: none;
     border-bottom: 1px solid #2a3942;
   }
@@ -1095,5 +1109,17 @@
 
   .file-details {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) and (orientation: portrait) {
+  .preview-image {
+    height: 220px !important;
+  }
+}
+
+@media (max-width: 480px) and (orientation: landscape) {
+  .preview-image {
+    height: 140px !important;
   }
 }

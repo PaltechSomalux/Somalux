@@ -66,6 +66,7 @@ export async function initializeStorageBuckets() {
     { name: 'book-files', isPublic: false },
     { name: 'past-papers', isPublic: false },
     { name: 'user-avatars', isPublic: true },
+    { name: 'chat-files', isPublic: true },
     { name: 'ads', isPublic: true }
   ];
 

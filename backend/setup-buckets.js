@@ -55,6 +55,11 @@ const buckets = [
     name: 'book-covers',
     description: 'Book cover backups',
     public: true
+  },
+  {
+    name: 'chat-files',
+    description: 'Chat message attachments and shared files',
+    public: true
   }
 ];
 

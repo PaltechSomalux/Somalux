@@ -97,14 +97,23 @@ router.get('/messages/:chatId/latest', async (req, res) => {
  */
 router.post('/messages/latest-batch', async (req, res) => {
   try {
+    console.log('📥 POST /messages/latest-batch received:', { bodyKeys: Object.keys(req.body || {}) });
+    
     const { chatIds = [], limit = 1 } = req.body;
 
     if (!Array.isArray(chatIds) || chatIds.length === 0) {
+      console.warn('❌ Missing or invalid chatIds array:', chatIds);
       return res.status(400).json({ error: 'Missing chatIds array' });
     }
 
     const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      console.error('❌ Supabase admin not initialized');
+      return res.status(500).json({ error: 'Supabase not configured' });
+    }
+    
     const results = new Map();
+    console.log(`📤 Fetching latest messages for ${chatIds.length} chats`);
 
     // Fetch latest message for each chat
     for (const chatId of chatIds) {
@@ -117,17 +126,26 @@ router.post('/messages/latest-batch', async (req, res) => {
           .order('created_at', { ascending: false })
           .limit(parseInt(limit));
 
-        if (!error && data && data.length > 0) {
+        if (error) {
+          console.warn(`⚠️ Error fetching messages for chat ${chatId}:`, error.message);
+          continue;
+        }
+        
+        if (data && data.length > 0) {
+          console.log(`✅ Found ${data.length} message(s) for chat ${chatId}`);
           results.set(chatId, data[0]);
+        } else {
+          console.log(`📭 No messages found for chat ${chatId}`);
         }
       } catch (e) {
-        console.warn(`Failed to fetch latest message for chat ${chatId}:`, e.message);
+        console.error(`❌ Exception fetching latest message for chat ${chatId}:`, e.message);
       }
     }
 
+    console.log(`✅ Returning ${results.size} results for /messages/latest-batch`);
     res.json({ ok: true, messages: Object.fromEntries(results) });
   } catch (error) {
-    console.error('POST /messages/latest-batch error:', error);
+    console.error('❌ POST /messages/latest-batch error:', error);
     res.status(500).json({ error: error.message || 'Failed to fetch latest messages' });
   }
 });

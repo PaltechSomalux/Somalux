@@ -12,7 +12,7 @@ export const SearchBar = ({
         type="text"
         value={messageSearch}
         onChange={(e) => setMessageSearch(e.target.value)}
-        placeholder="Search  Chats . . ."
+        placeholder="Search Folders . . ."
         autoFocus
       />
       {messageSearch && (

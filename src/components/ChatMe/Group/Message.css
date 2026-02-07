@@ -953,13 +953,15 @@
 @media (max-width: 768px) {
   .message-content-wrapper {
     padding: 6px 12px; /* Mobile edge-to-edge */
-    max-width: 75%;
-    min-width: auto;
+    max-width: 96% !important;
+    min-width: auto !important;
+    width: 96% !important;
+    display: block !important;
   }
 
   .message-bubble {
-    max-width: 100%;
-    width: auto;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   .message-text {
@@ -971,10 +973,15 @@
 @media (max-width: 480px) {
   .message-content-wrapper {
     padding: 5px 8px; /* Extra small edge-to-edge */
+    max-width: 96% !important;
+    min-width: auto !important;
+    width: 96% !important;
+    display: block !important;
   }
 
   .message-bubble {
-    max-width: 80%;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 }
 
@@ -1022,8 +1029,8 @@
 
   /* slightly reduce wrapper max width so avatar + bubble fit */
   .message-content-wrapper {
-    max-width: 88% !important;
-    width: 88% !important;
+    max-width: 96% !important;
+    width: 96% !important;
     padding: 6px 8px !important;
   }
 
