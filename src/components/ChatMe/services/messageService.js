@@ -22,7 +22,23 @@ export class MessageService {
       );
       
       if (!response.ok) {
-        throw new Error('Failed to fetch messages');
+        const responseText = await response.text();
+        console.error('MessageService.fetchMessages: Non-OK response', {
+          status: response.status,
+          statusText: response.statusText,
+          responseSample: responseText.substring(0, 200)
+        });
+        throw new Error(`Failed to fetch messages: ${response.status}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('MessageService.fetchMessages: Invalid content type', {
+          contentType,
+          responseSample: responseText.substring(0, 200)
+        });
+        throw new Error('Server returned non-JSON response');
       }
       
       const { messages = [] } = await response.json();
@@ -59,7 +75,23 @@ export class MessageService {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        const responseText = await response.text();
+        console.error('MessageService.sendMessage: Non-OK response', {
+          status: response.status,
+          statusText: response.statusText,
+          responseSample: responseText.substring(0, 200)
+        });
+        throw new Error(`Failed to send message: ${response.status}`);
+      }
+
+      const contentType_header = response.headers.get('content-type');
+      if (!contentType_header || !contentType_header.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('MessageService.sendMessage: Invalid content type', {
+          contentType: contentType_header,
+          responseSample: responseText.substring(0, 200)
+        });
+        throw new Error('Server returned non-JSON response');
       }
 
       const { message } = await response.json();

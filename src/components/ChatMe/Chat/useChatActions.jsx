@@ -378,7 +378,25 @@ export const useChatActions = ({
         throw new Error(`Backend error ${response.status}: ${errorData.error || responseText}`);
       }
 
-      const responseData = JSON.parse(responseText);
+      let responseData;
+      try {
+        // Check if response is HTML (which indicates an error page)
+        if (responseText.trim().startsWith('<') || responseText.trim().startsWith('<!DOCTYPE')) {
+          console.error("useChatActions.js: handleSendMessage: Received HTML instead of JSON", {
+            ...logContext,
+            responseSample: responseText.substring(0, 100),
+          });
+          throw new Error("Server returned HTML instead of JSON - this usually indicates a server error or misconfiguration");
+        }
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        console.error("useChatActions.js: handleSendMessage: Failed to parse response as JSON", {
+          ...logContext,
+          error: e.message,
+          responseSample: responseText.substring(0, 200),
+        });
+        throw new Error(`Failed to parse server response: ${e.message}`);
+      }
       
       // FIXED: Handle both messageId and message.id from backend response
       const messageId = responseData.messageId || responseData.message?.id || responseData.id;
