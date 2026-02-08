@@ -98,17 +98,17 @@ function convertToValidUUID(userId) {
 
 // Detect connection quality and adapt timeout accordingly
 const getAdaptiveTimeout = () => {
-  if (!navigator.connection) return 15000; // Default 15s
+  if (!navigator.connection) return 30000; // Default 30s (increased for SSL/HTTPS overhead)
   
   const effectiveType = navigator.connection.effectiveType;
-  // 4g: 8s, 3g: 15s, 2g/slow-2g: 30s
+  // 4g: 15s, 3g: 30s, 2g/slow-2g: 60s (increased for domain name SSL handshake)
   const timeoutMap = {
-    '4g': 8000,
-    '3g': 15000,
-    '2g': 30000,
-    'slow-2g': 30000,
+    '4g': 15000,
+    '3g': 30000,
+    '2g': 60000,
+    'slow-2g': 60000,
   };
-  return timeoutMap[effectiveType] || 15000;
+  return timeoutMap[effectiveType] || 30000;
 };
 
 export const useChatActions = ({
@@ -330,15 +330,25 @@ export const useChatActions = ({
             const isTimeout = err.name === 'AbortError';
             const isNetworkError = err instanceof TypeError;
             
+            // Create proper error message
+            let errorMsg = err?.message || String(err) || 'Unknown error';
+            if (isTimeout) {
+              errorMsg = `Request timeout (${timeout}ms) - server may be slow or offline`;
+            }
+            
             console.warn(`useChatActions.js: handleSendMessage: Attempt ${attempt} failed`, {
-              error: err.message,
+              error: errorMsg,
               isTimeout,
               isNetworkError,
+              errorName: err?.name,
               willRetry: attempt < maxRetries,
             });
             
             if (attempt === maxRetries) {
-              throw err;
+              // Create proper Error with message
+              const finalErr = new Error(errorMsg);
+              finalErr.originalError = err;
+              throw finalErr;
             }
             
             // Wait before retry (exponential backoff)
@@ -521,17 +531,21 @@ export const useChatActions = ({
         messagesEndRef?.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     } catch (err) {
+      const errorMsg = err?.message || String(err) || 'Unknown error occurred';
+      
       console.error("useChatActions.js: handleSendMessage: Failed", {
         ...logContext,
-        error: err.message,
-        stack: err.stack,
+        error: errorMsg,
+        errorName: err?.name,
+        stack: err?.stack,
         optimisticId,
       });
 
       // Save failed message to queue for retry on mobile
-      const isNetworkError = err.message.includes('timeout') || 
-                              err.message.includes('Failed to fetch') ||
-                              err.message.includes('NetworkError');
+      const isNetworkError = errorMsg.includes('timeout') || 
+                              errorMsg.includes('Failed to fetch') ||
+                              errorMsg.includes('NetworkError') ||
+                              errorMsg.includes('signal is aborted');
       
       if (isNetworkError && currentUser?.id && contact?.id) {
         try {
@@ -574,7 +588,8 @@ export const useChatActions = ({
         setMessages(prev => prev.filter(m => m.id !== optimisticId));
       }
 
-      alert(`Failed to send: ${err.message}`);
+      alert(`Failed to send: ${errorMsg}`);
+    
     } finally {
       isSending.current = false;
       console.log("useChatActions.js: handleSendMessage: Completed", logContext);

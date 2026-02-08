@@ -267,10 +267,13 @@ export const useChatActions = ({
         messagesEndRef?.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     } catch (err) {
+      const errorMsg = err?.message || String(err) || 'Unknown error occurred';
+      
       console.error("useChatActions.js: handleSendMessage: Failed", {
         ...logContext,
-        error: err.message,
-        stack: err.stack,
+        error: errorMsg,
+        errorName: err?.name,
+        stack: err?.stack,
         optimisticId,
       });
 
@@ -283,7 +286,7 @@ export const useChatActions = ({
         setMessages(prev => prev.filter(m => m.id !== optimisticId));
       }
 
-      alert(`Failed to send: ${err.message}`);
+      alert(`Failed to send: ${errorMsg}`);
     } finally {
       isSending.current = false;
       console.log("useChatActions.js: handleSendMessage: Completed", logContext);
