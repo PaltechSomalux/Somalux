@@ -6,8 +6,18 @@ import { subscribeToGroupTopic, unsubscribeFromGroupTopic } from '../ChatList/ut
 import { loadMyPrivacy } from '../utils/privacy';
 import { cacheUtils } from "./cacheUtils";
 
-const BACKEND_URL = "http://localhost:5000";
-const WS_URL = "ws://localhost:5000";
+// Use environment variable for backend URL, with fallback to localhost for development
+const BACKEND_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
+// Helper to get WebSocket URL based on API URL
+function getWebSocketURL(apiUrl) {
+  if (!apiUrl) return 'ws://localhost:5000';
+  const isSecure = apiUrl.startsWith('https');
+  const domain = apiUrl.replace(/^https?:\/\//, '');
+  return `${isSecure ? 'wss' : 'ws'}://${domain}`;
+}
+
+const WS_URL = getWebSocketURL(BACKEND_URL);
 
 export const useGroupChatState = ({
   groupId,

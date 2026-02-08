@@ -27,7 +27,7 @@
     padding: 2px 0;
     margin: 0 0 2px 0;
     width: auto;
-    max-width: 70%;
+    max-width: 99% !important;
     align-self: flex-start;
   }
   
@@ -37,7 +37,7 @@
   
   .message.received {
     align-self: flex-start;
-    max-width: 65%;
+    max-width: 97% !important;
   }
 }
 
@@ -45,11 +45,11 @@
   .message {
     padding: 2px 0;
     margin: 0 0 2px 0;
-    max-width: 75%;
+    max-width: 99% !important;
   }
   
   .message.received {
-    max-width: 70%;
+    max-width: 98% !important;
   }
 }
 
@@ -83,18 +83,29 @@
   background-color: #202c33 !important;
 }
 
+.message.received .message-content:has(.attachment-image-preview) {
+  background-color: transparent !important;
+}
+
+.message.sent .message-content:has(.attachment-image-preview) {
+  background-color: transparent !important;
+}
+
 /* Full width and adjusted styling for image attachments */
 .message-content:has(.attachment-image-preview) {
-  max-width: 55% !important;
+  max-width: 60% !important;
   width: auto !important;
   padding: 0 !important;
+  margin: 0 !important;
   background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: auto auto auto;
   gap: 0;
-  overflow: hidden;
-  border-radius: 8px;
+  overflow: visible !important;
 }
 
 /* Message body container - flows content vertically */
@@ -105,7 +116,7 @@
 /* Consistent max-width across all devices - PARITY FIX */
 @media (max-width: 768px) {
   .message-content {
-    max-width: 80% !important;
+    max-width: 90% !important;
     padding: 0 !important;
   }
   
@@ -118,23 +129,26 @@
   }
   
   .message-content:has(.attachment-image-preview) {
-    max-width: 65% !important;
+    max-width: 75% !important;
     padding: 0 !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
   }
   
   .message-attachments {
-    max-width: 80% !important;
+    max-width: 90% !important;
   }
   
   .attachment-image-preview {
-    max-height: 350px;
+    max-height: 300px;
   }
 }
 
 /* Consistent on small mobile */
 @media (max-width: 480px) {
   .message-content {
-    max-width: 75% !important;
+    max-width: 92% !important;
     padding: 0 !important;
   }
   
@@ -147,16 +161,19 @@
   }
   
   .message-content:has(.attachment-image-preview) {
-    max-width: 85% !important;
+    max-width: 70% !important;
     padding: 0 !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
   }
   
   .message-attachments {
-    max-width: 75% !important;
+    max-width: 92% !important;
   }
   
   .attachment-image-preview {
-    max-height: 280px;
+    max-height: 260px;
   }
   
   .message {
@@ -387,6 +404,22 @@
   background-color: inherit;
 }
 
+.message-footer .status-indicator {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  margin-left: 2px !important;
+  font-size: 14px !important;
+}
+
+.message-footer .status-indicator svg {
+  width: 16px !important;
+  height: 16px !important;
+  fill: currentColor !important;
+  color: inherit !important;
+}
+
 .timestamp {
   font-size: 7px !important;
   color: rgb(167, 161, 161);
@@ -400,31 +433,40 @@
 .status-indicator {
   display: inline-flex;
   align-items: center;
-  margin-left: -1px;
-  font-size: 11px;
+  justify-content: center;
+  margin-left: 2px;
+  padding: 0 2px;
+  font-size: 14px;
   line-height: 1;
   vertical-align: middle;
   color: #999;
+  min-width: 16px;
+  min-height: 16px;
 }
 
-.status-indicator.sent {
-  color: #999;
+.status-indicator.sent,
+.status-indicator.chatme-status-sent {
+  color: #8696A0; /* Grey for sent (single tick) */
 }
 
-.status-indicator.delivered {
-  color: #999;
+.status-indicator.delivered,
+.status-indicator.chatme-status-delivered {
+  color: #8696A0; /* Grey for delivered but not read (double tick) */
 }
 
-.status-indicator.read {
-  color: #25D366;
+.status-indicator.read,
+.status-indicator.chatme-status-read {
+  color: #007AFF !important; /* Brighter blue for read (double tick - WhatsApp style) */
+  opacity: 1 !important;
 }
 
-.status-indicator span {
-  display: inline-block;
-  width: auto;
-  height: 12px;
-  position: relative;
-  top: 1px;
+.status-indicator svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex-shrink: 0;
+  fill: currentColor;
+  color: inherit;
 }
 
 .pinned-icon,
@@ -583,11 +625,34 @@
 }
 
 .file-info-overlay .status-indicator {
-  color: #999;
+  color: #8696A0;
+  margin-left: 2px;
+  padding: 0 2px;
+  min-width: 16px;
+  min-height: 16px;
 }
 
-.file-info-overlay .status-indicator.read {
-  color: #25D366;
+.file-info-overlay .status-indicator.sent,
+.file-info-overlay .status-indicator.chatme-status-sent {
+  color: #8696A0; /* Grey for sent */
+}
+
+.file-info-overlay .status-indicator.delivered,
+.file-info-overlay .status-indicator.chatme-status-delivered {
+  color: #8696A0; /* Grey for delivered but not read */
+}
+
+.file-info-overlay .status-indicator.read,
+.file-info-overlay .status-indicator.chatme-status-read {
+  color: #0084FF; /* Blue for read */
+}
+
+.file-info-overlay .status-indicator svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  fill: currentColor;
+  color: inherit;
 }
 
 .document-container {
@@ -734,6 +799,7 @@
   background-color: rgba(37, 211, 102, 0.2) !important;
   border: 1px solid #25d365a4 !important;
   border-radius: 6px;
+  
   position: relative;
   transition: background-color 0.2s ease, border 0.2s ease;
 }
@@ -1300,35 +1366,44 @@
 }
 
 @media (max-width: 480px) and (orientation: landscape) {
-  .preview-image {
-    height: 140px !important;
+  .attachment-image-preview {
+    width: 100% !important;
+    max-width: 90vw !important;
   }
 }
 
 /* New attachment styles for WhatsApp-like experience */
 .message-attachments {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  width: auto;
-  max-width: 100%;
-  border-radius: 0;
-  overflow: hidden;
-  grid-column: 1;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: auto !important;
+  max-width: 100% !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+  grid-column: 1 !important;
+  background-color: transparent !important;
 }
 
 .message.sent .message-attachments {
-  margin-left: 0;
-  background-color: #005c4b !important;
-  border-radius: 0;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  width: fit-content !important;
+  align-self: flex-end !important;
+  background-color: transparent !important;
+  border-radius: 0 !important;
 }
 
 .message.received .message-attachments {
-  margin-right: 0;
-  background-color: #202c33 !important;
-  border-radius: 0;
+  margin-left: -8px !important;
+  margin-right: auto !important;
+  width: fit-content !important;
+  align-self: flex-start !important;
+  background-color: transparent !important;
+  border-radius: 0 !important;
+  padding-left: 0 !important;
 }
 
 .message-attachment {
@@ -1349,9 +1424,11 @@
   padding: 0;
   grid-column: 1;
   border-radius: 0;
-  overflow: hidden;
+  overflow: visible;
   flex: 1;
   position: relative;
+  border: none !important;
+  background-color: transparent !important;
 }
 
 .attachment-image-preview {
@@ -1359,9 +1436,9 @@
   cursor: pointer;
   transition: transform 0.2s ease;
   width: 100%;
-  min-height: 200px;
-  max-height: 400px;
-  border-radius: 0;
+  min-height: 150px;
+  max-height: 300px;
+  border-radius: 8px;
   overflow: hidden;
   margin: 0;
   padding: 0;
@@ -1538,12 +1615,31 @@
   font-size: 8px !important;
   opacity: 0.75 !important;
   font-weight: 400 !important;
+  order: 2;
 }
 
 .message-footer-inline svg {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
+  width: 14px !important;
+  height: 14px !important;
+  flex-shrink: 0 !important;
+  display: block !important;
+}
+
+.message-footer-inline .status-indicator {
+  display: inline-flex !important;
+  align-items: center !important;
+  margin-left: 2px !important;
+  padding: 0 !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  order: 1;
+}
+
+.message-footer-inline .status-indicator svg {
+  width: 14px !important;
+  height: 14px !important;
+  fill: currentColor !important;
+  color: inherit !important;
 }
 
 .message-text-with-footer {
@@ -1552,7 +1648,8 @@
   align-items: flex-end !important;
   gap: 1px !important;
   flex-wrap: nowrap !important;
-  padding: 1px 2px !important;
+  padding: 1px 8px 4px 8px !important;
+  align-content: flex-end !important;
 }
 
 .message-text {
@@ -1560,16 +1657,20 @@
   word-break: break-word;
   flex: 1;
   min-width: 0;
+  display: block;
+  order: 1;
 }
 
 .message-footer-inline {
-  display: flex !important;
-  align-items: flex-end !important;
+  display: inline-flex !important;
+  align-items: center !important;
   justify-content: flex-end !important;
-  gap: 1px !important;
+  gap: 3px !important;
   font-size: 11px !important;
   white-space: nowrap !important;
   flex-shrink: 0 !important;
+  align-self: flex-end !important;
+  order: 2;
 }
 
 .message-text p {

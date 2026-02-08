@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { FiLock, FiVolumeX, FiVolume2, FiClock, FiTrash2 } from 'react-icons/fi';
-import { BiPin, BiArchiveIn, BiArchiveOut } from 'react-icons/bi';
+import { BiPin, BiArchiveIn, BiArchiveOut, BiFile } from 'react-icons/bi';
 import { FaUserCircle } from 'react-icons/fa';
 import { BsThreeDotsVertical } from 'react-icons/bs';
+import { MdImage, MdVideocam, MdAudioFile, MdDone, MdDoneAll } from 'react-icons/md';
 import { formatDistanceToNow, isToday, isYesterday, format } from 'date-fns';
 import { parseTimestamp } from '../../utils/parseTimestamp';
 import PropTypes from 'prop-types';
@@ -52,9 +53,18 @@ export const Chat = ({
   };
 
   // Memoize timestamp formatting to prevent constant recalculation
+  // Use ISO string for stable comparison to avoid floating-point date comparison issues
+  const timestampString = useMemo(() => {
+    if (!chat.lastMessageTimestamp) return null;
+    if (typeof chat.lastMessageTimestamp === 'string') return chat.lastMessageTimestamp;
+    if (chat.lastMessageTimestamp instanceof Date) return chat.lastMessageTimestamp.toISOString();
+    return null;
+  }, [chat.lastMessageTimestamp]);
+
   const formattedTimestamp = useMemo(() => {
     try {
-      const date = parseTimestamp(chat.lastMessageTimestamp);
+      if (!timestampString) return '';
+      const date = parseTimestamp(timestampString);
       if (isNaN(date.getTime())) {
         return '';
       }
@@ -70,7 +80,7 @@ export const Chat = ({
     } catch (error) {
       return '';
     }
-  }, [chat.lastMessageTimestamp]);
+  }, [timestampString]);
 
   useEffect(() => {
     if (showOptions && optionsButtonRef.current) {
@@ -157,31 +167,50 @@ export const Chat = ({
     }
 
     // Show blue ticks for self-chat (always read)
-    if (chat.isCurrent && chat.lastMessageSenderUid === chat.currentUserUid) {
+    if (chat.isCurrent && chat.lastMessageSenderId === chat.currentUserUid) {
       return (
         <span
-          className="chatme-status-indicator read"
+          className="chatme-status-indicator chatme-status-read"
           aria-label="Message read"
         >
-          ✓✓
+          <MdDoneAll size={14} />
         </span>
       );
     }
 
     // Only show ticks for outgoing messages (you sent it)
-    if (chat.lastMessageSenderUid === chat.currentUserUid) {
-      const status = (chat.lastMessageStatus || 'sent').toLowerCase();
+    if (chat.lastMessageSenderId === chat.currentUserUid) {
+      const status = (chat.lastMessageStatus || 'delivered').toLowerCase();
       
-      return (
-        <span
-          className={`chatme-status-indicator ${status}`}
-          aria-label={`Last message ${status}`}
-        >
-          {status === 'sent' && '✓'}
-          {status === 'delivered' && '✓✓'}
-          {status === 'read' && '✓✓'}
-        </span>
-      );
+      if (status === 'read') {
+        return (
+          <span
+            className="chatme-status-indicator chatme-status-read"
+            aria-label="Message read"
+          >
+            <MdDoneAll size={14} />
+          </span>
+        );
+      } else if (status === 'delivered') {
+        return (
+          <span
+            className="chatme-status-indicator chatme-status-delivered"
+            aria-label="Message delivered"
+          >
+            <MdDoneAll size={14} />
+          </span>
+        );
+      } else {
+        // sent status
+        return (
+          <span
+            className="chatme-status-indicator chatme-status-sent"
+            aria-label="Message sent"
+          >
+            <MdDone size={14} />
+          </span>
+        );
+      }
     }
 
     // Incoming messages - no ticks
@@ -205,14 +234,79 @@ export const Chat = ({
     );
   };
 
+  const renderLastMessage = () => {
+    if (!chat.lastMessage) {
+      return <span className="chatme-message-text chatme-no-message">No messages yet</span>;
+    }
+
+    // Extract message text after emoji for media messages
+    const extractMediaText = (msg) => {
+      // Remove emoji prefix and return the rest (e.g., "🖼 Check this!" → "Check this!")
+      return msg.replace(/^[\uD800-\uDBFF][\uDC00-\uDFFF]\s*/, '').trim();
+    };
+
+    // Check for media icons (Photo, Video, Audio, File)
+    if (chat.lastMessage.includes('🖼') || chat.lastMessage.includes('Photo')) {
+      const mediaText = extractMediaText(chat.lastMessage);
+      return (
+        <span className="chatme-message-text chatme-media-message">
+          <MdImage className="chatme-media-icon-svg" title="Photo" />
+          <span className="chatme-media-text">{mediaText || 'Photo'}</span>
+        </span>
+      );
+    } else if (chat.lastMessage.includes('🎥') || chat.lastMessage.includes('Video')) {
+      const mediaText = extractMediaText(chat.lastMessage);
+      return (
+        <span className="chatme-message-text chatme-media-message">
+          <MdVideocam className="chatme-media-icon-svg" title="Video" />
+          <span className="chatme-media-text">{mediaText || 'Video'}</span>
+        </span>
+      );
+    } else if (chat.lastMessage.includes('🎵') || chat.lastMessage.includes('Audio')) {
+      const mediaText = extractMediaText(chat.lastMessage);
+      return (
+        <span className="chatme-message-text chatme-media-message">
+          <MdAudioFile className="chatme-media-icon-svg" title="Audio" />
+          <span className="chatme-media-text">{mediaText || 'Audio'}</span>
+        </span>
+      );
+    } else if (chat.lastMessage.includes('📎') || chat.lastMessage.includes('File')) {
+      const mediaText = extractMediaText(chat.lastMessage);
+      return (
+        <span className="chatme-message-text chatme-media-message">
+          <BiFile className="chatme-media-icon-svg" title="File" />
+          <span className="chatme-media-text">{mediaText || 'File'}</span>
+        </span>
+      );
+    }
+
+    // If message starts with "You:", style it differently
+    if (chat.lastMessage.startsWith('You:')) {
+      const messageContent = chat.lastMessage.substring(5).trim(); // Remove "You: "
+      return (
+        <span className="chatme-message-text chatme-your-message">
+          <span className="chatme-message-prefix">You:</span>
+          <span>{messageContent}</span>
+        </span>
+      );
+    }
+
+    return <span className="chatme-message-text">{chat.lastMessage}</span>;
+  };
+
   useEffect(() => {
-    // console.log('DEBUG: ChatItem render for', chat.uid, {
-    //   isTyping: chat.isTyping,
-    //   lastMessage: chat.lastMessage,
-    //   lastMessageSenderUid: chat.lastMessageSenderUid,
-    //   lastMessageStatus: chat.lastMessageStatus,
-    // });
-  }, [chat.uid, chat.isTyping, chat.lastMessage, chat.lastMessageSenderUid, chat.lastMessageStatus]);
+    // Log when chat data changes (first 2 items only)
+    const sampleCount = parseInt(chat.uid?.toString().charCodeAt(0) || 0) % 2;
+    if (sampleCount === 0) {
+      console.log(`📌 ChatItem: Render for ${chat.uid} (${chat.name}):`, {
+        lastMessage: chat.lastMessage ? chat.lastMessage.substring(0, 50) : '(none)',
+        lastMessageTimestamp: chat.lastMessageTimestamp?.toISOString?.() || chat.lastMessageTimestamp,
+        formattedTimestamp,
+        timestamp_type: typeof chat.lastMessageTimestamp,
+        message_exists: !!chat.lastMessage
+      });
+    }
+  }, [chat.uid, chat.name, chat.lastMessage, chat.lastMessageTimestamp, formattedTimestamp]);
 
   return (
     <div
@@ -329,9 +423,7 @@ export const Chat = ({
               ) : (
                 <>
                   {renderMessageStatus()}
-                  <span className="chatme-message-text">
-                    {chat.lastMessage}
-                  </span>
+                  {renderLastMessage()}
                 </>
               )}
             </div>

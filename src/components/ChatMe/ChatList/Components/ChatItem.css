@@ -197,7 +197,7 @@
 }
 
 .chatme-chat-time {
-  font-size: 10px;
+  font-size: 8px;
   color: #8696a0;
   flex-shrink: 0;
   margin-left: 10px;
@@ -212,21 +212,73 @@
 }
 
 .chatme-last-message {
-  font-size: 11px;
-  color: #8696a0;
+  font-size: 12px;
+  color: #8a9398;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-grow: 1;
   max-width: calc(100% - 80px);
+  min-height: 18px;
 }
 
 .chatme-message-text {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.chatme-message-text.chatme-no-message {
+  color: #666;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.chatme-message-text.chatme-media-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #8a9398;
+  font-weight: 400;
+}
+
+.chatme-media-icon {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.chatme-media-icon-svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: #8a9398;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chatme-media-text {
+  font-weight: 400;
+  color: #8a9398;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chatme-message-text.chatme-your-message {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.chatme-message-prefix {
+  font-weight: 500;
+  color: #b8bcc4;
+  flex-shrink: 0;
 }
 
 .chatme-message-text.typing {
@@ -296,23 +348,36 @@
 .chatme-status-indicator {
   display: inline-flex;
   align-items: center;
-  font-size: 9px;
+  justify-content: center;
+  font-size: 12px;
   line-height: 1;
-  margin-right: 4px;
-  color: #8696A0; /* Default grey for sent/delivered */
+  margin-right: 2px;
+  color: #8696A0; /* Default grey for sent */
   font-weight: 600;
+  flex-shrink: 0;
+  width: 18px;
+  height: 14px;
 }
 
-.chatme-status-indicator.sent {
-  color: #8696A0; /* Single grey tick */
+.chatme-status-indicator svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
-.chatme-status-indicator.delivered {
-  color: #8696A0; /* Double grey ticks */
+.chatme-status-indicator.sent,
+.chatme-status-indicator.chatme-status-sent {
+  color: #8696A0; /* Single grey tick for sent */
 }
 
-.chatme-status-indicator.read {
-  color: #53BDEB; /* Double blue ticks (WhatsApp style) */
+.chatme-status-indicator.delivered,
+.chatme-status-indicator.chatme-status-delivered {
+  color: #87CEEB; /* Light blue for delivered */
+}
+
+.chatme-status-indicator.read,
+.chatme-status-indicator.chatme-status-read {
+  color: #0084FF; /* Bold blue for read (WhatsApp style) */
 }
 
 /* Status Icons */
@@ -639,11 +704,22 @@
   }
 
   .chatme-status-indicator {
-    color: #6b7280;
+    color: #8696A0;
   }
 
-  .chatme-status-indicator.read {
-    color: #25D366;
+  .chatme-status-indicator.sent,
+  .chatme-status-indicator.chatme-status-sent {
+    color: #8696A0;
+  }
+
+  .chatme-status-indicator.delivered,
+  .chatme-status-indicator.chatme-status-delivered {
+    color: #87CEEB;
+  }
+
+  .chatme-status-indicator.read,
+  .chatme-status-indicator.chatme-status-read {
+    color: #0084FF;
   }
 
   .chatme-lock-icon,
@@ -1091,4 +1167,11 @@
 .folder-options-button:hover {
   background-color: transparent;
   color: #8696a0;
+}
+
+/* Mobile-specific styles for smaller screens */
+@media (max-width: 768px) {
+  .chatme-chat-time {
+    font-size: 8px;
+  }
 }

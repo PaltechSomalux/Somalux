@@ -17,6 +17,7 @@ import {
   FiShare2,
 } from 'react-icons/fi';
 import { BsPinFill } from 'react-icons/bs';
+import { MdDone, MdDoneAll } from 'react-icons/md';
 import { DeviceDetection } from '../utils/deviceDetection';
 import './MessageItem.css';
 import './MessageActionsMenu.css';
@@ -512,6 +513,44 @@ export const MessageItem = ({
     };
   }, [showActions]);
 
+  // Auto-mark sent messages as read when they're displayed
+  useEffect(() => {
+    // Only mark as read if:
+    // 1. This is sent by current user (isCurrentUser)
+    // 2. Message status is 'delivered' (not yet 'read')
+    // 3. Not a self-chat (those are handled separately)
+    // 4. Message has an ID and is_read is false
+    if (
+      isCurrentUser &&
+      message.status === 'delivered' &&
+      !isSelfChat &&
+      message.id &&
+      !message.is_read &&
+      enableReadReceipts
+    ) {
+      console.log('📖 [MessageItem] Auto-marking message as read:', {
+        messageId: message.id,
+        status: message.status,
+        is_read: message.is_read
+      });
+
+      // Call the read endpoint
+      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      fetch(`${API_BASE}/api/messages/${message.id}/read`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUserId })
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log('✅ [MessageItem] Message marked as read:', data);
+        })
+        .catch(err => {
+          console.error('❌ [MessageItem] Failed to mark as read:', err);
+        });
+    }
+  }, [message.id, message.status, message.is_read, isCurrentUser, isSelfChat, enableReadReceipts, currentUserId]);
+
   const getTransform = () => {
     if (!isSwiping || !onReply) return 'translateX(0)';
 
@@ -523,34 +562,87 @@ export const MessageItem = ({
   };
 
   const renderMessageStatus = () => {
-    if (!enableReadReceipts || !isCurrentUser) return null;
+    // Always show status for sent messages
+    if (!isCurrentUser) {
+      return null;
+    }
 
-    // 🟦 Case 1: Chatting with yourself — always show blue ticks
+    // Debug log (once per message to avoid spam)
+    const debugKey = `msg-status-debug-${message.id}`;
+    if (!window[debugKey]) {
+      console.log(`📍 Message status check [${message.id.substring(0, 8)}]:`, {
+        contactId: contact?.id,
+        currentUserId: currentUser?.id,
+        messageStatus: message.status,
+        messageIsRead: message.is_read,
+        contactIdType: typeof contact?.id,
+        currentUserIdType: typeof currentUser?.id,
+      });
+      window[debugKey] = true;
+    }
+
+    // 🟦 Case 1: Chatting with yourself — always show blue double ticks
     if (contact.id === currentUser.id) {
       return (
         <span
-          className="status-indicator read"
+          className="status-indicator chatme-status-read"
           aria-label="Message read (self-chat)"
-          style={{ color: '#34B7F1' }} // WhatsApp blue
+          title="Double tick - Blue"
         >
-          ✓✓
+          <MdDoneAll size={16} />
         </span>
       );
     }
 
-    // 🟩 Case 2: Normal chat (respect actual message.status)
-    const status = message.status || 'sent';
-    return (
-      <span className={`status-indicator ${status}`} aria-label={`Message ${status}`}>
-        {status === 'sent' && '✓'}
-        {status === 'delivered' && '✓✓'}
-        {status === 'read' && (
-          <span className="read" style={{ color: '#34B7F1' }}>
-            ✓✓
-          </span>
-        )}
-      </span>
-    );
+    // 🟩 Case 2: Normal chat - determine status: sent → delivered → read
+    // Check multiple possible status fields in order of priority
+    let status = 'sent'; // Default to sent
+    
+    if (message.is_read) {
+      status = 'read';
+    } else if (message.status === 'delivered') {
+      status = 'delivered';
+    } else if (message.status === 'read') {
+      status = 'read';
+    } else if (message.status === 'sent') {
+      status = 'sent';
+    }
+    // If no status field at all, keep default 'sent' status
+    
+    if (status === 'read') {
+      // Blue double tick for read messages
+      return (
+        <span 
+          className="status-indicator chatme-status-read" 
+          aria-label="Message read"
+          title="Double tick - Blue (Read)"
+        >
+          <MdDoneAll size={16} />
+        </span>
+      );
+    } else if (status === 'delivered') {
+      // Grey double tick for delivered but not read messages
+      return (
+        <span 
+          className="status-indicator chatme-status-delivered" 
+          aria-label="Message delivered"
+          title="Double tick - Grey (Delivered)"
+        >
+          <MdDoneAll size={16} />
+        </span>
+      );
+    } else {
+      // Single grey tick for sent but not delivered
+      return (
+        <span 
+          className="status-indicator chatme-status-sent" 
+          aria-label="Message sent"
+          title="Single tick - Grey (Sent)"
+        >
+          <MdDone size={16} />
+        </span>
+      );
+    }
   };
 
 

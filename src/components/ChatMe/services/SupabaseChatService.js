@@ -234,8 +234,8 @@ class SupabaseChatServiceClass {
             return null; // Mark for filtering
           }
 
-          // Get latest message for each conversation
-          const { data: lastMessage } = await supabase
+          // Get latest message for each conversation with all fields
+          const { data: lastMessage, error: msgError } = await supabase
             .from('messages')
             .select('*')
             .eq('chat_id', convo.id)
@@ -244,12 +244,70 @@ class SupabaseChatServiceClass {
             .limit(1)
             .maybeSingle();
 
+          if (msgError) {
+            console.error(`⚠️ fetchUserChats: Error fetching last message for chat ${convo.id}:`, msgError);
+          }
+          
+          console.log(`📨 fetchUserChats: Last message for chat ${convo.id}:`, {
+            exists: !!lastMessage,
+            hasText: !!lastMessage?.text,
+            hasContent: !!lastMessage?.content,
+            hasAttachments: !!lastMessage?.attachment_urls,
+            messageFields: lastMessage ? Object.keys(lastMessage) : 'none',
+            message: lastMessage
+          });
+
           // Fetch contact user profile
           const { data: contactProfile } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', contactUserId)
             .maybeSingle();
+
+          // Format last message with sender info and media indication (like WhatsApp)
+          let formattedLastMessage = null;
+          let lastMessageTimestamp = null;
+          
+          if (lastMessage) {
+            // Use text, content, or message field
+            const messageText = lastMessage.text || lastMessage.content || lastMessage.message || '';
+            const isCurrentUserSender = lastMessage.sender_id === userId;
+            const senderPrefix = isCurrentUserSender ? 'You: ' : '';
+            
+            // Get timestamp - try multiple field names
+            lastMessageTimestamp = lastMessage.created_at || lastMessage.timestamp || lastMessage.sent_at || null;
+            
+            // Check for media/attachments
+            if (lastMessage.attachment_urls && lastMessage.attachment_urls.length > 0) {
+              const firstAttachment = lastMessage.attachment_urls[0];
+              const contentType = lastMessage.content_type || 'file';
+              
+              // Determine media type from content_type or URL
+              if (contentType.includes('image') || firstAttachment.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                formattedLastMessage = `${senderPrefix}🖼 ${messageText || 'Photo'}`;
+              } else if (contentType.includes('video') || firstAttachment.match(/\.(mp4|mov|avi|mkv)$/i)) {
+                formattedLastMessage = `${senderPrefix}🎥 ${messageText || 'Video'}`;
+              } else if (contentType.includes('audio') || firstAttachment.match(/\.(mp3|wav|m4a|ogg)$/i)) {
+                formattedLastMessage = `${senderPrefix}🎵 ${messageText || 'Audio'}`;
+              } else {
+                formattedLastMessage = `${senderPrefix}📎 ${messageText || 'File'}`;
+              }
+            } else if (messageText) {
+              // Regular text message
+              formattedLastMessage = `${senderPrefix}${messageText}`;
+            } else {
+              // Fallback for unknown message types
+              formattedLastMessage = `${senderPrefix}Message`;
+            }
+            
+            console.log(`✅ fetchUserChats: Formatted message for ${contactUserId}:`, {
+              original: messageText,
+              formatted: formattedLastMessage,
+              timestamp: lastMessageTimestamp
+            });
+          } else {
+            console.log(`ℹ️ fetchUserChats: No messages found for chat ${convo.id}`);
+          }
 
           return {
             id: convo.id,
@@ -263,9 +321,11 @@ class SupabaseChatServiceClass {
             name: contactProfile?.full_name || contactProfile?.display_name || 'Unknown', // Use this for display in chatlist
             contact_avatar: contactProfile?.avatar_url || null,
             uid: contactUserId,
-            lastMessage: lastMessage?.text || null,
-            lastMessageAt: lastMessage?.created_at || convo.last_message_at,
-            last_message_at: lastMessage?.created_at || convo.last_message_at,
+            lastMessage: formattedLastMessage || null,
+            lastMessageAt: lastMessageTimestamp || convo.last_message_at,
+            last_message_at: lastMessageTimestamp || convo.last_message_at,
+            lastMessageTimestamp: lastMessageTimestamp || convo.last_message_at,
+            lastMessageSenderId: lastMessage?.sender_id || null,
             created_at: convo.created_at,
             // Include settings flags
             is_pinned: settings?.is_pinned || false,
@@ -605,6 +665,10 @@ class SupabaseChatServiceClass {
   async getLastMessage(conversationId) {
     try {
       const normalizedId = normalizeConversationId(conversationId);
+      
+      console.log(`🔍 SupabaseChatService.getLastMessage: Querying for conversationId="${conversationId}" (normalized: "${normalizedId}")`);
+      
+      // Get all available fields to diagnose any issues
       const { data, error } = await supabase
         .from('messages')
         .select('*')
@@ -613,11 +677,41 @@ class SupabaseChatServiceClass {
         .order('created_at', { ascending: false })
         .limit(1);
 
-      if (error) throw error;
-      return data?.[0] || null;
+      if (error) {
+        // Check if it's a 503 service unavailable error
+        if (error.message?.includes('503') || error.code === 'PGRST503') {
+          console.warn(`⚠️ SupabaseChatService: Supabase API returned 503 Service Unavailable for ${normalizedId}. Database may be down or unreachable.`);
+        } else {
+          console.error('getLastMessage query error:', error);
+        }
+        return null;
+      }
+      
+      const message = data?.[0] || null;
+      
+      if (message) {
+        console.log(`✅ getLastMessage found for ${normalizedId}:`, {
+          messageId: message.id,
+          messageText: message.text?.substring(0, 50) || '(no text)',
+          messageContent: message.content?.substring(0, 50) || '(no content)',
+          messageChatId: message.chat_id,
+          chatIdMatches: message.chat_id === normalizedId,
+          hasTimestamp: !!message.created_at,
+          sender: message.sender_id,
+          timestamp: message.created_at
+        });
+      } else {
+        console.log(`📭 getLastMessage: No messages found  for conversationId="${conversationId}" (normalized: "${normalizedId}")`);
+      }
+      
+      return message;
     } catch (error) {
-      console.error('getLastMessage error:', error);
-      throw error;
+      if (error.message?.includes('503')) {
+        console.warn(`⚠️ SupabaseChatService: API request failed - Supabase may be temporarily unavailable. Will retry with longer delays.`);
+      } else {
+        console.error('getLastMessage error:', error);
+      }
+      return null;
     }
   }
 

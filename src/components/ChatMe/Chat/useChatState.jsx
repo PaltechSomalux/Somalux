@@ -4,6 +4,7 @@ import { supabase } from "../../../supabase";
 
 const CHAT_STORAGE_KEY = "whatsapp-clone-chat";
 const WALLPAPER_STORAGE_KEY = "whatsapp-clone-wallpaper";
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const getChatId = (idA, idB) => {
   if (!idA || !idB || typeof idA !== 'string' || typeof idB !== 'string') {
@@ -146,6 +147,81 @@ export const useChatState = ({
         const sortedLoaded = [...loaded].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         setMessages(sortedLoaded);
         console.log('[useChatState] Messages set in state:', sortedLoaded.length);
+        
+        // DEBUG: Log status of first few messages
+        console.log('[useChatState] First few message statuses:', 
+          sortedLoaded.slice(0, 3).map(m => ({
+            id: m.id.substring(0, 8),
+            status: m.status,
+            is_read: m.is_read,
+            text: m.text?.substring(0, 30),
+          }))
+        );
+        
+        // Mark received messages as delivered (only if current user is the recipient)
+        if (currentUser?.uid || currentUser?.id) {
+          const currentUserId = currentUser.uid || currentUser.id;
+          
+          // For messages received from others (sender !== current user)
+          const receivedMessages = sortedLoaded.filter(msg => 
+            msg.sender && 
+            msg.sender !== currentUserId && // Received message (from someone else)
+            msg.status === 'sent' && // Only mark if still in 'sent' status
+            !msg.is_read // And not yet read
+          );
+          
+          // For sent messages that haven't been marked delivered yet, auto-mark them after a delay
+          const sentMessages = sortedLoaded.filter(msg =>
+            msg.sender === currentUserId && // Message sent by current user
+            msg.status === 'sent' && // Still in sent status
+            !msg.is_read // Not read
+          );
+          
+          if (receivedMessages.length > 0) {
+            console.log('[useChatState] Marking', receivedMessages.length, 'received messages as delivered');
+            receivedMessages.forEach(msg => {
+              fetch(`${API_BASE}/api/messages/${msg.id}/delivered`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUserId })
+              })
+              .then(res => res.json())
+              .then(data => {
+                console.log('[useChatState] Message delivered:', msg.id, data);
+                // Update local state immediately
+                setMessages(prev => prev.map(m => 
+                  m.id === msg.id ? { ...m, status: 'delivered' } : m
+                ));
+              })
+              .catch(err => console.warn('[useChatState] Failed to mark message as delivered:', err));
+            });
+          }
+          
+          // Auto-mark sent messages as delivered after 500ms (for testing/UX)
+          if (sentMessages.length > 0) {
+            console.log('[useChatState] Scheduling', sentMessages.length, 'sent messages:', sentMessages.map(m => m.id));
+            setTimeout(() => {
+              sentMessages.forEach(msg => {
+                console.log('[useChatState] Calling delivered endpoint for message:', msg.id);
+                fetch(`${API_BASE}/api/messages/${msg.id}/delivered`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ userId: currentUserId })
+                })
+                .then(res => res.json())
+                .then(data => {
+                  console.log('[useChatState] Sent message marked delivered:', msg.id, data);
+                  // Update local state immediately
+                  setMessages(prev => prev.map(m => 
+                    m.id === msg.id ? { ...m, status: 'delivered' } : m
+                  ));
+                })
+                .catch(err => console.warn('[useChatState] Failed to mark sent message as delivered:', msg.id, err));
+              });
+            }, 500);
+          }
+        }
+        
         isInitialLoadRef.current = false;
       } catch (err) {
         console.error('[useChatState] Supabase load exception:', err);
@@ -156,6 +232,89 @@ export const useChatState = ({
 
     loadFromSupabase();
   }, [computedChatId]);
+
+  // 🔥 NEW: Set up real-time subscription to listen for message updates (status/is_read changes)
+  useEffect(() => {
+    if (!chatIdRef.current) {
+      console.log('[useChatState] Skipping Supabase subscription - no chatId');
+      return;
+    }
+
+    console.log('[useChatState] Setting up real-time subscription for chatId:', chatIdRef.current);
+
+    // Subscribe to changes on the messages table using the new channel API
+    const channel = supabase.channel(`messages:${chatIdRef.current}`)
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'messages',
+          filter: `chat_id=eq.${chatIdRef.current}`
+        }, 
+        (payload) => {
+          console.log('[useChatState] Real-time update received:', {
+            eventType: payload.eventType,
+            messageId: payload.new?.id,
+            status: payload.new?.status,
+            is_read: payload.new?.is_read,
+            chat_id: payload.new?.chat_id
+          });
+
+          if (payload.eventType === 'UPDATE') {
+            // A message was updated - update local state
+            setMessages(prev => {
+              const updated = prev.map(msg => {
+                if (msg.id === payload.new.id) {
+                  console.log('[useChatState] Updating message from subscription:', {
+                    id: msg.id,
+                    oldStatus: msg.status,
+                    newStatus: payload.new.status,
+                    oldIsRead: msg.is_read,
+                    newIsRead: payload.new.is_read
+                  });
+                  return {
+                    ...msg,
+                    status: payload.new.status,
+                    is_read: payload.new.is_read,
+                    delivered_at: payload.new.delivered_at,
+                    read_at: payload.new.read_at
+                  };
+                }
+                return msg;
+              });
+              return updated;
+            });
+          } else if (payload.eventType === 'INSERT') {
+            // A new message was inserted - add to local state
+            console.log('[useChatState] New message received via subscription:', payload.new.id);
+            setMessages(prev => {
+              const newMsg = {
+                id: payload.new.id,
+                ...payload.new,
+                timestamp: new Date(payload.new.created_at),
+                sender: payload.new.sender_id,
+                receiver: payload.new.recipient_id,
+                text: payload.new.content
+              };
+              return [...prev, newMsg].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            });
+          } else if (payload.eventType === 'DELETE') {
+            // A message was deleted - remove from local state
+            console.log('[useChatState] Message deleted via subscription:', payload.old.id);
+            setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[useChatState] Subscription status:', status);
+      });
+
+    // Cleanup subscription on unmount or chat change
+    return () => {
+      console.log('[useChatState] Cleaning up real-time subscription for chatId:', chatIdRef.current);
+      channel.unsubscribe();
+    };
+  }, [chatIdRef.current]);
 
   // LocalStorage sync (FIXED: Serialize/deserialize with sorting/parsing, ascending)
   useEffect(() => {

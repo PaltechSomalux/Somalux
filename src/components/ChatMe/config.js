@@ -1,20 +1,40 @@
 // ChatMe Configuration
 // Centralized config for WebSocket and API endpoints
 
+// Helper to determine WebSocket protocol based on current location
+function getWebSocketURL(baseURL) {
+  if (!baseURL) return null;
+  const isSecure = baseURL.startsWith('https');
+  const domain = baseURL.replace(/^https?:\/\//, '');
+  return `${isSecure ? 'wss' : 'ws'}://${domain}/chatme`;
+}
+
+// Helper to get API base URL with proper protocol
+function getAPIBase() {
+  // Use environment variable if available
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  // Fallback to localhost for development
+  return 'http://localhost:5000';
+}
+
+const ENV = process.env.NODE_ENV || 'development';
+const apiBaseUrl = getAPIBase();
+
 const API_CONFIG = {
   // Development
   development: {
-    WEBSOCKET_URL: 'ws://localhost:5000/chatme',
-    API_BASE: 'http://localhost:5000',
+    WEBSOCKET_URL: getWebSocketURL(apiBaseUrl),
+    API_BASE: apiBaseUrl,
   },
   // Production
   production: {
-    WEBSOCKET_URL: process.env.REACT_APP_WEBSOCKET_URL || 'wss://somalux.co.ke/chatme',
-    API_BASE: process.env.REACT_APP_API_BASE || 'https://somalux.co.ke',
+    WEBSOCKET_URL: getWebSocketURL(apiBaseUrl),
+    API_BASE: apiBaseUrl,
   }
 };
 
-const ENV = process.env.NODE_ENV || 'development';
 const CONFIG = API_CONFIG[ENV] || API_CONFIG.development;
 
 export const WEBSOCKET_URL = CONFIG.WEBSOCKET_URL;

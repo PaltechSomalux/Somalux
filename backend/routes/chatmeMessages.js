@@ -176,16 +176,51 @@ router.post('/messages/send', async (req, res) => {
       hasAttachments: attachmentUrls?.length > 0
     });
 
-    if (!chatId || !senderId || !recipientId || !content) {
-      return res.status(400).json({ error: 'Missing required fields: chatId, senderId, recipientId, content' });
+    if (!chatId || !senderId || !content) {
+      return res.status(400).json({ error: 'Missing required fields: chatId, senderId, content' });
     }
 
     const supabase = getSupabaseAdmin();
 
+    // Extract recipient_id from conversation if not provided
+    let finalRecipientId = recipientId;
+    if (!finalRecipientId) {
+      console.log('🔍 Extracting recipient from conversation:', chatId);
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select('user1_id, user2_id')
+        .eq('id', chatId)
+        .single();
+
+      if (!convError && conversation) {
+        // Get the other participant (the one who is NOT the sender)
+        finalRecipientId = conversation.user1_id === senderId 
+          ? conversation.user2_id 
+          : conversation.user1_id;
+        console.log('✅ Extracted recipient_id from conversation:', finalRecipientId);
+      } else {
+        console.log('⚠️ Could not extract recipient from conversation, leaving as NULL');
+      }
+    }
+
+    // Validate that recipient_id exists in users table if provided
+    if (finalRecipientId) {
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', finalRecipientId)
+        .single();
+
+      if (userError || !user) {
+        console.warn('⚠️ Recipient ID does not exist in users table, will set to NULL:', finalRecipientId);
+        finalRecipientId = null;
+      }
+    }
+
     const messageData = {
       chat_id: chatId,
       sender_id: senderId,
-      recipient_id: recipientId,
+      recipient_id: finalRecipientId || null,
       content: content.trim(),
       content_type: contentType,
       attachment_urls: Array.isArray(attachmentUrls) ? attachmentUrls : [],
@@ -295,6 +330,76 @@ router.post('/messages/:messageId/read', async (req, res) => {
   } catch (error) {
     console.error('POST /messages/:messageId/read error:', error);
     res.status(500).json({ error: error.message || 'Failed to mark message as read' });
+  }
+});
+
+/**
+ * POST /api/messages/:messageId/delivered
+ * Mark message as delivered
+ */
+router.post('/messages/:messageId/delivered', async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { userId } = req.body;
+
+    console.log('[/delivered] Received request:', { messageId, userId });
+
+    if (!messageId || !userId) {
+      return res.status(400).json({ error: 'Missing messageId or userId' });
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    // Get current message
+    const { data: message, error: fetchError } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('id', messageId)
+      .single();
+
+    console.log('[/delivered] Fetched message:', { messageId, status: message?.status, error: fetchError?.message });
+
+    if (fetchError || !message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Only update to 'delivered' if current status is 'sent'
+    // If already 'read', don't downgrade to 'delivered'
+    if (message.status === 'read') {
+      console.log('[/delivered] Message already read, skipping update');
+      return res.json({ ok: true, message });
+    }
+
+    const { data: updatedMessage, error } = await supabase
+      .from('messages')
+      .update({ 
+        status: 'delivered',
+        delivered_at: new Date().toISOString()
+      })
+      .eq('id', messageId)
+      .select()
+      .single();
+
+    console.log('[/delivered] Update result:', { messageId, newStatus: updatedMessage?.status, error: error?.message });
+
+    if (error) {
+      console.error('Mark delivered error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Broadcast delivery receipt
+    if (global.wss && updatedMessage) {
+      broadcastToChat(updatedMessage.chat_id, {
+        type: 'message_delivered',
+        messageId: messageId,
+        userId: userId
+      });
+    }
+
+    res.json({ ok: true, message: updatedMessage });
+  } catch (error) {
+    console.error('POST /messages/:messageId/delivered error:', error);
+    res.status(500).json({ error: error.message || 'Failed to mark message as delivered' });
   }
 });
 

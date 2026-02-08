@@ -66,24 +66,33 @@ CREATE INDEX IF NOT EXISTS idx_user_chats_chat_id ON public.user_chats(chat_id);
 CREATE INDEX IF NOT EXISTS idx_user_chats_user_id_chat_id ON public.user_chats(user_id, chat_id);
 
 -- ============================================================================
--- 4. Messages Table (Individual chat messages)
+-- 4. Messages Table (Individual chat messages with delivery/read tracking)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   chat_id UUID NOT NULL,
   sender_id UUID NOT NULL,
+  recipient_id UUID,
   content TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  status VARCHAR(20) DEFAULT 'sent',
+  is_read BOOLEAN DEFAULT FALSE,
   is_edited BOOLEAN DEFAULT FALSE,
   is_deleted BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  delivered_at TIMESTAMP WITH TIME ZONE,
+  read_at TIMESTAMP WITH TIME ZONE,
   CONSTRAINT fk_messages_chat FOREIGN KEY (chat_id) REFERENCES public.conversations(id) ON DELETE CASCADE,
-  CONSTRAINT fk_messages_sender FOREIGN KEY (sender_id) REFERENCES public.users(id) ON DELETE CASCADE
+  CONSTRAINT fk_messages_sender FOREIGN KEY (sender_id) REFERENCES public.users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_messages_recipient FOREIGN KEY (recipient_id) REFERENCES public.users(id) ON DELETE CASCADE
 );
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON public.messages(chat_id);
 CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON public.messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_recipient_id ON public.messages(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_messages_status ON public.messages(status);
+CREATE INDEX IF NOT EXISTS idx_messages_is_read ON public.messages(is_read);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON public.messages(created_at DESC);
 
 -- ============================================================================

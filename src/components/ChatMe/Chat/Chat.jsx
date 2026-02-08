@@ -1,4 +1,3 @@
-// Full Chat.jsx - Fixed ESLint errors
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useFCMToken } from '../hooks/useFCMToken';
 import PropTypes from 'prop-types';
@@ -18,6 +17,9 @@ import {
   listenIncomingCallsFor
 } from '../Connect/Calls/signaling';
 import useWebSocket from 'react-use-websocket';
+
+// Use environment variable for API URL instead of hardcoded localhost
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 // Helper: Convert test user IDs to deterministic UUIDs for development
 function convertToValidUUID(userId) {
@@ -225,7 +227,7 @@ export const Chat = ({
             const convertedSenderId = convertToValidUUID(msg.sender);
             const convertedReceiverId = convertToValidUUID(msg.receiver);
             
-            const response = await fetch('http://localhost:5000/api/messages/send', {
+            const response = await fetch(`${API_URL}/api/messages/send`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -543,7 +545,7 @@ export const Chat = ({
           try {
             console.log(`Retrying queued message ${i + 1}/${queued.length}:`, msg.text?.substring(0, 50));
             
-            const response = await fetch('http://localhost:5000/api/messages/send', {
+            const response = await fetch(`${API_URL}/api/messages/send`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

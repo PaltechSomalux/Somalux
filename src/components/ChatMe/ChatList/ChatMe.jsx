@@ -31,6 +31,18 @@ import { FolderPickerModal } from './Components/Folders/FolderPickerModal';
 export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileView = false, onProfileViewerChange = () => { }, user, onChatWindowActive = () => {}, onBackFromChat = () => {} }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [yourselfChatId, setYourselfChatId] = useState(null);
+  const [, forceUpdate] = useState(0); // For manual refresh
+  
+  // Expose refresh function to window for debugging
+  useEffect(() => {
+    window.refreshChatList = () => {
+      console.log('🔄 Manually refreshing chat list...');
+      forceUpdate(prev => prev + 1);
+    };
+    return () => {
+      delete window.refreshChatList;
+    };
+  }, []);
   
   // Fetch or create self-chat UUID when user loads  
   useEffect(() => {
@@ -430,9 +442,18 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
     }
   };
 
+  // Helper to get WebSocket URL based on API URL
+  const getWebSocketURL = () => {
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    if (!apiUrl) return null;
+    const isSecure = apiUrl.startsWith('https');
+    const domain = apiUrl.replace(/^https?:\/\//, '');
+    return `${isSecure ? 'wss' : 'ws'}://${domain}`;
+  };
+
   // Global WebSocket connection for receiving typing/online status updates even when no chat is open
   const { sendJsonMessage: globalSendJsonMessage, lastJsonMessage: globalLastJsonMessage, readyState: globalReadyState } = useWebSocket(
-    currentUser?.id ? `ws://localhost:5000` : null,
+    currentUser?.id ? getWebSocketURL() : null,
     {
       onOpen: () => {
         // console.log(`🔌 Global WS connected for user: ${currentUser.uid}`);
@@ -572,24 +593,44 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
           const senderId = data.sender || data.senderId || data.userId || null;
           const chatId = data.chatId || (senderId ? [currentUser?.id, senderId].sort().join('_') : null);
           const text = data.text || data.message || '';
-          const timestamp = data.timestamp ? new Date(data.timestamp) : new Date();
+          const timestamp = data.timestamp ? new Date(data.timestamp) : null; // Don't fallback to new Date()
+
+          console.log(`💬 ChatMe: Received new_message`, {
+            senderId,
+            chatId,
+            text: text?.substring(0, 50),
+            timestamp
+          });
 
           setChats((prevChats) => {
             // If no chats yet, just return prev
             if (!Array.isArray(prevChats) || prevChats.length === 0) return prevChats;
 
             let found = false;
+            let matchedChats = [];
+
             const updated = prevChats.map((c) => {
-              // Match by chat.chatId or uid
-              const matches = (c.chatId && chatId && c.chatId === chatId) || (c.uid && senderId && String(c.uid) === String(senderId)) || (c.id && senderId && String(c.id) === String(senderId));
+              // CRITICAL: Match ONLY ONE chat using strict criteria
+              // Priority: chatId > uid > id
+              let matches = false;
+              
+              if (chatId && c.chatId === chatId) {
+                matches = true;
+                matchedChats.push({ reason: 'chatId', chatName: c.name });
+              } else if (!chatId && senderId && String(c.uid) === String(senderId)) {
+                // Only use uid matching if chatId wasn't provided
+                matches = true;
+                matchedChats.push({ reason: 'uid', chatName: c.name });
+              }
+
               if (matches) {
                 found = true;
                 const isSelected = selectedChat && (selectedChat.id === c.id || selectedChat.uid === c.uid || selectedChat.chatId === c.chatId);
                 return {
                   ...c,
                   lastMessage: text || c.lastMessage,
-                  lastMessageTimestamp: timestamp,
-                  lastActivity: timestamp,
+                  lastMessageTimestamp: timestamp || c.lastMessageTimestamp,
+                  lastActivity: timestamp || c.lastActivity,
                   lastMessageStatus: data.status || 'sent',
                   lastMessageSenderUid: senderId || c.lastMessageSenderUid,
                   unreadCount: isSelected ? 0 : ((c.unreadCount || 0) + 1),
@@ -597,6 +638,17 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
               }
               return c;
             });
+
+            // Log which chats were updated (should be exactly 1)
+            if (matchedChats.length !== 1) {
+              console.warn(`⚠️ ChatMe: new_message matched ${matchedChats.length} chats (expected 1):`, {
+                matched: matchedChats,
+                senderId,
+                chatId
+              });
+            } else {
+              console.log(`✅ ChatMe: Updated chat "${matchedChats[0].chatName}" with new message from ${senderId}`);
+            }
 
             // If chat not found, optionally add a minimal entry at top
             if (!found && senderId) {
@@ -785,16 +837,47 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
     // Initialize unified listener - both mobile and desktop use same service
     const unsubscribe = UnifiedChatService.initializeChatListener(currentUser, (unifiedChats) => {
       try {
+        console.log(`📊 ChatMe: Received unified chats from service:`, {
+          count: unifiedChats?.length,
+          sample: (unifiedChats || []).slice(0, 2).map(c => ({
+            uid: c.uid,
+            name: c.name,
+            lastMessage: c.lastMessage,
+            lastMessageTimestamp: c.lastMessageTimestamp,
+            lastMessageAt: c.lastMessageAt,
+            lastActivity: c.lastActivity
+          }))
+        });
+
         // Transform unified service data into ChatMe format with messaging state
-        const transformedChats = (unifiedChats || []).map(chat => ({
-          ...chat,
-          // Add messaging-specific state
-          unreadCount: 0,
-          messages: [],
-          lastMessageTimestamp: chat.lastMessageAt,
-          lastActivity: chat.lastActivity,
-          time: FormatTime(chat.lastActivity ? new Date(chat.lastActivity) : new Date()),
-        }));
+        const transformedChats = (unifiedChats || []).map((chat, idx) => {
+          const transformed = {
+            ...chat,
+            // Add messaging-specific state
+            unreadCount: 0,
+            messages: [],
+            // IMPORTANT: Use the lastMessageTimestamp that was already calculated in UnifiedChatService
+            // Do NOT overwrite it with lastMessageAt which may be a raw string
+            lastMessageTimestamp: chat.lastMessageTimestamp,
+            lastActivity: chat.lastActivity,
+            time: FormatTime(chat.lastActivity ? new Date(chat.lastActivity) : new Date()),
+          };
+          
+          if (idx < 2) {
+            console.log(`✅ ChatMe: Transformed chat ${idx}:`, {
+              uid: transformed.uid,
+              name: transformed.name,
+              lastMessage: transformed.lastMessage,
+              lastMessageTimestamp: transformed.lastMessageTimestamp,
+              message_received: !!transformed.lastMessage,
+              timestamp_received: !!transformed.lastMessageTimestamp
+            });
+          }
+          
+          return transformed;
+        });
+
+        console.log(`📋 ChatMe: Total transformed chats: ${transformedChats.length}, with messages: ${transformedChats.filter(c => c.lastMessage).length}`);
 
         setChats(transformedChats);
         setIsLoading(false);
@@ -828,28 +911,115 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
   // Setup message listeners for unread counts and last message updates
   const setupMessageListeners = useCallback((chatsData) => {
     // Use polling instead of Firebase listeners for Supabase compatibility
-    // Poll every 3 seconds to refresh message information
+    // Poll every 20 seconds to refresh message information
+    console.log(`📱 ChatMe: Setting up message polling for ${chatsData.length} chats`, {
+      chatIds: chatsData.map(c => ({ uid: c.uid, chatId: c.chatId, id: c.id }))
+    });
+
     const pollInterval = setInterval(async () => {
       try {
+        console.log(`📡 Polling cycle starting for ${chatsData.length} chats:`, {
+          chatStats: chatsData.map(c => ({
+            name: c.name,
+            chatId: c.chatId,
+            chat_id: c.chat_id,
+            id: c.id,
+            willQuery: c.chatId || c.chat_id || c.id
+          }))
+        });
+        
         for (const chat of chatsData) {
           try {
-            const lastMsg = await SupabaseChatService.getLastMessage(chat.chat_id || chat.chatId);
+            // CRITICAL: Ensure we have a valid chat ID before querying
+            const chatIdToQuery = chat.chatId || chat.chat_id || chat.id;
+            
+            if (!chatIdToQuery) {
+              console.warn(`⚠️ ChatMe: Chat missing ID - skipping message fetch`, {
+                chatName: chat.name,
+                chatUid: chat.uid,
+                allFields: Object.keys(chat)
+              });
+              continue; // Skip this chat if no ID found
+            }
+
+            console.log(`🔍 Polling: Querying chatId="${chatIdToQuery}" for chat "${chat.name}"`);
+            const lastMsg = await SupabaseChatService.getLastMessage(chatIdToQuery);
             if (lastMsg) {
+              console.log(`📨 Polling: Got message for "${chat.name}":`, {
+                messageId: lastMsg.id,
+                text: lastMsg.text?.substring(0, 40),
+                content: lastMsg.content?.substring(0, 40),
+                chatIdInDb: lastMsg.chat_id
+              });
+              // Get message text from various possible field names
+              const messageText = lastMsg.text || lastMsg.content || lastMsg.message || '';
+              
+              // Format message preview like WhatsApp
+              let formattedMessage = '';
+              
+              if (lastMsg.attachment_urls && lastMsg.attachment_urls.length > 0) {
+                const firstAttachment = lastMsg.attachment_urls[0];
+                const contentType = lastMsg.content_type || 'file';
+                
+                if (contentType.includes('image') || firstAttachment.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                  formattedMessage = '🖼 ' + (messageText || 'Photo');
+                } else if (contentType.includes('video') || firstAttachment.match(/\.(mp4|mov|avi|mkv)$/i)) {
+                  formattedMessage = '🎥 ' + (messageText || 'Video');
+                } else if (contentType.includes('audio') || firstAttachment.match(/\.(mp3|wav|m4a|ogg)$/i)) {
+                  formattedMessage = '🎵 ' + (messageText || 'Audio');
+                } else {
+                  formattedMessage = '📎 ' + (messageText || 'File');
+                }
+              } else if (messageText) {
+                formattedMessage = messageText;
+              } else {
+                formattedMessage = 'Message';
+              }
+
               setChats((prevChats) => {
                 try {
-                  const updatedChats = prevChats.map((c) =>
-                    (c.uid === chat.uid || c.chat_id === chat.chat_id)
-                      ? {
-                        ...c,
-                        lastMessage: lastMsg.text || (lastMsg.file ? 'File' : 'Media'),
-                        lastMessageTimestamp: lastMsg.created_at ? new Date(lastMsg.created_at) : new Date(),
-                        lastMessageStatus: lastMsg.status || 'sent',
-                        lastMessageSenderUid: lastMsg.sender || null,
-                        lastActivity: lastMsg.created_at ? new Date(lastMsg.created_at) : c.lastActivity,
-                        time: FormatTime(lastMsg.created_at ? new Date(lastMsg.created_at) : new Date()),
+                  const matchedChats = [];
+                  const updatedChats = prevChats.map((c) => {
+                    // CRITICAL: Match ONLY the specific chat that has this message
+                    const isThisChat = (
+                      (c.chatId && c.chatId === chatIdToQuery) || 
+                      (c.chat_id && c.chat_id === chatIdToQuery)
+                    );
+                    
+                    if (isThisChat) {
+                      matchedChats.push({
+                        chatName: c.name,
+                        chatId: c.chatId || c.chat_id,
+                        queryId: chatIdToQuery,
+                        messageText: formattedMessage.substring(0, 50),
+                        messageId: lastMsg.id
+                      });
+                      
+                      // Only update if timestamp or message actually changed
+                      const newTimestamp = lastMsg.created_at || lastMsg.timestamp || lastMsg.sent_at;
+                      const oldTimestamp = c.lastMessageTimestamp;
+                      const timestampString = typeof oldTimestamp === 'string' ? oldTimestamp : oldTimestamp?.toISOString?.();
+                      const newTimestampString = typeof newTimestamp === 'string' ? newTimestamp : newTimestamp ? new Date(newTimestamp).toISOString() : null;
+                      
+                      // If message and timestamp are identical, don't update
+                      if (c.lastMessage === formattedMessage && timestampString === newTimestampString) {
+                        console.log(`⏭️ Polling: Message unchanged for ${c.name}, skipping update`);
+                        return c;
                       }
-                      : c
-                  ).sort((a, b) => {
+                      
+                      console.log(`✅ Polling: Updated "${c.name}" with message: "${formattedMessage.substring(0, 40)}"`);
+                      return {
+                        ...c,
+                        lastMessage: formattedMessage,
+                        lastMessageTimestamp: newTimestamp ? new Date(newTimestamp) : c.lastMessageTimestamp,
+                        lastMessageStatus: lastMsg.status || 'sent',
+                        lastMessageSenderUid: lastMsg.sender_id || lastMsg.sender || null,
+                        lastActivity: newTimestamp ? new Date(newTimestamp) : c.lastActivity,
+                        time: newTimestamp ? FormatTime(new Date(newTimestamp)) : c.time,
+                      };
+                    }
+                    return c;
+                  }).sort((a, b) => {
                     // Self chat always at top
                     if ((a.isYourself || a.isCurrent) && !(b.isYourself || b.isCurrent)) return -1;
                     if (!(a.isYourself || a.isCurrent) && (b.isYourself || b.isCurrent)) return 1;
@@ -858,6 +1028,18 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
                     if (onlineUsers.has(a.uid) !== onlineUsers.has(b.uid)) return onlineUsers.has(a.uid) ? -1 : 1;
                     return new Date(b.lastActivity || 0) - new Date(a.lastActivity || 0);
                   });
+                  
+                  // Log matching results
+                  if (matchedChats.length === 0) {
+                    console.warn(`⚠️ Polling: No chats matched for chatIdToQuery="${chatIdToQuery}". Available chat IDs:`, {
+                      chatIds: prevChats.map(c => ({ name: c.name, chatId: c.chatId, chat_id: c.chat_id }))
+                    });
+                  } else if (matchedChats.length > 1) {
+                    console.warn(`⚠️⚠️ Polling: ${matchedChats.length} chats matched (expected 1) for chatIdToQuery="${chatIdToQuery}":`, matchedChats);
+                  } else {
+                    console.log(`✅ Polling: Match successful`, matchedChats[0]);
+                  }
+                  
                   return updatedChats;
                 } catch (error) {
                   console.error('Error in setChats callback:', error?.message || String(error));
@@ -866,13 +1048,13 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
               });
             }
           } catch (error) {
-            console.warn('Error polling last message for chat:', chat.chat_id || chat.chatId, error?.message || String(error));
+            console.warn(`⚠️ Polling: Error fetching last message for chat "${chat.name}" (chatIdToQuery: ${chatIdToQuery}):`, error?.message || String(error));
           }
         }
       } catch (error) {
         console.error('Error in polling interval:', error?.message || String(error));
       }
-    }, 3000);
+    }, 20000); // Increased from 3s to 20s - Supabase API was getting hammered with 503 errors
 
     // Return cleanup function
     return () => clearInterval(pollInterval);
