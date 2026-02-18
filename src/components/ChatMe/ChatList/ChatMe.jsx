@@ -2,6 +2,7 @@
 /* eslint-disable no-undef */
 // TODO: Replace remaining Firebase function calls (collection, doc, query, where, orderBy, etc.) with Supabase service methods
 import React, { useEffect, useMemo, useRef, useState ,useCallback, useLayoutEffect} from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../supabase';
 import { SupabaseChatService } from '../services/SupabaseChatService';
 import { SupabaseFolderService } from '../services/SupabaseFolderService';
@@ -29,6 +30,7 @@ import { FiArrowLeft } from 'react-icons/fi';
 import { FolderPickerModal } from './Components/Folders/FolderPickerModal';
 
 export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileView = false, onProfileViewerChange = () => { }, user, onChatWindowActive = () => {}, onBackFromChat = () => {} }) => {
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
   const [yourselfChatId, setYourselfChatId] = useState(null);
   const [, forceUpdate] = useState(0); // For manual refresh
@@ -98,7 +100,6 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
   }, []);
 
   const [contacts, setContacts] = useState([]);
-  const [viewingProfile, setViewingProfile] = useState(null);
   const [selectedChat, setSelectedChat] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
@@ -1432,11 +1433,6 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
   */
 
   useEffect(() => {
-    // console.log('ChatMe: viewingProfile changed, notifying parent. viewingProfile:', viewingProfile);
-    onProfileViewerChange(!!viewingProfile);
-  }, [viewingProfile, onProfileViewerChange]);
-
-  useEffect(() => {
     setLocalSearchQuery(searchQuery);
   }, [searchQuery]);
 
@@ -1666,52 +1662,14 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
       console.error('ChatMe: Cannot open profile: chat is null/undefined');
       return;
     }
-    const safeMessages = Array.isArray(chat.messages) ? chat.messages : [];
-    const safeMedia = safeMessages
-      .filter((msg) => msg && msg.media)
-      .map((msg, index) => ({
-        id: `media-${index}`,
-        url: msg.media.url,
-        type: msg.media.type,
-        caption: msg.text || '',
-        createdAt: msg.timestamp,
-        likes: 0,
-        comments: [],
-        commentCount: 0,
-        views: 0,
-      }));
-
-    const profile = {
-      id: chat.id,
-      name: chat.name,
-      profilePicture: chat.profilePicture,
-      currentUserUid: currentUser?.id,
-      isCurrent: !!chat.isYourself,
-      isOnline: chat.isOnline || false,
-      isFollowed: false,
-      isMuted: chat.isMuted || false,
-      isBlocked: false,
-      bio: chat.id === yourselfChatId ? (user?.bio || 'No bio available') : 'No bio available',
-      email: chat.email || '',
-      phone: chat.phone || '',
-      links: chat.id === yourselfChatId ?
-        (Object.entries(user?.socialMedia || {})
-          .filter(([_, url]) => url)
-          .map(([platform, url]) => ({ title: platform, url })) || []) : [],
-      media: safeMedia,
-      following: [],
-      comments: [],
-      followers: [],
-      lastSeen: chat.lastSeen,
-    };
-
-    console.log('ChatMe: Profile object created:', profile);
-    setViewingProfile(profile);
+    console.log('ChatMe: Opening profile for chat:', chat.uid, chat.name);
+    // Navigate to profile page using hash with the user's uid (not conversation id)
+    navigate(`#profile/${chat.uid}`);
   };
 
   const closeProfileViewer = () => {
     console.log('ChatMe: Closing ProfileViewer');
-    setViewingProfile(null);
+    navigate('#chats');
   };
 
   const handleMessageCreated = async (newMessage, chatId) => {
@@ -2050,18 +2008,6 @@ export const ChatMe = ({ onChatSelect = () => { }, searchQuery = '', isMobileVie
             currentUser={currentUser}
           />
         )}
-        {viewingProfile && (
-          <ProfileViewer
-            profile={viewingProfile}
-            onClose={closeProfileViewer}
-            onToggleMute={() => toggleMute(viewingProfile.id)}
-            onToggleBlock={() => console.log('Toggle block:', viewingProfile.id)}
-            onToggleFollow={() => console.log('Toggle follow:', viewingProfile.id)}
-            onReport={() => console.log('Report:', viewingProfile.id)}
-          />
-        )}
-
-
 
         {showGroupCreation && (
           <GroupCreation

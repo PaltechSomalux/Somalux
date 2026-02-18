@@ -341,41 +341,13 @@ function AdBannerContent({ placement, limit = 1, className = '', demo = false })
       <div className="ad-container">
         <div className="ad-wrapper">
           {isVideoAd ? (
-            <div style={{ 
-              position: 'relative', 
-              width: '100%', 
-              maxWidth: '100%',
-              backgroundColor: '#000', 
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center', 
-              justifyContent: 'flex-start', 
-              minHeight: 'auto',
-              height: window.innerWidth < 768 ? '100vh' : 'auto',
-              maxHeight: window.innerWidth < 768 ? 'none' : '700px',
-              overflow: 'hidden'
-            }}>
+            <div className="ad-video-container">
               {/* Video wrapper */}
-              <div style={{
-                position: 'relative',
-                width: '100%',
-                flex: window.innerWidth < 768 ? 1 : 'none',
-                height: window.innerWidth < 768 ? 'auto' : '600px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#000',
-                minHeight: 0
-              }}>
+              <div className="ad-video-wrapper">
                 <video
                   ref={videoRef}
                   autoPlay
-                  style={{ 
-                    width: '100%', 
-                    height: '100%', 
-                    display: 'block',
-                    objectFit: 'contain'
-                  }}
+                  className="ad-video"
                   onClick={() => {
                     if (videoRef.current) {
                       if (videoRef.current.paused) {
@@ -411,15 +383,15 @@ function AdBannerContent({ placement, limit = 1, className = '', demo = false })
                 </video>
 
                 {/* Top overlay for ad label and close button */}
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: window.innerWidth < 768 ? '12px' : '10px', boxSizing: 'border-box' }}>
-                  <span style={{ zIndex: 12, backgroundColor: 'rgba(0,0,0,0.6)', padding: window.innerWidth < 768 ? '6px 10px' : '4px 8px', borderRadius: '4px', color: '#fff', fontSize: window.innerWidth < 768 ? '14px' : '12px' }}>ad</span>
-                  <div style={{ zIndex: 12, backgroundColor: 'rgba(0,0,0,0.6)', padding: window.innerWidth < 768 ? '6px 10px' : '4px 8px', borderRadius: '4px', color: '#fff' }}>
-                    <span style={{ fontSize: window.innerWidth < 768 ? '16px' : '14px' }}>{countdown}s</span>
+                <div className="ad-video-top-overlay">
+                  <span className="ad-label">ad</span>
+                  <div className="ad-countdown">
+                    <span className="countdown-text">{countdown}s</span>
                   </div>
                   <button 
                     onClick={() => handleClose(currentAd)}
                     title="Close ad"
-                    style={{ zIndex: 12, backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', padding: window.innerWidth < 768 ? '6px 10px' : '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: window.innerWidth < 768 ? '20px' : '16px' }}
+                    className="ad-close-btn"
                   >
                     <FiX />
                   </button>
@@ -427,94 +399,27 @@ function AdBannerContent({ placement, limit = 1, className = '', demo = false })
               </div>
 
               {/* MOBILE CONTROLS - Same Minimal Layout */}
-              {window.innerWidth < 768 && (
-                <div style={{ 
-                  width: '100%',
-                  background: 'rgba(0,0,0,0.5)',
-                  padding: '4px 8px',
-                  display: 'flex',
-                  alignItems: 'center', 
-                  gap: '4px',
-                  justifyContent: 'space-between',
-                  boxSizing: 'border-box'
-                }}>
-                  {/* Progress bar only */}
-                  <input
-                    type="range"
-                    min="0"
-                    max={duration || 0}
-                    value={currentTime}
-                    onChange={(e) => {
-                      const newTime = parseFloat(e.target.value);
-                      if (videoRef.current) {
-                        videoRef.current.currentTime = newTime;
-                        setCurrentTime(newTime);
-                      }
-                    }}
-                    style={{
-                      flex: 1,
-                      height: '3px',
-                      cursor: 'pointer',
-                      margin: 0,
-                      padding: 0,
-                      accentColor: '#ff5252',
-                      WebkitAppearance: 'none',
-                      appearance: 'none',
-                      borderRadius: '1px'
-                    }}
-                  />
-                  
-                  {/* Time only */}
-                  <span style={{ color: '#ccc', fontSize: '10px', fontFamily: 'monospace', minWidth: '70px', textAlign: 'right' }}>
-                    {formatTime(currentTime)} / {formatTime(duration)}
-                  </span>
-                </div>
-              )}
-
-              {/* DESKTOP CONTROLS - Minimal Ad Player */}
-              {window.innerWidth >= 768 && (
-                <div style={{ 
-                  width: '100%',
-                  background: 'rgba(0,0,0,0.5)',
-                  padding: '4px 8px',
-                  display: 'flex',
-                  alignItems: 'center', 
-                  gap: '4px',
-                  justifyContent: 'space-between',
-                  boxSizing: 'border-box'
-                }}>
-                  {/* Progress bar only */}
-                  <input
-                    type="range"
-                    min="0"
-                    max={duration || 0}
-                    value={currentTime}
-                    onChange={(e) => {
-                      const newTime = parseFloat(e.target.value);
-                      if (videoRef.current) {
-                        videoRef.current.currentTime = newTime;
-                        setCurrentTime(newTime);
-                      }
-                    }}
-                    style={{
-                      flex: 1,
-                      height: '3px',
-                      cursor: 'pointer',
-                      margin: 0,
-                      padding: 0,
-                      accentColor: '#ff0000',
-                      WebkitAppearance: 'none',
-                      appearance: 'none',
-                      borderRadius: '1px'
-                    }}
-                  />
-                  
-                  {/* Time only */}
-                  <span style={{ color: '#ccc', fontSize: '10px', fontFamily: 'monospace', minWidth: '70px', textAlign: 'right' }}>
-                    {formatTime(currentTime)} / {formatTime(duration)}
-                  </span>
-                </div>
-              )}
+              <div className="ad-video-controls">
+                <input
+                  type="range"
+                  min="0"
+                  max={duration || 0}
+                  value={currentTime}
+                  onChange={(e) => {
+                    const newTime = parseFloat(e.target.value);
+                    if (videoRef.current) {
+                      videoRef.current.currentTime = newTime;
+                      setCurrentTime(newTime);
+                    }
+                  }}
+                  className="ad-video-progress"
+                />
+                
+                {/* Time only */}
+                <span className="ad-video-time">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </span>
+              </div>
             </div>
           ) : (
             <>
@@ -553,12 +458,7 @@ function AdBannerContent({ placement, limit = 1, className = '', demo = false })
             ref={videoRef}
             autoPlay
             muted
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              display: 'block'
-            }}
+            className="ad-grid-video"
             onError={(e) => console.error('❌ [VIDEO] Failed to load:', videoUrl, e.target.error)}
             onLoadedMetadata={(e) => {
               console.log('✅ [VIDEO] Grid ad - Metadata loaded:', videoUrl);
@@ -577,7 +477,7 @@ function AdBannerContent({ placement, limit = 1, className = '', demo = false })
             <source src={videoUrl} type="video/mp4" />
           </video>
         ) : (
-          <img src={imageUrl} alt={currentAd.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <img src={imageUrl} alt={currentAd.title} className="ad-grid-image" />
         )}
         <div className="ad-grid-overlay">
           <span className="ad-label">ad</span>

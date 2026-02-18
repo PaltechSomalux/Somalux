@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiLock } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import { SearchBar } from './SearchBar';
 import { GroupHeader } from "./GroupHeader";
 import { MessageContainer } from "./MessageContainer";
@@ -20,6 +21,7 @@ export const ChatScreen = ({
   setShowForwardMenu,
   onBackClick = () => { },
 }) => {
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
 
   // Get current user from Supabase
@@ -99,8 +101,6 @@ export const ChatScreen = ({
   const [voiceNoteTimer, setVoiceNoteTimer] = useState(null);
   const [recordedVoiceNote, setRecordedVoiceNote] = useState(null);
   const [showStarredMessages, setShowStarredMessages] = useState(false);
-  const [showProfileViewer, setShowProfileViewer] = useState(false);
-  const [profileToView, setProfileToView] = useState(null);
   const [starredMessages, setStarredMessages] = useState([]);
   const [messageSelectionMode, setMessageSelectionMode] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState([]);
@@ -341,28 +341,8 @@ export const ChatScreen = ({
 
   const handleOpenProfile = (senderId, senderName) => {
     if (!senderId) return;
-    // Try to find member in current group
-    const member = group?.members?.find(m => m.uid === senderId || m.id === senderId);
-    const profile = member ? {
-      id: member.uid || member.id,
-      name: member.name || member.displayName || senderName || 'User',
-      profilePicture: member.photoURL || member.profilePicture || member.avatar,
-      phone: member.phone || '',
-      links: member.links || [],
-      media: member.media || [],
-      followers: member.followers || [],
-      following: member.following || [],
-      // mark as current only if this member is the logged-in user
-      isCurrent: currentUser && (member.uid === currentUser.id || member.id === currentUser.id),
-    } : {
-      id: senderId,
-      name: senderName || 'User',
-      profilePicture: null,
-      isCurrent: currentUser && (senderId === currentUser.id),
-    };
-
-    setProfileToView(profile);
-    setShowProfileViewer(true);
+    // Navigate to the profile page instead of showing modal
+    navigate(`#profile/${senderId}`);
   };
 
   const showMessageInfo = (message) => {
@@ -761,23 +741,10 @@ export const ChatScreen = ({
             setGroup(updatedGroup);
           }}
           onOpenProfile={(uid, name) => {
-            // Ensure modal is closed and open profile viewer
+            // Ensure modal is closed and open profile page
             setShowGroupInfo(false);
             handleOpenProfile(uid, name);
           }}
-        />
-      )}
-      {showProfileViewer && profileToView && (
-        <ProfileViewer
-          profile={profileToView}
-          onClose={() => {
-            setShowProfileViewer(false);
-            setProfileToView(null);
-          }}
-          onToggleMute={() => console.log('Toggle mute for', profileToView.id)}
-          onToggleFollow={() => console.log('Toggle follow for', profileToView.id)}
-          onToggleBlock={() => console.log('Toggle block for', profileToView.id)}
-          onReport={() => console.log('Report user', profileToView.id)}
         />
       )}
     </div>

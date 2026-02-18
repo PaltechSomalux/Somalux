@@ -140,6 +140,7 @@ export const ProfileViewer = ({
   onToggleFollow,
   onToggleBlock,
   onReport,
+  isPageView = false,
 }) => {
   const [showAvatarFullscreen, setShowAvatarFullscreen] = useState(false);
   const [avatarZoom, setAvatarZoom] = useState(1);
@@ -862,9 +863,209 @@ export const ProfileViewer = ({
   // log FAB rendering
   console.log('ProfileViewer.jsx: Rendering component, isSelfChat:', isSelfChat);
 
+  // Page view rendering (full page without modal overlay)
+  if (isPageView) {
+    return (
+      <>
+        {showAvatarFullscreen && (
+          <div
+            className="chatme-avatar-fullscreen-overlay"
+            onClick={() => {
+              console.log('ProfileViewer.jsx: Closing avatar fullscreen');
+              setShowAvatarFullscreen(false);
+            }}
+          >
+            {/* Avatar fullscreen content */}
+            <div
+              className="chatme-avatar-fullscreen-container"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-label={`${profile.name} avatar viewer`}
+            >
+              <img
+                src={getMaskedProfilePhoto(profile.profilePicture, profile.privacy || {}, !!profile.isContact) || generateDefaultAvatar()}
+                alt={profile.name}
+                className="chatme-avatar-fullscreen-image"
+                style={{
+                  transform: `scale(${avatarZoom})`,
+                  transition: 'transform 120ms ease-out',
+                  maxWidth: '100%',
+                  maxHeight: '70vh',
+                  display: 'block',
+                  margin: '0 auto'
+                }}
+                onError={(e) => {
+                  console.warn('ProfileViewer.jsx: Avatar image error in fullscreen, using default');
+                  e.target.src = generateDefaultAvatar();
+                }}
+              />
+              <div className="chatme-avatar-fullscreen-footer">
+                <h3>{isSelfChat ? 'You' : profile.name}</h3>
+                <p>{profile.bio || 'No bio available'}</p>
+              </div>
+              <button
+                className="chatme-avatar-close-button"
+                onClick={() => setShowAvatarFullscreen(false)}
+                aria-label="Close avatar view"
+              >
+                <FiArrowLeft size={24} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Page view container - no modal overlay */}
+        <div className="chatme-profile-page-view" ref={profileViewerRef}>
+          <div className="chatme-profile-page-content">
+            {/* Header */}
+            <div className="chatme-profile-viewer-header">
+              <button
+                className="chatme-close-button"
+                onClick={() => {
+                  console.log('ProfileViewer.jsx: Closing profile viewer');
+                  onClose();
+                }}
+                aria-label="Close profile"
+              >
+                <FiArrowLeft size={24} />
+              </button>
+              <div className="chatme-header-title">
+                <h2>Profile</h2>
+              </div>
+              {!isSelfChat && (
+                <button
+                  className="chatme-profile-actions-button"
+                  ref={menuButtonRef}
+                  onClick={() => {
+                    console.log('ProfileViewer.jsx: Toggling profile actions menu');
+                    setShowProfileActions((prev) => !prev);
+                  }}
+                  aria-label="Profile actions"
+                >
+                  ⋮
+                </button>
+              )}
+              {isSelfChat && <div className="chatme-profile-actions-placeholder"></div>}
+              {!isSelfChat && showProfileActions && (
+                <div className="chatme-profile-actions-menu" ref={menuRef}>
+                  <button onClick={() => { onToggleFollow(); setShowProfileActions(false); }}>
+                    {profile.isFollowed ? 'Unfollow' : 'Follow'}
+                  </button>
+                  <button onClick={() => { onToggleMute(); setShowProfileActions(false); }}>
+                    {profile.isMuted ? 'Unmute' : 'Mute'}
+                  </button>
+                  <button onClick={() => { onToggleBlock(); setShowProfileActions(false); }}>
+                    {profile.isBlocked ? 'Unblock' : 'Block'}
+                  </button>
+                  <button onClick={() => { onReport(); setShowProfileActions(false); }}>
+                    Report
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="chatme-profile-content">
+              {/* Avatar with online indicator */}
+              <div
+                className="chatme-profile-image-container"
+                onClick={() => {
+                  console.log('ProfileViewer.jsx: Opening avatar fullscreen');
+                  setShowAvatarFullscreen(true);
+                }}
+                role="button"
+                aria-label="View profile picture"
+                tabIndex={0}
+              >
+                <img
+                  src={profile.profilePicture || generateDefaultAvatar()}
+                  alt={profile.name}
+                  className="chatme-profile-image"
+                  onError={(e) => {
+                    console.warn('ProfileViewer.jsx: Profile image error, using default. Original src:', e.target.src);
+                    e.target.src = generateDefaultAvatar();
+                  }}
+                />
+                {!isSelfChat && profile.isOnline && (
+                  <div className="chatme-profile-online-indicator" aria-hidden={false} title="Online">
+                    <span className="chatme-online-dot" />
+                  </div>
+                )}
+              </div>
+
+              {/* Profile info */}
+              <div className="chatme-profile-info">
+                <h2>{isSelfChat ? 'You' : profile.name}</h2>
+                {allowAbout(profile.privacy || {}, !!profile.isContact) && (
+                  <p className="profile-header-bio">{profile.bio}</p>
+                )}
+                {profile.email && <p className="chatme-profile-email">{profile.email}</p>}
+                <div className="chatme-profile-stats">
+                  <span>
+                    <strong>{(profile.media?.length || 0) + uploadedMedia.length}</strong> Posts
+                  </span>
+                  <span>
+                    <strong>{profile.followers?.length || 0}</strong> Followers
+                  </span>
+                  <span>
+                    <strong>{profile.following?.length || 0}</strong> Following
+                  </span>
+                </div>
+                {renderProfileDetails()}
+              </div>
+
+              {/* Tabs */}
+              <div className="chatme-profile-tabs" ref={tabContainerRef}>
+                {tabs.map((tab) => (
+                  <button
+                    key={tab}
+                    className={`chatme-tab-button ${activeTab === tab ? 'active' : ''}`}
+                    onClick={() => {
+                      console.log('ProfileViewer.jsx: Switching to tab:', tab);
+                      setActiveTab(tab);
+                    }}
+                    aria-label={`View ${tab}`}
+                  >
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <div className="chatme-tab-content-container">
+                {renderTabContent()}
+              </div>
+            </div>
+          </div>
+
+          {isSelfChat ? (
+            <>
+              {console.log('ProfileViewer.jsx: Rendering FloatingActionButton for current user (page view)')}
+              <FloatingActionButton
+                onPollCreate={handlePollCreate}
+                onTextCreate={handleTextCreate}
+                onMediaCreate={handleMediaCreate}
+                modalOptions={[
+                  { type: 'camera', label: 'Camera', icon: <FiImage size={20} /> },
+                  { type: 'image', label: 'Image', icon: <FiImage size={20} /> },
+                  { type: 'video', label: 'Video', icon: <FiVideo size={20} /> },
+                  { type: 'audio', label: 'Audio', icon: <FiMic size={20} /> },
+                  { type: 'document', label: 'Document', icon: <FiFile size={20} /> },
+                  { type: 'text', label: 'Text', icon: <FiType size={20} /> },
+                ]}
+                isChatSelected={false}
+                isFullscreen={isMediaFullscreen}
+              />
+            </>
+          ) : (
+            console.log('ProfileViewer.jsx: Skipping FloatingActionButton render, not current user (page view)')
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // Modal view rendering (original modal overlay)
   return (
     <>
-      {showAvatarFullscreen && (
         <div
           className="chatme-avatar-fullscreen-overlay"
           onClick={() => {
@@ -1008,8 +1209,11 @@ export const ProfileViewer = ({
         </div>
       )}
 
-      <div className="chatme-profile-viewer-overlay" ref={profileViewerRef}>
-        <div className="chatme-profile-modal-container">
+      <div 
+        className={`chatme-profile-viewer-overlay ${isPageView ? 'page-view' : ''}`} 
+        ref={profileViewerRef}
+      >
+        <div className={`chatme-profile-modal-container ${isPageView ? 'page-view' : ''}`}>
           <div className="chatme-profile-viewer-header">
             <button
               className="chatme-close-button"
@@ -1170,8 +1374,8 @@ export const ProfileViewer = ({
           ) : (
             console.log('ProfileViewer.jsx: Skipping FloatingActionButton render, not current user')
           )}
-        </div> {/* End of chatme-profile-modal-container */}
-      </div> {/* End of chatme-profile-viewer-overlay */}
+        </div>
+      </div>
     </>
   );
 };
@@ -1268,6 +1472,7 @@ ProfileViewer.propTypes = {
   onToggleFollow: PropTypes.func,
   onToggleBlock: PropTypes.func,
   onReport: PropTypes.func,
+  isPageView: PropTypes.bool,
 };
 
 ProfileViewer.defaultProps = {
@@ -1275,4 +1480,5 @@ ProfileViewer.defaultProps = {
   onToggleFollow: () => { },
   onToggleBlock: () => { },
   onReport: () => { },
+  isPageView: false,
 };

@@ -458,9 +458,9 @@ class UnifiedChatServiceClass {
           for (const convo of allConvos.slice(0, 5)) {
             const { data: msgs, count } = await supabase
               .from('messages')
-              .select('id, text, content, message, created_at, sender_id, chat_id', { count: 'exact' })
+              .select('id, content, created_at, sender_id, chat_id', { count: 'exact' })
               .eq('chat_id', convo.id)
-              .eq('is_deleted', false)
+              .isNull('deleted_at')
               .order('created_at', { ascending: false })
               .limit(2);
             

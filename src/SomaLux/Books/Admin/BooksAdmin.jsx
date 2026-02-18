@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, Navigate, useNavigate, useLocation, Link } from
 import { 
   FiBarChart2, FiBookOpen, FiUpload, FiFolder,
   FiSettings, FiUsers, FiChevronLeft, FiChevronRight,
-  FiRefreshCw, FiGrid, FiSearch, FiHardDrive, FiCheck, FiClock, FiDownload
+  FiRefreshCw, FiGrid, FiSearch, FiHardDrive, FiCheck, FiClock, FiDownload, FiMail
 } from 'react-icons/fi';
 import { MdAdminPanelSettings } from "react-icons/md";
 import { BiSpeaker } from 'react-icons/bi';
@@ -237,7 +237,7 @@ export const BooksAdmin = () => {
                 </div>
 
                 <NavLink to="/books/admin/send-emails" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                  <BiSpeaker /> <span className="nav-label">Send Emails</span>
+                  <FiMail /> <span className="nav-label">Emails</span>
                 </NavLink>
 
                 <NavLink to="/books/admin/rankings" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
@@ -303,7 +303,7 @@ export const BooksAdmin = () => {
 
           {isAdmin && (
             <NavLink to="/books/admin/send-emails" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
-              <BiSpeaker /> <span>Send Emails</span>
+              <FiMail /> <span>Emails</span>
             </NavLink>
           )}
 

@@ -1,0 +1,101 @@
+/* Chat Layout Styling - Admin Dashboard Theme */
+
+.chat-layout {
+  background: #0b1216;
+  color: #e9edef;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-container {
+  background: #111b21;
+  border-radius: 8px;
+  border: 1px solid #2a3942;
+  padding: 24px;
+  margin: 16px;
+}
+
+.chat-header {
+  background: #0b1216;
+  color: #e9edef;
+  padding: 16px;
+  border-bottom: 1px solid #2a3942;
+  margin-bottom: 16px;
+  border-radius: 4px;
+}
+
+.chat-messages {
+  background: #111b21;
+  padding: 16px;
+  border-radius: 4px;
+  border: 1px solid #2a3942;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.chat-message {
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  background: #0b1216;
+  color: #e9edef;
+  border-left: 2px solid #00a884;
+}
+
+.chat-input-area {
+  background: #111b21;
+  padding: 16px;
+  border-top: 1px solid #2a3942;
+  border-radius: 4px;
+  margin-top: 16px;
+}
+
+.chat-input-field {
+  background: #0b1216;
+  color: #e9edef;
+  border: 1px solid #2a3942;
+  padding: 12px 16px;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.chat-input-field:focus {
+  border-color: #00a884;
+  outline: none;
+  box-shadow: 0 0 8px rgba(0, 168, 132, 0.2);
+}
+
+.chat-input-field::placeholder {
+  color: #8696a0;
+}
+
+.chat-button {
+  background: #00a884;
+  color: #fff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.chat-button:hover {
+  background: #06a77d;
+}
+
+.chat-button:active {
+  background: #058671;
+}
+
+/* Secondary text */
+.chat-secondary-text {
+  color: #8696a0;
+  font-size: 12px;
+}
+
+/* Hover states */
+.chat-container:hover {
+  border-color: #3d4c56;
+}

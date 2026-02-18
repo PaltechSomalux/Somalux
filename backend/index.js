@@ -34,6 +34,7 @@ import pastPapersDownloaderRoutes from './routes/pastPapersDownloaderRoutes.js';
 import pastPaperExtractRoute from './routes/pastPaperExtractRoute.js';
 import firstPageExtractRoute from './routes/firstPageExtractRoute.js';
 import emailNotificationsRouter from './routes/emailNotifications.js';
+import { startScheduledSendProcessor } from './utils/scheduledSendQueue.js';
 import { recordFirstLogin } from './utils/firstLoginTracking.js';
 import { initializeChatMeFirebase, setupChatMeWebSocket, setupChatMeFCMRoutes } from './chatme-integration.js';
 import chatmeMessagesRouter from './routes/chatmeMessages.js';
@@ -1483,11 +1484,12 @@ app.post("/api/messages/latest-batch", async (req, res) => {
     
     for (const chatId of chatIds) {
       try {
-        // Fetch all messages and filter in code for text content
+        // Fetch all messages and filter in code for content
         const { data: messages, error } = await supabaseAdmin
           .from('messages')
-          .select('id, text, message, sender, senderId, timestamp, created_at, deleted_by, status')
+          .select('id, content, status, is_read, is_edited, created_at, updated_at, sender_id, chat_id, attachment_urls')
           .eq('chat_id', chatId)
+          .isNull('deleted_at')
           .order('created_at', { ascending: false })
           .limit(limit);
 
@@ -6959,6 +6961,9 @@ server = app.listen(PORT, () => {
   console.log(`   - GET /api/health (feature flags status)`);
   console.log(`   - GET /api/features-simple (test endpoint, no DB)`);
   console.log(`   - GET /api/features (main endpoint)`);
+
+  // Start the scheduled email send processor
+  startScheduledSendProcessor(60000); // Check every 60 seconds
 });
 
 // Setup WebSocket after server starts

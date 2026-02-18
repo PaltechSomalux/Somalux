@@ -782,18 +782,17 @@ export const useChatActions = ({
         messageData,
       });
 
-      const { error: updateError } = await supabase
+      const { error: deleteError } = await supabase
         .from('messages')
-        .update({ deleted_at: new Date().toISOString() })
+        .delete()
         .eq('id', messageId);
 
-      if (updateError) {
-        throw updateError;
+      if (deleteError) {
+        throw deleteError;
       }
 
-      console.log("useChatActions.js: handleDeleteMessage: Updated deletedAt", {
+      console.log("useChatActions.js: handleDeleteMessage: Permanently deleted message", {
         ...logContext,
-        deletedAt: new Date().toISOString(),
       });
 
       setMessages((prev) => prev.filter((m) => m.id !== messageId));
@@ -860,7 +859,7 @@ export const useChatActions = ({
       const updatePromises = existingMessageIds.map(messageId => {
         return supabase
           .from('messages')
-          .update({ deleted_at: new Date().toISOString() })
+          .delete()
           .eq('id', messageId);
       });
 
@@ -1110,7 +1109,7 @@ export const useChatActions = ({
       const updatePromises = messages.map(msg => 
         supabase
           .from('messages')
-          .update({ deleted_at: new Date().toISOString() })
+          .delete()
           .eq('id', msg.id)
       );
 
@@ -1182,18 +1181,16 @@ export const useChatActions = ({
         messageData,
       });
 
-      const { error: updateError } = await supabase
+      const { error: deleteError } = await supabase
         .from('messages')
-        .update({
-          deleted_at: new Date().toISOString(),
-        })
+        .delete()
         .eq('id', messageId);
 
-      if (updateError) {
-        throw updateError;
+      if (deleteError) {
+        throw deleteError;
       }
 
-      console.log("useChatActions.js: testDeleteSingleMessage: Updated message", {
+      console.log("useChatActions.js: testDeleteSingleMessage: Permanently deleted message", {
         ...logContext,
         messageId,
       });

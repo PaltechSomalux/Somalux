@@ -16,6 +16,7 @@ import { logError } from '../../../utils/errorFormatter';
 import "./ConnectMe.css";
 import { ChatMe } from '../ChatList/ChatMe';
 import { MyGroups } from "../GroupList/MyGroups";
+import { ProfilePage } from '../../../SomaLux/Chat/ProfilePage/ProfilePage';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export const ConnectMe = ({ user: initialUser, onLogout, onForegroundToast, onChatSelected, onChatWindowActive, onBackFromChat }) => {
@@ -39,14 +40,22 @@ export const ConnectMe = ({ user: initialUser, onLogout, onForegroundToast, onCh
   });
 
   useEffect(() => {
+    console.log('ConnectMe: location.hash changed to:', location.hash);
     if (location.hash === '#chats') {
+      console.log('ConnectMe: Setting activeTab to Chats');
       setActiveTab('Chats');
     } else if (location.hash === '#chat') {
+      console.log('ConnectMe: Setting activeTab to ChatView or Chats');
       setActiveTab(isMobile ? 'ChatView' : 'Chats');
     } else if (location.hash === '#groups') {
+      console.log('ConnectMe: Setting activeTab to Groups');
       setActiveTab('Groups');
     } else if (location.hash === '#group') {
+      console.log('ConnectMe: Setting activeTab to Groups');
       setActiveTab('Groups');
+    } else if (location.hash.startsWith('#profile/')) {
+      console.log('ConnectMe: Setting activeTab to Profile with hash:', location.hash);
+      setActiveTab('Profile');
     }
   }, [location.hash, isMobile]);
 
@@ -212,6 +221,19 @@ export const ConnectMe = ({ user: initialUser, onLogout, onForegroundToast, onCh
           </div>
         );
       case 'Profile':
+        // Extract userId from location hash if present (e.g., #profile/userId)
+        const profileUserId = location.hash.startsWith('#profile/') 
+          ? location.hash.substring('#profile/'.length) 
+          : null;
+        
+        if (profileUserId) {
+          return (
+            <div className="tab-contentConnect profile-contentConnect profile-page-full">
+              <ProfilePage />
+            </div>
+          );
+        }
+        
         return (
           <div className="tab-contentConnect profile-contentConnect">
             <div className="empty-stateConnect">

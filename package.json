@@ -36,10 +36,10 @@
     "styled-components": "^6.1.16"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "start:3000": "PORT=3000 react-scripts start",
-    "start:5173": "VITE_PORT=5173 react-scripts start",
-    "build": "react-scripts build && node copy-pdf-worker.js",
+    "start": "node --max-old-space-size=4096 node_modules/react-scripts/bin/react-scripts.js start",
+    "start:3000": "PORT=3000 node --max-old-space-size=16384 node_modules/react-scripts/bin/react-scripts.js start",
+    "start:5173": "VITE_PORT=5173 node --max-old-space-size=16384 node_modules/react-scripts/bin/react-scripts.js start",
+    "build": "node --max-old-space-size=16384 node_modules/react-scripts/bin/react-scripts.js build && node copy-pdf-worker.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

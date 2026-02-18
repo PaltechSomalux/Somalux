@@ -225,13 +225,27 @@
   cursor: pointer;
   color: #95a8b8;
   border: none;
-  padding: 0;
+  padding: 8px;
   transition: all 0.2s ease;
   order: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.send-reply-btn-comments svg {
+  stroke: currentColor;
+  fill: currentColor;
 }
 
 .send-reply-btn-comments:not(:disabled) {
   color: #00b388;
+}
+
+.send-reply-btn-comments:not(:disabled) svg {
+  stroke: #00b388;
+  fill: #00b388;
 }
 
 .send-reply-btn-comments:disabled {
@@ -327,13 +341,27 @@
   cursor: pointer;
   color: #95a8b8;
   border: none;
-  padding: 0;
+  padding: 8px;
   transition: all 0.2s ease;
   order: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.submit-comment-btn-comments svg {
+  stroke: currentColor;
+  fill: currentColor;
 }
 
 .submit-comment-btn-comments:not(:disabled) {
   color: #00b388;
+}
+
+.submit-comment-btn-comments:not(:disabled) svg {
+  stroke: #00b388;
+  fill: #00b388;
 }
 
 .submit-comment-btn-comments:disabled {

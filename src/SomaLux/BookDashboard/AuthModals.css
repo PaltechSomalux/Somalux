@@ -14,7 +14,7 @@
 }
 
 .auth-modal-container {
-  background: white;
+  background: #111b21;
   border-radius: 20px;
   width: 100%;
   max-width: 480px;
@@ -24,130 +24,91 @@
 }
 
 .auth-modal-header {
-  padding: 24px 28px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.auth-modal-header h2 {
-  margin: 0;
-  font-size: 1.6rem;
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-.auth-modal-close-btn {
-  background: none;
-  border: none;
-  font-size: 32px;
-  width: 44px;
-  height: 44px;
-  cursor: pointer;
-  color: #999;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.auth-modal-close-btn:hover {
-  background: #f0f0f0;
-  color: #333;
+  display: none;
 }
 
 .auth-modal-body {
-  padding: 24px 28px;
-  color: #444;
+  padding: 16px 24px;
+  color: #e9edef;
+  background: #111b21;
 }
 
 .auth-modal-body p {
-  margin: 0 0 24px;
-  font-size: 1.1rem;
-  line-height: 1.6;
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  line-height: 1.4;
 }
 
 .reason-section {
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .toggle-reason-btn {
-  background: none;
-  border: 2px dashed #bbb;
-  color: #666;
-  padding: 10px 16px;
-  border-radius: 12px;
+  background: transparent;
+  border: none;
+  color: #00a884;
+  padding: 4px 0;
+  border-radius: 0;
   cursor: pointer;
-  font-size: 0.98rem;
+  font-size: 0.9rem;
   width: 100%;
-  transition: all 0.25s;
-}
-
-.toggle-reason-btn:hover {
-  border-color: #888;
-  background: #f8f8f8;
-  color: #333;
+  text-align: left;
+  font-weight: 500;
 }
 
 .reason-textarea {
   width: 100%;
-  margin-top: 12px;
-  padding: 14px;
-  border: 1px solid #ddd;
-  border-radius: 12px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid #2a3942;
+  border-radius: 6px;
   resize: vertical;
   font-family: inherit;
-  font-size: 1rem;
-  background: #fcfcfc;
-  transition: border 0.2s, box-shadow 0.2s;
+  font-size: 0.9rem;
+  background: #0b1216;
+  color: #e9edef;
 }
 
 .reason-textarea:focus {
   outline: none;
-  border-color: #0066ff;
-  box-shadow: 0 0 0 4px rgba(0, 102, 255, 0.15);
+  border-color: #00a884;
+}
+
+.reason-textarea::placeholder {
+  color: #8696a0;
 }
 
 .auth-modal-footer {
-  padding: 20px 28px 32px;
+  padding: 16px 24px 20px;
   display: flex;
-  gap: 14px;
-  justify-content: flex-end;
+  gap: 0;
+  justify-content: space-between;
+  background: #111b21;
 }
 
 .btn-cancel,
 .btn-confirm {
-  padding: 13px 28px;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.25s;
-  min-width: 110px;
+  border: none;
+  white-space: nowrap;
 }
 
 .btn-cancel {
-  background: #f5f5f5;
-  color: #555;
-  border: none;
-}
-
-.btn-cancel:hover {
-  background: #e0e0e0;
+  background: transparent;
+  color: #8696a0;
 }
 
 .btn-confirm {
-  background: #d32f2f;
-  color: white;
-  border: none;
+  background: #ef5350 !important;
+  color: white !important;
 }
 
-.btn-confirm:hover {
-  background: #b71c1c;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(211, 47, 47, 0.3);
+.auth-modal-footer .btn-confirm:hover {
+  background: #e53935 !important;
 }
 
 /* Animations */
@@ -174,23 +135,15 @@
     border-radius: 18px;
   }
 
-  .auth-modal-header h2 {
-    font-size: 1.5rem;
-  }
-
-  .auth-modal-header,
-  .auth-modal-body,
   .auth-modal-footer {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-
-  .auth-modal-footer {
-    flex-direction: column;
+    padding: 12px 16px;
+    gap: 0;
+    justify-content: space-between;
   }
 
   .btn-cancel,
   .btn-confirm {
-    width: 100%;
+    padding: 8px 12px;
+    font-size: 0.85rem;
   }
 }

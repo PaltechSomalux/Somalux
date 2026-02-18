@@ -238,6 +238,13 @@ const SendEmails = () => {
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationStats, setNotificationStats] = useState({});
+  const [expandedNotification, setExpandedNotification] = useState(null);
+  const [notificationLogs, setNotificationLogs] = useState({});
+  const [logsLoading, setLogsLoading] = useState({});
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [selectedNotificationId, setSelectedNotificationId] = useState(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   // User selection states
   const [availableUsers, setAvailableUsers] = useState([]);
@@ -245,13 +252,42 @@ const SendEmails = () => {
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState('');
 
+  // Scheduling states
+  const [scheduledTime, setScheduledTime] = useState('');
+  const [timezone, setTimezone] = useState('UTC');
+  const [scheduledEmails, setScheduledEmails] = useState([]);
+  const [scheduledLoading, setScheduledLoading] = useState(false);
+
+  // Analytics states
+  const [selectedAnalyticsId, setSelectedAnalyticsId] = useState('');
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
   // Fetch notifications on mount or when tab changes
   useEffect(() => {
     if (tabValue === 2) {
+      fetchScheduledEmails();
+    }
+    if (tabValue === 3) {
+      // Analytics tab - no auto-fetch, user will select notification
+    }
+    if (tabValue === 4) {
       fetchNotifications();
       fetchStats();
     }
   }, [tabValue]);
+
+  // Auto-refresh notifications every 30 seconds
+  useEffect(() => {
+    if (!autoRefreshEnabled || tabValue !== 4) return;
+
+    const interval = setInterval(() => {
+      fetchNotifications();
+      fetchStats();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [autoRefreshEnabled, tabValue]);
 
   // Fetch users when specific_users is selected
   useEffect(() => {
@@ -264,15 +300,38 @@ const SendEmails = () => {
   const fetchNotifications = async () => {
     setNotificationsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/admin/notifications?limit=50`);
+      const response = await fetch(`${API_URL}/api/admin/notifications?limit=100`);
       const data = await response.json();
       if (data.success) {
-        setNotifications(data.data || []);
+        // Sort by newest first
+        const sorted = (data.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        setNotifications(sorted);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
       setNotificationsLoading(false);
+    }
+  };
+
+  // Fetch detailed logs for a specific notification
+  const fetchNotificationLogs = async (notificationId) => {
+    if (notificationLogs[notificationId]) return; // Already loaded
+
+    setLogsLoading((prev) => ({ ...prev, [notificationId]: true }));
+    try {
+      const response = await fetch(`${API_URL}/api/admin/notifications/${notificationId}`);
+      const data = await response.json();
+      if (data.success) {
+        setNotificationLogs((prev) => ({
+          ...prev,
+          [notificationId]: data.logs || [],
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching notification logs:', error);
+    } finally {
+      setLogsLoading((prev) => ({ ...prev, [notificationId]: false }));
     }
   };
 
@@ -427,9 +486,12 @@ const SendEmails = () => {
 
       if (data.success) {
         setMessageNotification(
-          `✅ Email sent successfully to ${data.recipientCount} recipient(s)!`
+          `✅ Emails queued for sending to ${data.recipientCount} recipient(s). Check History tab for delivery status.`
         );
         setNotificationTypeUI('success');
+
+        // Switch to History tab to show the notification
+        setTimeout(() => setTabValue(2), 1500);
 
         // Reset form
         setTimeout(() => {
@@ -443,8 +505,21 @@ const SendEmails = () => {
           setSelectedTemplate(null);
         }, 2000);
 
-        // Refresh history
-        fetchNotifications();
+        // Refresh history multiple times to catch the background job completion
+        setTimeout(() => {
+          fetchNotifications();
+          fetchStats();
+        }, 1000);
+        
+        setTimeout(() => {
+          fetchNotifications();
+          fetchStats();
+        }, 3000);
+        
+        setTimeout(() => {
+          fetchNotifications();
+          fetchStats();
+        }, 5000);
       } else {
         setMessageNotification(`❌ Error: ${data.error}`);
         setNotificationTypeUI('error');
@@ -455,6 +530,153 @@ const SendEmails = () => {
       setNotificationTypeUI('error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Schedule email functionality
+  const handleScheduleEmail = async () => {
+    if (!title || !message || !scheduledTime) {
+      setMessageNotification('Please fill all fields');
+      setNotificationTypeUI('error');
+      return;
+    }
+
+    setScheduledLoading(true);
+    try {
+      // First send the email 
+      let recipientFilter = {};
+      let recipientsList = [];
+
+      if (recipientType === 'by_role') {
+        recipientFilter = { role: recipientRole };
+      } else if (recipientType === 'by_tier') {
+        recipientFilter = { tier: recipientTier };
+      } else if (recipientType === 'specific_users') {
+        recipientsList = selectedUsers.map((user) => ({ email: user.email }));
+      }
+
+      const payload = {
+        title: title.trim(),
+        message: message.trim(),
+        notificationType,
+        recipientType,
+        recipientFilter,
+        recipientsList,
+        adminName: 'Admin',
+        adminEmail: 'admin@somalux.com',
+        tags,
+        isUrgent,
+      };
+
+      // Send the email and get its ID
+      const sendResponse = await fetch(`${API_URL}/api/admin/notifications/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!sendResponse.ok) throw new Error('Failed to send email');
+      
+      const sendData = await sendResponse.json();
+      const notificationId = sendData.notificationId;
+
+      // Now schedule it
+      const scheduleResponse = await fetch(`${API_URL}/api/admin/notifications/schedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notificationId,
+          scheduledTime,
+          timezone,
+        }),
+      });
+
+      const scheduleData = await scheduleResponse.json();
+      
+      if (scheduleData.success) {
+        setMessageNotification(`✅ Email scheduled for ${new Date(scheduledTime).toLocaleString()}`);
+        setNotificationTypeUI('success');
+        setScheduledTime('');
+        fetchScheduledEmails();
+      } else {
+        setMessageNotification(`❌ Error: ${scheduleData.error}`);
+        setNotificationTypeUI('error');
+      }
+    } catch (error) {
+      console.error('Error scheduling email:', error);
+      setMessageNotification(`❌ Failed to schedule email: ${error.message}`);
+      setNotificationTypeUI('error');
+    } finally {
+      setScheduledLoading(false);
+    }
+  };
+
+  // Fetch scheduled emails
+  const fetchScheduledEmails = async () => {
+    setScheduledLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/admin/notifications/scheduled`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setScheduledEmails(data.scheduled || []);
+      }
+    } catch (error) {
+      console.error('Error fetching scheduled emails:', error);
+    } finally {
+      setScheduledLoading(false);
+    }
+  };
+
+  // Cancel scheduled email
+  const handleCancelSchedule = async (scheduleId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/notifications/scheduled/${scheduleId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setMessageNotification('✅ Schedule cancelled successfully');
+        setNotificationTypeUI('success');
+        fetchScheduledEmails();
+      } else {
+        setMessageNotification(`❌ Error: ${data.error}`);
+        setNotificationTypeUI('error');
+      }
+    } catch (error) {
+      console.error('Error cancelling schedule:', error);
+      setMessageNotification(`❌ Failed to cancel schedule: ${error.message}`);
+      setNotificationTypeUI('error');
+    }
+  };
+
+  // Fetch analytics for a notification
+  const fetchAnalytics = async (notificationId) => {
+    setAnalyticsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/admin/notifications/${notificationId}/analytics`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setAnalyticsData(data);
+      } else {
+        setMessageNotification(`❌ Error: ${data.error}`);
+        setNotificationTypeUI('error');
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      setMessageNotification(`❌ Failed to fetch analytics: ${error.message}`);
+      setNotificationTypeUI('error');
+    } finally {
+      setAnalyticsLoading(false);
     }
   };
 
@@ -472,6 +694,8 @@ const SendEmails = () => {
       >
         <Tab label="📧 Compose" />
         <Tab label="📋 Templates" />
+        <Tab label="⏰ Schedule Send" />
+        <Tab label="📊 Analytics" />
         <Tab label="📜 History" />
       </Tabs>
 
@@ -502,15 +726,51 @@ const SendEmails = () => {
                     <Select
                       value={notificationType}
                       onChange={(e) => setNotificationType(e.target.value)}
+                      MenuProps={{
+                        disablePortal: true,
+                        PaperProps: {
+                          sx: {
+                            maxHeight: '300px',
+                            backgroundColor: '#0b1216',
+                            border: '1px solid #34556e',
+                            borderRadius: '4px',
+                            marginTop: '4px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                          }
+                        }
+                      }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          '&:hover fieldset': { borderColor: '#3498db' },
+                          color: '#e9edef',
+                          backgroundColor: '#0b1216',
+                          '& fieldset': { borderColor: '#34556e' },
+                          '&:hover fieldset': { borderColor: '#5a8fb8' },
+                          '&.Mui-focused fieldset': { borderColor: '#34B7F1' },
                         },
+                        '& .MuiSvgIcon-root': { color: '#34B7F1' },
                       }}
                     >
                       {NOTIFICATION_TYPES.map((type) => (
-                        <MenuItem key={type.value} value={type.value}>
-                          {type.label}
+                        <MenuItem 
+                          key={type.value} 
+                          value={type.value}
+                          sx={{
+                            backgroundColor: notificationType === type.value ? 'rgba(52,183,241,0.15)' : 'transparent',
+                            color: '#e9edef',
+                            borderLeft: notificationType === type.value ? `4px solid ${type.color}` : '4px solid transparent',
+                            paddingLeft: '12px',
+                            '&:hover': {
+                              backgroundColor: 'rgba(52,183,241,0.1)',
+                            },
+                            '&.Mui-selected': {
+                              backgroundColor: `rgba(${parseInt(type.color.slice(1,3),16)},${parseInt(type.color.slice(3,5),16)},${parseInt(type.color.slice(5,7),16)},0.2)`,
+                            }
+                          }}
+                        >
+                          <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Box style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: type.color }}></Box>
+                            {type.label}
+                          </Box>
                         </MenuItem>
                       ))}
                     </Select>
@@ -523,9 +783,44 @@ const SendEmails = () => {
                     <Select
                       value={recipientType}
                       onChange={(e) => setRecipientType(e.target.value)}
+                      MenuProps={{
+                        disablePortal: true,
+                        PaperProps: {
+                          sx: {
+                            maxHeight: '300px',
+                            backgroundColor: '#0b1216',
+                            border: '1px solid #34556e',
+                            borderRadius: '4px',
+                            marginTop: '4px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                          }
+                        }
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          color: '#e9edef',
+                          backgroundColor: '#0b1216',
+                          '& fieldset': { borderColor: '#34556e' },
+                          '&:hover fieldset': { borderColor: '#5a8fb8' },
+                          '&.Mui-focused fieldset': { borderColor: '#34B7F1' },
+                        },
+                        '& .MuiSvgIcon-root': { color: '#34B7F1' },
+                      }}
                     >
                       {RECIPIENT_TYPES.map((type) => (
-                        <MenuItem key={type.value} value={type.value}>
+                        <MenuItem 
+                          key={type.value} 
+                          value={type.value}
+                          sx={{
+                            backgroundColor: recipientType === type.value ? 'rgba(0,168,132,0.15)' : 'transparent',
+                            color: '#e9edef',
+                            borderLeft: recipientType === type.value ? '4px solid #00a884' : '4px solid transparent',
+                            paddingLeft: '12px',
+                            '&:hover': {
+                              backgroundColor: 'rgba(52,183,241,0.1)',
+                            },
+                          }}
+                        >
                           {type.label}
                         </MenuItem>
                       ))}
@@ -540,10 +835,40 @@ const SendEmails = () => {
                       <Select
                         value={recipientRole}
                         onChange={(e) => setRecipientRole(e.target.value)}
+                        MenuProps={{
+                          disablePortal: true,
+                          PaperProps: {
+                            sx: {
+                              maxHeight: '400px',
+                              overflow: 'auto',
+                              backgroundColor: '#0b1216',
+                              border: '1px solid #34556e',
+                              borderRadius: '4px',
+                              marginTop: '4px',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                            }
+                          }
+                        }}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            color: '#e9edef',
+                            backgroundColor: '#0b1216',
+                            '& fieldset': { borderColor: '#34556e' },
+                            '&:hover fieldset': { borderColor: '#5a8fb8' },
+                            '&.Mui-focused fieldset': { borderColor: '#34B7F1' },
+                          },
+                          '& .MuiSvgIcon-root': { color: '#34B7F1' },
+                        }}
                       >
-                        <MenuItem value="admin">Admin</MenuItem>
-                        <MenuItem value="editor">Editor</MenuItem>
-                        <MenuItem value="viewer">Viewer</MenuItem>
+                        <MenuItem value="admin" sx={{ backgroundColor: recipientRole === 'admin' ? 'rgba(241,94,108,0.15)' : 'transparent', color: '#e9edef', borderLeft: recipientRole === 'admin' ? '4px solid #f15e6c' : '4px solid transparent', paddingLeft: '12px', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>
+                          👑 Admin - Full Access
+                        </MenuItem>
+                        <MenuItem value="editor" sx={{ backgroundColor: recipientRole === 'editor' ? 'rgba(255,192,61,0.15)' : 'transparent', color: '#e9edef', borderLeft: recipientRole === 'editor' ? '4px solid #ffc03d' : '4px solid transparent', paddingLeft: '12px', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>
+                          ✏️ Editor - Can Edit
+                        </MenuItem>
+                        <MenuItem value="viewer" sx={{ backgroundColor: recipientRole === 'viewer' ? 'rgba(52,183,241,0.15)' : 'transparent', color: '#e9edef', borderLeft: recipientRole === 'viewer' ? '4px solid #34B7F1' : '4px solid transparent', paddingLeft: '12px', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>
+                          👁️ Viewer - View Only
+                        </MenuItem>
                       </Select>
                     </FormControl>
                   </Box>
@@ -556,10 +881,40 @@ const SendEmails = () => {
                       <Select
                         value={recipientTier}
                         onChange={(e) => setRecipientTier(e.target.value)}
+                        MenuProps={{
+                          disablePortal: true,
+                          PaperProps: {
+                            sx: {
+                              maxHeight: '400px',
+                              overflow: 'auto',
+                              backgroundColor: '#0b1216',
+                              border: '1px solid #34556e',
+                              borderRadius: '4px',
+                              marginTop: '4px',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                            }
+                          }
+                        }}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            color: '#e9edef',
+                            backgroundColor: '#0b1216',
+                            '& fieldset': { borderColor: '#34556e' },
+                            '&:hover fieldset': { borderColor: '#5a8fb8' },
+                            '&.Mui-focused fieldset': { borderColor: '#34B7F1' },
+                          },
+                          '& .MuiSvgIcon-root': { color: '#34B7F1' },
+                        }}
                       >
-                        <MenuItem value="free">Free</MenuItem>
-                        <MenuItem value="premium">Premium</MenuItem>
-                        <MenuItem value="enterprise">Enterprise</MenuItem>
+                        <MenuItem value="free" sx={{ backgroundColor: recipientTier === 'free' ? 'rgba(134,142,150,0.15)' : 'transparent', color: '#e9edef', borderLeft: recipientTier === 'free' ? '4px solid #868e96' : '4px solid transparent', paddingLeft: '12px', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>
+                          🆓 Free - Basic Access
+                        </MenuItem>
+                        <MenuItem value="premium" sx={{ backgroundColor: recipientTier === 'premium' ? 'rgba(255,192,61,0.15)' : 'transparent', color: '#e9edef', borderLeft: recipientTier === 'premium' ? '4px solid #ffc03d' : '4px solid transparent', paddingLeft: '12px', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>
+                          ⭐ Premium - Advanced Features
+                        </MenuItem>
+                        <MenuItem value="enterprise" sx={{ backgroundColor: recipientTier === 'enterprise' ? 'rgba(52,183,241,0.15)' : 'transparent', color: '#e9edef', borderLeft: recipientTier === 'enterprise' ? '4px solid #34B7F1' : '4px solid transparent', paddingLeft: '12px', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>
+                          🏢 Enterprise - Full Suite
+                        </MenuItem>
                       </Select>
                     </FormControl>
                   </Box>
@@ -870,89 +1225,620 @@ const SendEmails = () => {
         </Box>
       )}
 
-      {/* TAB 2: History */}
+      {/* TAB 2: Schedule Send */}
       {tabValue === 2 && (
         <Box className="send-emails-content">
-          <Box style={{ marginBottom: '20px' }}>
-            <h2>Notification History</h2>
-            <Box style={{ display: 'flex', gap: '15px', marginTop: '15px', flexWrap: 'wrap' }}>
-              <Card style={{ padding: '15px', flex: 1, minWidth: '150px', background: 'linear-gradient(135deg, #111b21 0%, #0f1b20 100%)', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
-                <h4 style={{ margin: 0, color: '#34B7F1', fontSize: '20px' }}>{notificationStats.total || 0}</h4>
-                <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#b4d7cc' }}>Total Sent</p>
-              </Card>
-              <Card style={{ padding: '15px', flex: 1, minWidth: '150px', background: 'linear-gradient(135deg, #111b21 0%, #0f1b20 100%)', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
-                <h4 style={{ margin: 0, color: '#2ecc71', fontSize: '20px' }}>{notificationStats.sent || 0}</h4>
-                <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#b4d7cc' }}>Successfully Sent</p>
-              </Card>
-              <Card style={{ padding: '15px', flex: 1, minWidth: '150px', background: 'linear-gradient(135deg, #111b21 0%, #0f1b20 100%)', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' }}>
-                <h4 style={{ margin: 0, color: '#e74c3c', fontSize: '20px' }}>{notificationStats.failed || 0}</h4>
-                <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#b4d7cc' }}>Failed</p>
-              </Card>
+          <Card className="send-emails-card" style={{ marginBottom: '20px' }}>
+            <CardContent>
+              <h2>⏰ Schedule Email for Later</h2>
+              <Alert severity="info" style={{ marginBottom: '15px' }}>
+                Schedule emails to send at a specific date and time. The system will automatically send them at the scheduled time without you need to manually trigger it.
+              </Alert>
+
+              <Box style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                <TextField
+                  label="Scheduled Send Time"
+                  type="datetime-local"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      color: '#e9edef',
+                      '& fieldset': { borderColor: '#34556e' },
+                      '&:hover fieldset': { borderColor: '#4a7090' },
+                      '&.Mui-focused fieldset': { borderColor: '#34B7F1' },
+                    },
+                    '& .MuiOutlinedInput-input': {
+                      color: '#e9edef',
+                    },
+                    '& .MuiInputBase-input::placeholder': {
+                      color: '#8696a0',
+                      opacity: 1,
+                    },
+                  }}
+                />
+                <FormControl fullWidth>
+                  <InputLabel style={{ color: '#8696a0' }}>Timezone</InputLabel>
+                  <Select 
+                    value={timezone} 
+                    onChange={(e) => setTimezone(e.target.value)}
+                    label="Timezone"
+                    MenuProps={{
+                      disablePortal: true,
+                      PaperProps: {
+                        sx: {
+                          maxHeight: '400px',
+                          overflow: 'auto',
+                          backgroundColor: '#0b1216',
+                          border: '1px solid #34556e',
+                          borderRadius: '4px',
+                          marginTop: '4px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                        }
+                      }
+                    }}
+                    sx={{
+                      color: '#e9edef',
+                      backgroundColor: '#0b1216',
+                      borderColor: '#34556e',
+                      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#34556e' },
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#5a8fb8' },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#34B7F1' },
+                      '& .MuiSvgIcon-root': { color: '#34B7F1' },
+                    }}
+                  >
+                    <MenuItem disabled style={{ color: '#8696a0', fontWeight: 'bold' }}>🌍 UTC & GMT</MenuItem>
+                    <MenuItem value="UTC" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: timezone === 'UTC' ? 'rgba(52,183,241,0.1)' : 'transparent', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>UTC (GMT+0)</MenuItem>
+                    
+                    <MenuItem disabled style={{ color: '#8696a0', fontWeight: 'bold', marginTop: '8px' }}>🇺🇸 Americas</MenuItem>
+                    <MenuItem value="America/New_York" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: timezone === 'America/New_York' ? 'rgba(52,183,241,0.1)' : 'transparent', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>New York (EST)</MenuItem>
+                    <MenuItem value="America/Chicago" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: timezone === 'America/Chicago' ? 'rgba(52,183,241,0.1)' : 'transparent', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>Chicago (CST)</MenuItem>
+                    <MenuItem value="America/Denver" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: timezone === 'America/Denver' ? 'rgba(52,183,241,0.1)' : 'transparent', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>Denver (MST)</MenuItem>
+                    <MenuItem value="America/Los_Angeles" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: timezone === 'America/Los_Angeles' ? 'rgba(52,183,241,0.1)' : 'transparent', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>Los Angeles (PST)</MenuItem>
+                    
+                    <MenuItem disabled style={{ color: '#8696a0', fontWeight: 'bold', marginTop: '8px' }}>🇪🇺 Europe</MenuItem>
+                    <MenuItem value="Europe/London" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: timezone === 'Europe/London' ? 'rgba(52,183,241,0.1)' : 'transparent', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>London (GMT)</MenuItem>
+                    <MenuItem value="Europe/Paris" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: timezone === 'Europe/Paris' ? 'rgba(52,183,241,0.1)' : 'transparent', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>Paris (CET)</MenuItem>
+                    
+                    <MenuItem disabled style={{ color: '#8696a0', fontWeight: 'bold', marginTop: '8px' }}>🌏 Asia & Pacific</MenuItem>
+                    <MenuItem value="Asia/Tokyo" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: timezone === 'Asia/Tokyo' ? 'rgba(52,183,241,0.1)' : 'transparent', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>Tokyo (JST)</MenuItem>
+                    <MenuItem value="Australia/Sydney" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: timezone === 'Australia/Sydney' ? 'rgba(52,183,241,0.1)' : 'transparent', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>Sydney (AEDT)</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+
+              {scheduledTime && (
+                <Alert severity="success" style={{ marginBottom: '15px' }}>
+                  Email will be sent on {new Date(scheduledTime).toLocaleString()}
+                </Alert>
+              )}
+
+              <Box style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#1a2332', borderRadius: '6px', borderLeft: '3px solid #34B7F1' }}>
+                <p style={{ fontSize: '12px', color: '#8696a0', margin: '0 0 8px 0' }}>
+                  💡 <strong>How it works:</strong> Your email will be queued for sending at the scheduled time. The backend processor automatically checks every 60 seconds and sends due emails. No manual intervention needed!
+                </p>
+              </Box>
+
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() => {
+                  if (!scheduledTime) {
+                    setMessageNotification('Please select a scheduled time');
+                    setNotificationTypeUI('error');
+                    return;
+                  }
+                  if (!title || !message) {
+                    setMessageNotification('Please fill in title and message in Compose tab first');
+                    setNotificationTypeUI('error');
+                    return;
+                  }
+                  handleScheduleEmail();
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #34B7F1 0%, #2196F3 100%)',
+                  marginTop: '10px',
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                }}
+              >
+                📅 Schedule This Email
+              </Button>
+            </CardContent>
+          </Card>
+
+          <h3 style={{ color: '#e9edef', marginTop: '30px' }}>Scheduled Emails Queue</h3>
+          {scheduledLoading ? (
+            <CircularProgress />
+          ) : scheduledEmails.length === 0 ? (
+            <Card style={{ padding: '20px', background: '#111b21', border: '1px dashed #222', textAlign: 'center' }}>
+              <p style={{ color: '#8696a0' }}>No scheduled emails yet</p>
+            </Card>
+          ) : (
+            <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '15px' }}>
+              {scheduledEmails.map((schedule) => (
+                <Card key={schedule.id} style={{ padding: '15px', background: '#111b21', border: '1px solid #222' }}>
+                  <p style={{ margin: '0 0 8px 0', color: '#34B7F1', fontWeight: 'bold', fontSize: '12px' }}>
+                    {new Date(schedule.scheduled_time).toLocaleString()}
+                  </p>
+                  <p style={{ margin: '0 0 10px 0', color: '#e9edef', fontSize: '14px' }}>Status: <Chip label={schedule.status} size="small" /></p>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    color="error"
+                    onClick={() => handleCancelSchedule(schedule.id)}
+                    fullWidth
+                  >
+                    Cancel Schedule
+                  </Button>
+                </Card>
+              ))}
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {/* TAB 3: Analytics */}
+      {tabValue === 3 && (
+        <Box className="send-emails-content">
+          <Card className="send-emails-card" style={{ marginBottom: '20px' }}>
+            <CardContent>
+              <h2>📊 Email Analytics & Engagement</h2>
+              <Alert severity="info" style={{ marginBottom: '15px' }}>
+                View detailed analytics for your email notifications including open rates, click rates, device types, and email clients.
+              </Alert>
+
+              <FormControl fullWidth style={{ marginBottom: '20px' }}>
+                <InputLabel style={{ color: '#8696a0' }}>Select Notification to View Analytics</InputLabel>
+                <Select
+                  value={selectedAnalyticsId}
+                  onChange={(e) => {
+                    setSelectedAnalyticsId(e.target.value);
+                    if (e.target.value) fetchAnalytics(e.target.value);
+                  }}
+                  label="Select Notification"
+                  MenuProps={{
+                    disablePortal: true,
+                    PaperProps: {
+                      sx: {
+                        maxHeight: '400px',
+                        overflow: 'auto',
+                        backgroundColor: '#0b1216',
+                        border: '1px solid #34556e',
+                        borderRadius: '4px',
+                        marginTop: '4px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                      }
+                    }
+                  }}
+                  sx={{
+                    color: '#e9edef',
+                    backgroundColor: '#0b1216',
+                    borderColor: '#34556e',
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#34556e' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#5a8fb8' },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#34B7F1' },
+                    '& .MuiSvgIcon-root': { color: '#34B7F1' },
+                  }}
+                >
+                  {notifications.map((notif) => (
+                    <MenuItem 
+                      key={notif.id} 
+                      value={notif.id}
+                      sx={{
+                        backgroundColor: selectedAnalyticsId === notif.id ? 'rgba(52,183,241,0.1)' : 'transparent',
+                        color: '#e9edef',
+                        borderLeft: selectedAnalyticsId === notif.id ? '4px solid #34B7F1' : '4px solid transparent',
+                        paddingLeft: '12px',
+                        '&:hover': {
+                          backgroundColor: 'rgba(52,183,241,0.1)',
+                        },
+                      }}
+                    >
+                      <Box style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%' }}>
+                        <span>{notif.title}</span>
+                        <span style={{ color: '#8696a0', fontSize: '12px' }}>{new Date(notif.created_at).toLocaleDateString()}</span>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {analyticsLoading && <CircularProgress />}
+
+              {analyticsData && (
+                <Box>
+                  <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+                    <Card style={{ padding: '15px', background: 'linear-gradient(135deg, rgba(52,183,241,0.1) 0%, rgba(52,183,241,0.05) 100%)', border: '1px solid #34B7F1', borderRadius: '8px' }}>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#8696a0', textTransform: 'uppercase' }}>OPEN RATE</p>
+                      <h3 style={{ margin: '5px 0 0 0', color: '#34B7F1', fontSize: '20px', fontWeight: 'bold' }}>
+                        {analyticsData?.analytics?.open_rate?.toFixed(2) || 0}%
+                      </h3>
+                    </Card>
+                    <Card style={{ padding: '15px', background: 'linear-gradient(135deg, rgba(0,168,132,0.1) 0%, rgba(0,168,132,0.05) 100%)', border: '1px solid #00a884', borderRadius: '8px' }}>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#8696a0', textTransform: 'uppercase' }}>CLICK RATE</p>
+                      <h3 style={{ margin: '5px 0 0 0', color: '#00a884', fontSize: '20px', fontWeight: 'bold' }}>
+                        {analyticsData?.analytics?.click_rate?.toFixed(2) || 0}%
+                      </h3>
+                    </Card>
+                    <Card style={{ padding: '15px', background: 'linear-gradient(135deg, rgba(241,94,108,0.1) 0%, rgba(241,94,108,0.05) 100%)', border: '1px solid #f15e6c', borderRadius: '8px' }}>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#8696a0', textTransform: 'uppercase' }}>CTR</p>
+                      <h3 style={{ margin: '5px 0 0 0', color: '#f15e6c', fontSize: '20px', fontWeight: 'bold' }}>
+                        {analyticsData?.analytics?.click_through_rate?.toFixed(2) || 0}%
+                      </h3>
+                    </Card>
+                    <Card style={{ padding: '15px', background: 'linear-gradient(135deg, rgba(255,204,0,0.1) 0%, rgba(255,204,0,0.05) 100%)', border: '1px solid #FFCC00', borderRadius: '8px' }}>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#8696a0', textTransform: 'uppercase' }}>UNIQUE OPENS</p>
+                      <h3 style={{ margin: '5px 0 0 0', color: '#FFCC00', fontSize: '20px', fontWeight: 'bold' }}>
+                        {analyticsData?.analytics?.unique_opens || 0}
+                      </h3>
+                    </Card>
+                  </Box>
+                  
+                  <Box style={{ padding: '15px', background: '#1a2332', borderRadius: '6px', marginTop: '15px' }}>
+                    <h4 style={{ color: '#e9edef', marginTop: 0 }}>Detailed Metrics</h4>
+                    <Box style={{ displayGrid: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                      <p style={{ margin: 0, color: '#8696a0', fontSize: '13px' }}>
+                        <strong style={{ color: '#e9edef' }}>Total Sent:</strong> {analyticsData?.analytics?.total_sent || 0}
+                      </p>
+                      <p style={{ margin: 0, color: '#8696a0', fontSize: '13px' }}>
+                        <strong style={{ color: '#e9edef' }}>Total Opened:</strong> {analyticsData?.analytics?.total_opened || 0}
+                      </p>
+                      <p style={{ margin: 0, color: '#8696a0', fontSize: '13px' }}>
+                        <strong style={{ color: '#e9edef' }}>Total Clicks:</strong> {analyticsData?.analytics?.total_clicks || 0}
+                      </p>
+                      <p style={{ margin: 0, color: '#8696a0', fontSize: '13px' }}>
+                        <strong style={{ color: '#e9edef' }}>Unique Click Rate:</strong> {analyticsData?.analytics?.click_rate?.toFixed(2) || 0}%
+                      </p>
+                    </Box>
+                  </Box>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
+      )}
+
+      {/* TAB 4: History - Enhanced Dashboard */}
+      {tabValue === 4 && (
+        <Box className="send-emails-content">
+          {/* Refresh and Filter Controls */}
+          <Box style={{ marginBottom: '15px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <Box style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  fetchNotifications();
+                  fetchStats();
+                }}
+                disabled={notificationsLoading}
+                sx={{ fontSize: '12px', padding: '4px 8px' }}
+              >
+                🔄 Refresh
+              </Button>
+              <FormControlLabel
+                control={<Checkbox checked={autoRefreshEnabled} onChange={(e) => setAutoRefreshEnabled(e.target.checked)} size="small" />}
+                label={<span style={{ fontSize: '12px' }}>Auto-refresh</span>}
+              />
             </Box>
           </Box>
 
+          {/* Statistics Cards - Using Dashboard Colors */}
+          <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+            <Card style={{ padding: '12px', background: '#111b21', borderRadius: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.3)', border: 'none' }}>
+              <p style={{ margin: 0, fontSize: '10px', color: '#8696a0', marginBottom: '6px', textTransform: 'uppercase' }}>TOTAL SENT</p>
+              <h3 style={{ margin: 0, color: '#e9edef', fontSize: '22px', fontWeight: 'bold', marginBottom: '6px' }}>{notificationStats.total || 0}</h3>
+              <Box style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '8px', backgroundColor: 'rgba(52,183,241,0.1)', color: '#34B7F1', width: 'fit-content' }}>
+                All notifications
+              </Box>
+            </Card>
+            <Card style={{ padding: '12px', background: '#111b21', borderRadius: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.3)', border: 'none' }}>
+              <p style={{ margin: 0, fontSize: '10px', color: '#8696a0', marginBottom: '6px', textTransform: 'uppercase' }}>✅ SUCCESSFULLY SENT</p>
+              <h3 style={{ margin: 0, color: '#e9edef', fontSize: '22px', fontWeight: 'bold', marginBottom: '6px' }}>{notificationStats.sent || 0}</h3>
+              <Box style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '8px', backgroundColor: 'rgba(0,168,132,0.1)', color: '#00a884', width: 'fit-content' }}>
+                Delivered
+              </Box>
+            </Card>
+            <Card style={{ padding: '12px', background: '#111b21', borderRadius: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.3)', border: 'none' }}>
+              <p style={{ margin: 0, fontSize: '10px', color: '#8696a0', marginBottom: '6px', textTransform: 'uppercase' }}>❌ FAILED</p>
+              <h3 style={{ margin: 0, color: '#e9edef', fontSize: '22px', fontWeight: 'bold', marginBottom: '6px' }}>{notificationStats.failed || 0}</h3>
+              <Box style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '8px', backgroundColor: 'rgba(241,94,108,0.1)', color: '#f15e6c', width: 'fit-content' }}>
+                Delivery errors
+              </Box>
+            </Card>
+            <Card style={{ padding: '12px', background: '#111b21', borderRadius: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.3)', border: 'none' }}>
+              <p style={{ margin: 0, fontSize: '10px', color: '#8696a0', marginBottom: '6px', textTransform: 'uppercase' }}>⏳ PENDING RETRY</p>
+              <h3 style={{ margin: 0, color: '#e9edef', fontSize: '22px', fontWeight: 'bold', marginBottom: '6px' }}>{notificationStats.pending || 0}</h3>
+              <Box style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '8px', backgroundColor: 'rgba(255,204,0,0.1)', color: '#FFCC00', width: 'fit-content' }}>
+                Retry tomorrow
+              </Box>
+            </Card>
+            <Card style={{ padding: '12px', background: '#111b21', borderRadius: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.3)', border: 'none' }}>
+              <p style={{ margin: 0, fontSize: '10px', color: '#8696a0', marginBottom: '6px', textTransform: 'uppercase' }}>📊 PARTIAL</p>
+              <h3 style={{ margin: 0, color: '#e9edef', fontSize: '22px', fontWeight: 'bold', marginBottom: '6px' }}>{notificationStats.partial || 0}</h3>
+              <Box style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '8px', backgroundColor: 'rgba(139,92,246,0.1)', color: '#bb86fc', width: 'fit-content' }}>
+                Partial send
+              </Box>
+            </Card>
+          </Box>
+
+          {/* Filter Controls */}
+          <Box style={{ marginBottom: '20px', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <FormControl style={{ minWidth: '300px' }}>
+              <InputLabel style={{ color: '#8696a0' }}>Filter by Status</InputLabel>
+              <Select 
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value)} 
+                label="Filter by Status"
+                MenuProps={{
+                  disablePortal: true,
+                  PaperProps: {
+                    sx: {
+                      maxHeight: '400px',
+                      overflow: 'auto',
+                      backgroundColor: '#0b1216',
+                      border: '1px solid #34556e',
+                      borderRadius: '4px',
+                      marginTop: '4px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                    }
+                  }
+                }}
+                sx={{
+                  color: '#e9edef',
+                  backgroundColor: '#0b1216',
+                  borderRadius: '8px',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#34556e',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#5a8fb8',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#34B7F1',
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: '#34B7F1',
+                  },
+                }}
+              >
+                <MenuItem disabled style={{ color: '#8696a0', fontWeight: 'bold', fontSize: '12px' }}>📋 All Notifications</MenuItem>
+                <MenuItem value="all" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: statusFilter === 'all' ? 'rgba(52,183,241,0.15)' : 'transparent', borderLeft: statusFilter === 'all' ? '4px solid #34B7F1' : '4px solid transparent', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>
+                  <Box style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Box style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#34B7F1' }}></Box>
+                    All Statuses
+                  </Box>
+                </MenuItem>
+
+                <MenuItem disabled style={{ color: '#8696a0', fontWeight: 'bold', fontSize: '12px', marginTop: '8px' }}>✅ Successful</MenuItem>
+                <MenuItem value="sent" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: statusFilter === 'sent' ? 'rgba(0,168,132,0.15)' : 'transparent', borderLeft: statusFilter === 'sent' ? '4px solid #00a884' : '4px solid transparent', '&:hover': { backgroundColor: 'rgba(0,168,132,0.1)' } }}>
+                  <Box style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Box style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#00a884' }}></Box>
+                    Successfully Sent
+                  </Box>
+                </MenuItem>
+
+                <MenuItem disabled style={{ color: '#8696a0', fontWeight: 'bold', fontSize: '12px', marginTop: '8px' }}>⚠️ Issues</MenuItem>
+                <MenuItem value="failed" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: statusFilter === 'failed' ? 'rgba(241,94,108,0.15)' : 'transparent', borderLeft: statusFilter === 'failed' ? '4px solid #f15e6c' : '4px solid transparent', '&:hover': { backgroundColor: 'rgba(241,94,108,0.1)' } }}>
+                  <Box style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Box style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#f15e6c' }}></Box>
+                    Failed
+                  </Box>
+                </MenuItem>
+                <MenuItem value="pending" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: statusFilter === 'pending' ? 'rgba(255,204,0,0.15)' : 'transparent', borderLeft: statusFilter === 'pending' ? '4px solid #FFCC00' : '4px solid transparent', '&:hover': { backgroundColor: 'rgba(255,204,0,0.1)' } }}>
+                  <Box style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Box style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#FFCC00' }}></Box>
+                    Pending Retry
+                  </Box>
+                </MenuItem>
+                <MenuItem value="partial" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: statusFilter === 'partial' ? 'rgba(187,134,252,0.15)' : 'transparent', borderLeft: statusFilter === 'partial' ? '4px solid #bb86fc' : '4px solid transparent', '&:hover': { backgroundColor: 'rgba(187,134,252,0.1)' } }}>
+                  <Box style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Box style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#bb86fc' }}></Box>
+                    Partial
+                  </Box>
+                </MenuItem>
+
+                <MenuItem disabled style={{ color: '#8696a0', fontWeight: 'bold', fontSize: '12px', marginTop: '8px' }}>📤 In Progress</MenuItem>
+                <MenuItem value="sending" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: statusFilter === 'sending' ? 'rgba(52,183,241,0.15)' : 'transparent', borderLeft: statusFilter === 'sending' ? '4px solid #34B7F1' : '4px solid transparent', '&:hover': { backgroundColor: 'rgba(52,183,241,0.1)' } }}>
+                  <Box style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Box style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#34B7F1' }}></Box>
+                    Sending
+                  </Box>
+                </MenuItem>
+                <MenuItem value="draft" sx={{ paddingLeft: '20px', color: '#e9edef', backgroundColor: statusFilter === 'draft' ? 'rgba(149,165,166,0.15)' : 'transparent', borderLeft: statusFilter === 'draft' ? '4px solid #95a5a6' : '4px solid transparent', '&:hover': { backgroundColor: 'rgba(149,165,166,0.1)' } }}>
+                  <Box style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Box style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#95a5a6' }}></Box>
+                    Draft
+                  </Box>
+                </MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+
+          {/* Notifications Table */}
           {notificationsLoading ? (
-            <Box style={{ textAlign: 'center', padding: '40px' }}>
+            <Box style={{ textAlign: 'center', padding: '60px 20px' }}>
               <CircularProgress />
+              <p style={{ color: '#999', marginTop: '10px' }}>Loading notification history...</p>
             </Box>
           ) : notifications.length === 0 ? (
-            <Alert severity="info">No notifications sent yet</Alert>
+            <Card style={{ padding: '40px', textAlign: 'center', background: '#111b21', border: '1px dashed #222' }}>
+              <p style={{ fontSize: '16px', color: '#e9edef', margin: 0, fontWeight: 'bold' }}>📭 No notifications sent yet</p>
+              <p style={{ fontSize: '13px', color: '#8696a0', margin: '5px 0 0 0' }}>Send your first email notification to get started</p>
+            </Card>
           ) : (
-            <TableContainer component={Paper}>
+            <TableContainer component={Paper} style={{ background: '#111b21', border: '1px solid #222' }}>
               <Table>
-                <TableHead style={{ backgroundColor: '#f5f5f5' }}>
+                <TableHead style={{ backgroundColor: '#0f1419', borderBottom: '1px solid #222' }}>
                   <TableRow>
-                    <TableCell><strong>Type</strong></TableCell>
-                    <TableCell><strong>Subject</strong></TableCell>
-                    <TableCell><strong>Recipients</strong></TableCell>
-                    <TableCell><strong>Status</strong></TableCell>
-                    <TableCell><strong>Sent</strong></TableCell>
-                    <TableCell><strong>Date</strong></TableCell>
+                    <TableCell style={{ color: '#8696a0', fontWeight: 'bold', fontSize: '12px' }}>Expand</TableCell>
+                    <TableCell style={{ color: '#8696a0', fontWeight: 'bold', fontSize: '12px' }}>Type</TableCell>
+                    <TableCell style={{ color: '#8696a0', fontWeight: 'bold', fontSize: '12px' }}>Subject</TableCell>
+                    <TableCell style={{ color: '#8696a0', fontWeight: 'bold', fontSize: '12px' }}>Status</TableCell>
+                    <TableCell style={{ color: '#8696a0', fontWeight: 'bold', fontSize: '12px' }}>Delivery</TableCell>
+                    <TableCell style={{ color: '#8696a0', fontWeight: 'bold', fontSize: '12px' }}>Sent Date</TableCell>
+                    <TableCell style={{ color: '#8696a0', fontWeight: 'bold', fontSize: '12px' }} align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {notifications.map((notif) => (
-                    <TableRow key={notif.id} hover>
-                      <TableCell>
-                        <Chip
-                          label={notif.notification_type}
-                          size="small"
-                          variant="outlined"
-                          style={{
-                            borderColor: NOTIFICATION_TYPES.find(
-                              (t) => t.value === notif.notification_type
-                            )?.color,
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <strong>{notif.title}</strong>
-                        <br />
-                        <small style={{ color: '#999' }}>{notif.recipient_type}</small>
-                      </TableCell>
-                      <TableCell>{notif.recipient_count}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={notif.status}
-                          size="small"
-                          color={
-                            notif.status === 'sent'
-                              ? 'success'
-                              : notif.status === 'failed'
-                              ? 'error'
-                              : 'default'
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {notif.sent_count}/{notif.recipient_count}
-                      </TableCell>
-                      <TableCell style={{ fontSize: '12px' }}>
-                        {new Date(notif.created_at).toLocaleDateString()}
-                        <br />
-                        {new Date(notif.created_at).toLocaleTimeString()}
-                      </TableCell>
-                    </TableRow>
+                  {(statusFilter === 'all' ? notifications : notifications.filter((n) => n.status === statusFilter)).map((notif) => (
+                    <React.Fragment key={notif.id}>
+                      <TableRow style={{ borderBottom: '1px solid #222', backgroundColor: expandedNotification === notif.id ? '#0f1419' : '#0a0e13' }} hover>
+                        <TableCell style={{ color: '#8696a0' }}>
+                          <Button
+                            size="small"
+                            variant="text"
+                            onClick={() => {
+                              if (expandedNotification === notif.id) {
+                                setExpandedNotification(null);
+                              } else {
+                                setExpandedNotification(notif.id);
+                                fetchNotificationLogs(notif.id);
+                              }
+                            }}
+                          >
+                            {expandedNotification === notif.id ? '▼' : '▶'}
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={notif.notification_type || 'general'}
+                            size="small"
+                            variant="outlined"
+                            style={{
+                              borderColor: NOTIFICATION_TYPES.find((t) => t.value === notif.notification_type)?.color || '#666',
+                              color: NOTIFICATION_TYPES.find((t) => t.value === notif.notification_type)?.color || '#999',
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell style={{ color: '#e9edef' }}>
+                          <strong>{notif.title || '(No Subject)'}</strong>
+                          <br />
+                          <small style={{ color: '#8696a0' }}>{notif.recipient_type}</small>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={notif.status || 'unknown'}
+                            size="small"
+                            style={{
+                              backgroundColor:
+                                notif.status === 'sent'
+                                  ? 'rgba(0,168,132,0.15)'
+                                  : notif.status === 'failed'
+                                  ? 'rgba(241,94,108,0.15)'
+                                  : notif.status === 'pending'
+                                  ? 'rgba(255,204,0,0.15)'
+                                  : notif.status === 'partial'
+                                  ? 'rgba(139,92,246,0.15)'
+                                  : 'rgba(134,150,160,0.15)',
+                              color:
+                                notif.status === 'sent'
+                                  ? '#00a884'
+                                  : notif.status === 'failed'
+                                  ? '#f15e6c'
+                                  : notif.status === 'pending'
+                                  ? '#FFCC00'
+                                  : notif.status === 'partial'
+                                  ? '#bb86fc'
+                                  : '#8696a0',
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell style={{ color: '#8696a0', fontSize: '13px' }}>
+                          <div style={{ color: notif.sent_count > 0 ? '#00a884' : '#f15e6c' }}>
+                            <strong>{notif.sent_count || 0}</strong>
+                            <span style={{ color: '#8696a0' }}>/{notif.recipient_count || 0}</span>
+                          </div>
+                          {notif.failed_count > 0 && <div style={{ color: '#f15e6c', fontSize: '11px' }}>Failed: {notif.failed_count}</div>}
+                        </TableCell>
+                        <TableCell style={{ color: '#8696a0', fontSize: '12px' }}>
+                          {notif.created_at && (
+                            <>
+                              <div>{new Date(notif.created_at).toLocaleDateString()}</div>
+                              <small style={{ color: '#5a7f8c' }}>{new Date(notif.created_at).toLocaleTimeString()}</small>
+                            </>
+                          )}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Button size="small" onClick={() => { setSelectedNotificationId(notif.id); setDetailsDialogOpen(true); }}>
+                            📋 Details
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+
+                      {/* Expanded Delivery Logs */}
+                      {expandedNotification === notif.id && (
+                        <TableRow style={{ backgroundColor: '#0f1419', borderBottom: '2px solid #222' }}>
+                          <TableCell colSpan={7} style={{ padding: '20px' }}>
+                            <Box>
+                              <h4 style={{ margin: '0 0 15px 0', color: '#34B7F1', fontSize: '14px' }}>📧 Delivery Details ({(notificationLogs[notif.id] || []).length} recipients)</h4>
+                              {logsLoading[notif.id] ? (
+                                <Box style={{ textAlign: 'center', padding: '20px' }}>
+                                  <CircularProgress size={30} />
+                                </Box>
+                              ) : (notificationLogs[notif.id] || []).length === 0 ? (
+                                <p style={{ color: '#8696a0', margin: 0 }}>No delivery logs yet</p>
+                              ) : (
+                                <Table size="small" style={{ marginTop: '10px' }}>
+                                  <TableHead style={{ backgroundColor: '#0a0e13' }}>
+                                    <TableRow>
+                                      <TableCell style={{ color: '#5a7f8c', fontSize: '12px' }}>Email</TableCell>
+                                      <TableCell style={{ color: '#5a7f8c', fontSize: '12px' }}>Status</TableCell>
+                                      <TableCell style={{ color: '#5a7f8c', fontSize: '12px' }}>Message</TableCell>
+                                      <TableCell style={{ color: '#5a7f8c', fontSize: '12px' }}>Sent Time</TableCell>
+                                    </TableRow>
+                                  </TableHead>
+                                  <TableBody>
+                                    {(notificationLogs[notif.id] || []).map((log, idx) => (
+                                      <TableRow key={idx} style={{ backgroundColor: '#0a0e13' }}>
+                                        <TableCell style={{ color: '#8696a0', fontSize: '12px' }}>{log.user_email || 'N/A'}</TableCell>
+                                        <TableCell style={{ fontSize: '12px' }}>
+                                          <Chip
+                                            label={log.status || 'unknown'}
+                                            size="small"
+                                            style={{
+                                              backgroundColor:
+                                                log.status === 'sent'
+                                                  ? 'rgba(0,168,132,0.15)'
+                                                  : log.status === 'failed'
+                                                  ? 'rgba(241,94,108,0.15)'
+                                                  : log.status === 'pending'
+                                                  ? 'rgba(255,204,0,0.15)'
+                                                  : 'rgba(134,150,160,0.15)',
+                                              color:
+                                                log.status === 'sent'
+                                                  ? '#00a884'
+                                                  : log.status === 'failed'
+                                                  ? '#f15e6c'
+                                                  : log.status === 'pending'
+                                                  ? '#FFCC00'
+                                                  : '#8696a0',
+                                            }}
+                                          />
+                                        </TableCell>
+                                        <TableCell style={{ color: '#8696a0', fontSize: '11px' }}>
+                                          {log.error_message
+                                            ? log.error_message.substring(0, 50) + (log.error_message.length > 50 ? '...' : '')
+                                            : 'Delivered successfully'}
+                                        </TableCell>
+                                        <TableCell style={{ color: '#8696a0', fontSize: '11px' }}>
+                                          {log.sent_at && new Date(log.sent_at).toLocaleString()}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              )}
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>
@@ -960,6 +1846,78 @@ const SendEmails = () => {
           )}
         </Box>
       )}
+
+      {/* Details Dialog */}
+      <Dialog open={detailsDialogOpen} onClose={() => setDetailsDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle style={{ backgroundColor: '#111b21', color: '#e9edef', borderBottom: '1px solid #222' }}>
+          📋 Notification Details
+        </DialogTitle>
+        <DialogContent style={{ backgroundColor: '#0a0e13', color: '#e9edef' }}>
+          {selectedNotificationId && notifications.find((n) => n.id === selectedNotificationId) && (
+            <Box style={{ marginTop: '20px' }}>
+              {(() => {
+                const notif = notifications.find((n) => n.id === selectedNotificationId);
+                return (
+                  <>
+                    <Box style={{ marginBottom: '15px', padding: '15px', backgroundColor: '#111b21', borderRadius: '8px', border: '1px solid #222' }}>
+                      <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8696a0', textTransform: 'uppercase' }}>
+                        <strong>Title:</strong>
+                      </p>
+                      <p style={{ margin: 0, color: '#e9edef' }}>{notif.title}</p>
+
+                      <p style={{ margin: '12px 0 8px 0', fontSize: '12px', color: '#8696a0', textTransform: 'uppercase' }}>
+                        <strong>Type:</strong>
+                      </p>
+                      <p style={{ margin: 0, color: '#e9edef' }}>{notif.notification_type}</p>
+
+                      <p style={{ margin: '12px 0 8px 0', fontSize: '12px', color: '#8696a0', textTransform: 'uppercase' }}>
+                        <strong>Recipients:</strong>
+                      </p>
+                      <p style={{ margin: 0, color: '#e9edef' }}>{notif.recipient_type} ({notif.recipient_count} total)</p>
+
+                      <p style={{ margin: '12px 0 8px 0', fontSize: '12px', color: '#8696a0', textTransform: 'uppercase' }}>
+                        <strong>Status:</strong>
+                      </p>
+                      <Chip 
+                        label={notif.status} 
+                        style={{ marginTop: '5px' }}
+                      />
+
+                      <p style={{ margin: '12px 0 8px 0', fontSize: '12px', color: '#8696a0', textTransform: 'uppercase' }}>
+                        <strong>Delivery Summary:</strong>
+                      </p>
+                      <Box style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '8px' }}>
+                        <div style={{ padding: '8px', backgroundColor: 'rgba(0,168,132,0.15)', borderRadius: '4px', border: '1px solid rgba(0,168,132,0.3)' }}>
+                          <p style={{ margin: 0, fontSize: '12px', color: '#8696a0' }}>Sent</p>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '18px', color: '#00a884', fontWeight: 'bold' }}>
+                            {notif.sent_count || 0}/{notif.recipient_count || 0}
+                          </p>
+                        </div>
+                        <div style={{ padding: '8px', backgroundColor: 'rgba(241,94,108,0.15)', borderRadius: '4px', border: '1px solid rgba(241,94,108,0.3)' }}>
+                          <p style={{ margin: 0, fontSize: '12px', color: '#8696a0' }}>Failed</p>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '18px', color: '#f15e6c', fontWeight: 'bold' }}>
+                            {notif.failed_count || 0}
+                          </p>
+                        </div>
+                      </Box>
+
+                      <p style={{ margin: '12px 0 8px 0', fontSize: '12px', color: '#8696a0', textTransform: 'uppercase' }}>
+                        <strong>Created:</strong>
+                      </p>
+                      <p style={{ margin: 0, color: '#e9edef', fontSize: '13px' }}>
+                        {notif.created_at && new Date(notif.created_at).toLocaleString()}
+                      </p>
+                    </Box>
+                  </>
+                );
+              })()}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions style={{ backgroundColor: '#111b21', borderTop: '1px solid #222' }}>
+          <Button onClick={() => setDetailsDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="sm" fullWidth>

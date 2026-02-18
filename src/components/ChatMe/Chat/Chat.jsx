@@ -736,11 +736,19 @@ export const Chat = ({
   }, []);
 
   const handleSelectMessage = useCallback(messageId => {
-    setSelectedMessageIds(prev =>
-      prev.includes(messageId)
-        ? prev.filter(id => id !== messageId)
-        : [...prev, messageId]
-    );
+    setSelectedMessageIds(prev => {
+      let updated;
+      if (prev.includes(messageId)) {
+        updated = prev.filter(id => id !== messageId);
+      } else {
+        updated = [...prev, messageId];
+      }
+      // Exit selection mode if no messages are selected
+      if (updated.length === 0) {
+        setIsSelectionMode(false);
+      }
+      return updated;
+    });
   }, []);
 
   const handleCancelSelection = useCallback(() => {

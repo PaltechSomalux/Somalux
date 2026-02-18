@@ -2,15 +2,16 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.9);
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.95);
   z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   animation: fadeIn 0.3s ease;
+  padding: 0;
 }
 
 @keyframes fadeIn {
@@ -32,13 +33,17 @@
 
 .ad-container {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: 80%;
+  height: 80%;
+  max-width: 90vw;
+  max-height: 90vh;
   overflow: hidden;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
 }
 
 .ad-wrapper {
@@ -49,14 +54,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 12px;
+  background: #000;
 }
 
 .ad-image {
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
+  object-fit: scale-down;
   cursor: pointer;
+  background-color: #000;
 }
 
 .ad-overlay {
@@ -71,6 +79,8 @@
   justify-content: space-between;
   padding: 20px;
   gap: 8px;
+  pointer-events: none;
+  box-sizing: border-box;
 }
 
 .ad-label {
@@ -121,6 +131,7 @@
   transition: all 0.2s ease;
   padding: 0;
   z-index: 10001;
+  pointer-events: auto;
 }
 
 .ad-close-btn:hover {
@@ -138,18 +149,28 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .ad-container {
+    width: 90%;
+    height: 85%;
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+
   .ad-close-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
-    top: 15px;
-    right: 15px;
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+    top: 12px;
+    right: 12px;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
   }
 
   .ad-countdown {
-    width: 50px;
-    height: 50px;
-    min-width: 50px;
+    width: 54px;
+    height: 54px;
+    min-width: 54px;
   }
 
   .countdown-text {
@@ -157,13 +178,27 @@
   }
 
   .ad-overlay {
-    padding: 15px;
+    padding: 16px;
+    gap: 10px;
+  }
+
+  .ad-label {
+    font-size: 11px;
+    padding: 4px 8px;
   }
 }
 
 @media (max-width: 480px) {
+  .ad-container {
+    width: 92%;
+    height: 90%;
+    max-width: 96vw;
+    max-height: 96vh;
+  }
+
   .ad-overlay {
-    padding: 12px;
+    padding: 10px;
+    gap: 6px;
   }
 
   .ad-label {
@@ -172,21 +207,174 @@
   }
 
   .ad-countdown {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
   }
 
   .countdown-text {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .ad-close-btn {
-    width: 26px;
-    height: 26px;
-    font-size: 14px;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
     top: 8px;
     right: 8px;
+    border-radius: 50%;
+  }
+}
+
+/* Video Ad Container Responsive Styles */
+.ad-video-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.ad-video-wrapper {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #000;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ad-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.ad-video-top-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 12;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  gap: 8px;
+}
+
+.ad-video-controls {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.ad-video-progress {
+  flex: 1;
+  height: 3px;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 1px;
+  background: linear-gradient(to right, #ff5252 0%, #ff5252 51%, rgba(255, 255, 255, 0.3) 51%, rgba(255, 255, 255, 0.3) 100%);
+  border: none;
+  outline: none;
+}
+
+.ad-video-progress::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff5252;
+  cursor: pointer;
+  border: 2px solid #fff;
+}
+
+.ad-video-progress::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff5252;
+  cursor: pointer;
+  border: 2px solid #fff;
+}
+
+.ad-video-time {
+  color: #ccc;
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  min-width: 70px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .ad-video-container {
+    justify-content: flex-start;
+    height: 100vh;
+  }
+
+  .ad-video-wrapper {
+    height: 100%;
+    width: 100%;
+  }
+
+  .ad-video-top-overlay {
+    padding: 12px;
+  }
+
+  .ad-video-controls {
+    padding: 6px 10px;
+    gap: 6px;
+  }
+
+  .ad-video-time {
+    font-size: 10px;
+    min-width: 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ad-video-top-overlay {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .ad-video-controls {
+    padding: 5px 8px;
+    gap: 4px;
+  }
+
+  .ad-video-progress {
+    height: 2px;
+  }
+
+  .ad-video-time {
+    font-size: 9px;
+    min-width: 55px;
   }
 }
 
@@ -195,7 +383,7 @@
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 180px;
+  min-height: 160px;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -205,15 +393,30 @@
   cursor: pointer;
 }
 
+.ad-grid-video,
+.ad-grid-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 8px;
+}
+
 @media (min-width: 640px) {
   .ad-grid-card {
-    min-height: 200px;
+    min-height: 180px;
   }
 }
 
 @media (min-width: 768px) {
   .ad-grid-card {
-    min-height: 180px;
+    min-height: 160px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ad-grid-card {
+    min-height: 200px;
   }
 }
 
@@ -233,52 +436,113 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
-  padding: 8px;
+  padding: 10px;
   pointer-events: none;
+  box-sizing: border-box;
 }
 
 .ad-grid-overlay .ad-label {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  background: rgba(0, 0, 0, 0.6);
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
   color: #fff;
-  padding: 4px 8px;
+  padding: 5px 10px;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
   z-index: 2;
+  white-space: nowrap;
 }
 
 .ad-grid-overlay .ad-countdown {
   position: absolute;
-  top: 8px;
-  right: 40px;
-  background: rgba(0, 0, 0, 0.6);
+  top: 10px;
+  right: 50px;
+  background: rgba(0, 0, 0, 0.7);
   color: #fff;
-  padding: 4px 8px;
+  padding: 5px 10px;
   border-radius: 4px;
   font-size: 11px;
   z-index: 2;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ad-grid-overlay .ad-close-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0, 0, 0, 0.6);
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
   color: #fff;
   border: none;
-  padding: 4px 8px;
+  padding: 6px 10px;
   border-radius: 4px;
   cursor: pointer;
   z-index: 2;
   font-size: 14px;
   pointer-events: auto;
   transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ad-grid-overlay .ad-close-btn:hover {
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(255, 0, 0, 0.8);
 }
+
+/* Grid Overlay Responsive Design */
+@media (max-width: 768px) {
+  .ad-grid-overlay .ad-label {
+    top: 8px;
+    left: 8px;
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .ad-grid-overlay .ad-countdown {
+    top: 8px;
+    right: 45px;
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .ad-grid-overlay .ad-close-btn {
+    top: 8px;
+    right: 8px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ad-grid-overlay {
+    padding: 6px;
+  }
+
+  .ad-grid-overlay .ad-label {
+    top: 6px;
+    left: 6px;
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+
+  .ad-grid-overlay .ad-countdown {
+    top: 6px;
+    right: 40px;
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+
+  .ad-grid-overlay .ad-close-btn {
+    top: 6px;
+    right: 6px;
+    padding: 3px 6px;
+    font-size: 11px;
+  }
+}
+
 

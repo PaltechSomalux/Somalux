@@ -1309,13 +1309,13 @@ export const BookPanel = ({ demoMode = false }) => {
       // Load comments for all books with user profile data
       const { data: comments } = await supabase
         .from('book_comments')
-        .select('*, profiles:user_id(full_name, display_name, email)')
+        .select('*, profiles!user_id(full_name, display_name, email)')
         .order('created_at', { ascending: false });
 
       // Load all replies with user profile data
       const { data: replies } = await supabase
         .from('book_replies')
-        .select('*, profiles:user_id(full_name, display_name, email)')
+        .select('*, profiles!user_id(full_name, display_name, email)')
         .order('created_at', { ascending: true });
 
       // Load likes for all comments
@@ -1418,33 +1418,66 @@ export const BookPanel = ({ demoMode = false }) => {
     try {
       console.log('Loading comments for book:', bookId);
       
-      // Load comments for this specific book with user profile data
+      // Load comments for this specific book
       const { data: comments, error: commentsError } = await supabase
         .from('book_comments')
-        .select('*, profiles:user_id(full_name, display_name, email)')
+        .select('*')
         .eq('book_id', bookId)
         .order('created_at', { ascending: false });
 
       if (commentsError) {
-        console.error('Error fetching comments:', commentsError);
-        throw commentsError;
+        const errorMsg = commentsError?.message || JSON.stringify(commentsError);
+        console.error('Error fetching comments:', errorMsg);
+        throw new Error(errorMsg);
       }
 
       console.log('Loaded comments for book', bookId, ':', comments?.length || 0, 'comments');
 
       if (comments && comments.length > 0) {
         const commentIds = comments.map(c => c.id);
+        const userIds = comments.map(c => c.user_id).filter(Boolean);
+
+        // Load user profiles for these comments
+        let profileMap = {};
+        if (userIds.length > 0) {
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, full_name, display_name, email')
+            .in('id', [...new Set(userIds)]);
+
+          if (!profilesError && profiles) {
+            profiles.forEach(p => {
+              profileMap[p.id] = p;
+            });
+          }
+        }
 
         // Load replies for these comments
         const { data: replies, error: repliesError } = await supabase
           .from('book_replies')
-          .select('*, profiles:user_id(full_name, display_name, email)')
+          .select('*')
           .in('comment_id', commentIds)
           .order('created_at', { ascending: true });
 
         if (repliesError) {
-          console.error('Error fetching replies:', repliesError);
-          throw repliesError;
+          const errorMsg = repliesError?.message || JSON.stringify(repliesError);
+          console.error('Error fetching replies:', errorMsg);
+          throw new Error(errorMsg);
+        }
+
+        // Load reply user profiles
+        const replyUserIds = replies?.map(r => r.user_id).filter(Boolean) || [];
+        if (replyUserIds.length > 0) {
+          const { data: replyProfiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, display_name, email')
+            .in('id', [...new Set(replyUserIds)]);
+
+          if (replyProfiles) {
+            replyProfiles.forEach(p => {
+              profileMap[p.id] = p;
+            });
+          }
         }
 
         // Load likes for these comments
@@ -1454,8 +1487,9 @@ export const BookPanel = ({ demoMode = false }) => {
           .in('comment_id', commentIds);
 
         if (likesError) {
-          console.error('Error fetching likes:', likesError);
-          throw likesError;
+          const errorMsg = likesError?.message || JSON.stringify(likesError);
+          console.error('Error fetching likes:', errorMsg);
+          throw new Error(errorMsg);
         }
 
         // Group replies by comment_id
@@ -1479,9 +1513,10 @@ export const BookPanel = ({ demoMode = false }) => {
               ? { type: reply.media_type, url: reply.media_url }
               : null;
 
+            const profile = profileMap[reply.user_id];
             repliesByComment[reply.comment_id].push({
               id: reply.id,
-              user: reply.profiles?.full_name || reply.profiles?.display_name || reply.user_name || reply.user_email?.split('@')[0] || 'Anonymous',
+              user: profile?.full_name || profile?.display_name || reply.user_name || reply.user_email?.split('@')[0] || 'Anonymous',
               text: reply.text,
               timestamp: reply.created_at,
               liked: false,
@@ -1519,9 +1554,10 @@ export const BookPanel = ({ demoMode = false }) => {
             ? { type: comment.media_type, url: comment.media_url }
             : null;
 
+          const profile = profileMap[comment.user_id];
           return {
             id: comment.id,
-            user: comment.profiles?.full_name || comment.profiles?.display_name || comment.user_name || comment.user_email?.split('@')[0] || 'Anonymous',
+            user: profile?.full_name || profile?.display_name || comment.user_name || comment.user_email?.split('@')[0] || 'Anonymous',
             userId: comment.user_id,
             text: comment.text,
             media,
@@ -1554,7 +1590,8 @@ export const BookPanel = ({ demoMode = false }) => {
         }));
       }
     } catch (error) {
-      console.error('Failed to load comments for book:', error);
+      const errorMsg = error?.message || JSON.stringify(error);
+      console.error('Failed to load comments for book:', errorMsg);
       // Set empty comments on error so modal still works
       setMediaComments(prev => ({
         ...prev,
@@ -1569,6 +1606,17 @@ export const BookPanel = ({ demoMode = false }) => {
       loadCommentsForBook(selectedBook.id);
     }
   }, [selectedBook?.id, user?.id]);
+
+  // Ensure comments are loaded if missing (handles refresh or recovery from errors)
+  useEffect(() => {
+    if (selectedBook?.id && (!mediaComments[selectedBook.id] || mediaComments[selectedBook.id].length === 0)) {
+      // Delay slightly to avoid race condition
+      const timer = setTimeout(() => {
+        loadCommentsForBook(selectedBook.id);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedBook?.id]);
 
   // Bulk download functions
   const toggleBookSelection = (bookId) => {

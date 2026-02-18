@@ -819,23 +819,26 @@ export const ChatWindow = ({
 
   return (
     <div className={`whatsapp-chat-container ${currentTheme}-theme`} style={getChatBackgroundStyle()}>
-      {isSelectionMode ? (
-        <div className="chatme-selection-header">
-          <span>{selectedMessageIds.length} selected</span> {/* Keep existing */}
-          <div className="chatme-toolbar-actions">
-            <button className="chatme-cancel-selection" onClick={handleCancelSelection}>
-              <FiX size={18} /> Cancel
-            </button>
-            {/* FIXED: Add back button to selection header */}
-            <button className="chatme-back-from-selection" onClick={onBackClick}>
-              ← Back
-            </button>
-            <button className="chatme-delete-selection" onClick={handleBatchDelete}>
-              <FiMessageSquare size={16} /> Delete
-            </button>
+      {isSelectionMode && selectedMessageIds.length > 0 && (
+        <div className="chatme-selection-modal-overlay" onClick={handleCancelSelection}>
+          <div className="chatme-selection-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="chatme-selection-modal-body">
+              <p>({selectedMessageIds.length}) Delete selected message{selectedMessageIds.length !== 1 ? 's' : ''}</p>
+              <button className="chatme-modal-close-inline" onClick={handleCancelSelection}>×</button>
+            </div>
+            <div className="chatme-selection-modal-footer">
+              <button className="chatme-modal-cancel" onClick={handleCancelSelection}>
+                Cancel
+              </button>
+              <button className="chatme-modal-delete" onClick={handleBatchDelete}>
+                Delete
+              </button>
+            </div>
           </div>
         </div>
-      ) : (
+      )}
+
+      {!isSelectionMode && (
         <ChatHeader
           contact={{ ...contact, targetPrivacy: targetPrivacy || contact?.targetPrivacy }}
           pinnedMessages={pinnedMessages}

@@ -117,6 +117,11 @@
   margin-bottom: 12px;
   display: flex;
   flex-direction: column;
+  overflow: visible !important;
+}
+
+.form-group .MuiFormControl-root {
+  overflow: visible !important;
 }
 
 /* Two-Column Form Row */

@@ -48,7 +48,7 @@
   top: 48px;
   right: 0;
   width: 300px;
-  background: #0a0e11;
+  background: #111b21;
   border: none;
   border-radius: 12px;
   padding: 10px;
@@ -239,7 +239,7 @@
 }
 
 .profile-signout-modal {
-  background: #0b141a !important;
+  background: #111b21 !important;
   border: 1px solid #2a3942 !important;
   border-radius: 18px !important;
   width: 100% !important;
@@ -328,7 +328,7 @@
   display: flex;
   gap: 12px;
   padding: 18px 24px;
-  background: #0d1519;
+  background: #0b1216;
   border-top: 1px solid #2a3942;
   justify-content: flex-end;
 }

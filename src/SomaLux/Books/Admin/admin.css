@@ -108,20 +108,21 @@
     border-radius: 4px;
     color: #cfd8dc;
     text-decoration: none;
-    border: 1px solid transparent;
+    border: 0px solid transparent;
+    border-left: 1px solid transparent;
     position: relative;
     font-size: 0.95rem;
 }
 
 .nav-item:hover {
     background: rgba(0, 168, 132, 0.08);
-    border-color: #2a3942;
+    border-left-color: #2a3942;
     color: #e9edef;
 }
 
 .nav-item.active {
     background: rgba(0, 168, 132, 0.15);
-    border-color: #00a884;
+    border-left-color: #00a884;
     color: #e9edef;
 }
 

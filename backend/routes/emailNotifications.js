@@ -1,6 +1,9 @@
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { sendEmail, buildBrandedEmailHtml } from '../utils/email.js';
+import { recordEmailOpen, recordEmailClick, getNotificationAnalytics, getDetailedTrackingInfo } from '../utils/emailTracking.js';
+import { processBounce, getBounceStats, shouldSkipSending } from '../utils/bounceHandler.js';
+import { scheduleEmail, cancelScheduledEmail, getScheduledEmails } from '../utils/scheduledSendQueue.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
@@ -47,8 +50,9 @@ function getSupabaseAdminClient() {
 router.get('/notifications', async (req, res) => {
   try {
     const { status, type, limit = 50, offset = 0 } = req.query;
+    console.log(`📧 [NOTIFICATIONS] Fetching notifications - status: ${status || 'all'}, type: ${type || 'all'}, limit: ${limit}, offset: ${offset}`);
 
-    const client = getSupabaseClient();
+    const client = getSupabaseAdminClient();
     if (!client) return res.status(500).json({ success: false, error: 'Database not configured' });
 
     let query = client
@@ -64,6 +68,8 @@ router.get('/notifications', async (req, res) => {
     const { data, error, count } = await query;
 
     if (error) throw error;
+    
+    console.log(`📧 [NOTIFICATIONS] Fetched ${data?.length || 0} notifications (total in DB: ${count})`);
 
     return res.json({
       success: true,
@@ -87,8 +93,9 @@ router.get('/notifications', async (req, res) => {
 router.get('/notifications/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`📧 [NOTIFICATIONS] Fetching single notification: ${id}`);
 
-    const client = getSupabaseClient();
+    const client = getSupabaseAdminClient();
     if (!client) return res.status(500).json({ success: false, error: 'Database not configured' });
 
     const { data: notification, error: notifError } = await client
@@ -98,7 +105,12 @@ router.get('/notifications/:id', async (req, res) => {
       .single();
 
     if (notifError) throw notifError;
-    if (!notification) return res.status(404).json({ error: 'Notification not found' });
+    if (!notification) {
+      console.log(`⚠️  [NOTIFICATIONS] Notification not found: ${id}`);
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
+    console.log(`✅ [NOTIFICATIONS] Found notification: ${notification.title}`);
 
     // Fetch delivery logs
     const { data: logs, error: logsError } = await client
@@ -170,34 +182,96 @@ router.post('/notifications/send', async (req, res) => {
     let recipients = [];
 
     if (recipientType === 'all_users') {
-      // Fetch all users without limit
-      const { data, error } = await adminClient
-        .from('profiles')
-        .select('id, email')
-        .limit(50000); // Fetch up to 50,000 users
-      if (error) throw error;
-      recipients = data || [];
+      // Fetch all users without limit - handle pagination for large datasets
+      let allUsers = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
+        
+        const { data, error } = await adminClient
+          .from('profiles')
+          .select('id, email')
+          .range(from, to);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allUsers = allUsers.concat(data);
+          page++;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      recipients = allUsers;
     } else if (recipientType === 'specific_users' && recipientsList.length > 0) {
       recipients = recipientsList.map((item) => ({
         email: item.email || item,
         id: item.id || null,
       }));
     } else if (recipientType === 'by_role' && recipientFilter.role) {
-      const { data, error } = await adminClient
-        .from('profiles')
-        .select('id, email')
-        .eq('role', recipientFilter.role)
-        .limit(50000); // Fetch up to 50,000 users
-      if (error) throw error;
-      recipients = data || [];
+      // Fetch all users by role without limit - handle pagination
+      let allUsers = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
+        
+        const { data, error } = await adminClient
+          .from('profiles')
+          .select('id, email')
+          .eq('role', recipientFilter.role)
+          .range(from, to);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allUsers = allUsers.concat(data);
+          page++;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      recipients = allUsers;
     } else if (recipientType === 'by_tier' && recipientFilter.tier) {
-      const { data, error } = await adminClient
-        .from('profiles')
-        .select('id, email')
-        .eq('subscription_tier', recipientFilter.tier)
-        .limit(50000); // Fetch up to 50,000 users
-      if (error) throw error;
-      recipients = data || [];
+      // Fetch all users by tier without limit - handle pagination
+      let allUsers = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
+        
+        const { data, error } = await adminClient
+          .from('profiles')
+          .select('id, email')
+          .eq('subscription_tier', recipientFilter.tier)
+          .range(from, to);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allUsers = allUsers.concat(data);
+          page++;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      recipients = allUsers;
     }
 
     if (recipients.length === 0) {
@@ -211,6 +285,7 @@ router.post('/notifications/send', async (req, res) => {
 
     // Create notification record using admin client (bypasses RLS)
     const notificationId = uuidv4();
+    console.log(`📧 [NOTIFICATIONS] Creating notification record with ID: ${notificationId}`);
     
     const { error: createError } = await adminClient
       .from('admin_notifications')
@@ -235,7 +310,12 @@ router.post('/notifications/send', async (req, res) => {
         },
       ]);
 
-    if (createError) throw createError;
+    if (createError) {
+      console.error(`❌ [NOTIFICATIONS] Failed to create notification record:`, createError);
+      throw createError;
+    }
+    console.log(`✅ [NOTIFICATIONS] Notification record created successfully`);
+    console.log(`📊 [NOTIFICATIONS] Notification ID: ${notificationId}, Title: "${title}", Recipients: ${recipients.length}`);
 
     // Build email HTML
     const emailHtml = htmlContent || buildBrandedEmailHtml({
@@ -269,6 +349,7 @@ router.post('/notifications/send', async (req, res) => {
 async function sendEmailsInBackground(notificationId, subject, htmlContent, recipients) {
   let sentCount = 0;
   let failedCount = 0;
+  let pendingRetryCount = 0;
 
   const client = getSupabaseClient();
   const adminClient = getSupabaseAdminClient() || client;
@@ -298,52 +379,108 @@ async function sendEmailsInBackground(notificationId, subject, htmlContent, reci
       personalizedHtml = personalizedHtml.replace(/{{display_name}}/gi, userName);
 
       // Send email with personalized content
-      await sendEmail({
+      const result = await sendEmail({
         to: recipient.email,
         subject,
         html: personalizedHtml,
       });
 
-      // Log success
-      await adminClient.from('admin_notification_logs').insert([
-        {
-          notification_id: notificationId,
-          user_id: recipient.id || null,
-          user_email: recipient.email,
-          status: 'sent',
-          sent_at: new Date().toISOString(),
-        },
-      ]);
+      // Check if email was queued for retry due to rate limit
+      if (result?.queued && result?.status === 'pending_retry') {
+        const retryDateTime = result.retryTime ? new Date(result.retryTime).toLocaleString() : 'tomorrow';
+        console.warn(`⏳ [NOTIFICATIONS] Email QUEUED FOR RETRY on ${retryDateTime} for ${recipient.email}`);
+        pendingRetryCount++;
+        
+        // Log as pending (will retry automatically)
+        try {
+          const { error: logError } = await adminClient.from('admin_notification_logs').insert([
+            {
+              notification_id: notificationId,
+              user_id: recipient.id || null,
+              user_email: recipient.email,
+              status: 'pending',
+              sent_at: new Date().toISOString(),
+              error_message: 'Gmail daily limit reached - will retry tomorrow',
+            },
+          ]);
+          if (logError) {
+            console.error('❌ [NOTIFICATIONS] Failed to log pending status:', logError);
+          }
+        } catch (logErr) {
+          console.error('❌ [NOTIFICATIONS] Exception logging pending status:', logErr.message);
+        }
+      } else if (result?.queued) {
+        const retryDateTime = result.retryTime ? new Date(result.retryTime).toLocaleString() : 'tomorrow';
+        console.warn(`⏳ [NOTIFICATIONS] Email queued for retry on ${retryDateTime} for ${recipient.email}`);
+        pendingRetryCount++;
+        
+        // Log as pending (will retry automatically)
+        try {
+          const { error: logError } = await adminClient.from('admin_notification_logs').insert([
+            {
+              notification_id: notificationId,
+              user_id: recipient.id || null,
+              user_email: recipient.email,
+              status: 'pending',
+              sent_at: new Date().toISOString(),
+              error_message: 'Email queued for retry',
+            },
+          ]);
+          if (logError) {
+            console.error('❌ [NOTIFICATIONS] Failed to log pending status:', logError);
+          }
+        } catch (logErr) {
+          console.error('❌ [NOTIFICATIONS] Exception logging pending status:', logErr.message);
+        }
+      } else {
+        // Log success
+        await adminClient.from('admin_notification_logs').insert([
+          {
+            notification_id: notificationId,
+            user_id: recipient.id || null,
+            user_email: recipient.email,
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+            sent_from: result.sendingAccount || 'unknown',
+          },
+        ]);
 
-      sentCount++;
-      console.log(`✅ [NOTIFICATIONS] Sent to ${recipient.email}`);
+        sentCount++;
+        console.log(`✅ [NOTIFICATIONS] Sent to ${recipient.email} via ${result.sendingAccountName || 'email'}`);
+      }
     } catch (error) {
       failedCount++;
       console.error(`❌ [NOTIFICATIONS] Failed to send to ${recipient.email}:`, error.message);
 
       // Log failure
-      await adminClient.from('admin_notification_logs').insert([
-        {
-          notification_id: notificationId,
-          user_id: recipient.id || null,
-          user_email: recipient.email,
-          status: 'failed',
-          error_message: error.message,
-        },
-      ]).catch((err) => {
-        console.error('❌ [NOTIFICATIONS] Failed to log error:', err);
-      });
+      try {
+        const { error: logError } = await adminClient.from('admin_notification_logs').insert([
+          {
+            notification_id: notificationId,
+            user_id: recipient.id || null,
+            user_email: recipient.email,
+            status: 'failed',
+            error_message: error.message,
+          },
+        ]);
+        if (logError) {
+          console.error('❌ [NOTIFICATIONS] Failed to log error:', logError);
+        }
+      } catch (logErr) {
+        console.error('❌ [NOTIFICATIONS] Exception logging failure:', logErr.message);
+      }
     }
 
-    // Small delay to prevent rate limiting
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // Minimal delay - main rate limiting is handled in email.js
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
 
   // Update notification record with final counts
+  const finalStatus = failedCount === 0 && pendingRetryCount === 0 ? 'sent' : (failedCount > 0 ? 'partial' : 'pending');
   const { error: updateError } = await adminClient
     .from('admin_notifications')
     .update({
-      status: failedCount === 0 ? 'sent' : 'partial',
+      status: finalStatus,
       sent_count: sentCount,
       failed_count: failedCount,
       sent_at: new Date().toISOString(),
@@ -354,7 +491,8 @@ async function sendEmailsInBackground(notificationId, subject, htmlContent, reci
     console.error('❌ [NOTIFICATIONS] Failed to update notification status:', updateError);
   }
 
-  console.log(`✅ [NOTIFICATIONS] Background send complete: ${sentCount} sent, ${failedCount} failed`);
+  const summary = `${sentCount} sent${pendingRetryCount > 0 ? `, ${pendingRetryCount} pending retry` : ''}${failedCount > 0 ? `, ${failedCount} failed` : ''}`;
+  console.log(`✅ [NOTIFICATIONS] Background send complete: ${summary}`);
 }
 
 /**
@@ -452,7 +590,7 @@ router.post('/templates', async (req, res) => {
  */
 router.get('/notification-stats', async (req, res) => {
   try {
-    const client = getSupabaseClient();
+    const client = getSupabaseAdminClient();
     if (!client) return res.status(500).json({ success: false, error: 'Database not configured' });
 
     // Fetch all notifications
@@ -461,6 +599,8 @@ router.get('/notification-stats', async (req, res) => {
       .select('status');
 
     if (error) throw error;
+    
+    console.log(`📊 [STATS] Query returned ${data?.length || 0} notification records`);
 
     const stats = {
       total: 0,
@@ -469,6 +609,8 @@ router.get('/notification-stats', async (req, res) => {
       scheduled: 0,
       draft: 0,
       sending: 0,
+      pending: 0,
+      partial: 0,
     };
 
     // Count statuses manually
@@ -491,6 +633,12 @@ router.get('/notification-stats', async (req, res) => {
               break;
             case 'sending':
               stats.sending += 1;
+              break;
+            case 'pending':
+              stats.pending += 1;
+              break;
+            case 'partial':
+              stats.partial += 1;
               break;
             default:
               break;
@@ -527,11 +675,37 @@ router.get('/users', async (req, res) => {
     }
 
     // Fetch all users with id, email, display_name, and avatar_url from profiles table
-    const { error, data } = await adminClient
-      .from('profiles')
-      .select('id, email, display_name, avatar_url')
-      .order('email', { ascending: true })
-      .limit(50000);
+    // Handle pagination for large user bases
+    let allUsers = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    let lastError = null;
+    
+    while (hasMore) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+      
+      const { error, data } = await adminClient
+        .from('profiles')
+        .select('id, email, display_name, avatar_url')
+        .order('email', { ascending: true })
+        .range(from, to);
+      
+      if (error) {
+        lastError = error;
+        hasMore = false;
+      } else if (data && data.length > 0) {
+        allUsers = allUsers.concat(data);
+        page++;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+    
+    const data = allUsers;
+    const error = lastError;
 
     if (error) {
       console.error('❌ [USERS] Database query error:', error);
@@ -557,6 +731,220 @@ router.get('/users', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch users',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/notifications/schedule - Schedule an email for later sending
+ */
+router.post('/notifications/schedule', async (req, res) => {
+  try {
+    const { notificationId, scheduledTime, timezone = 'UTC' } = req.body;
+
+    if (!notificationId || !scheduledTime) {
+      return res.status(400).json({
+        success: false,
+        error: 'notificationId and scheduledTime are required',
+      });
+    }
+
+    const result = await scheduleEmail(notificationId, new Date(scheduledTime), timezone);
+
+    return res.json({
+      success: result,
+      message: result ? 'Email scheduled successfully' : 'Failed to schedule email',
+    });
+  } catch (error) {
+    console.error('❌ [SCHEDULE] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to schedule email',
+    });
+  }
+});
+
+/**
+ * GET /api/admin/notifications/scheduled - Get all scheduled emails
+ */
+router.get('/notifications/scheduled', async (req, res) => {
+  try {
+    const { status = 'pending' } = req.query;
+    const schedules = await getScheduledEmails(status);
+
+    return res.json({
+      success: true,
+      scheduled: schedules,
+    });
+  } catch (error) {
+    console.error('❌ [SCHEDULED] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch schedules',
+    });
+  }
+});
+
+/**
+ * DELETE /api/admin/notifications/scheduled/:scheduleId - Cancel a scheduled email
+ */
+router.delete('/notifications/scheduled/:scheduleId', async (req, res) => {
+  try {
+    const { scheduleId } = req.params;
+    const result = await cancelScheduledEmail(scheduleId);
+
+    return res.json({
+      success: result,
+      message: result ? 'Schedule cancelled' : 'Failed to cancel schedule',
+    });
+  } catch (error) {
+    console.error('❌ [CANCEL SCHEDULE] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to cancel schedule',
+    });
+  }
+});
+
+/**
+ * GET /api/admin/notifications/:notificationId/analytics - Get analytics for a notification
+ */
+router.get('/notifications/:notificationId/analytics', async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const analytics = await getNotificationAnalytics(notificationId);
+    const detailed = await getDetailedTrackingInfo(notificationId);
+
+    return res.json({
+      success: true,
+      analytics: analytics,
+      detailed: detailed,
+    });
+  } catch (error) {
+    console.error('❌ [ANALYTICS] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch analytics',
+    });
+  }
+});
+
+/**
+ * GET /api/email/track/open/:token - Track email opens (1x1 pixel)
+ */
+router.get('/track/open/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('User-Agent');
+
+    await recordEmailOpen(token, ipAddress, userAgent);
+
+    // Return 1x1 transparent GIF
+    const gif = Buffer.from([
+      0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
+      0x80, 0x00, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x21,
+      0xf9, 0x04, 0x01, 0x0a, 0x00, 0x01, 0x00, 0x2c, 0x00, 0x00,
+      0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x4c,
+      0x01, 0x00, 0x3b
+    ]);
+
+    res.set('Content-Type', 'image/gif');
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+
+    return res.send(gif);
+  } catch (error) {
+    console.error('❌ [TRACK OPEN] Error:', error);
+    // Still return GIF on error to not break tracking
+    const gif = Buffer.from([
+      0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
+      0x80, 0x00, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x21,
+      0xf9, 0x04, 0x01, 0x0a, 0x00, 0x01, 0x00, 0x2c, 0x00, 0x00,
+      0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x4c,
+      0x01, 0x00, 0x3b
+    ]);
+    res.set('Content-Type', 'image/gif');
+    return res.send(gif);
+  }
+});
+
+/**
+ * GET /api/email/track/click/:token - Track email link clicks
+ */
+router.get('/track/click/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { url } = req.query;
+
+    if (!url) {
+      return res.status(400).json({ error: 'URL parameter required' });
+    }
+
+    const decodedUrl = Buffer.from(url, 'base64').toString('utf-8');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('User-Agent');
+
+    await recordEmailClick(token, decodedUrl, ipAddress, userAgent);
+
+    // Redirect to original URL
+    return res.redirect(decodedUrl);
+  } catch (error) {
+    console.error('❌ [TRACK CLICK] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to track click',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/notifications/bounce - Record a bounce
+ */
+router.post('/bounce', async (req, res) => {
+  try {
+    const { emailAddress, userId, errorMessage, errorCode, notificationId } = req.body;
+
+    if (!emailAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'emailAddress is required',
+      });
+    }
+
+    const result = await processBounce(emailAddress, userId, errorMessage, errorCode, notificationId);
+
+    return res.json({
+      success: true,
+      action: result,
+      message: `Email ${result}`,
+    });
+  } catch (error) {
+    console.error('❌ [BOUNCE] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to process bounce',
+    });
+  }
+});
+
+/**
+ * GET /api/admin/bounces/stats - Get bounce statistics
+ */
+router.get('/bounces/stats', async (req, res) => {
+  try {
+    const stats = await getBounceStats();
+
+    return res.json({
+      success: true,
+      bounceStats: stats,
+    });
+  } catch (error) {
+    console.error('❌ [BOUNCE STATS] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch bounce stats',
     });
   }
 });

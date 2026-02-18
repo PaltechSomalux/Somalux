@@ -312,6 +312,22 @@
   border-bottom: none !important;
 }
 
+/* Profile page full page view */
+.tab-contentConnect.profile-page-full {
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  position: relative !important;
+  background: linear-gradient(180deg, #0d1418 0%, #0b1216 100%) !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+}
+
+.tab-contentConnect.profile-page-full > * {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /* ===== CHAT LIST CONTAINER (Replaces old .chats-content) ===== */
 .chatme-chat-list-containerConnect {
   display: flex;
