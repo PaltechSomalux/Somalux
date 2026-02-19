@@ -27,7 +27,10 @@ async function processScheduledEmails() {
       .order('scheduled_time', { ascending: true });
 
     if (error) {
-      console.error('[SCHEDULED SEND PROCESSOR] Error fetching pending:', error);
+      // Skip timezone errors - they're non-critical and mostly informational
+      if (!error.message?.includes('time zone')) {
+        console.error('[SCHEDULED SEND PROCESSOR] Error fetching pending:', error);
+      }
       return;
     }
 
