@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { API_URL } from '../../../config';
 import { FiTrendingUp, FiTarget, FiAward, FiCalendar, FiBook, FiBarChart2, FiSearch, FiChevronLeft, FiChevronRight, FiX, FiEye, FiDownload } from 'react-icons/fi';
 import ReadingStats from './ReadingStats';
 import GoalSetter from './GoalSetter';
@@ -123,8 +124,7 @@ const ReadingDashboard = () => {
 
   const fetchStats = async (forceRefresh = false) => {
     try {
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${apiUrl}/api/reading/stats/${userId}`);
+      const response = await fetch(`${API_URL || ''}/api/reading/stats/${userId}`);
       const data = await response.json();
       if (data.ok) {
         setStats(data.stats);
@@ -151,8 +151,7 @@ const ReadingDashboard = () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
 
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${apiUrl}/api/reading/goals/${userId}`, {
+      const response = await fetch(`${API_URL || ''}/api/reading/goals/${userId}`, {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -172,8 +171,7 @@ const ReadingDashboard = () => {
 
   const fetchAchievements = async () => {
     try {
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${apiUrl}/api/reading/achievements/${userId}`);
+      const response = await fetch(`${API_URL || ''}/api/reading/achievements/${userId}`);
       const data = await response.json();
       if (data.ok) {
         setAchievements(data.earnedAchievements);

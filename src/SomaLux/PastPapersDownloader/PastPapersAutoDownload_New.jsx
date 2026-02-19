@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FiDownload, FiLoader, FiAlertCircle } from 'react-icons/fi';
 import './PastPapersAutoDownload.css';
+import { API_URL } from '../../config';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = API_URL || '';
 
 const PastPapersAutoDownload = ({ userProfile, asSubmission = false }) => {
   // URL-based download state

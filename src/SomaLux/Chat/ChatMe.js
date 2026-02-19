@@ -4,6 +4,7 @@ import { FiLock } from 'react-icons/fi';
 import { ChatLockProvider } from './ChatList/Components/utils/ChatLockProvider';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { API_URL } from '../../config';
 // Firebase & FCM
 // Firebase imports removed - using Supabase instead
 // import { onMessage } from 'firebase/messaging';
@@ -298,7 +299,7 @@ function ELib() {
                     }
                 }
 
-                const response = await fetch('http://localhost:5000/send-group-message', {
+                const response = await fetch(`${API_URL || ''}/send-group-message`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -311,7 +312,7 @@ function ELib() {
 
                 if (!response.ok) throw new Error('Failed to send group message');
             } else {
-                const response = await fetch('http://localhost:5000/send', {
+                const response = await fetch(`${API_URL || ''}/send`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

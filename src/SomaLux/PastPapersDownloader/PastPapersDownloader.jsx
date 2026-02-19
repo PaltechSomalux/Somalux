@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FiDownload, FiRefreshCw, FiPlay, FiPause, FiX, FiCheck, FiAlertCircle, FiGrid } from 'react-icons/fi';
 import './PastPapersDownloader.css';
+import { API_URL } from '../../config';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = API_URL || '';
 
 const PastPapersDownloader = ({ userProfile, asSubmission = false }) => {
   const [schools, setSchools] = useState([]);

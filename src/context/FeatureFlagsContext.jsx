@@ -8,6 +8,7 @@
 
 import React, { createContext, useEffect, useRef, useState, useCallback } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 export const FeatureFlagsContext = createContext();
 
@@ -59,8 +60,8 @@ export const FeatureFlagsProvider = ({ children }) => {
       if (user?.id) params.user_id = user.id;
       if (user?.tier) params.user_tier = user.tier;
 
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      console.log('Fetching features from:', apiUrl);
+      const apiUrl = API_URL || '';
+      console.log('Fetching features from:', apiUrl || '(using relative paths)');
       
       let response;
       try {

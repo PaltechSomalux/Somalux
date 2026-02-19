@@ -9,6 +9,7 @@
  */
 
 import { getContextualExplanation } from './contextualExplainer.js';
+import { API_URL } from '../../../config';
 
 // Configuration
 const API_TIMEOUT = 5000; // 5 seconds
@@ -169,8 +170,7 @@ const fetchFromBackendAPI = async (searchTerm) => {
     const cached = getFromCache(searchTerm);
     if (cached) return cached;
     
-    const API_URL = process.env.REACT_APP_API_URL || 'https://somalux-q2bw.onrender.com';
-    const url = `${API_URL}/api/explain`;
+    const url = `${API_URL || ''}/api/explain`;
     
     const response = await fetchWithTimeout(url, {
       method: 'POST',
@@ -224,8 +224,7 @@ const fetchFromGoogleKnowledgeGraph = async (searchTerm) => {
   try {
     console.log('🔍 Fetching from Google Knowledge Graph (via backend):', searchTerm);
     
-    const API_URL = process.env.REACT_APP_API_URL || 'https://somalux-q2bw.onrender.com';
-    const url = `${API_URL}/api/knowledge-graph`;
+    const url = `${API_URL || ''}/api/knowledge-graph`;
     
     const response = await fetchWithTimeout(url, {
       method: 'POST',

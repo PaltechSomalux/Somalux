@@ -8,8 +8,9 @@ import {
   removeCustomFolder,
   getDefaultFolders 
 } from '../utils/downloadFolderManager';
+import { API_URL } from '../../config';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = API_URL || '';
 
 /**
  * FolderSelectModal - Component for selecting and managing download folders

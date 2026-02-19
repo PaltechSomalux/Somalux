@@ -3,8 +3,9 @@ import { FiDownload, FiLoader, FiAlertCircle, FiX, FiCheck, FiFileText, FiClock,
 import './PastPapersAutoDownload.css';
 import FolderSelectModal from './FolderSelectModal';
 import { getSelectedFolder, setSelectedFolder } from '../utils/downloadFolderManager';
+import { API_URL } from '../../config';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = API_URL || '';
 
 const PastPapersAutoDownload = ({ userProfile, asSubmission = false }) => {
   // URL-based download state

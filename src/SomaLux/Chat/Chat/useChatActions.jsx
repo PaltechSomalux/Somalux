@@ -1,7 +1,7 @@
 // Full useChatActions.js - Unchanged
 import { useCallback, useRef } from "react";
+import { API_URL } from '../../../config';
 import {
-  collection,
   addDoc,
   serverTimestamp,
   updateDoc,
@@ -42,7 +42,7 @@ const getChatId = (idA, idB) => {
   return chatId;
 };
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+const API_BASE = API_URL || '';
 
 export const useChatActions = ({
   currentUser,

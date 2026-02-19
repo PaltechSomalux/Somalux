@@ -1,7 +1,9 @@
 // utils/fcmTopics.js
 // Client helpers to subscribe/unsubscribe the current FCM token to a group topic via your backend
 
-const API_BASE = 'http://localhost:5000';
+import { API_URL } from '../../../../config';
+
+const API_BASE = API_URL || '';
 
 const topicName = (groupId) => `group_${groupId}`;
 

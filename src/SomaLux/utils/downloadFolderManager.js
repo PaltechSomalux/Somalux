@@ -9,6 +9,8 @@
  * - Manage folder history
  */
 
+import { API_URL } from '../../config';
+
 const DOWNLOAD_FOLDER_KEY = 'selectedDownloadFolder';
 const DOWNLOAD_FOLDERS_HISTORY_KEY = 'downloadFoldersHistory';
 const CUSTOM_FOLDERS_KEY = 'customDownloadFolders';
