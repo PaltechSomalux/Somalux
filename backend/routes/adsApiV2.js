@@ -16,11 +16,32 @@ if (!existsSync(ADS_UPLOAD_DIR)) {
   mkdirSync(ADS_UPLOAD_DIR, { recursive: true });
 }
 
-// Initialize Supabase
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL || 'your-supabase-url',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'your-service-role-key'
-);
+// Get Supabase client from global (initialized in index.js) or create fallback
+function getSupabaseAdmin() {
+  if (global.supabaseAdmin) {
+    return global.supabaseAdmin;
+  }
+  
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!url || !key) {
+    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set');
+  }
+  
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+// Middleware to add supabaseAdmin to request
+router.use((req, res, next) => {
+  try {
+    req.supabaseAdmin = getSupabaseAdmin();
+    next();
+  } catch (error) {
+    console.error('❌ Failed to initialize Supabase:', error.message);
+    res.status(500).json({ error: 'Database not configured: ' + error.message });
+  }
+});
 
 // ============================================================
 // 1. GET ADS BY TYPE AND PLACEMENT
@@ -28,6 +49,7 @@ const supabaseAdmin = createClient(
 
 router.get('/ads/:placement', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { placement } = req.params;
     const { limit = 5, type = null } = req.query;
 
@@ -68,6 +90,7 @@ router.get('/ads/:placement', async (req, res) => {
 
 router.post('/ad-impression', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { adId, userId, placement, viewDuration, deviceType, userAgent, videoAd } = req.body;
 
     if (!adId || !placement) {
@@ -127,6 +150,7 @@ router.post('/ad-impression', async (req, res) => {
 
 router.post('/ad-click', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { adId, userId, placement, viewDuration, deviceType, videoAd, watchedPercentage } = req.body;
 
     if (!adId || !placement) {
@@ -187,6 +211,7 @@ router.post('/ad-click', async (req, res) => {
 
 router.post('/ad-video-completion', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { 
       adId, 
       userId, 
@@ -261,6 +286,7 @@ router.post('/ad-video-completion', async (req, res) => {
 
 router.post('/ad-dismiss', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { 
       adId, 
       userId, 
@@ -344,6 +370,7 @@ router.post('/ad-dismiss', async (req, res) => {
 
 router.post('/ad-conversion', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { adId, userId, conversionType, conversionValue, pixelId, referralSource } = req.body;
 
     if (!adId || !conversionType) {
@@ -401,6 +428,7 @@ router.post('/ad-conversion', async (req, res) => {
 
 router.get('/admin/ads/all', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     console.log('📝 [ADMIN_ADS_ALL] Fetching all ads from database...');
     const { data, error } = await supabaseAdmin
       .from('ads')
@@ -425,6 +453,7 @@ router.get('/admin/ads/all', async (req, res) => {
 
 router.post('/admin/ads', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     console.log('📝 [CREATE_AD] FULL REQUEST BODY:', JSON.stringify(req.body, null, 2));
 
     const {
@@ -529,6 +558,7 @@ router.post('/admin/ads', async (req, res) => {
 
 router.put('/admin/ads/:id', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { id } = req.params;
     const {
       title,
@@ -616,6 +646,7 @@ router.put('/admin/ads/:id', async (req, res) => {
 
 router.delete('/admin/ads/:id', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { id } = req.params;
 
     console.log(`🗑️ [DELETE_AD] ID: ${id}`);
@@ -640,6 +671,7 @@ router.delete('/admin/ads/:id', async (req, res) => {
 
 router.get('/admin/analytics/all', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { startDate, endDate } = req.query;
 
     console.log('📊 [ANALYTICS_ALL] Fetching analytics');
@@ -665,6 +697,7 @@ router.get('/admin/analytics/all', async (req, res) => {
 
 router.get('/admin/analytics/:adId', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { adId } = req.params;
     const { startDate, endDate } = req.query;
 
@@ -754,6 +787,7 @@ router.get('/admin/analytics/:adId', async (req, res) => {
 
 router.get('/admin/analytics/video/:adId', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { adId } = req.params;
 
     console.log(`🎬 [VIDEO_ANALYTICS] ID: ${adId}`);
@@ -806,6 +840,7 @@ router.get('/admin/analytics/video/:adId', async (req, res) => {
 
 router.get('/admin/campaigns/all', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { data, error } = await supabaseAdmin
       .from('ad_campaigns')
       .select('*')
@@ -821,6 +856,7 @@ router.get('/admin/campaigns/all', async (req, res) => {
 
 router.post('/admin/campaigns', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { name, description, objective, budget, dailyBudget, startDate, endDate, status } = req.body;
 
     if (!name || !objective) {
@@ -856,6 +892,7 @@ router.post('/admin/campaigns', async (req, res) => {
 
 router.post('/upload/image', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { fileName, fileData, mimeType } = req.body;
 
     console.log('📸 [IMAGE_UPLOAD] Received:', { fileName, hasFileData: !!fileData, mimeType });
@@ -893,6 +930,7 @@ router.post('/upload/image', async (req, res) => {
 
 router.post('/upload/video', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { fileName, fileData, mimeType } = req.body;
 
     if (!fileName || !fileData) {
@@ -928,6 +966,7 @@ router.post('/upload/video', async (req, res) => {
 
 router.post('/upload/thumbnail', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { fileName, fileData, mimeType } = req.body;
 
     if (!fileName || !fileData) {
@@ -966,6 +1005,7 @@ router.post('/upload/thumbnail', async (req, res) => {
 
 router.get('/admin/performance/by-type', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { data, error } = await supabaseAdmin
       .rpc('get_ad_performance_by_type');
 
@@ -979,6 +1019,7 @@ router.get('/admin/performance/by-type', async (req, res) => {
 
 router.get('/admin/roi/:adId', async (req, res) => {
   try {
+    const supabaseAdmin = req.supabaseAdmin;
     const { adId } = req.params;
     const { data, error } = await supabaseAdmin
       .rpc('calculate_ad_roi', { p_ad_id: adId });
