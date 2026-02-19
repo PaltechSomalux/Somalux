@@ -23,7 +23,7 @@ async function processScheduledEmails() {
       .from('scheduled_send_queue')
       .select('*')
       .eq('status', 'pending')
-      .lte('scheduled_time', new Date())
+      .lte('scheduled_time', new Date().toISOString())
       .order('scheduled_time', { ascending: true });
 
     if (error) {
@@ -70,7 +70,7 @@ async function processScheduledEmail(schedule) {
         .update({
           status: 'failed',
           error_message: 'Notification not found',
-          processed_at: new Date(),
+          processed_at: new Date().toISOString(),
         })
         .eq('id', schedule.id);
 
@@ -85,7 +85,7 @@ async function processScheduledEmail(schedule) {
         .update({
           status: 'cancelled',
           cancelled_reason: 'Notification already sent',
-          processed_at: new Date(),
+          processed_at: new Date().toISOString(),
         })
         .eq('id', schedule.id);
 
@@ -131,7 +131,7 @@ async function processScheduledEmail(schedule) {
       .from('scheduled_send_queue')
       .update({
         status: 'sent',
-        processed_at: new Date(),
+        processed_at: new Date().toISOString(),
         attempt_count: schedule.attempt_count + 1,
       })
       .eq('id', schedule.id);
@@ -142,7 +142,7 @@ async function processScheduledEmail(schedule) {
       .update({
         status: 'sending',
         scheduled_status: 'sent_to_queue',
-        updated_at: new Date(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', schedule.notification_id);
 
@@ -212,7 +212,7 @@ async function cancelScheduledEmail(scheduleId, reason = 'User cancelled') {
       .from('scheduled_send_queue')
       .update({
         status: 'cancelled',
-        cancelled_at: new Date(),
+        cancelled_at: new Date().toISOString(),
         cancelled_reason: reason,
       })
       .eq('id', scheduleId);
@@ -264,7 +264,7 @@ async function rescheduleEmail(scheduleId, newScheduledTime) {
       .from('scheduled_send_queue')
       .update({
         scheduled_time: newScheduledTime,
-        updated_at: new Date(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', scheduleId);
 
