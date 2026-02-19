@@ -6949,8 +6949,9 @@ app.use((req, res) => {
   });
 });
 
-server = app.listen(PORT, () => {
-  console.log(`✅ Backend + WebSocket server running on http://localhost:${PORT}`);
+server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Backend + WebSocket server running on port ${PORT}`);
+  console.log(`🌐 Access via: http://localhost:${PORT} or https://somalux.co.ke`);
   console.log(`📡 Routes registered: /send-message, /send-group-message, /group/:groupId/messages, /group-messages/read`);
   console.log(`📊 Reading Analytics routes enabled`);
   console.log(`✨ Feature Flags API: GET /api/features`);

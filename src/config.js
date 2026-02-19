@@ -1,6 +1,6 @@
 // Centralized configuration for API endpoints
 const isDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
-const defaultApiUrl = isDevelopment ? 'http://localhost:5000' : 'https://somalux.co.ke';
+const defaultApiUrl = isDevelopment ? 'http://localhost:5000' : 'https://api.somalux.co.ke';
 export const API_URL = process.env.REACT_APP_API_URL || defaultApiUrl;
 
 console.log('🔧 API Configuration:', {
