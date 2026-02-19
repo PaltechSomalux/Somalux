@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '../firebase'; // Uses the configured Supabase client
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+import { API_URL } from '../../../config'; // Use centralized config
 
 /**
  * Message Service - 1-on-1 Chats

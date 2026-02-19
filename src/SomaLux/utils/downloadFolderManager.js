@@ -15,7 +15,6 @@ const DOWNLOAD_FOLDER_KEY = 'selectedDownloadFolder';
 const DOWNLOAD_FOLDERS_HISTORY_KEY = 'downloadFoldersHistory';
 const CUSTOM_FOLDERS_KEY = 'customDownloadFolders';
 const DEFAULT_FOLDER = 'Downloads';
-const API_BASE = 'http://localhost:5000';
 
 /**
  * Get the currently selected download folder
@@ -160,7 +159,7 @@ export const fetchAvailableFolders = async () => {
     
     // Try to fetch from API to see if there are any additional folders
     try {
-      const response = await fetch(`${API_BASE}/api/elib/download-folders`);
+      const response = await fetch(`${API_URL}/api/elib/download-folders`);
       
       // Check if response is OK and is JSON
       if (!response.ok) {
@@ -213,7 +212,7 @@ export const getDefaultFolders = () => {
  */
 export const createDownloadFolder = async (folderName, parentFolder = null) => {
   try {
-    const response = await fetch(`${API_BASE}/api/elib/download-folders`, {
+    const response = await fetch(`${API_URL}/api/elib/download-folders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -242,7 +241,7 @@ export const createDownloadFolder = async (folderName, parentFolder = null) => {
  */
 export const validateFolder = async (folderPath) => {
   try {
-    const response = await fetch(`${API_BASE}/api/elib/download-folders/validate`, {
+    const response = await fetch(`${API_URL}/api/elib/download-folders/validate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ folderPath })
@@ -262,7 +261,7 @@ export const validateFolder = async (folderPath) => {
  */
 export const getUserFolderPreferences = async () => {
   try {
-    const response = await fetch(`${API_BASE}/api/elib/download-folders/preferences`);
+    const response = await fetch(`${API_URL}/api/elib/download-folders/preferences`);
     const data = await response.json();
     
     if (data.ok) {
@@ -283,7 +282,7 @@ export const getUserFolderPreferences = async () => {
  */
 export const saveUserFolderPreferences = async (preferences) => {
   try {
-    const response = await fetch(`${API_BASE}/api/elib/download-folders/preferences`, {
+    const response = await fetch(`${API_URL}/api/elib/download-folders/preferences`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(preferences)

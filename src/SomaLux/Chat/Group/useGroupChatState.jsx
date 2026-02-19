@@ -5,9 +5,17 @@ import { useFCMToken } from '../hooks/useFCMToken';
 import { subscribeToGroupTopic, unsubscribeFromGroupTopic } from '../ChatList/utils/fcmTopics';
 import { loadMyPrivacy } from '../utils/privacy';
 import { cacheUtils } from "./cacheUtils";
+import { API_URL } from '../../../config';
 
-const BACKEND_URL = "http://localhost:5000";
-const WS_URL = "ws://localhost:5000";
+// Derive WebSocket URL from API_URL
+const getWebSocketURL = () => {
+  const isSecure = API_URL.startsWith('https');
+  const domain = API_URL.replace(/^https?:\/\//, '');
+  return `${isSecure ? 'wss' : 'ws'}://${domain}`;
+};
+
+const BACKEND_URL = API_URL;
+const WS_URL = getWebSocketURL();
 
 export const useGroupChatState = ({
   groupId,

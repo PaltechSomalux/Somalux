@@ -10,6 +10,7 @@ import { AuthModals } from "./AuthModals";
 import VerificationTierModal from "../Books/VerificationTierModal";
 import VerificationBadge from "../Books/Admin/components/VerificationBadge";
 import QRCodeShare from "../../components/QRCodeShare";
+import { API_URL } from "../../config";
 import "./Profile.css";
 
 export const Profile = ({ user: propUser = null }) => {

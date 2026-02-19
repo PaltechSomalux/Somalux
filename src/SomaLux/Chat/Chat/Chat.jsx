@@ -156,7 +156,7 @@ export const Chat = ({
   // WebSocket hook
   // --------------------------------------------------------------
   const { sendJsonMessage, lastJsonMessage, readyState } = useWebSocket(
-    chatId ? `ws://localhost:5000` : null,
+    chatId ? (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host : null,
     {
       onOpen: () => {
         if (chatId) {
@@ -178,7 +178,8 @@ export const Chat = ({
     if (!chatId) return;
 
     // ---- HTTP initial load ----
-    fetch(`http://localhost:5000/chat/${chatId}/messages?since=${lastFetchTimestampRef.current || 0}`)
+    const apiBaseUrl = typeof window !== 'undefined' ? (window.location.protocol === 'https:' ? 'https://' : 'http://') + window.location.host : 'http://localhost:5000';
+    fetch(`${apiBaseUrl}/chat/${chatId}/messages?since=${lastFetchTimestampRef.current || 0}`)
       .then(res => res.json())
       .then(msgs => {
         const parsedMsgs = msgs

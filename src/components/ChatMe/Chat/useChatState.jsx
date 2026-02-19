@@ -1,10 +1,11 @@
 // Full useChatState.js - Using Supabase only
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../../../supabase";
+import { API_URL } from "../../../config";
 
 const CHAT_STORAGE_KEY = "whatsapp-clone-chat";
 const WALLPAPER_STORAGE_KEY = "whatsapp-clone-wallpaper";
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE = API_URL;
 
 const getChatId = (idA, idB) => {
   if (!idA || !idB || typeof idA !== 'string' || typeof idB !== 'string') {

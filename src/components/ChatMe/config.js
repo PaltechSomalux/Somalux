@@ -1,6 +1,8 @@
 // ChatMe Configuration
 // Centralized config for WebSocket and API endpoints
 
+import { API_URL } from '../../config'; // Use centralized config
+
 // Helper to determine WebSocket protocol based on current location
 function getWebSocketURL(baseURL) {
   if (!baseURL) return null;
@@ -9,29 +11,18 @@ function getWebSocketURL(baseURL) {
   return `${isSecure ? 'wss' : 'ws'}://${domain}/chatme`;
 }
 
-// Helper to get API base URL with proper protocol
-function getAPIBase() {
-  // Use environment variable if available
-  if (process.env.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL;
-  }
-  // Fallback to localhost for development
-  return 'http://localhost:5000';
-}
-
 const ENV = process.env.NODE_ENV || 'development';
-const apiBaseUrl = getAPIBase();
 
 const API_CONFIG = {
   // Development
   development: {
-    WEBSOCKET_URL: getWebSocketURL(apiBaseUrl),
-    API_BASE: apiBaseUrl,
+    WEBSOCKET_URL: getWebSocketURL(API_URL),
+    API_BASE: API_URL,
   },
   // Production
   production: {
-    WEBSOCKET_URL: getWebSocketURL(apiBaseUrl),
-    API_BASE: apiBaseUrl,
+    WEBSOCKET_URL: getWebSocketURL(API_URL),
+    API_BASE: API_URL,
   }
 };
 

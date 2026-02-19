@@ -64,7 +64,9 @@ export const useTypingManager = (groupId, currentUser) => {
 };
 
 export const WebSocketProvider = ({ children }) => {
-  const WS_URL = 'ws://localhost:5000';
+  const WS_URL = typeof window !== 'undefined' 
+    ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
+    : 'ws://localhost:5000';
   const [typingUsers, setTypingUsers] = useState({}); // Global typing state
   const [unreadCounts, setUnreadCounts] = useState({}); // Global unread counts
   const [lastMessages, setLastMessages] = useState({}); // Global last messages { [groupId]: { text, senderName, timestamp } }
