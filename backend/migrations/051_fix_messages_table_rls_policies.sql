@@ -11,6 +11,11 @@ DROP POLICY IF EXISTS "Allow service role full access" ON public.messages;
 DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON public.messages;
 DROP POLICY IF EXISTS "Enable select for authenticated users only" ON public.messages;
 DROP POLICY IF EXISTS "Enable delete for authenticated users only" ON public.messages;
+DROP POLICY IF EXISTS "Service role has full access to messages" ON public.messages;
+DROP POLICY IF EXISTS "Authenticated users can read their messages" ON public.messages;
+DROP POLICY IF EXISTS "Authenticated users can insert their own messages" ON public.messages;
+DROP POLICY IF EXISTS "Authenticated users can update their own messages" ON public.messages;
+DROP POLICY IF EXISTS "Authenticated users can soft-delete their messages" ON public.messages;
 
 -- Add new, properly scoped policies
 -- Allow service role (backend) unrestricted access
