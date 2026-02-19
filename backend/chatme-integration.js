@@ -1,38 +1,7 @@
 // ChatMe Backend Integration Module
-// Handles WebSocket, FCM, and real-time messaging for ChatMe
+// Handles WebSocket for real-time messaging via Supabase
 
 import { WebSocketServer } from "ws";
-import admin from "firebase-admin";
-import { readFileSync } from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// Initialize Firebase Admin SDK for ChatMe (separate from Supabase)
-let firebaseAdmin = null;
-let db = null;
-
-export function initializeChatMeFirebase() {
-  try {
-    // Try to load ChatMe Firebase credentials
-    const credentialPath = path.join(__dirname, 'chatme', 'paltechproject-firebase-adminsdk-fbsvc-bd9fcaae72.json');
-    
-    const serviceAccount = JSON.parse(readFileSync(credentialPath, 'utf8'));
-    
-    firebaseAdmin = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    }, 'chatme'); // Use unique app name to avoid conflicts
-    
-    db = admin.firestore(firebaseAdmin);
-    console.log('✅ ChatMe Firebase initialized successfully');
-    return { success: true, admin: firebaseAdmin };
-  } catch (error) {
-    console.warn('⚠️  ChatMe Firebase initialization failed:', error.message);
-    console.warn('   ChatMe real-time messaging will be unavailable');
-    return { success: false, admin: null };
-  }
-}
 
 // WebSocket state management
 const userChannels = new Map(); // userId -> Set of ws connections
@@ -57,8 +26,8 @@ function countMessage(userId, chatId, direction) {
 
 // Setup WebSocket server for ChatMe
 export function setupChatMeWebSocket(wss) {
-  if (!wss || !db) {
-    console.warn('⚠️  WebSocket or Firebase not available for ChatMe');
+  if (!wss) {
+    console.warn('⚠️ WebSocket not available for ChatMe');
     return;
   }
 
@@ -372,38 +341,6 @@ async function fetchRecentMessages(chatId, ws, since = 0, isGroup = false) {
   }
 }
 
-// FCM subscription management
-export function setupChatMeFCMRoutes(app, admin) {
-  // Subscribe to topic
-  app.post('/api/chatme/subscribe-topic', async (req, res) => {
-    const { topic, token } = req.body || {};
-    if (!topic || !token) return res.status(400).send('Missing topic or token');
-    
-    try {
-      // Use main Firebase admin instance if available
-      await admin.messaging().subscribeToTopic(token, topic);
-      res.json({ success: true });
-    } catch (e) {
-      console.error('subscribe-topic error', e);
-      res.status(500).send(e.message || 'subscribe error');
-    }
-  });
-
-  // Unsubscribe from topic
-  app.post('/api/chatme/unsubscribe-topic', async (req, res) => {
-    const { topic, token } = req.body || {};
-    if (!topic || !token) return res.status(400).send('Missing topic or token');
-    
-    try {
-      await admin.messaging().unsubscribeFromTopic(token, topic);
-      res.json({ success: true });
-    } catch (e) {
-      console.error('unsubscribe-topic error', e);
-      res.status(500).send(e.message || 'unsubscribe error');
-    }
-  });
-}
-
 // Export for use in main backend
-export { userChannels, clients, onlineUsers, firebaseAdmin };
+export { userChannels, clients, onlineUsers };
 

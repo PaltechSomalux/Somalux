@@ -36,7 +36,7 @@ import firstPageExtractRoute from './routes/firstPageExtractRoute.js';
 import emailNotificationsRouter from './routes/emailNotifications.js';
 import { startScheduledSendProcessor } from './utils/scheduledSendQueue.js';
 import { recordFirstLogin } from './utils/firstLoginTracking.js';
-import { initializeChatMeFirebase, setupChatMeWebSocket, setupChatMeFCMRoutes } from './chatme-integration.js';
+import { setupChatMeWebSocket } from './chatme-integration.js';
 import chatmeMessagesRouter from './routes/chatmeMessages.js';
 
 
@@ -596,22 +596,8 @@ if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
   global.supabaseAdmin = null;
 }
 
-// --- ChatMe Firebase Initialization ---
-// Note: Initialize asynchronously in background to not block server startup
-let admin = null;
-
-// Non-blocking async initialization (fire-and-forget)
-(async () => {
-  try {
-    const chatMeFirebaseResult = await initializeChatMeFirebase();
-    if (chatMeFirebaseResult && chatMeFirebaseResult.admin) {
-      admin = chatMeFirebaseResult.admin;
-      console.log('🔥 ChatMe Firebase initialized');
-    }
-  } catch (error) {
-    console.warn('⚠️ ChatMe Firebase initialization skipped:', error.message);
-  }
-})();
+// --- WebSocket and ChatMe Setup ---
+// Using Supabase for all real-time messaging (no Firebase needed)
 
 // Build a per-request Supabase client using the caller's JWT so that RLS policies
 // (that depend on auth.uid()) evaluate correctly for user-scoped writes/reads.
@@ -6977,19 +6963,6 @@ wss = new WebSocketServer({ server });
 global.wss = wss; // Store reference for feature flags broadcasting
 setupWebSocket();
 
-// Setup ChatMe WebSocket and FCM routes (unified backend) - async initialization
-(async () => {
-  try {
-    if (admin) {
-      console.log('🔗 Integrating ChatMe into unified WebSocket server...');
-      await setupChatMeWebSocket(wss);
-      await setupChatMeFCMRoutes(app, admin);
-      console.log('✅ ChatMe integrated into main backend');
-    } else {
-      console.warn('⚠️ ChatMe Firebase not available; messaging features disabled');
-    }
-  } catch (error) {
-    console.error('❌ Error setting up ChatMe integration:', error);
-    console.warn('⚠️ ChatMe features disabled, backend continuing...');
-  }
-})();
+// Setup ChatMe WebSocket (Supabase-based, no Firebase needed)
+console.log('🔗 ChatMe messaging enabled via Supabase + WebSocket');
+setupChatMeWebSocket(wss);
