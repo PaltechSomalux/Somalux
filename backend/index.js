@@ -6971,12 +6971,20 @@ server = app.listen(PORT, '0.0.0.0', () => {
 wss = new WebSocketServer({ server });
 global.wss = wss; // Store reference for feature flags broadcasting
 setupWebSocket();
-// Setup ChatMe WebSocket and FCM routes (unified backend)
-if (admin) {
-  console.log('🔗 Integrating ChatMe into unified WebSocket server...');
-  await setupChatMeWebSocket(wss);
-  await setupChatMeFCMRoutes(app, admin);
-  console.log('✅ ChatMe integrated into main backend');
-} else {
-  console.warn('⚠️ ChatMe Firebase not available; messaging features disabled');
-}
+
+// Setup ChatMe WebSocket and FCM routes (unified backend) - async initialization
+(async () => {
+  try {
+    if (admin) {
+      console.log('🔗 Integrating ChatMe into unified WebSocket server...');
+      await setupChatMeWebSocket(wss);
+      await setupChatMeFCMRoutes(app, admin);
+      console.log('✅ ChatMe integrated into main backend');
+    } else {
+      console.warn('⚠️ ChatMe Firebase not available; messaging features disabled');
+    }
+  } catch (error) {
+    console.error('❌ Error setting up ChatMe integration:', error);
+    console.warn('⚠️ ChatMe features disabled, backend continuing...');
+  }
+})();
