@@ -597,16 +597,21 @@ if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
 }
 
 // --- ChatMe Firebase Initialization ---
+// Note: Initialize asynchronously in background to not block server startup
 let admin = null;
-try {
-  const chatMeFirebaseResult = await initializeChatMeFirebase();
-  if (chatMeFirebaseResult && chatMeFirebaseResult.admin) {
-    admin = chatMeFirebaseResult.admin;
-    console.log('🔥 ChatMe Firebase initialized');
+
+// Non-blocking async initialization (fire-and-forget)
+(async () => {
+  try {
+    const chatMeFirebaseResult = await initializeChatMeFirebase();
+    if (chatMeFirebaseResult && chatMeFirebaseResult.admin) {
+      admin = chatMeFirebaseResult.admin;
+      console.log('🔥 ChatMe Firebase initialized');
+    }
+  } catch (error) {
+    console.warn('⚠️ ChatMe Firebase initialization skipped:', error.message);
   }
-} catch (error) {
-  console.warn('⚠️ ChatMe Firebase initialization skipped:', error.message);
-}
+})();
 
 // Build a per-request Supabase client using the caller's JWT so that RLS policies
 // (that depend on auth.uid()) evaluate correctly for user-scoped writes/reads.
