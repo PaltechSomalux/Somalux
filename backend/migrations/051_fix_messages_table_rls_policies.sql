@@ -96,16 +96,18 @@ CREATE INDEX IF NOT EXISTS idx_messages_chat_created ON public.messages(chat_id,
 -- Fix user_chats table RLS
 DROP POLICY IF EXISTS "Enable select for authenticated users" ON public.user_chats;
 DROP POLICY IF EXISTS "Enable insert for authenticated users" ON public.user_chats;
+DROP POLICY IF EXISTS "Service role full access user_chats" ON public.user_chats;
+DROP POLICY IF EXISTS "Users can read their chats" ON public.user_chats;
 
 ALTER TABLE public.user_chats ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Service role full access user_chats"
+CREATE POLICY "Service role full access user_chats"
   ON public.user_chats
   FOR ALL
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
-CREATE POLICY IF NOT EXISTS "Users can read their chats"
+CREATE POLICY "Users can read their chats"
   ON public.user_chats
   FOR SELECT
   USING (
@@ -143,13 +145,13 @@ BEGIN
     DROP POLICY IF EXISTS "Users can read group messages" ON public.group_messages;
     
     -- Create new policies
-    CREATE POLICY IF NOT EXISTS "Service role access group_messages"
+    CREATE POLICY "Service role access group_messages"
       ON public.group_messages
       FOR ALL
       USING (auth.role() = 'service_role')
       WITH CHECK (auth.role() = 'service_role');
 
-    CREATE POLICY IF NOT EXISTS "Users can read group messages"
+    CREATE POLICY "Users can read group messages"
       ON public.group_messages
       FOR SELECT
       USING (
