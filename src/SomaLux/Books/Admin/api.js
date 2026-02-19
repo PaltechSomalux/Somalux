@@ -599,15 +599,8 @@ export async function fetchStats() {
       supabase.from('books').select('id, category_id, created_at, author, downloads_count, views_count, comments_count, rating'),
       supabase.from('past_papers').select('id, created_at, downloads_count, views_count'),
       supabase.from('book_views').select('id, view_date').gte('view_date', oldestMonthIso),
-      (async () => {
-        try {
-          const { data } = await supabase.from('past_paper_views').select('id, viewed_at').gte('viewed_at', oldestMonthIso);
-          return data || [];
-        } catch (e) {
-          console.warn('[fetchStats] past_paper_views query failed - table may not exist:', e?.message || e);
-          return [];
-        }
-      })(),
+      // Instead of querying past_paper_views directly, use backend endpoint
+      fetch('/api/admin/stats/past-paper-views').then(r => r.json()).catch(() => ({ data: [] })),
       (async () => {
         try {
           const { data, error } = await supabase
@@ -633,31 +626,8 @@ export async function fetchStats() {
           return { data: [] };
         }
       })(),
-      (async () => {
-        try {
-          const { data, error } = await supabase
-            .from('past_paper_downloads')
-            .select('paper_id', { head: false });
-          
-          if (error) {
-            console.warn('[fetchStats] past_paper_downloads table might not exist:', error?.message);
-            return { data: [] };
-          }
-          
-          // Count downloads per past paper
-          const downloadCounts = {};
-          (data || []).forEach(record => {
-            if (record.paper_id) {
-              downloadCounts[record.paper_id] = (downloadCounts[record.paper_id] || 0) + 1;
-            }
-          });
-          console.log('[fetchStats] Downloads from past_paper_downloads table:', downloadCounts);
-          return { data: Object.entries(downloadCounts).map(([paperId, count]) => ({ paper_id: paperId, downloads_count: count })) };
-        } catch (e) {
-          console.warn('[fetchStats] Error querying past_paper_downloads - table may not exist:', e?.message || e);
-          return { data: [] };
-        }
-      })()
+      // Instead of querying past_paper_downloads directly, use backend endpoint
+      fetch('/api/admin/stats/past-paper-downloads').then(r => r.json()).catch(() => ({ data: [] }))
     ]);
 
     console.log('[fetchStats] downloads response:', downloadsRes);
@@ -707,17 +677,16 @@ export async function fetchStats() {
     
     const totalPastPapersDownloads = await (async () => {
       try {
-        // Try to count from past_paper_downloads table directly 
-        const { count, error } = await supabase
-          .from('past_paper_downloads')
-          .select('id', { count: 'exact', head: true });
+        // Use backend endpoint instead of direct Supabase call
+        const res = await fetch('/api/admin/stats/past-paper-downloads-count').then(r => r.json()).catch(() => ({ count: null }));
         
-        if (!error && count !== null && count !== undefined) {
-          console.log('[fetchStats] Total past papers downloads from past_paper_downloads count:', count);
-          return count;
+        if (res.count !== null && res.count !== undefined) {
+          console.log('[fetchStats] Total past papers downloads from backend:', res.count);
+          return res.count;
         }
         
         // Fallback to past_papers table
+
         const ppCount = totals(pastPapersDownloadsRes, 'downloads_count');
         console.log('[fetchStats] Total past papers downloads from past_papers.downloads_count:', ppCount);
         return ppCount;

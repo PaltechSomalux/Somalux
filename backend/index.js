@@ -4045,6 +4045,94 @@ app.get('/api/elib/submissions/summary', async (req, res) => {
   }
 });
 
+// ============================================================================
+// ADMIN STATS ENDPOINTS - Proxy Supabase queries through backend
+// ============================================================================
+
+// GET /api/admin/stats/past-paper-views
+app.get('/api/admin/stats/past-paper-views', async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.json({ data: [] });
+    
+    const oldestMonthIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    
+    try {
+      const { data } = await supabaseAdmin
+        .from('past_paper_views')
+        .select('id, viewed_at')
+        .gte('viewed_at', oldestMonthIso);
+      return res.json({ data: data || [] });
+    } catch (e) {
+      console.warn('[stats] past_paper_views query failed:', e?.message);
+      return res.json({ data: [] });
+    }
+  } catch (e) {
+    console.error('[stats] Error in past-paper-views endpoint:', e);
+    return res.json({ data: [] });
+  }
+});
+
+// GET /api/admin/stats/past-paper-downloads
+app.get('/api/admin/stats/past-paper-downloads', async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.json({ data: [] });
+    
+    try {
+      const { data } = await supabaseAdmin
+        .from('past_paper_downloads')
+        .select('paper_id');
+      
+      if (!data) return res.json({ data: [] });
+      
+      // Count downloads per past paper
+      const downloadCounts = {};
+      data.forEach(record => {
+        if (record.paper_id) {
+          downloadCounts[record.paper_id] = (downloadCounts[record.paper_id] || 0) + 1;
+        }
+      });
+      
+      const result = Object.entries(downloadCounts).map(([paperId, count]) => ({
+        paper_id: paperId,
+        downloads_count: count
+      }));
+      
+      return res.json({ data: result });
+    } catch (e) {
+      console.warn('[stats] past_paper_downloads query failed:', e?.message);
+      return res.json({ data: [] });
+    }
+  } catch (e) {
+    console.error('[stats] Error in past-paper-downloads endpoint:', e);
+    return res.json({ data: [] });
+  }
+});
+
+// GET /api/admin/stats/past-paper-downloads-count
+app.get('/api/admin/stats/past-paper-downloads-count', async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.json({ count: 0 });
+    
+    try {
+      const { count, error } = await supabaseAdmin
+        .from('past_paper_downloads')
+        .select('id', { count: 'exact', head: true });
+      
+      if (error || count === null || count === undefined) {
+        return res.json({ count: 0 });
+      }
+      
+      return res.json({ count });
+    } catch (e) {
+      console.warn('[stats] past_paper_downloads count failed:', e?.message);
+      return res.json({ count: 0 });
+    }
+  } catch (e) {
+    console.error('[stats] Error in past-paper-downloads-count endpoint:', e);
+    return res.json({ count: 0 });
+  }
+});
+
 // Notify admins about new user submissions (books or past papers)
 app.post('/api/elib/submissions/notify-admins', async (req, res) => {
   try {
