@@ -122,39 +122,45 @@ CREATE POLICY "Users can read their chats"
   );
 
 -- ============================================================================
--- FIX 4: VERIFY TABLE STRUCTURE FOR GROUP MESSAGES
+-- FIX 4: VERIFY TABLE STRUCTURE FOR GROUP MESSAGES (IF EXISTS)
 -- ============================================================================
 
--- Ensure group_messages table exists and has proper RLS
-CREATE TABLE IF NOT EXISTS public.group_messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  group_id UUID NOT NULL REFERENCES public.groups(id) ON DELETE CASCADE,
-  sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
-  status VARCHAR(50) DEFAULT 'sent',
-  is_deleted BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Only create and fix group_messages if it exists (skipped if groups table not available)
+-- This handles cases where the groups/group_messages tables haven't been created yet
+DO $$
+BEGIN
+  -- Check if group_messages table exists
+  IF EXISTS (
+    SELECT FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'group_messages'
+  ) THEN
+    -- If it exists, enable RLS
+    ALTER TABLE public.group_messages ENABLE ROW LEVEL SECURITY;
+    
+    -- Drop existing policies if they exist
+    DROP POLICY IF EXISTS "Service role access group_messages" ON public.group_messages;
+    DROP POLICY IF EXISTS "Users can read group messages" ON public.group_messages;
+    
+    -- Create new policies
+    CREATE POLICY "Service role access group_messages"
+      ON public.group_messages
+      FOR ALL
+      USING (auth.role() = 'service_role')
+      WITH CHECK (auth.role() = 'service_role');
 
-ALTER TABLE public.group_messages ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Service role access group_messages"
-  ON public.group_messages
-  FOR ALL
-  USING (auth.role() = 'service_role')
-  WITH CHECK (auth.role() = 'service_role');
-
-CREATE POLICY "Users can read group messages"
-  ON public.group_messages
-  FOR SELECT
-  USING (
-    auth.role() = 'authenticated' AND
-    group_id IN (
-      SELECT group_id FROM public.group_members
-      WHERE user_id = auth.uid()
-    )
-  );
+    CREATE POLICY "Users can read group messages"
+      ON public.group_messages
+      FOR SELECT
+      USING (
+        auth.role() = 'authenticated' AND
+        group_id IN (
+          SELECT group_id FROM public.group_members
+          WHERE user_id = auth.uid()
+        )
+      );
+  END IF;
+END $$;
 
 -- ============================================================================
 -- FIX 5: IMPORTANT NOTE
