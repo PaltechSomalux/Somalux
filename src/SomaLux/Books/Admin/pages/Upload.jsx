@@ -62,7 +62,7 @@ const dropzoneStyles = `
   }
 `;
 
-const Upload = ({ userProfile, initialTab = 'books' }) => {
+const Upload = ({ userProfile, initialTab = 'books', forceSubmission = false }) => {
   // Add style tag to document
   useEffect(() => {
     const styleTag = document.createElement('style');
@@ -411,22 +411,22 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
       
       console.log('📤 Submitting book with metadata:', metadata);
       
-      // Check if user is admin or editor - if so, directly upload; otherwise submit for approval
-      const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'editor';
+      // Check if user is admin or editor - if so, directly upload unless forceSubmission is true
+      const allowDirectUpload = (userProfile?.role === 'admin' || userProfile?.role === 'editor') && !forceSubmission;
       
-      if (isAdmin) {
+      if (allowDirectUpload) {
         await createBook({ metadata, pdfFile: pdf, coverFile: cover });
         showToast({ type: 'success', message: 'Book uploaded successfully!' });
       } else {
         await createBookSubmission({ metadata, pdfFile: pdf, coverFile: cover });
-        showToast({ type: 'success', message: 'Book submitted for approval. Admin will review it shortly.' });
+          showToast({ type: 'success', message: forceSubmission ? 'Book request submitted. Admin will review it shortly.' : 'Book submitted for approval. Admin will review it shortly.' });
       }
       
       // Reset form
       setPdf(null);
       setCover(null);
       setBookForm({ title: '', author: '', description: '', category_id: '', year: '', language: '', isbn: '', pages: '', publisher: '' });
-      navigate('/user/upload');
+        navigate(forceSubmission ? '/user/request' : '/user/upload');
     } catch (e) {
       console.error('Book upload failed:', e);
       showToast({ type: 'error', message: e?.message || 'Upload failed.' });
@@ -503,8 +503,8 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
       setYears([]);
       
       // Determine if admin or user - admins get instant display, users get approval workflow
-      const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'editor';
-      const uploadFunction = isAdmin ? createPastPaper : createPastPaperSubmission;
+      const allowDirectUpload = (userProfile?.role === 'admin' || userProfile?.role === 'editor') && !forceSubmission;
+      const uploadFunction = allowDirectUpload ? createPastPaper : createPastPaperSubmission;
       
       // Fire upload in background without waiting
       uploadFunction({ metadata, pdfFile: paperPdf }).catch((e) => {
@@ -574,7 +574,7 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
 
   return (
     <div className="panel">
-      <div className="panel-title">Upload Content</div>
+      <div className="panel-title">{forceSubmission ? 'Request Content' : 'Upload Content'}</div>
       
       {/* Tabs */}
       <div className="upload-tabs">
@@ -652,7 +652,7 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
             </div>
 
             <div className="actions" style={{ marginTop: 12 }}>
-              <button className="btn primary" disabled={busy} onClick={submitBook}>{busy ? 'Uploading...' : 'Upload Book'}</button>
+              <button className="btn primary" disabled={busy} onClick={submitBook}>{busy ? (forceSubmission ? 'Requesting...' : 'Uploading...') : (forceSubmission ? 'Request Book' : 'Upload Book')}</button>
             </div>
           </div>
         </div>
@@ -858,7 +858,7 @@ const Upload = ({ userProfile, initialTab = 'books' }) => {
             </select>
 
             <div className="actions" style={{ marginTop: 12 }}>
-              <button className="btn primary" disabled={busy} onClick={submitPastPaper}>{busy ? 'Uploading...' : 'Upload Past Paper'}</button>
+              <button className="btn primary" disabled={busy} onClick={submitPastPaper}>{busy ? (forceSubmission ? 'Requesting...' : 'Uploading...') : (forceSubmission ? 'Request Past Paper' : 'Upload Past Paper')}</button>
             </div>
           </div>
         </div>

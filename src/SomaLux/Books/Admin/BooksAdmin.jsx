@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, Navigate, useNavigate, useLocation, Link } from
 import { 
   FiBarChart2, FiBookOpen, FiUpload, FiFolder,
   FiSettings, FiUsers, FiChevronLeft, FiChevronRight,
-  FiRefreshCw, FiGrid, FiSearch, FiHardDrive, FiCheck, FiClock, FiDownload, FiMail
+  FiRefreshCw, FiGrid, FiSearch, FiHardDrive, FiCheck, FiClock, FiDownload, FiMail, FiEdit3
 } from 'react-icons/fi';
 import { MdAdminPanelSettings } from "react-icons/md";
 import { BiSpeaker } from 'react-icons/bi';
@@ -30,6 +30,7 @@ const AutoUpload = React.lazy(() => import('./pages/AutoUpload'));
 const PastPapersAutoDownload = React.lazy(() => import('../../PastPapersDownloader/PastPapersAutoDownload'));
 const Categories = React.lazy(() => import('./pages/Categories'));
 const Submissions = React.lazy(() => import('./pages/Submissions'));
+const Requests = React.lazy(() => import('./pages/Requests'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const Users = React.lazy(() => import('./pages/Users'));
 const Verify = React.lazy(() => import('./pages/Verify'));
@@ -47,6 +48,7 @@ export const BooksAdmin = () => {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [pendingSubmissions, setPendingSubmissions] = useState(0);
+  const [pendingRequests, setPendingRequests] = useState(0);
   const [userProfile, setUserProfile] = useState(null);
   const [authUserEmail, setAuthUserEmail] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -81,6 +83,21 @@ export const BooksAdmin = () => {
       }
     };
     fetchSummary();
+  }, []);
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/requests?status=pending`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load requests');
+        const list = Array.isArray(json.requests) ? json.requests : (Array.isArray(json) ? json : []);
+        setPendingRequests(list.length || 0);
+      } catch (e) {
+        console.warn('Requests summary failed:', e?.message || e);
+      }
+    };
+    fetchRequests();
   }, []);
 
   // Collapse sidebar on mobile
@@ -220,14 +237,19 @@ export const BooksAdmin = () => {
               </>
             )}
 
-            {isAdmin && (
-              <>
+                {isAdmin && (
+                  <>
                 <NavLink to="/books/admin/submissions" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                   <FiUpload /> <span className="nav-label">Submissions</span>
                   <NotificationBadge count={pendingSubmissions} />
                 </NavLink>
-              </>
-            )}
+
+                <NavLink to="/books/admin/requests" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                  <FiEdit3 /> <span className="nav-label">Requests</span>
+                  <NotificationBadge count={pendingRequests} />
+                </NavLink>
+                  </>
+                )}
 
             {/* SYSTEM SECTION */}
             {isAdmin && (
@@ -313,6 +335,13 @@ export const BooksAdmin = () => {
             </NavLink>
           )}
 
+          {isAdmin && (
+            <NavLink to="/books/admin/requests" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiEdit3 /> <span>Requests</span>
+              <NotificationBadge count={pendingRequests} />
+            </NavLink>
+          )}
+
           {/* CONTENT TABS */}
           <NavLink to="/books/admin/content" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
             <FiGrid /> <span>Content</span>
@@ -346,6 +375,13 @@ export const BooksAdmin = () => {
             <NavLink to="/books/admin/submissions" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
               <FiUpload /> <span>Submissions</span>
               <NotificationBadge count={pendingSubmissions} />
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <NavLink to="/books/admin/requests" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiEdit3 /> <span>Requests</span>
+              <NotificationBadge count={pendingRequests} />
             </NavLink>
           )}
 
@@ -454,6 +490,7 @@ export const BooksAdmin = () => {
                 {isAdmin && (
                   <>
                     <Route path="submissions" element={<Submissions userProfile={userProfile} />} />
+                    <Route path="requests" element={<Requests userProfile={userProfile} />} />
                   </>
                 )}
 

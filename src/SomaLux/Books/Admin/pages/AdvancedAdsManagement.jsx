@@ -920,13 +920,13 @@ export default function AdvancedAdsManagement() {
 
       {/* Ads List - Compact Table */}
       {activeTab === 'ads' && !showForm && (
-        <div className="ads-list">
+        <div className="ads-list" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {ads.length === 0 ? (
             <div className="no-ads">
               <p>No ads yet. Create your first ad!</p>
             </div>
           ) : (
-            <table className="ads-table">
+            <table className="ads-table" style={{ minWidth: 1100 }}>
               <thead>
                 <tr>
                   <th>Title</th>
@@ -1017,8 +1017,8 @@ export default function AdvancedAdsManagement() {
           {/* Enhanced Ads Performance Table */}
           <div className="ads-performance-table-wrapper">
             <h2>All Ads Performance Overview</h2>
-            <div className="ads-performance-table">
-              <div className="table-header">
+            <div className="ads-performance-table" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div className="table-header" style={{ minWidth: 1100 }}>
                 <div className="col-title">Ad Title</div>
                 <div className="col-placement">Placement</div>
                 <div className="col-impressions">Impressions</div>

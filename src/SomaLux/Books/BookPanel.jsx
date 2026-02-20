@@ -301,6 +301,7 @@ export const BookPanel = ({ demoMode = false }) => {
 
   // Admin notification state
   const [pendingSubmissions, setPendingSubmissions] = useState(0);
+  const [pendingRequests, setPendingRequests] = useState(0);
 
   // Bulk download selection state
   const [selectedBooksForDownload, setSelectedBooksForDownload] = useState(new Set());
@@ -1110,9 +1111,23 @@ export const BookPanel = ({ demoMode = false }) => {
     };
 
     fetchSubmissionsCount();
-    
+
+    const fetchRequestsCount = async () => {
+      try {
+        const { count } = await supabase
+          .from('requests')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending');
+        setPendingRequests(count || 0);
+      } catch (err) {
+        console.warn('Failed to fetch pending requests count:', err);
+      }
+    };
+
+    fetchRequestsCount();
+
     // Poll every 30 seconds for updates
-    const interval = setInterval(fetchSubmissionsCount, 30000);
+    const interval = setInterval(() => { fetchSubmissionsCount(); fetchRequestsCount(); }, 30000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -3025,7 +3040,7 @@ export const BookPanel = ({ demoMode = false }) => {
               >
                 {user?.role === 'admin' || ['campuslives254@gmail.com', 'paltechsomalux@gmail.com'].includes(user?.email) ? 'Admin' : 'Editor'}
               </button>
-              {pendingSubmissions > 0 && (
+              {(pendingSubmissions + pendingRequests) > 0 && (
                 <div style={{
                   position: 'absolute',
                   top: -6,
@@ -3042,7 +3057,7 @@ export const BookPanel = ({ demoMode = false }) => {
                   fontWeight: '600',
                   border: '2px solid #0b1216'
                 }}>
-                  {pendingSubmissions > 99 ? '99+' : pendingSubmissions}
+                  {(pendingSubmissions + pendingRequests) > 99 ? '99+' : (pendingSubmissions + pendingRequests)}
                 </div>
               )}
             </div>

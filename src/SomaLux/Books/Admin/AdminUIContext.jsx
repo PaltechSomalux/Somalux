@@ -74,6 +74,25 @@ export const AdminUIProvider = ({ children }) => {
     }, 3000);
   }, []);
 
+  // Listen for global toast events so non-admin pages can reuse admin-style toasts
+  React.useEffect(() => {
+    const handler = (e) => {
+      try {
+        const { type = 'info', message } = e?.detail || {};
+        if (!message) return;
+        const id = `${Date.now()}-${Math.random()}`;
+        setToasts((prev) => [...prev, { id, type, message }]);
+        setTimeout(() => {
+          setToasts((prev) => prev.filter((t) => t.id !== id));
+        }, 3000);
+      } catch (err) {
+        // ignore
+      }
+    };
+    window.addEventListener('SomaLux:showToast', handler);
+    return () => window.removeEventListener('SomaLux:showToast', handler);
+  }, []);
+
   return (
     <AdminUIContext.Provider value={{ confirm, prompt, showToast }}>
       {children}

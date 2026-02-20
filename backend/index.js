@@ -38,6 +38,7 @@ import { startScheduledSendProcessor } from './utils/scheduledSendQueue.js';
 import { recordFirstLogin } from './utils/firstLoginTracking.js';
 import { setupChatMeWebSocket } from './chatme-integration.js';
 import chatmeMessagesRouter from './routes/chatmeMessages.js';
+import requestsRouter from './routes/requests.js';
 
 
 // Express Setup MUST be before any app.use/app.post calls
@@ -52,6 +53,9 @@ app.use(featureFlagsRouter);
 
 // Email Notifications Routes (Admin sending emails to users)
 app.use('/api/admin', emailNotificationsRouter);
+
+// User Requests Routes (books, features, complaints, feedback)
+app.use('/api/requests', requestsRouter);
 
 // Past Papers Downloader Routes
 app.use('/api/elib/pastpapers', pastPapersDownloaderRoutes);
