@@ -499,11 +499,28 @@
     font-size: 12px;
 }
 
+select {
+    background-color: #0b1216 !important;
+    background-image: none !important;
+}
+
 select option {
-    background-color: #2a3942 !important;
+    background-color: #0b1216 !important;
+    color: #e9edef !important;
     padding: 6px 8px !important;
     border-radius: 3px !important;
     font-size: 12px !important;
+}
+
+select optgroup {
+    background-color: #0b1216 !important;
+    color: #8696a0 !important;
+}
+
+select optgroup option {
+    background-color: #0b1216 !important;
+    color: #e9edef !important;
+    padding-left: 20px !important;
 }
 
 .label {

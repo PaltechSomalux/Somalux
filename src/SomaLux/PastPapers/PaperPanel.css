@@ -569,7 +569,7 @@
 .paper-cardpast {
   background: var(--bg-dark);
   border-radius: 8px;
-  overflow: visible;
+  overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
   border: none;
@@ -591,6 +591,7 @@
   height: 100px;
   object-fit: cover;
   border-bottom: 1px solid var(--bg-darker);
+  border-radius: 8px 8px 0 0;
 }
 
 @media (min-width: 768px) {

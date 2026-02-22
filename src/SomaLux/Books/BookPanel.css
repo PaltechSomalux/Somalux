@@ -434,7 +434,7 @@
 .book-cardBKP {
   background: var(--bg-dark);
   border-radius: 8px;
-  overflow: visible;
+  overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
   border: none;
@@ -459,6 +459,7 @@
   border-bottom: none;
   margin: 0;
   display: block;
+  border-radius: 8px 8px 0 0;
 }
 
 @media (min-width: 640px) {
@@ -2357,6 +2358,32 @@ div[style*="position: relative"] > .btn-readBKP:hover {
   color: var(--primary);
 }
 
+/* Mobile: prefer single-page scrolling — avoid nested vertical scrollers that cause double scrollbars
+   Force the main container and controls to flow naturally and rely on the browser viewport for vertical scrolling.
+*/
+@media (max-width: 920px) {
+  .containerBKP {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Controls should not create a vertical scrollbar under the search on small screens */
+  .controlsBKP {
+    overflow: visible !important;
+    -webkit-overflow-scrolling: auto !important;
+  }
+
+  /* Ensure modals/panels that were converting to bottom sheets don't cause nested document scrolls */
+  .recommendations-panelBKP,
+  .wishlist-panelBKP {
+    /* keep as bottom sheets on mobile but avoid reserving full viewport height which can create nested scrolling */
+    height: auto !important;
+    max-height: 60vh !important;
+    overflow-y: auto !important;
+  }
+}
+
 .subscription-errorBKP {
   font-size: 0.78rem;
   color: #fecaca;
@@ -2533,4 +2560,110 @@ div[style*="position: relative"] > .btn-readBKP:hover {
   .recommendations-panelBKP,.wishlist-panelBKP{left:6px !important;right:6px !important;width:calc(100% - 12px) !important}
   .titleBKP{font-size:1.1rem}
   .controlsBKP{padding-left:0 !important;padding-right:0 !important}
+}
+
+/* Make relevant scrollbars very thin and visually subtle */
+.containerBKP::-webkit-scrollbar,
+.controlsBKP::-webkit-scrollbar,
+.details-containerBKP::-webkit-scrollbar,
+.recommendations-panelBKP::-webkit-scrollbar,
+.wishlist-panelBKP::-webkit-scrollbar,
+.modal-bodyBKP::-webkit-scrollbar,
+.gridBKP::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.containerBKP::-webkit-scrollbar-track,
+.controlsBKP::-webkit-scrollbar-track,
+.details-containerBKP::-webkit-scrollbar-track,
+.recommendations-panelBKP::-webkit-scrollbar-track,
+.wishlist-panelBKP::-webkit-scrollbar-track,
+.modal-bodyBKP::-webkit-scrollbar-track,
+.gridBKP::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.containerBKP::-webkit-scrollbar-thumb,
+.controlsBKP::-webkit-scrollbar-thumb,
+.details-containerBKP::-webkit-scrollbar-thumb,
+.recommendations-panelBKP::-webkit-scrollbar-thumb,
+.wishlist-panelBKP::-webkit-scrollbar-thumb,
+.modal-bodyBKP::-webkit-scrollbar-thumb,
+.gridBKP::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.06);
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+/* Firefox thin scrollbar */
+.containerBKP,
+.controlsBKP,
+.details-containerBKP,
+.recommendations-panelBKP,
+.wishlist-panelBKP,
+.modal-bodyBKP,
+.gridBKP {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.06) transparent;
+}
+
+@media (max-width: 920px) {
+  .containerBKP::-webkit-scrollbar,
+  .controlsBKP::-webkit-scrollbar,
+  .details-containerBKP::-webkit-scrollbar,
+  .recommendations-panelBKP::-webkit-scrollbar,
+  .wishlist-panelBKP::-webkit-scrollbar,
+  .modal-bodyBKP::-webkit-scrollbar,
+  .gridBKP::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .containerBKP::-webkit-scrollbar-thumb,
+  .controlsBKP::-webkit-scrollbar-thumb,
+  .details-containerBKP::-webkit-scrollbar-thumb,
+  .recommendations-panelBKP::-webkit-scrollbar-thumb,
+  .wishlist-panelBKP::-webkit-scrollbar-thumb,
+  .modal-bodyBKP::-webkit-scrollbar-thumb,
+  .gridBKP::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.08);
+  }
+}
+
+/* Make the remaining scrollbars completely invisible (cross-browser) */
+.containerBKP,
+.controlsBKP,
+.details-containerBKP,
+.recommendations-panelBKP,
+.wishlist-panelBKP,
+.modal-bodyBKP,
+.gridBKP {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.containerBKP::-webkit-scrollbar,
+.controlsBKP::-webkit-scrollbar,
+.details-containerBKP::-webkit-scrollbar,
+.recommendations-panelBKP::-webkit-scrollbar,
+.wishlist-panelBKP::-webkit-scrollbar,
+.modal-bodyBKP::-webkit-scrollbar,
+.gridBKP::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+  width: 0;
+  height: 0;
+}
+
+/* Fallback: hide any remaining scrollbars inside the BookPanel container
+   This targets scrollbars on child elements to make the inner scroller invisible.
+*/
+.containerBKP * {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+.containerBKP *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }

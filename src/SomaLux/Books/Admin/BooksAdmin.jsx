@@ -49,6 +49,7 @@ export const BooksAdmin = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [pendingSubmissions, setPendingSubmissions] = useState(0);
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [pendingAds, setPendingAds] = useState(0);
   const [userProfile, setUserProfile] = useState(null);
   const [authUserEmail, setAuthUserEmail] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -92,12 +93,55 @@ export const BooksAdmin = () => {
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Failed to load requests');
         const list = Array.isArray(json.requests) ? json.requests : (Array.isArray(json) ? json : []);
-        setPendingRequests(list.length || 0);
+        // Filter out user ad submissions from general requests count
+        const generalRequests = list.filter(r => r.type !== 'user_ad_submission');
+        setPendingRequests(generalRequests.length || 0);
       } catch (e) {
         console.warn('Requests summary failed:', e?.message || e);
       }
     };
     fetchRequests();
+  }, []);
+
+  // Fetch pending ads count
+  useEffect(() => {
+    const fetchPendingAds = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/requests?status=pending`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load ads');
+        const list = Array.isArray(json.requests) ? json.requests : (Array.isArray(json) ? json : []);
+        // Count only user ad submissions with pending status
+        const pendingAdsFromRequests = list.filter(r => (r.type === 'user_ad_submission' || r.ad_type) && r.status === 'pending').length || 0;
+
+        // Also count pending ads stored in dedicated user_ads table (if present)
+        let pendingUserAdsCount = 0;
+        try {
+          // Try to get an exact count from user_ads
+          const { data: userAdsData, error: userAdsError, count } = await supabase
+            .from('user_ads')
+            .select('id', { count: 'exact', head: false })
+            .eq('status', 'pending');
+
+          if (userAdsError) {
+            throw userAdsError;
+          }
+
+          // If data array is returned, use its length; otherwise fall back to count value
+          if (Array.isArray(userAdsData)) pendingUserAdsCount = userAdsData.length;
+          else if (typeof count === 'number') pendingUserAdsCount = count;
+        } catch (supErr) {
+          console.warn('Supabase user_ads count failed (table may not exist or permission denied):', supErr?.message || supErr);
+        }
+
+        // Inclusive total across requests fallback and dedicated table
+        const totalPendingAds = pendingAdsFromRequests + (pendingUserAdsCount || 0);
+        setPendingAds(totalPendingAds || 0);
+      } catch (e) {
+        console.warn('Pending ads count failed:', e?.message || e);
+      }
+    };
+    fetchPendingAds();
   }, []);
 
   // Collapse sidebar on mobile
@@ -268,6 +312,7 @@ export const BooksAdmin = () => {
 
                 <NavLink to="/books/admin/ads" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                   <BiSpeaker /> <span className="nav-label">Ads</span>
+                  <NotificationBadge count={pendingAds} />
                 </NavLink>
 
                 <NavLink to="/books/admin/search-analytics" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
@@ -332,6 +377,7 @@ export const BooksAdmin = () => {
           {isAdmin && (
             <NavLink to="/books/admin/ads" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
               <BiSpeaker /> <span>Ads</span>
+              <NotificationBadge count={pendingAds} />
             </NavLink>
           )}
 

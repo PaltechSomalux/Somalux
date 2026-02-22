@@ -18,6 +18,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const UserRequestPageNew = React.lazy(() => import('./SomaLux/User/UserProfile/UserRequestPageNew'));
+const UserAdPage = React.lazy(() => import('./SomaLux/User/UserProfile/UserAdPage'));
 
 // Wrapper component to check suspension status
 function AppContent() {
@@ -78,6 +79,7 @@ function AppContent() {
       <Route path="/user/upload/:tabType" element={<UserUploadPage />} />
       <Route path="/user/request" element={<UserRequestPageNew />} />
       <Route path="/user/request/:tabType" element={<UserRequestPageNew />} />
+      <Route path="/user/ad" element={<React.Suspense fallback={<div>Loading...</div>}><UserAdPage /></React.Suspense>} />
       <Route path="/SettingsPanel" element={<SettingsPanel />} />
 
       {/* Books */}

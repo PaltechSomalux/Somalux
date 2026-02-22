@@ -302,12 +302,19 @@ export const BookPanel = ({ demoMode = false }) => {
   // Admin notification state
   const [pendingSubmissions, setPendingSubmissions] = useState(0);
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [pendingAds, setPendingAds] = useState(0);
 
   // Bulk download selection state
   const [selectedBooksForDownload, setSelectedBooksForDownload] = useState(new Set());
   const [selectAllBooks, setSelectAllBooks] = useState(false);
   const [bulkDownloadMode, setBulkDownloadMode] = useState(false);
   const [downloadingBooks, setDownloadingBooks] = useState({});
+
+  // Reading carousel state
+  const [animationCycle, setAnimationCycle] = useState(0);
+  const [shuffledBooks, setShuffledBooks] = useState([]);
+  const [fullScreenBook, setFullScreenBook] = useState(null);
+  const [isShuffling, setIsShuffling] = useState(true);
 
   const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -760,10 +767,10 @@ export const BookPanel = ({ demoMode = false }) => {
       const { books: rows, categories: cats, totalCount: count } = result;
       const catMap = new Map((cats || []).map(c => [c.id, c.name]));
 
-      // Calculate trending threshold
+      // Calculate trending threshold - only top 2 books are trending
       const scores = (rows || []).map(r => (r.views_count || 0) + 2 * (r.downloads_count || 0));
       scores.sort((a, b) => b - a);
-      const trendingThreshold = scores.length > 10 ? Math.max(scores[Math.floor(scores.length * 0.1)], 50) : 100;
+      const trendingThreshold = scores.length > 2 ? scores[1] : Infinity;
 
       const mapped = (rows || []).map(r => mapRowToUi(r, catMap, trendingThreshold));
 
@@ -1126,8 +1133,36 @@ export const BookPanel = ({ demoMode = false }) => {
 
     fetchRequestsCount();
 
+    const fetchPendingAds = async () => {
+      try {
+        // Fetch pending requests and filter ad submissions
+        const res = await fetch(`${API_URL}/api/requests?status=pending`);
+        const json = await res.json();
+        const list = Array.isArray(json.requests) ? json.requests : (Array.isArray(json) ? json : []);
+        const pendingAdsFromRequests = list.filter(r => (r.type === 'user_ad_submission' || r.ad_type) && r.status === 'pending').length || 0;
+
+        // Also count pending rows in user_ads table
+        let pendingUserAdsCount = 0;
+        try {
+          const { data: userAdsData, error: userAdsError } = await supabase
+            .from('user_ads')
+            .select('id')
+            .eq('status', 'pending');
+          if (!userAdsError && Array.isArray(userAdsData)) pendingUserAdsCount = userAdsData.length;
+        } catch (e) {
+          console.warn('Failed to fetch user_ads pending count:', e?.message || e);
+        }
+
+        setPendingAds((pendingAdsFromRequests || 0) + (pendingUserAdsCount || 0));
+      } catch (err) {
+        console.warn('Failed to fetch pending ads:', err);
+      }
+    };
+
+    fetchPendingAds();
+
     // Poll every 30 seconds for updates
-    const interval = setInterval(() => { fetchSubmissionsCount(); fetchRequestsCount(); }, 30000);
+    const interval = setInterval(() => { fetchSubmissionsCount(); fetchRequestsCount(); fetchPendingAds(); }, 30000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -2792,6 +2827,116 @@ export const BookPanel = ({ demoMode = false }) => {
     return recentBookIds.map((id) => byId.get(id)).filter(Boolean);
   }, [recentBookIds, books]);
 
+  // Shuffle books and update display with random intervals
+  useEffect(() => {
+    if (fullScreenBook) {
+      // Auto-close the celebration popup after 3 seconds
+      const closeTimer = setTimeout(() => {
+        setFullScreenBook(null);
+      }, 3000);
+      return () => clearTimeout(closeTimer);
+    }
+  }, [fullScreenBook]);
+
+  useEffect(() => {
+    if (!user || recentBooks.length === 0) return;
+
+    // Initialize shuffled books
+    setShuffledBooks([...recentBooks].sort(() => Math.random() - 0.5));
+    setIsShuffling(true);
+
+    // Shuffle interval: shuffles every 2-4 seconds (will check isShuffling state)
+    const shuffleInterval = setInterval(() => {
+      setIsShuffling(prev => {
+        if (prev) {
+          // Only shuffle if currently enabled
+          setShuffledBooks(s => [...s].sort(() => Math.random() - 0.5));
+        }
+        return prev;
+      });
+    }, 2000 + Math.random() * 2000);
+
+    // Master control cycle: 5 seconds ON, 20 seconds OFF, repeat
+    let cycleTimeout;
+    const startCycle = () => {
+      setIsShuffling(true);
+      cycleTimeout = setTimeout(() => {
+        setIsShuffling(false);
+        setTimeout(startCycle, 20000); // 20 second pause
+      }, 5000); // 5 second active shuffle
+    };
+
+    startCycle();
+
+    // Randomly select a book for celebration every 10-20 seconds (independent timing)
+    // Only show pop-ups from the currently reading list
+    const celebrationInterval = setInterval(() => {
+      const source = recentBooks.filter(Boolean);
+      if (!source || source.length === 0) return;
+      const randomBook = source[Math.floor(Math.random() * source.length)];
+      setFullScreenBook(randomBook);
+    }, 10000 + Math.random() * 10000);
+
+    return () => {
+      clearInterval(shuffleInterval);
+      clearInterval(celebrationInterval);
+      if (cycleTimeout) clearTimeout(cycleTimeout);
+    };
+  }, [user, recentBooks]);
+
+  // Cycle through animation types uniformly for all books
+  useEffect(() => {
+    const animationCycleInterval = setInterval(() => {
+      setAnimationCycle(prev => (prev + 1) % 4);
+    }, 10000); // Change animation every 10 seconds
+
+    return () => clearInterval(animationCycleInterval);
+  }, []);
+
+  // PowerPoint-style transition variants helper
+  const getPPTVariant = (typeIndex, idx) => {
+    const delay = idx * 0.06;
+    const type = ['fade', 'push', 'wipe', 'zoom', 'flip'][typeIndex % 5];
+    switch (type) {
+      case 'push':
+        return {
+          initial: { x: 120, opacity: 0 },
+          animate: { x: 0, opacity: 1 },
+          exit: { x: -120, opacity: 0 },
+          transition: { duration: 0.6, ease: 'easeOut', delay }
+        };
+      case 'wipe':
+        return {
+          initial: { opacity: 0, clipPath: 'inset(0 100% 0 0)' },
+          animate: { opacity: 1, clipPath: 'inset(0 0% 0 0)' },
+          exit: { opacity: 0, clipPath: 'inset(0 100% 0 0)' },
+          transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1], delay }
+        };
+      case 'zoom':
+        return {
+          initial: { scale: 0.78, opacity: 0 },
+          animate: { scale: 1, opacity: 1 },
+          exit: { scale: 0.9, opacity: 0 },
+          transition: { duration: 0.7, ease: 'easeOut', delay }
+        };
+      case 'flip':
+        return {
+          initial: { rotateY: 60, opacity: 0 },
+          animate: { rotateY: 0, opacity: 1 },
+          exit: { rotateY: -60, opacity: 0 },
+          transition: { duration: 0.72, ease: [0.2, 0.9, 0.3, 1], delay }
+        };
+      default:
+        // fade
+        return {
+          initial: { opacity: 0, y: 18, scale: 0.98 },
+          animate: { opacity: 1, y: 0, scale: 1 },
+          exit: { opacity: 0, y: 12, scale: 0.98 },
+          transition: { duration: 0.6, ease: 'easeOut', delay }
+        };
+    }
+  };
+
   if (loading && books.length === 0) {
     return (
       <div className="containerBKP">
@@ -3040,7 +3185,7 @@ export const BookPanel = ({ demoMode = false }) => {
               >
                 {user?.role === 'admin' || ['campuslives254@gmail.com', 'paltechsomalux@gmail.com'].includes(user?.email) ? 'Admin' : 'Editor'}
               </button>
-              {(pendingSubmissions + pendingRequests) > 0 && (
+              {(pendingSubmissions + pendingRequests + pendingAds) > 0 && (
                 <div style={{
                   position: 'absolute',
                   top: -6,
@@ -3057,7 +3202,7 @@ export const BookPanel = ({ demoMode = false }) => {
                   fontWeight: '600',
                   border: '2px solid #0b1216'
                 }}>
-                  {(pendingSubmissions + pendingRequests) > 99 ? '99+' : (pendingSubmissions + pendingRequests)}
+                  {(pendingSubmissions + pendingRequests + pendingAds) > 99 ? '99+' : (pendingSubmissions + pendingRequests + pendingAds)}
                 </div>
               )}
             </div>
@@ -3174,17 +3319,16 @@ export const BookPanel = ({ demoMode = false }) => {
           style={{
             marginTop: 10,
             marginBottom: 18,
-            padding: '10px 4px',
+            padding: '12px 4px',
             borderRadius: 12,
             background: '#0b1216',
             border: 'none',
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.8)'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12, paddingLeft: 8, paddingRight: 8 }}>
             <div>
-        
-              <div style={{ fontSize: 12, color: '#64748b' }}>Reading</div>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>📖 Currently Reading</div>
             </div>
             <div style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
               <FiClock size={14} />
@@ -3197,65 +3341,495 @@ export const BookPanel = ({ demoMode = false }) => {
               gap: 10,
               overflowX: 'auto',
               paddingBottom: 4,
-              WebkitOverflowScrolling: 'touch'
+              paddingLeft: 4,
+              paddingRight: 4,
+              WebkitOverflowScrolling: 'touch',
+              scrollBehavior: 'smooth'
             }}
           >
-            {recentBooks.map((book) => (
-              <div
-                key={book.id}
-                onClick={() => viewBookDetails(book)}
-                style={{
-                  minWidth: 140,
-                  maxWidth: 160,
-                  background: '#020617',
-                  borderRadius: 10,
-                  border: 'none',
-                  boxShadow: '0 6px 20px rgba(0, 0, 0, 0.7)',
-                  padding: 8,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                  transition: 'box-shadow 0.3s ease'
-                }}
-              >
-                <div
-                  style={{
-                    width: '100%',
-                    aspectRatio: '3/4',
-                    borderRadius: 8,
-                    overflow: 'hidden',
-                    background: '#020617',
-                    border: 'none',
-                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.6)',
-                    marginBottom: 4
-                  }}
-                >
-                  <img
-                    src={book.bookImage}
-                    alt={book.title}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {book.title}
-                </div>
-                <div style={{ fontSize: 12, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {book.author}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                  <span>
-                    <FiEye size={12} /> {book.views?.toLocaleString?.() || 0}
-                  </span>
-                  <span>
-                    <FiDownload size={12} /> {book.downloads?.toLocaleString?.() || 0}
-                  </span>
-                </div>
-              </div>
-            ))}
+            <AnimatePresence mode="popLayout">
+              {shuffledBooks.map((book, idx) => {
+                // All books use the same uniform animation type that cycles every 10 seconds
+                const animationType = animationCycle;
+                const { initial: initialProps, animate: animateProps, exit: exitProps, transition: transitionProps } = getPPTVariant(animationType, idx);
+                const hoverProps = { y: -8, scale: 1.03 };
+                
+                return (
+                  <motion.div
+                    key={`${book.id}-${idx}`}
+                    onClick={() => setFullScreenBook(book)}
+                    whileHover={hoverProps}
+                    whileTap={{ scale: 0.98 }}
+                    initial={initialProps}
+                    animate={animateProps}
+                    exit={exitProps}
+                    transition={transitionProps}
+                    style={{
+                      minWidth: 110,
+                      width: 110,
+                      background: '#111b21',
+                      borderRadius: 10,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      overflow: 'hidden',
+                      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4)',
+                      perspective: 700,
+                      transformStyle: 'preserve-3d',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
+                  >
+                  <div
+                    style={{
+                      width: '100%',
+                      aspectRatio: '2/1.9',
+                      borderRadius: 0,
+                      overflow: 'hidden',
+                      background: '#020617'
+                    }}
+                  >
+                    <motion.img
+                      src={book.bookImage}
+                      alt={book.title}
+                      animate={{
+                        scale: [1, 1.02, 1]
+                      }}
+                      transition={{
+                        duration: 4,
+                        repeat: Infinity,
+                        repeatType: 'reverse'
+                      }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                  <div style={{ padding: '6px', paddingTop: '8px', flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {book.title}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {book.author}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, color: '#64748b', marginTop: 'auto' }}>
+                      <span>
+                        <FiEye size={10} /> {book.views?.toLocaleString?.() || 0}
+                      </span>
+                      <span>
+                        <FiDownload size={10} /> {book.downloads?.toLocaleString?.() || 0}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         </section>
       )}
+
+      {/* Congratulations Celebration Popup */}
+      <AnimatePresence>
+        {fullScreenBook && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              pointerEvents: 'none'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ duration: 0.5, ease: 'backOut' }}
+              style={{
+                position: 'relative',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                perspective: '1200px'
+              }}
+            >
+              {/* Book Cover Image - Clean and Simple */}
+              <motion.img
+                src={fullScreenBook.bookImage}
+                alt={fullScreenBook.title}
+                style={{
+                  maxWidth: 'min(90vw, 450px)',
+                  maxHeight: 'min(90vh, 580px)',
+                  width: 'auto',
+                  height: 'auto',
+                  objectFit: 'contain',
+                  borderRadius: '12px',
+                  marginBottom: 20,
+                  boxShadow: '0 25px 50px rgba(0, 0, 0, 0.8)'
+                }}
+              />
+
+              {/* Party Confetti Pieces - Realistic Popper Physics */}
+              {[...Array(150)].map((_, idx) => {
+                const angle = (idx / 150) * Math.PI * 2;
+                const distance = 250 + Math.random() * 400;
+                const colors = ['#FF006E', '#FB5607', '#FFBE0B', '#8338EC', '#3A86FF', '#06FFB4', '#00D9FF', '#FF006E', '#FB5607', '#38E54D'];
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                const shapeType = idx % 4; // 0: rectangle, 1: circle, 2: thin strip, 3: star
+                
+                let width, height, borderRadius;
+                
+                if (shapeType === 0) {
+                  // Rectangle confetti
+                  width = 14;
+                  height = 28;
+                  borderRadius = '2px';
+                } else if (shapeType === 1) {
+                  // Circle confetti  
+                  width = 18;
+                  height = 18;
+                  borderRadius = '50%';
+                } else if (shapeType === 2) {
+                  // Thin strip/ribbon
+                  width = 4;
+                  height = 50;
+                  borderRadius = '2px';
+                } else {
+                  // Star-like shape
+                  width = 22;
+                  height = 22;
+                  borderRadius = '0px';
+                }
+                
+                // Physics: gravity effect on Y axis
+                const horizontalDisplacement = Math.cos(angle) * distance + (Math.random() * 150 - 75);
+                const verticalDisplacement = Math.sin(angle) * distance + (Math.random() * 200);
+                
+                return (
+                  <motion.div
+                    key={`confetti-${idx}`}
+                    initial={{
+                      x: 0,
+                      y: 0,
+                      opacity: 1,
+                      scale: Math.random() * 0.6 + 0.7,
+                      rotateX: Math.random() * 360,
+                      rotateY: Math.random() * 360,
+                      rotateZ: Math.random() * 360
+                    }}
+                    animate={{
+                      x: horizontalDisplacement,
+                      y: verticalDisplacement,
+                      opacity: 0,
+                      scale: 0,
+                      rotateX: Math.random() * 1080,
+                      rotateY: Math.random() * 1080,
+                      rotateZ: Math.random() * 1080
+                    }}
+                    transition={{
+                      duration: 2.8 + Math.random() * 1.2,
+                      delay: idx * 0.008,
+                      ease: [0.22, 1, 0.36, 1] // Custom easing for more realistic arc
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: '50%',
+                      marginLeft: -(width / 2),
+                      marginTop: -(height / 2),
+                      width: width,
+                      height: height,
+                      background: randomColor,
+                      borderRadius: borderRadius,
+                      boxShadow: `0 0 ${Math.random() * 20 + 12}px ${randomColor}, inset 0 0 8px rgba(255,255,255,0.3)`,
+                      clipPath: shapeType === 3 ? 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' : 'unset',
+                      perspective: '1000px',
+                      transformStyle: 'preserve-3d'
+                    }}
+                  />
+                );
+              })}
+
+              {/* Popper Flash/Explosion Core */}
+              {[...Array(40)].map((_, idx) => {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 100 + Math.random() * 200;
+                const colors = ['#FFD60A', '#FFC300', '#FFB703', '#FB5607', '#FF006E'];
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                return (
+                  <motion.div
+                    key={`spark-${idx}`}
+                    initial={{
+                      x: 0,
+                      y: 0,
+                      opacity: 1,
+                      scale: 1
+                    }}
+                    animate={{
+                      x: Math.cos(angle) * distance,
+                      y: Math.sin(angle) * distance,
+                      opacity: 0,
+                      scale: 0.1
+                    }}
+                    transition={{
+                      duration: 1.8 + Math.random() * 0.6,
+                      delay: idx * 0.02,
+                      ease: 'easeOut'
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: '50%',
+                      width: 8,
+                      height: 8,
+                      background: randomColor,
+                      borderRadius: '50%',
+                      marginLeft: -4,
+                      marginTop: -4,
+                      boxShadow: `0 0 ${Math.random() * 20 + 10}px ${randomColor}`
+                    }}
+                  />
+                );
+              })}
+
+              {/* Spiral Ribbons */}
+              {[...Array(12)].map((_, idx) => {
+                const angle = (idx / 12) * Math.PI * 2;
+                const colors = ['#FF006E', '#FB5607', '#FFBE0B', '#8338EC', '#3A86FF', '#06FFB4'];
+                const randomColor = colors[idx % colors.length];
+                
+                return (
+                  <motion.div
+                    key={`ribbon-${idx}`}
+                    initial={{
+                      scaleY: 0,
+                      opacity: 1
+                    }}
+                    animate={{
+                      scaleY: 1,
+                      opacity: 0
+                    }}
+                    transition={{
+                      duration: 1.8,
+                      delay: idx * 0.06,
+                      ease: 'easeOut'
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: '50%',
+                      width: 4,
+                      height: 200,
+                      background: `linear-gradient(to bottom, ${randomColor}, transparent)`,
+                      transformOrigin: 'top center',
+                      transform: `rotate(${angle}rad)`,
+                      marginLeft: -2
+                    }}
+                  />
+                );
+              })}
+
+              {/* Glitter Dust */}
+              {[...Array(50)].map((_, idx) => {
+                const startAngle = Math.random() * Math.PI * 2;
+                const startDist = Math.random() * 50;
+                const colors = ['#FFD60A', '#FFC300', '#06FFB4', '#3A86FF', '#8338EC', '#FF006E'];
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                return (
+                  <motion.div
+                    key={`glitter-${idx}`}
+                    initial={{
+                      x: Math.cos(startAngle) * startDist,
+                      y: Math.sin(startAngle) * startDist,
+                      opacity: 1,
+                      scale: Math.random() * 0.5 + 0.5
+                    }}
+                    animate={{
+                      x: Math.cos(startAngle) * (startDist + 300),
+                      y: Math.sin(startAngle) * (startDist + 300),
+                      opacity: 0,
+                      scale: 0
+                    }}
+                    transition={{
+                      duration: 2.2 + Math.random() * 0.8,
+                      delay: Math.random() * 0.2,
+                      ease: 'easeOut'
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: '50%',
+                      width: 3,
+                      height: 3,
+                      background: randomColor,
+                      borderRadius: '50%',
+                      marginLeft: -1.5,
+                      marginTop: -1.5,
+                      boxShadow: `0 0 6px ${randomColor}`
+                    }}
+                  />
+                );
+              })}
+              {[0, 1, 2, 3, 4].map((idx) => (
+                <motion.div
+                  key={`balloon-${idx}`}
+                  initial={{
+                    x: Math.random() * 400 - 200,
+                    y: 0,
+                    opacity: 1,
+                    scale: 1,
+                    rotate: 0
+                  }}
+                  animate={{
+                    x: Math.random() * 600 - 300,
+                    y: -500,
+                    opacity: 0,
+                    scale: 0.2,
+                    rotate: Math.random() * 360
+                  }}
+                  transition={{
+                    duration: 2.5 + Math.random() * 1.5,
+                    delay: idx * 0.08,
+                    ease: 'easeOut'
+                  }}
+                  style={{
+                    position: 'absolute',
+                    fontSize: '3.5rem',
+                    left: '50%',
+                    top: '50%',
+                    marginLeft: -25,
+                    marginTop: -25,
+                    filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3))'
+                  }}
+                >
+                  {['🎈', '🎊', '🎉', '🎈', '🎊'][idx]}
+                </motion.div>
+              ))}
+
+              {/* Burst Particles - Exploding Outward */}
+              {[...Array(16)].map((_, idx) => {
+                const angle = (idx / 16) * Math.PI * 2;
+                const distance = 200;
+                return (
+                  <motion.div
+                    key={`particle-${idx}`}
+                    initial={{
+                      x: 0,
+                      y: 0,
+                      opacity: 1,
+                      scale: 1
+                    }}
+                    animate={{
+                      x: Math.cos(angle) * distance,
+                      y: Math.sin(angle) * distance,
+                      opacity: 0,
+                      scale: 0
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      delay: Math.random() * 0.3,
+                      ease: 'easeOut'
+                    }}
+                    style={{
+                      position: 'absolute',
+                      fontSize: '2rem',
+                      left: '50%',
+                      top: '50%',
+                      marginLeft: -15,
+                      marginTop: -15,
+                      filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))'
+                    }}
+                  >
+                    {['✨', '⭐', '💫', '🌟', '✨', '💛', '❤️', '💜', '💚', '🧡', '💙', '✨', '⭐', '💫', '🌟'][idx]}
+                  </motion.div>
+                );
+              })}
+
+              {/* Confetti Pieces - Random Falls */}
+              {[...Array(20)].map((_, idx) => {
+                const startX = Math.random() * 400 - 200;
+                const duration = 2 + Math.random() * 1;
+                return (
+                  <motion.div
+                    key={`confetti-${idx}`}
+                    initial={{
+                      x: startX,
+                      y: -50,
+                      opacity: 1,
+                      rotate: Math.random() * 360
+                    }}
+                    animate={{
+                      x: startX + (Math.random() * 200 - 100),
+                      y: 150,
+                      opacity: 0,
+                      rotate: Math.random() * 720
+                    }}
+                    transition={{
+                      duration: duration,
+                      delay: Math.random() * 0.4,
+                      ease: 'easeOut'
+                    }}
+                    style={{
+                      position: 'absolute',
+                      fontSize: '1.2rem',
+                      left: '50%',
+                      top: '50%',
+                      marginLeft: -8,
+                      marginTop: -8
+                    }}
+                  >
+                    {['🎈', '🎉', '🎊', '⭐', '✨', '💫'][Math.floor(Math.random() * 6)]}
+                  </motion.div>
+                );
+              })}
+
+              {/* Extra Sparkle Ring - Expanding Circle */}
+              {[0, 1, 2].map((idx) => (
+                <motion.div
+                  key={`ring-${idx}`}
+                  initial={{
+                    scale: 0,
+                    opacity: 1
+                  }}
+                  animate={{
+                    scale: 3,
+                    opacity: 0
+                  }}
+                  transition={{
+                    duration: 1.2,
+                    delay: idx * 0.2,
+                    ease: 'easeOut'
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: '50%',
+                    marginLeft: -40,
+                    marginTop: -40,
+                    width: 80,
+                    height: 80,
+                    border: '3px solid rgba(251, 191, 36, 0.6)',
+                    borderRadius: '50%',
+                    pointerEvents: 'none'
+                  }}
+                />
+              ))}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Recommendations Panel Toggle */}
       {user && recommendations.length > 0 && (

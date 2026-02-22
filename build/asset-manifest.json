@@ -1,8 +1,9 @@
 {
   "files": {
-    "main.css": "/static/css/main.13c23102.css",
-    "main.js": "/static/js/main.a80aeb6f.js",
+    "main.css": "/static/css/main.420418f9.css",
+    "main.js": "/static/js/main.3dd27c38.js",
     "static/js/11.a695ee18.chunk.js": "/static/js/11.a695ee18.chunk.js",
+    "static/js/501.5ba861f7.chunk.js": "/static/js/501.5ba861f7.chunk.js",
     "static/js/144.9375d3e8.chunk.js": "/static/js/144.9375d3e8.chunk.js",
     "static/js/781.bc400d0a.chunk.js": "/static/js/781.bc400d0a.chunk.js",
     "static/js/52.47436b00.chunk.js": "/static/js/52.47436b00.chunk.js",
@@ -23,8 +24,8 @@
     "static/js/166.96c9f3df.chunk.js": "/static/js/166.96c9f3df.chunk.js",
     "static/js/515.0665d9e9.chunk.js": "/static/js/515.0665d9e9.chunk.js",
     "static/js/442.4d1a1a4c.chunk.js": "/static/js/442.4d1a1a4c.chunk.js",
-    "static/css/868.80509354.chunk.css": "/static/css/868.80509354.chunk.css",
-    "static/js/868.0e79cd1f.chunk.js": "/static/js/868.0e79cd1f.chunk.js",
+    "static/css/868.3eeda372.chunk.css": "/static/css/868.3eeda372.chunk.css",
+    "static/js/868.50e7a365.chunk.js": "/static/js/868.50e7a365.chunk.js",
     "static/css/40.b0824cc1.chunk.css": "/static/css/40.b0824cc1.chunk.css",
     "static/js/40.0c5b34f6.chunk.js": "/static/js/40.0c5b34f6.chunk.js",
     "static/css/94.1e1919c8.chunk.css": "/static/css/94.1e1919c8.chunk.css",
@@ -33,6 +34,8 @@
     "static/css/123.be275e94.chunk.css": "/static/css/123.be275e94.chunk.css",
     "static/js/123.a1064e5e.chunk.js": "/static/js/123.a1064e5e.chunk.js",
     "static/js/952.1d3e65f3.chunk.js": "/static/js/952.1d3e65f3.chunk.js",
+    "static/js/805.cf16df6b.chunk.js": "/static/js/805.cf16df6b.chunk.js",
+    "static/js/301.8980957b.chunk.js": "/static/js/301.8980957b.chunk.js",
     "static/js/996.c7f455df.chunk.js": "/static/js/996.c7f455df.chunk.js",
     "static/js/162.be362677.chunk.js": "/static/js/162.be362677.chunk.js",
     "static/js/148.f13438c0.chunk.js": "/static/js/148.f13438c0.chunk.js",
@@ -260,7 +263,7 @@
     "index.html": "/index.html"
   },
   "entrypoints": [
-    "static/css/main.13c23102.css",
-    "static/js/main.a80aeb6f.js"
+    "static/css/main.420418f9.css",
+    "static/js/main.3dd27c38.js"
   ]
 }

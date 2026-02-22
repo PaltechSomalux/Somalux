@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { UserCircle, SignOut, Bookmark, IdentificationCard } from "@phosphor-icons/react";
 import { useNavigate } from 'react-router-dom';
-import { FiTrendingUp, FiUpload, FiDownload, FiBarChart2, FiStar, FiEdit3 } from 'react-icons/fi';
+import { FiTrendingUp, FiUpload, FiDownload, FiBarChart2, FiStar, FiEdit3, FiPlusCircle } from 'react-icons/fi';
 import { statsCache, userCache } from "../Books/utils/cacheManager";
 import { supabase } from "../Books/supabaseClient";
 import { ProfileAvatar } from "./ProfileAvatar";
@@ -1000,6 +1000,37 @@ export const Profile = ({ user: propUser = null }) => {
               >
                 <FiEdit3 size={14} />
                 Request
+              </button>
+
+              {/* Create Ad */}
+              <button
+                onClick={() => {
+                  setShowActionsGrid(false);
+                  if (!authUser) setShowAuthModal(true);
+                  else navigate('/user/ad');
+                }}
+                style={{
+                  padding: '5px 6px',
+                  background: '#0b1216',
+                  border: '1px solid #2a3942',
+                  color: '#e9edef',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  borderRadius: '3px',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1a2332'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#0b1216'; }}
+                title="Create ad for approval"
+              >
+                <FiPlusCircle size={14} />
+                Create Ad
               </button>
 
               {/* Sign Out */}
