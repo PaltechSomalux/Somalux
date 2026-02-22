@@ -2838,6 +2838,54 @@ export const BookPanel = ({ demoMode = false }) => {
     }
   }, [fullScreenBook]);
 
+  // Track inactivity to show book cover after 2 minutes
+  useEffect(() => {
+    if (!user || recentBooks.length === 0) return;
+
+    const INACTIVITY_TIMEOUT = 2 * 60 * 1000; // 2 minutes in milliseconds
+    let inactivityTimer = null;
+
+    // Function to reset inactivity timer
+    const resetInactivityTimer = () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+
+      inactivityTimer = setTimeout(() => {
+        // Show a random book after inactivity
+        const source = recentBooks.filter(Boolean);
+        if (source && source.length > 0) {
+          const randomBook = source[Math.floor(Math.random() * source.length)];
+          setFullScreenBook(randomBook);
+        }
+      }, INACTIVITY_TIMEOUT);
+    };
+
+    // Activity event listeners
+    const handleActivity = () => {
+      resetInactivityTimer();
+    };
+
+    // Add event listeners for various user activities
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+    window.addEventListener('touchmove', handleActivity);
+    window.addEventListener('touchstart', handleActivity);
+
+    // Initialize the timer
+    resetInactivityTimer();
+
+    return () => {
+      clearTimeout(inactivityTimer);
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+      window.removeEventListener('touchmove', handleActivity);
+      window.removeEventListener('touchstart', handleActivity);
+    };
+  }, [user, recentBooks]);
+
   useEffect(() => {
     if (!user || recentBooks.length === 0) return;
 
@@ -2868,18 +2916,8 @@ export const BookPanel = ({ demoMode = false }) => {
 
     startCycle();
 
-    // Randomly select a book for celebration every 10-20 seconds (independent timing)
-    // Only show pop-ups from the currently reading list
-    const celebrationInterval = setInterval(() => {
-      const source = recentBooks.filter(Boolean);
-      if (!source || source.length === 0) return;
-      const randomBook = source[Math.floor(Math.random() * source.length)];
-      setFullScreenBook(randomBook);
-    }, 10000 + Math.random() * 10000);
-
     return () => {
       clearInterval(shuffleInterval);
-      clearInterval(celebrationInterval);
       if (cycleTimeout) clearTimeout(cycleTimeout);
     };
   }, [user, recentBooks]);

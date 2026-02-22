@@ -424,13 +424,6 @@ export const BooksAdmin = () => {
             </NavLink>
           )}
 
-          {isAdmin && (
-            <NavLink to="/books/admin/requests" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
-              <FiEdit3 /> <span>Requests</span>
-              <NotificationBadge count={pendingRequests} />
-            </NavLink>
-          )}
-
           {/* ADDITIONAL TABS */}
           {isAdmin && (
             <NavLink to="/books/admin/rankings" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>

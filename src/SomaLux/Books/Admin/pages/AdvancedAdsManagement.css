@@ -3,7 +3,7 @@
    ============================================================ */
 
 .ads-management.advanced {
-  padding: 8px;
+  padding: 16px;
   background: #0b1216;
   min-height: 100vh;
   color: #e9edef;
@@ -89,25 +89,25 @@
 /* Header Actions */
 .header-actions {
   display: flex;
-  gap: 8px;
+  gap: 16px;
   align-items: center;
   justify-content: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .btn-create-ad {
   background: #00a884;
   color: #0b1216;
   border: none;
-  padding: 10px 18px;
-  border-radius: 6px;
-  font-size: 0.9rem;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
+  gap: 6px;
+  transition: all 0.2s ease;
 }
 
 .btn-create-ad:hover {
@@ -691,7 +691,7 @@
 
 /* Ads List */
 .ads-list {
-  margin-top: 8px;
+  margin-top: 16px;
 }
 
 .no-ads {
@@ -708,9 +708,9 @@
   width: 100%;
   border-collapse: collapse;
   background: #111b21;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
-  font-size: 12px;
+  font-size: 13px;
   table-layout: fixed;
 }
 
@@ -722,7 +722,7 @@
 }
 
 .ads-table th {
-  padding: 10px 12px;
+  padding: 12px 16px;
   text-align: left;
   font-weight: 600;
   color: #8696a0;
@@ -747,11 +747,140 @@
 .ads-table th:nth-child(11) { width: 6%; text-align: center; }
 
 .ads-table td {
-  padding: 10px 12px;
+  padding: 12px 16px;
   color: #e9edef;
-  line-height: 1.4;
+  line-height: 1.5;
   word-break: break-word;
   overflow: hidden;
+}
+
+/* Responsive adjustments: scale desktop table for mobile while keeping layout
+   - reduce font-size and padding
+   - hide less-important columns on narrow widths to fit better
+   - keep horizontal scrolling as fallback */
+@media (max-width: 600px) {
+  .ads-management.advanced { padding: 12px; }
+
+  .header-actions .btn-create-ad {
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    border-radius: 3px;
+  }
+
+  .ads-table { font-size: 11px; }
+  .ads-table th, .ads-table td { padding: 8px 8px; }
+
+  /* Hide secondary columns to reduce width: Creator, CTR, End Date */
+  .ads-table th:nth-child(2), .ads-table td:nth-child(2),
+  .ads-table th:nth-child(8), .ads-table td:nth-child(8),
+  .ads-table th:nth-child(10), .ads-table td:nth-child(10) {
+    display: none;
+  }
+
+  .ads-list { margin-top: 12px; }
+}
+
+@media (max-width: 420px) {
+  .ads-table { font-size: 10px; }
+  .ads-table th, .ads-table td { padding: 6px 6px; }
+
+  /* Make create button full width on very small screens so it's easier to tap */
+  .header-actions { width: 100%; }
+  .header-actions .btn-create-ad { width: 100%; justify-content: center; }
+
+  /* Hide additional columns (Impressions) if still cramped */
+  .ads-table th:nth-child(6), .ads-table td:nth-child(6) {
+    display: none;
+  }
+}
+
+/* Strong overrides for environments where other styles win or caching causes issues */
+@media (max-width: 600px) {
+  .ads-management.advanced .ads-table { 
+    font-size: 11px !important; 
+    width: 100% !important; 
+    min-width: 800px !important;
+    border-collapse: collapse !important; 
+    table-layout: fixed !important;
+  }
+  .ads-management.advanced .ads-table th { 
+    padding: 12px 14px !important; 
+    line-height: 1.6 !important; 
+    text-align: left !important;
+    border-bottom: 2px solid #263238 !important;
+  }
+  .ads-management.advanced .ads-table td { 
+    padding: 12px 14px !important; 
+    line-height: 1.8 !important; 
+    min-height: 44px !important; 
+    vertical-align: middle !important;
+    border-bottom: 1px solid #263238 !important;
+  }
+  .ads-management.advanced .ads-table .actions-cell {
+    text-align: center !important;
+    padding: 12px 14px !important;
+  }
+  .ads-management.advanced .ads-table .actions { 
+    display: flex !important; 
+    gap: 6px !important; 
+    justify-content: center !important;
+    flex-wrap: nowrap !important;
+  }
+  .ads-management.advanced .ads-table tbody tr:hover { background: rgba(0, 168, 132, 0.1) !important; }
+  .ads-management.advanced .ads-table th:nth-child(2),
+  .ads-management.advanced .ads-table td:nth-child(2),
+  .ads-management.advanced .ads-table th:nth-child(8),
+  .ads-management.advanced .ads-table td:nth-child(8),
+  .ads-management.advanced .ads-table th:nth-child(10),
+  .ads-management.advanced .ads-table td:nth-child(10) { display: none !important; }
+  .ads-management.advanced .ads-list { 
+    margin-top: 16px !important; 
+    overflow-x: auto !important; 
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+  }
+  .ads-management.advanced .header-actions .btn-create-ad { padding: 10px 14px !important; font-size: 0.88rem !important; }
+}
+
+@media (max-width: 420px) {
+  .ads-management.advanced .ads-table { 
+    font-size: 11px !important; 
+    min-width: 700px !important;
+    border-collapse: collapse !important; 
+    table-layout: fixed !important;
+  }
+  .ads-management.advanced .ads-table th { 
+    padding: 11px 12px !important; 
+    line-height: 1.5 !important; 
+    text-align: left !important;
+    border-bottom: 2px solid #263238 !important;
+  }
+  .ads-management.advanced .ads-table td { 
+    padding: 11px 12px !important; 
+    line-height: 1.6 !important; 
+    min-height: 40px !important; 
+    vertical-align: middle !important;
+    border-bottom: 1px solid #263238 !important;
+  }
+  .ads-management.advanced .ads-table .actions-cell {
+    text-align: center !important;
+    padding: 11px 12px !important;
+  }
+  .ads-management.advanced .ads-table .actions { 
+    display: flex !important; 
+    gap: 6px !important; 
+    justify-content: center !important;
+  }
+  .ads-management.advanced .ads-table tbody tr:hover { background: rgba(0, 168, 132, 0.1) !important; }
+  .ads-management.advanced .header-actions { width: 100% !important; margin-bottom: 16px !important; }
+  .ads-management.advanced .header-actions .btn-create-ad { width: 100% !important; justify-content: center !important; display: inline-flex !important; padding: 10px 14px !important; }
+  .ads-management.advanced .ads-table th:nth-child(6), .ads-management.advanced .ads-table td:nth-child(6) { display: none !important; }
+  .ads-management.advanced .ads-list { 
+    margin-top: 16px !important; 
+    overflow-x: auto !important; 
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+  }
 }
 
 /* Column width definitions for cells */
@@ -866,7 +995,7 @@
 
 .actions {
   display: flex;
-  gap: 6px;
+  gap: 12px;
   justify-content: flex-end;
 }
 
@@ -958,7 +1087,7 @@
 
 /* Ad Card */
 .ad-card {
-  display: none; /* Hidden - using table layout instead */
+  display: none; /* Hidden - using table layout by default */
 }
 
 .placement-badge {
@@ -1189,6 +1318,120 @@
 
   .ad-type-selection {
     flex-direction: column;
+  }
+}
+
+/* Mobile-first overrides: switch to card layout and stack form fields */
+@media (max-width: 900px) {
+  .btn-create-ad { padding: 8px 12px; font-size: 0.85rem; }
+  .ads-table {
+    display: table !important;
+    min-width: 980px !important; /* ensures table columns keep layout and allow scroll */
+  }
+
+  /* Hide ad cards on widths where table is preferred */
+  .ad-card {
+    display: none !important;
+  }
+
+  .ads-cards {
+    display: none !important;
+  }
+
+  /* Ensure header stats wrap and use available space */
+  .header-main { gap: 8px; }
+  .header-stats { gap: 10px; }
+  .stat-item { flex: 1 1 120px; min-width: 0; }
+
+  /* Stack form sections and allow full width inputs */
+  .form-section {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid rgba(255,255,255,0.03) !important;
+  }
+
+  .form-row { display: flex; flex-direction: column; gap: 8px; }
+
+  .form-group { width: 100%; }
+  .form-group input:not([type="checkbox"]),
+  .form-group select,
+  .form-group textarea { width: 100% !important; box-sizing: border-box; }
+
+  /* Make header action button full width and easier to tap */
+  .header-actions { width: 100%; }
+  .header-actions .btn-create-ad { width: 100%; justify-content: center; }
+
+  /* Make ads-list horizontally scrollable */
+  .ads-list { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+  .ads-performance-table .table-header { min-width: auto !important; }
+
+  /* Reduce paddings for compact mobile view */
+  .ads-table th, .ads-table td { padding: 8px 8px !important; }
+}
+
+@media (max-width: 420px) {
+  /* Further tighten spacing and increase tap targets */
+  .btn-create-ad { padding: 12px; font-size: 0.95rem; }
+  .btn-small { width: 36px; height: 36px; }
+  .ad-thumb { width: 40px; height: 40px; }
+  .title-with-thumb { gap: 10px; }
+}
+
+/* Final high-specificity overrides to ensure horizontal scrolling works on mobile
+   and small tablets. These use !important and specific selectors so they win
+   against other rules and cached styles. */
+@media (max-width: 900px) {
+  .ads-management.advanced .ads-list {
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+  }
+
+  .ads-management.advanced .ads-list > .ads-table,
+  .ads-management.advanced .ads-list table {
+    display: table !important;
+    width: auto !important;
+    min-width: 1200px !important; /* increase to ensure horizontal scroll on narrow screens */
+    table-layout: auto !important;
+    white-space: nowrap !important;
+  }
+
+  .ads-management.advanced .ads-list table thead,
+  .ads-management.advanced .ads-list table tbody {
+    display: table-header-group !important;
+  }
+
+  .ads-management.advanced .ads-list table th,
+  .ads-management.advanced .ads-list table td {
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    padding: 10px 12px !important;
+  }
+
+  /* allow touch panning horizontally and prevent parent capturing gestures */
+  .ads-management.advanced .ads-list {
+    touch-action: pan-x !important;
+    -ms-touch-action: pan-x !important;
+    overscroll-behavior-x: contain !important;
+  }
+
+  /* Ensure parent container allows scrolling and ads-list handles horizontal scroll */
+  .ads-management.advanced { overflow: visible !important; }
+  .ads-management.advanced .ads-list { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+  .ads-management.advanced .ads-list > * { min-width: 100% !important; }
+}
+
+/* Extra strong rules for very small widths to keep table usable */
+@media (max-width: 420px) {
+  .ads-management.advanced .ads-list > .ads-table,
+  .ads-management.advanced .ads-list table {
+    min-width: 900px !important;
   }
 }
 

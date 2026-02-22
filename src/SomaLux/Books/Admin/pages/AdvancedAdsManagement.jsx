@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { API_URL } from '../../../../config';
 import { FiTrash2, FiEdit2, FiPlus, FiVideo, FiImage, FiBarChart2, FiTrendingUp, FiUsers, FiMousePointer, FiCheck, FiX } from 'react-icons/fi';
@@ -73,6 +73,26 @@ export default function AdvancedAdsManagement() {
     priority: 0,
     abTestGroup: 'control',
   });
+
+  const adsListRef = useRef(null);
+
+  const scrollAds = (delta = 300) => {
+    try {
+      if (adsListRef.current) {
+        adsListRef.current.scrollBy({ left: delta, behavior: 'smooth' });
+      }
+    } catch (e) { console.warn('scrollAds error', e); }
+  };
+
+  // Responsive helper for mobile rendering
+  // Use smaller breakpoint so desktop table remains visible and scrollable on mobile
+  const MOBILE_BREAKPOINT = 420;
+  const [isNarrow, setIsNarrow] = useState(typeof window !== 'undefined' ? window.innerWidth <= MOBILE_BREAKPOINT : false);
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth <= MOBILE_BREAKPOINT);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Fetch all ads
   const fetchAds = async () => {
@@ -1271,103 +1291,137 @@ export default function AdvancedAdsManagement() {
 
       {/* Ads List - Compact Table */}
       {activeTab === 'ads' && !showForm && (
-        <div className="ads-list" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div className="ads-list" ref={adsListRef} style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
           {ads.length === 0 ? (
             <div className="no-ads">
               <p>No ads yet. Create your first ad!</p>
             </div>
           ) : (
-            <table className="ads-table" style={{ minWidth: '100%', width: '100%', tableLayout: 'fixed' }}>
-              <thead>
-                <tr>
-                  <th style={{ minWidth: '60px', flex: 1, width: '14%' }}>Title</th>
-                  <th style={{ minWidth: '65px', flex: 0.9, width: '12%' }}>Creator</th>
-                  <th style={{ minWidth: '45px', flex: 0.5, width: '7%' }}>Type</th>
-                  <th style={{ minWidth: '50px', flex: 0.7, width: '10%' }}>Placement</th>
-                  <th style={{ minWidth: '45px', flex: 0.5, width: '7%' }}>Status</th>
-                  <th style={{ minWidth: '50px', flex: 0.7, width: '10%' }}>Impressions</th>
-                  <th style={{ minWidth: '45px', flex: 0.5, width: '7%' }}>Clicks</th>
-                  <th style={{ minWidth: '35px', flex: 0.4, width: '5%' }}>CTR</th>
-                  <th style={{ minWidth: '50px', flex: 0.7, width: '10%' }}>Start Date</th>
-                  <th style={{ minWidth: '65px', flex: 0.9, width: '12%' }}>End Date</th>
-                  <th style={{ minWidth: '60px', flex: 0.8, width: '6%', textAlign: 'center' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ads && ads.length > 0 ? ads.filter(ad => !!ad).map(ad => {
-                  if (!ad) return null;
-                  return (
-                    <tr key={ad?.id} className={`ad-row ${ad?.status || 'active'}`}>
-                      <td className="title-cell">
-                        <div className="title-with-thumb">
-                          {(ad?.ad_type || 'image') === 'video' ? (
-                            <div className="ad-thumb video">🎥</div>
-                          ) : (
-                            <>
-                              {ad?.image_url && (
-                                <img src={ad?.image_url} alt={ad?.title} className="ad-thumb" />
-                              )}
-                            </>
-                          )}
-                          <span>{ad?.title}</span>
-                        </div>
-                      </td>
-                      <td className="creator-cell">
-                        <div className="creator-info">
+            isNarrow ? (
+              <div className="ads-cards">
+                {ads.filter(ad => !!ad).map(ad => (
+                  <div key={ad?.id} className="ad-card" style={{ display: 'block' }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      {(ad?.ad_type || 'image') === 'video' ? (
+                        <div className="ad-thumb video" style={{ minWidth: 48, minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🎥</div>
+                      ) : (
+                        ad?.image_url ? <img src={ad?.image_url} alt={ad?.title} className="ad-thumb" style={{ width: 48, height: 48 }} /> : <div className="ad-thumb" style={{ width: 48, height: 48 }} />
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, color: '#e9edef', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad?.title || 'Untitled'}</div>
+                        <div style={{ fontSize: 12, color: '#8696a0', marginTop: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
                           <span className="creator-name">{ad?.user_name || ad?.user_email || '—'}</span>
+                          <span className={`status-badge ${ad?.status || 'active'}`} style={{ fontSize: 11 }}>{ad?.status || 'Active'}</span>
                         </div>
-                      </td>
-                      <td className="type-cell">
-                        <span className="badge-type">{(ad?.ad_type || 'image').toUpperCase()}</span>
-                      </td>
-                      <td>{ad?.placement}</td>
-                      <td>
-                        <span className={`status-badge ${ad?.status || 'active'}`}>
-                          {ad?.status?.charAt(0).toUpperCase() + ad?.status?.slice(1) || 'Active'}
-                        </span>
-                      </td>
-                      <td className="number">{ad?.total_impressions || 0}</td>
-                      <td className="number">{ad?.total_clicks || 0}</td>
-                      <td className="number">
-                        {(ad?.total_impressions || 0) > 0 
-                          ? (((ad?.total_clicks || 0) / (ad?.total_impressions || 1)) * 100).toFixed(2) 
-                          : 0}%
-                      </td>
-                      <td className="date-cell">
-                        {ad?.start_date ? new Date(ad?.start_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : '—'}
-                      </td>
-                      <td className="date-cell">
-                        {ad?.end_date ? new Date(ad?.end_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : '—'}
-                      </td>
-                      <td className="actions-cell" style={{ textAlign: 'center' }}>
-                        <div className="actions" style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                          <button 
-                            className="btn-small edit"
-                            onClick={() => ad && handleEdit(ad)}
-                            title="Edit ad"
-                          >
-                            <FiEdit2 />
-                          </button>
-                          <button 
-                            className="btn-small delete"
-                            onClick={() => ad?.id && handleDelete(ad.id)}
-                            title="Delete ad"
-                          >
-                            <FiTrash2 />
-                          </button>
+                        <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: '#b0bcc4' }}>
+                          <span>Impr: {ad?.total_impressions || 0}</span>
+                          <span>Clk: {ad?.total_clicks || 0}</span>
+                          <span>{ad?.start_date ? new Date(ad?.start_date).toLocaleDateString() : '—'}</span>
                         </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <button className="btn-small edit" onClick={() => ad && handleEdit(ad)} title="Edit ad"><FiEdit2 /></button>
+                        <button className="btn-small delete" onClick={() => ad?.id && handleDelete(ad.id)} title="Delete ad"><FiTrash2 /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              ) : (
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table className="ads-table" style={{ minWidth: 1200, width: 'auto', tableLayout: 'auto' }}>
+                <thead>
+                  <tr>
+                    <th style={{ minWidth: '60px', flex: 1, width: '14%' }}>Title</th>
+                    <th style={{ minWidth: '65px', flex: 0.9, width: '12%' }}>Creator</th>
+                    <th style={{ minWidth: '45px', flex: 0.5, width: '7%' }}>Type</th>
+                    <th style={{ minWidth: '50px', flex: 0.7, width: '10%' }}>Placement</th>
+                    <th style={{ minWidth: '45px', flex: 0.5, width: '7%' }}>Status</th>
+                    <th style={{ minWidth: '50px', flex: 0.7, width: '10%' }}>Impressions</th>
+                    <th style={{ minWidth: '45px', flex: 0.5, width: '7%' }}>Clicks</th>
+                    <th style={{ minWidth: '35px', flex: 0.4, width: '5%' }}>CTR</th>
+                    <th style={{ minWidth: '50px', flex: 0.7, width: '10%' }}>Start Date</th>
+                    <th style={{ minWidth: '65px', flex: 0.9, width: '12%' }}>End Date</th>
+                    <th style={{ minWidth: '60px', flex: 0.8, width: '6%', textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ads && ads.length > 0 ? ads.filter(ad => !!ad).map(ad => {
+                    if (!ad) return null;
+                    return (
+                      <tr key={ad?.id} className={`ad-row ${ad?.status || 'active'}`}>
+                        <td className="title-cell">
+                          <div className="title-with-thumb">
+                            {(ad?.ad_type || 'image') === 'video' ? (
+                              <div className="ad-thumb video">🎥</div>
+                            ) : (
+                              <>
+                                {ad?.image_url && (
+                                  <img src={ad?.image_url} alt={ad?.title} className="ad-thumb" />
+                                )}
+                              </>
+                            )}
+                            <span>{ad?.title}</span>
+                          </div>
+                        </td>
+                        <td className="creator-cell">
+                          <div className="creator-info">
+                            <span className="creator-name">{ad?.user_name || ad?.user_email || '—'}</span>
+                          </div>
+                        </td>
+                        <td className="type-cell">
+                          <span className="badge-type">{(ad?.ad_type || 'image').toUpperCase()}</span>
+                        </td>
+                        <td>{ad?.placement}</td>
+                        <td>
+                          <span className={`status-badge ${ad?.status || 'active'}`}>
+                            {ad?.status?.charAt(0).toUpperCase() + ad?.status?.slice(1) || 'Active'}
+                          </span>
+                        </td>
+                        <td className="number">{ad?.total_impressions || 0}</td>
+                        <td className="number">{ad?.total_clicks || 0}</td>
+                        <td className="number">
+                          {(ad?.total_impressions || 0) > 0 
+                            ? (((ad?.total_clicks || 0) / (ad?.total_impressions || 1)) * 100).toFixed(2) 
+                            : 0}%
+                        </td>
+                        <td className="date-cell">
+                          {ad?.start_date ? new Date(ad?.start_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : '—'}
+                        </td>
+                        <td className="date-cell">
+                          {ad?.end_date ? new Date(ad?.end_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : '—'}
+                        </td>
+                        <td className="actions-cell" style={{ textAlign: 'center' }}>
+                          <div className="actions" style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                            <button 
+                              className="btn-small edit"
+                              onClick={() => ad && handleEdit(ad)}
+                              title="Edit ad"
+                            >
+                              <FiEdit2 />
+                            </button>
+                            <button 
+                              className="btn-small delete"
+                              onClick={() => ad?.id && handleDelete(ad.id)}
+                              title="Delete ad"
+                            >
+                              <FiTrash2 />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }) : (
+                    <tr>
+                      <td colSpan="10" style={{ textAlign: 'center', padding: '20px', color: '#8696a0' }}>
+                        No ads found
                       </td>
                     </tr>
-                  );
-                }) : (
-                  <tr>
-                    <td colSpan="10" style={{ textAlign: 'center', padding: '20px', color: '#8696a0' }}>
-                      No ads found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+              </div>
+            )
           )}
         </div>
       )}
