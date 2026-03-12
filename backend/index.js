@@ -34,6 +34,7 @@ import pastPapersDownloaderRoutes from './routes/pastPapersDownloaderRoutes.js';
 import pastPaperExtractRoute from './routes/pastPaperExtractRoute.js';
 import firstPageExtractRoute from './routes/firstPageExtractRoute.js';
 import emailNotificationsRouter from './routes/emailNotifications.js';
+import adminAssetsRouter from './routes/adminAssets.js';
 import { startScheduledSendProcessor } from './utils/scheduledSendQueue.js';
 import { recordFirstLogin } from './utils/firstLoginTracking.js';
 import { setupChatMeWebSocket } from './chatme-integration.js';
@@ -53,6 +54,9 @@ app.use(featureFlagsRouter);
 
 // Email Notifications Routes (Admin sending emails to users)
 app.use('/api/admin', emailNotificationsRouter);
+
+// Admin Assets Routes (Asset management for admins)
+app.use('/api', adminAssetsRouter);
 
 // User Requests Routes (books, features, complaints, feedback)
 app.use('/api/requests', requestsRouter);

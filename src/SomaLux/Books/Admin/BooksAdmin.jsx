@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, Navigate, useNavigate, useLocation, Link } from
 import { 
   FiBarChart2, FiBookOpen, FiUpload, FiFolder,
   FiSettings, FiUsers, FiChevronLeft, FiChevronRight,
-  FiRefreshCw, FiGrid, FiSearch, FiHardDrive, FiCheck, FiClock, FiDownload, FiMail, FiEdit3
+  FiRefreshCw, FiGrid, FiSearch, FiHardDrive, FiCheck, FiClock, FiDownload, FiMail, FiEdit3, FiBox
 } from 'react-icons/fi';
 import { MdAdminPanelSettings } from "react-icons/md";
 import { BiSpeaker } from 'react-icons/bi';
@@ -42,6 +42,10 @@ const AdAnalytics = React.lazy(() => import('./pages/AdAnalytics'));
 const Rankings = React.lazy(() => import('./pages/Rankings'));
 const StorageCleanup = React.lazy(() => import('./pages/StorageCleanup'));
 const SendEmails = React.lazy(() => import('./pages/SendEmails'));
+const Assets = React.lazy(() => import('./pages/Assets'));
+
+// Only these superadmins can access Assets
+const SUPERADMIN_EMAILS = ['campuslives254@gmail.com', 'paltechsomalux@gmail.com'];
 
 export const BooksAdmin = () => {
   const navigate = useNavigate();
@@ -306,6 +310,12 @@ export const BooksAdmin = () => {
                   <FiMail /> <span className="nav-label">Emails</span>
                 </NavLink>
 
+                {authUserEmail && SUPERADMIN_EMAILS.includes(authUserEmail) && (
+                  <NavLink to="/books/admin/assets" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <FiBox /> <span className="nav-label">Assets</span>
+                  </NavLink>
+                )}
+
                 <NavLink to="/books/admin/rankings" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                   <FiBarChart2 /> <span className="nav-label">Rankings</span>
                 </NavLink>
@@ -371,6 +381,12 @@ export const BooksAdmin = () => {
           {isAdmin && (
             <NavLink to="/books/admin/send-emails" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
               <FiMail /> <span>Emails</span>
+            </NavLink>
+          )}
+
+          {isAdmin && authUserEmail && SUPERADMIN_EMAILS.includes(authUserEmail) && (
+            <NavLink to="/books/admin/assets" className={({ isActive }) => `bottom-item ${isActive ? 'active' : ''}`}>
+              <FiBox /> <span>Assets</span>
             </NavLink>
           )}
 
@@ -537,6 +553,7 @@ export const BooksAdmin = () => {
                 {isAdmin && (
                   <>
                     <Route path="send-emails" element={<SendEmails />} />
+                    <Route path="assets" element={<Assets />} />
                     <Route path="rankings" element={<Rankings />} />
                     <Route path="ads" element={<AdsManagement />} />
                     <Route path="users" element={<Users isSuperAdmin={isSuperAdmin} />} />

@@ -1,0 +1,1062 @@
+/* Assets Page Styles - Mobile First Responsive Design */
+
+.assets-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 6px 4px 6px 4px;
+  background: #0b1216;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Header Card */
+.assets-header-simple {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 8px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #1f3a47;
+  flex-wrap: wrap;
+}
+
+.assets-title {
+  margin: 0;
+  color: #e9edef;
+  font-size: 18px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 100px;
+}
+
+.add-asset-btn {
+  white-space: nowrap;
+  background: #00a884 !important;
+  color: white !important;
+  border-radius: 4px !important;
+  padding: 3px 6px !important;
+  font-weight: 600;
+  font-size: 10px !important;
+  text-transform: none !important;
+  box-shadow: 0 2px 6px rgba(0, 168, 132, 0.2) !important;
+  transition: all 0.3s ease;
+  height: auto !important;
+  width: fit-content !important;
+  min-width: auto !important;
+  line-height: 1.1;
+  letter-spacing: -0.3px;
+}
+
+.add-asset-btn:hover {
+  box-shadow: 0 6px 16px rgba(0, 168, 132, 0.4) !important;
+  transform: translateY(-2px);
+  background: #00c9a0 !important;
+}
+
+.add-asset-btn:active {
+  transform: translateY(0);
+}
+
+/* Alerts */
+.success-alert,
+.error-alert {
+  border-radius: 8px !important;
+  background-color: rgba(0, 168, 132, 0.1) !important;
+  color: #00a884 !important;
+  border: 1px solid rgba(0, 168, 132, 0.3) !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  font-size: 13px !important;
+  animation: slideDown 0.3s ease-out;
+}
+
+.error-alert {
+  background-color: rgba(220, 38, 38, 0.1) !important;
+  color: #e74c3c !important;
+  border-color: rgba(220, 38, 38, 0.3) !important;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dialog Styles - Responsive */
+.MuiDialog-paper {
+  background: #111b21 !important;
+  color: #e9edef !important;
+  border-radius: 12px !important;
+  margin: 8px !important;
+  max-height: 90vh !important;
+  width: 100% !important;
+}
+
+.MuiDialog-root .MuiBackdrop-root {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Mobile: Fullscreen dialog */
+@media (max-width: 467px) {
+  .MuiDialog-paper {
+    margin: 4px !important;
+    max-height: calc(100vh - 8px) !important;
+    border-radius: 8px !important;
+    width: calc(100% - 8px) !important;
+  }
+
+  .MuiDialogTitle-root {
+    padding: 14px 16px !important;
+    font-size: 15px !important;
+  }
+
+  .MuiDialogContent-root {
+    padding: 18px 16px !important;
+  }
+
+  .MuiDialogActions-root {
+    padding: 10px 16px !important;
+    gap: 8px !important;
+    flex-direction: row !important;
+    justify-content: flex-end;
+  }
+
+  .MuiButton-containedPrimary,
+  .MuiButton-textInherit {
+    width: auto;
+    flex: 0 1 auto;
+    padding: 8px 14px !important;
+    font-size: 12px !important;
+    min-width: 70px;
+  }
+
+  .manual-fields {
+    gap: 16px;
+  }
+
+  .manual-field {
+    gap: 6px;
+  }
+
+  .manual-field label {
+    font-size: 11px;
+  }
+
+  .MuiTextField-root .MuiOutlinedInput-root {
+    padding: 14px 12px !important;
+  }
+
+  .date-input {
+    padding: 14px 12px;
+    font-size: 13px;
+  }
+}
+
+.MuiDialogTitle-root {
+  background: #111b21 !important;
+  color: #e9edef !important;
+  padding: 12px 16px !important;
+  font-weight: 600;
+  font-size: 16px !important;
+  border-bottom: 1px solid #1f3a47 !important;
+}
+
+.MuiDialogContent-root {
+  background: #111b21 !important;
+  color: #e9edef !important;
+  padding: 20px 20px !important;
+  max-height: calc(90vh - 140px) !important;
+  overflow-y: auto !important;
+}
+
+.dialog-content {
+  padding: 0 !important;
+}
+
+.MuiDialogActions-root {
+  background: #111b21 !important;
+  padding: 10px 16px !important;
+  gap: 10px !important;
+  border-top: 1px solid #1f3a47 !important;
+  justify-content: flex-end;
+  display: flex;
+  flex-direction: row !important;
+}
+
+.MuiButton-containedPrimary {
+  background: #00a884 !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  padding: 8px 14px !important;
+  min-width: auto !important;
+  font-size: 12px !important;
+  flex: 1;
+}
+
+.MuiButton-containedPrimary:hover {
+  background: #00c9a0 !important;
+}
+
+.MuiButton-textInherit {
+  color: #8696a0 !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  padding: 8px 14px !important;
+  font-size: 12px !important;
+  flex: 1;
+}
+
+.MuiButton-textInherit:hover {
+  background: rgba(0, 0, 0, 0.1) !important;
+  color: #8696a0 !important;
+}
+
+.manual-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.manual-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.manual-field label {
+  font-size: 12px;
+  color: #8696a0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+/* TextField Styling */
+.MuiTextField-root {
+  width: 100%;
+  margin-bottom: 0 !important;
+}
+
+.MuiTextField-root .MuiOutlinedInput-root {
+  color: #e9edef !important;
+  padding: 12px 12px !important;
+  font-size: 14px;
+}
+
+.MuiTextField-root .MuiOutlinedInput-root fieldset {
+  border-color: #1f3a47 !important;
+}
+
+.MuiTextField-root .MuiOutlinedInput-root:hover fieldset {
+  border-color: #00a884 !important;
+}
+
+.MuiTextField-root .MuiOutlinedInput-root.Mui-focused fieldset {
+  border-color: #00a884 !important;
+  border-width: 2px !important;
+}
+
+.MuiTextField-root .MuiInputBase-input {
+  color: #e9edef !important;
+  font-size: 14px !important;
+}
+
+.MuiTextField-root .MuiInputBase-input::placeholder {
+  color: #566473 !important;
+  opacity: 0.7;
+}
+
+.MuiFormLabel-root {
+  color: #8696a0 !important;
+  font-size: 14px !important;
+}
+
+.date-input {
+  width: 100%;
+  padding: 12px 12px;
+  background: #1a2c35;
+  border: 1px solid #1f3a47;
+  border-radius: 6px;
+  color: #e9edef;
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: all 0.25s ease;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #00a884;
+  background: #1a2c35;
+  box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.15);
+  border-width: 2px;
+}
+
+/* TABLE VIEW - DESKTOP (md and up) */
+.assets-table-container {
+  background: #111b21 !important;
+  border: 1px solid #1f3a47 !important;
+  border-radius: 12px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  display: block !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-header {
+  background: #1a2c35 !important;
+  border-bottom: 2px solid #1f3a47 !important;
+}
+
+.table-header .MuiTableCell-head {
+  color: #8696a0 !important;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 6px 12px !important;
+  background: #1a2c35 !important;
+}
+
+.table-row {
+  border-bottom: 1px solid rgba(31, 58, 71, 0.5) !important;
+  transition: background-color 0.3s ease;
+}
+
+.table-row:hover {
+  background-color: rgba(0, 168, 132, 0.05) !important;
+}
+
+.table-row .MuiTableCell-body {
+  color: #e9edef !important;
+  padding: 6px 12px !important;
+  font-size: 13px;
+  border-bottom: none !important;
+  background: #111b21 !important;
+}
+
+.email-cell {
+  font-family: 'Monaco', 'Courier New', monospace;
+  min-width: 120px !important;
+}
+
+.email-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 100px;
+  justify-content: space-between;
+}
+
+.email-text {
+  word-break: break-word;
+  flex: 0 1 auto;
+  font-size: 11px;
+  min-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-btn {
+  color: #8696a0 !important;
+  padding: 4px 6px !important;
+  min-width: auto !important;
+  height: 32px !important;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 11px;
+  border: 1px solid transparent;
+}
+
+.copy-btn:hover {
+  color: #00a884 !important;
+  background: rgba(0, 168, 132, 0.1) !important;
+  border-color: #00a884 !important;
+}
+
+.copy-btn.copied {
+  color: #2ecc71 !important;
+  border-color: #2ecc71 !important;
+}
+
+/* Action Buttons - Mobile Optimized */
+.actions-cell {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 8px;
+  min-width: 80px !important;
+  white-space: nowrap;
+}
+
+.action-btn {
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #00a884;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.action-btn:hover {
+  background: rgba(0, 168, 132, 0.1);
+  color: #00c9a0;
+}
+
+.action-btn:active {
+  transform: scale(0.95);
+}
+
+.date-cell {
+  font-size: 12px;
+  min-width: 100px !important;
+  white-space: nowrap;
+}
+
+/* CARD VIEW - MOBILE (default, shown on mobile and tablet) */
+.assets-card-container {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.asset-card {
+  background: linear-gradient(135deg, #111b21 0%, #0f1719 100%);
+  border: 1px solid #1f3a47;
+  border-radius: 10px;
+  padding: 14px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.asset-card:active {
+  transform: scale(0.99);
+  box-shadow: 0 4px 12px rgba(0, 168, 132, 0.2);
+}
+
+.asset-card:hover {
+  border-color: #00a884;
+  box-shadow: 0 4px 12px rgba(0, 168, 132, 0.15);
+}
+
+.asset-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.asset-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, rgba(0, 168, 132, 0.2) 0%, rgba(0, 168, 132, 0.1) 100%);
+  border: 2px solid #00a884;
+  border-radius: 50%;
+  color: #00a884;
+  font-weight: 700;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.asset-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.asset-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: rgba(26, 44, 53, 0.5);
+  border-radius: 8px;
+  border-left: 3px solid #00a884;
+}
+
+.asset-field:last-of-type {
+  margin-bottom: 0;
+}
+
+.asset-label {
+  font-size: 10px;
+  color: #8696a0;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.asset-value {
+  color: #e9edef;
+  font-size: 14px;
+  font-weight: 500;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.asset-email-value {
+  font-family: 'Monaco', 'Courier New', monospace;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.asset-email-text {
+  flex: 1;
+  word-break: break-all;
+  font-size: 12px;
+  color: #00a884;
+  font-weight: 500;
+}
+
+.asset-email-copy-btn {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  background: rgba(0, 168, 132, 0.1);
+  border: 1px solid #00a884;
+  color: #00a884;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 36px;
+  min-height: 32px;
+}
+
+.asset-email-copy-btn:active {
+  transform: scale(0.92);
+  background: rgba(0, 168, 132, 0.2);
+}
+
+.asset-email-copy-btn:hover {
+  background: rgba(0, 168, 132, 0.15);
+  border-color: #00c9a0;
+  color: #00c9a0;
+}
+
+.asset-email-copy-btn.copied {
+  color: #2ecc71;
+  border-color: #2ecc71;
+  background: rgba(46, 204, 113, 0.1);
+}
+
+.asset-card-footer {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(31, 58, 71, 0.5);
+  flex-wrap: wrap;
+}
+
+.asset-footer-btn {
+  flex: 1;
+  min-width: 80px;
+  padding: 10px 12px;
+  border: 1px solid #00a884;
+  background: rgba(0, 168, 132, 0.05);
+  color: #00a884;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.asset-footer-btn:active {
+  transform: scale(0.95);
+  background: rgba(0, 168, 132, 0.15);
+}
+
+.asset-footer-btn:hover {
+  background: rgba(0, 168, 132, 0.1);
+  border-color: #00c9a0;
+  color: #00c9a0;
+  box-shadow: 0 2px 8px rgba(0, 168, 132, 0.2);
+}
+
+/* Action Buttons */
+.actions-cell {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: #00a884;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: none;
+  white-space: nowrap;
+}
+
+.action-btn:hover {
+  text-decoration: underline;
+}
+
+.date-cell {
+  font-size: 12px;
+}
+
+.empty-state {
+  padding: 50px 20px;
+  text-align: center;
+  color: #8696a0;
+  font-size: 14px;
+  background: rgba(0, 168, 132, 0.03);
+  border: 1px dashed #1f3a47;
+  border-radius: 10px;
+  margin: 20px 0;
+  line-height: 1.6;
+}
+
+/* ========================================
+   TABLET VIEW (sm breakpoint 640px+)
+   ======================================== */
+@media (min-width: 640px) {
+  .table-header .MuiTableCell-head {
+    padding: 10px 12px !important;
+    font-size: 11px;
+    min-width: 80px;
+  }
+
+  .table-row .MuiTableCell-body {
+    padding: 10px 12px !important;
+    font-size: 12px;
+    min-width: 80px;
+  }
+
+  .email-cell {
+    min-width: 200px !important;
+  }
+
+  .email-text {
+    font-size: 12px;
+  }
+
+  .date-cell {
+    min-width: 110px !important;
+  }
+}
+
+/* ========================================
+   TABLET VIEW (md breakpoint 768px+)
+   ======================================== */
+@media (min-width: 768px) {
+  .assets-container {
+    padding: 12px 12px 12px 12px;
+    gap: 16px;
+  }
+
+  .assets-header-simple {
+    gap: 12px;
+    padding: 0 0 12px 0;
+    margin-bottom: 12px;
+  }
+
+  .assets-title {
+    font-size: 20px;
+  }
+
+  .add-asset-btn {
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+  }
+
+  /* Table is already visible */
+  .assets-table-container {
+    display: block !important;
+  }
+
+  .assets-card-container {
+    display: none;
+  }
+
+  .table-header .MuiTableCell-head {
+    padding: 10px 12px !important;
+    font-size: 11px;
+    min-width: 80px;
+  }
+
+  .table-row .MuiTableCell-body {
+    padding: 10px 12px !important;
+    font-size: 13px;
+    min-width: 80px;
+  }
+
+  .email-cell {
+    min-width: 220px !important;
+  }
+
+  .date-cell {
+    min-width: 120px !important;
+  }
+}
+
+/* ========================================
+   DESKTOP VIEW (lg breakpoint 1024px+)
+   ======================================== */
+@media (min-width: 1024px) {
+  .assets-container {
+    padding: 16px 16px 16px 16px;
+    gap: 16px;
+  }
+
+  .assets-title {
+    font-size: 22px;
+  }
+
+  .table-row:hover {
+    background-color: rgba(0, 168, 132, 0.08) !important;
+  }
+
+  .email-content {
+    max-width: 500px;
+  }
+
+  .table-header .MuiTableCell-head {
+    padding: 12px 14px !important;
+    font-size: 12px;
+    min-width: 90px;
+  }
+
+  .table-row .MuiTableCell-body {
+    padding: 12px 14px !important;
+    font-size: 14px;
+    min-width: 90px;
+  }
+
+  .email-cell {
+    min-width: 280px !important;
+  }
+
+  .email-text {
+    font-size: 13px;
+  }
+
+  .date-cell {
+    min-width: 130px !important;
+  }
+}
+
+/* ========================================
+   LARGE DESKTOP (xl breakpoint 1280px+)
+   ======================================== */
+@media (min-width: 1280px) {
+  .assets-container {
+    padding: 20px 20px 20px 20px;
+  }
+
+  .email-content {
+    max-width: 600px;
+  }
+
+  .table-header .MuiTableCell-head {
+    padding: 12px 16px !important;
+  }
+
+  .table-row .MuiTableCell-body {
+    padding: 12px 16px !important;
+  }
+}
+
+/* TextField Styling */
+.MuiTextField-root .MuiOutlinedInput-root {
+  color: #e9edef !important;
+  padding: 8px 12px !important;
+}
+
+.MuiTextField-root .MuiOutlinedInput-root fieldset {
+  border-color: #1f3a47 !important;
+}
+
+.MuiTextField-root .MuiOutlinedInput-root:hover fieldset {
+  border-color: #00a884 !important;
+}
+
+.MuiTextField-root .MuiOutlinedInput-root.Mui-focused fieldset {
+  border-color: #00a884 !important;
+}
+
+.MuiTextField-root .MuiInputBase-input {
+  color: #e9edef !important;
+}
+
+.MuiTextField-root .MuiInputBase-input::placeholder {
+  color: #566473 !important;
+  opacity: 0.7;
+}
+
+.MuiFormLabel-root {
+  color: #8696a0 !important;
+}
+
+.date-input {
+  padding: 12px;
+  background: #1a2c35;
+  border: 1px solid #1f3a47;
+  border-radius: 6px;
+  color: #e9edef;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #00a884;
+  background: #1a2c35;
+  box-shadow: 0 0 0 2px rgba(0, 168, 132, 0.1);
+}
+
+.empty-state {
+  padding: 60px 20px;
+  text-align: center;
+  color: #8696a0;
+  font-size: 14px;
+}
+
+/* Table Header */
+.table-header {
+  background: #1a2c35 !important;
+  border-bottom: 2px solid #1f3a47 !important;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.table-header .MuiTableCell-head {
+  color: #8696a0 !important;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 10px 12px !important;
+  background: #1a2c35 !important;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+/* Table Rows */
+.table-row {
+  border-bottom: 1px solid rgba(31, 58, 71, 0.5) !important;
+  transition: background-color 0.3s ease;
+}
+
+.table-row:hover {
+  background-color: rgba(0, 168, 132, 0.05) !important;
+}
+
+.table-row .MuiTableCell-body {
+  color: #e9edef !important;
+  padding: 12px 12px !important;
+  font-size: 13px;
+  border-bottom: none !important;
+  background: #111b21 !important;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+/* Number column */
+.number-cell {
+  min-width: 40px !important;
+  width: 40px !important;
+}
+
+/* Email column - wider for mobile */
+.email-cell {
+  font-family: 'Monaco', 'Courier New', monospace;
+  min-width: 180px !important;
+}
+
+.number-col {
+  width: 50px !important;
+}
+
+/* Responsive Design - Mobile First */
+@media (max-width: 640px) {
+  .assets-container {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .assets-header-simple {
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .assets-title {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .add-asset-btn {
+    padding: 8px 14px !important;
+    font-size: 11px !important;
+    width: fit-content;
+    flex-shrink: 0;
+    min-width: auto;
+    white-space: nowrap;
+  }
+
+  /* Table scrolls horizontally on mobile */
+  .assets-table-container {
+    overflow-x: auto !important;
+    border-radius: 8px !important;
+  }
+
+  .table-header .MuiTableCell-head {
+    padding: 8px 10px !important;
+    font-size: 10px;
+    min-width: 70px;
+  }
+
+  .table-row .MuiTableCell-body {
+    padding: 8px 10px !important;
+    font-size: 11px;
+    min-width: 70px;
+  }
+
+  .email-cell {
+    min-width: 150px !important;
+  }
+
+  .email-text {
+    font-size: 11px;
+    min-width: 90px;
+  }
+
+  .copy-btn {
+    padding: 4px 6px !important;
+    font-size: 10px;
+  }
+
+  .action-btn {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .date-cell {
+    min-width: 90px !important;
+    font-size: 11px;
+  }
+
+  .number-cell {
+    min-width: 35px !important;
+  }
+
+  .actions-cell {
+    min-width: 70px !important;
+  }
+
+  /* Scrollbar styling for mobile */
+  .assets-table-container::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .assets-table-container::-webkit-scrollbar-track {
+    background: rgba(31, 58, 71, 0.3);
+  }
+
+  .assets-table-container::-webkit-scrollbar-thumb {
+    background: #00a884;
+    border-radius: 2px;
+  }
+}
+
+@media (max-width: 768px) {
+  .assets-container {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .add-asset-btn {
+    width: fit-content;
+    flex-shrink: 0;
+  }
+
+  /* Ensure dialog fits on tablet */
+  .MuiDialog-paper {
+    margin: 8px !important;
+    max-height: 85vh !important;
+  }
+
+  .MuiDialogContent-root {
+    padding: 18px 18px !important;
+  }
+
+  .manual-fields {
+    gap: 16px;
+  }
+}
+
+/* Dark Theme Consistency */
+:root {
+  --primary-color: #00a884;
+  --bg-primary: #0b1216;
+  --bg-secondary: #111b21;
+  --bg-tertiary: #1a2c35;
+  --text-primary: #e9edef;
+  --text-secondary: #8696a0;
+  --border-color: #1f3a47;
+  --success-color: #2ecc71;
+  --error-color: #dc2626;
+}
+
+::placeholder {
+  color: #4b5a63;
+}
+
+input::placeholder {
+  color: #4b5a63;
+}
+
+/* Smooth transitions for all interactive elements */
+.assets-container button,
+.assets-container a,
+.copy-btn,
+.delete-btn {
+  -webkit-tap-highlight-color: transparent;
+}
