@@ -1,0 +1,231 @@
+/* Ultra-Compact AccountManagement.css - WhatsApp-inspired */
+.account-management {
+    max-width: 100%;
+    max-height: 60%;
+    margin: 0.5rem auto;
+    padding: 0.08rem;
+    background: var(--bg-dark); /* Dark background */
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    font-family: system-ui, -apple-system, sans-serif;
+    color: var(--text); /* Light text */
+    font-size: 0.82rem;
+    border: 1px solid var(--border-color); /* Border color */
+}
+
+/* Header */
+.account-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.account-header h2 {
+    font-size: 1.3rem;
+    margin: 0;
+    color: var(--text);
+}
+
+/* Tabs - Now using pill style */
+.account-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.account-tabs button {
+    flex: 1;
+    padding: 0.4rem 0.5rem;
+    background: var(--bg-light); /* Darker background */
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: var(--transition);
+    color: var(--text-light); /* Medium gray text */
+}
+
+.account-tabs button.active {
+    background: var(--primary); /* WhatsApp green */
+    color: var(--text);
+}
+
+/* Combined Card Styles */
+.action-card {
+    background: var(--bg-dark);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border-left: 2px solid var(--accent); /* WhatsApp blue */
+}
+
+.action-card h3 {
+    font-size: 1rem;
+    margin: 0 0 0.25rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text);
+}
+
+.action-card h3::before {
+    content: "•";
+    color: inherit;
+}
+
+.action-card p {
+    margin: 0 0 0.75rem 0;
+    color: var(--text-light);
+    line-height: 1.4;
+    font-size: 0.8rem;
+}
+
+.action-card.warning {
+    border-left-color: var(--warning); /* Warning color */
+}
+
+.action-card.danger {
+    border-left-color: var(--error); /* Error color */
+}
+
+/* Ultra-Compact Forms */
+.form-group {
+    margin-bottom: 0.75rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+    color: var(--text-light);
+    font-size: 0.8rem;
+}
+
+.form-group input, 
+.form-group select {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    background: var(--bg-light);
+    color: var(--text);
+    transition: var(--transition);
+}
+
+.form-group input:focus, 
+.form-group select:focus {
+    outline: none;
+    border-color: var(--primary); /* WhatsApp green */
+    box-shadow: 0 0 0 2px rgba(0, 168, 132, 0.2);
+}
+
+/* Mini Toggle Switch */
+.toggle-switch {
+    width: 36px;
+    height: 20px;
+}
+
+.toggle-slider:before {
+    height: 14px;
+    width: 14px;
+}
+
+/* Micro Buttons */
+.btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: var(--primary); /* WhatsApp green */
+    color: var(--text);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover); /* Darker WhatsApp green */
+}
+
+.btn-secondary {
+    background: var(--bg-light);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: #3a4a52; /* Slightly lighter dark */
+}
+
+/* Stacked Form Actions */
+.form-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+/* Compact Session Items */
+.session-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    font-size: 0.8rem;
+    color: var(--text);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.session-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem;
+    color: var(--text-light);
+}
+
+.session-info span {
+    font-size: 0.75rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 500px) {
+    .account-management {
+        padding: 0.5rem;
+        border-radius: 0;
+        box-shadow: none;
+        max-height: none;
+    }
+    
+    .account-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .account-tabs button {
+        flex: 1 0 30%;
+        padding: 0.3rem;
+        font-size: 0.75rem;
+    }
+    
+    .form-actions {
+        grid-template-columns: 1fr;
+    }
+    
+    .session-info {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Utility Classes */
+.mt-0 { margin-top: 0; }
+.mb-0 { margin-bottom: 0; }
+.text-sm { 
+    font-size: 0.75rem; 
+    color: var(--text-light); 
+}

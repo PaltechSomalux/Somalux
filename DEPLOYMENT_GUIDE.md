@@ -83,16 +83,6 @@ EMAIL_USER=campuslives254@gmail.com
 EMAIL_PASS=zeroeafivxxlzllp
 EMAIL_FROM=Paltech Support Team <campuslives254@gmail.com>
 ADMIN_EMAILS=campuslives254@gmail.com
-
-# M-Pesa Configuration
-MPESA_MODE=demo
-MPESA_CONSUMER_KEY=JmTIKawu0Jvur2YA7iFnSmS2ZO15ObCJSGtXHNb1WSv6F83U
-MPESA_CONSUMER_SECRET=ILRULsnEKAhzzZXBwmyJsM0FjiGeHjm1SP7BQKFTXAZSgK9bBcCnfCZTJKnblih4
-MPESA_BUSINESS_SHORTCODE=174379
-MPESA_PASSKEY=bfb279f9aa9bdbcf158e97dd1a503b6e78c6f69f7e1f4836f78f2e6c2c1f0
-MPESA_INITIATOR_NAME=testapi
-MPESA_INITIATOR_PASSWORD=Safaricom@123
-MPESA_ENVIRONMENT=sandbox
 ```
 
 ### Step 4: Update Frontend API Endpoints

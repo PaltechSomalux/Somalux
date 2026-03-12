@@ -129,35 +129,29 @@ const UniversityCard = React.memo(({
             <MdVerified size={12} />
           </span>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-          {user && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onHandleLike?.(uni.id);
-              }}
-              title={universityLikes[uni.id] ? "Unlike university" : "Like university"}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                borderRadius: '3px',
-                padding: '2px 4px',
-                color: universityLikes[uni.id] ? '#FF1493' : '#8696a0',
-                cursor: 'pointer',
-                fontSize: '0.8rem',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '2px',
-                position: 'relative',
-                isolation: 'isolate'
-              }}
-            >
-              {universityLikes[uni.id] ? <AiFillHeart size={12} /> : <AiOutlineHeart size={12} />}
-              <UniversityFloatingBubbles bubbles={bubbleMap[uni.id] || []} />
-            </button>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onHandleLike?.(uni.id);
+            }}
+            title={user ? (universityLikes[uni.id] ? "Unlike university" : "Like university") : "Login to like"}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              color: universityLikes[uni.id] ? '#FF1493' : '#8696a0',
+              cursor: 'pointer',
+              transition: 'color 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              position: 'relative',
+              isolation: 'isolate'
+            }}
+          >
+            {universityLikes[uni.id] ? <AiFillHeart size={12} /> : <AiOutlineHeart size={12} />}
+            {user && <UniversityFloatingBubbles bubbles={bubbleMap[uni.id] || []} />}
+          </button>
           <span style={{ fontSize: '0.65rem', color: '#8696a0' }}>
             {formatNumber(universityLikesCounts[uni.id] || 0)}
           </span>

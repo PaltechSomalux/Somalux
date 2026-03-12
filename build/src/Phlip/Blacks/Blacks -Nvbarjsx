@@ -1,0 +1,224 @@
+import React, { useState, useEffect } from 'react';
+import "./Blacks.css";
+import { Dating } from '../../Samantha/Dating';
+import { Market } from "../../Nyacheki/Market";
+import { House, Briefcase, Desktop, Camera, Heart, ShoppingBag, VideoCamera, User } from "phosphor-react";
+import { Studio } from './Studio/Studio';
+import { UserProfile } from './UserProfile';
+ 
+export const SocialDashboard = ({ user, onLogout }) => {
+  // State management
+  const [collapsed, setCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState('Dating');
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [mobileDrawerVisible, setMobileDrawerVisible] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Responsive design
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setMobileDrawerVisible(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const menuItems = [
+    { key: 'Dating', icon: '❤️', label: 'Pulse' },
+    { key: 'jobs', icon: '💼', label: 'Jobs' },
+    { key: 'Market', icon: '🛍️', label: 'Marketing' },
+    { key: 'rent', icon: '🏠', label: 'Rentals' },
+    { key: 'studio', icon: '🎬', label: 'Studio' },
+    { key: 'Cyber', icon: '💻', label: 'Cyber' }
+  ];
+
+  const mobileNavItems = [
+    { key: 'Dating', icon: '❤️', label: 'Pulse' },
+    { key: 'jobs', icon: '💼', label: 'Jobs' },
+    { key: 'Market', icon: '🛍️', label: 'Market' },
+    { key: 'studio', icon: '🎬', label: 'Studio' },
+    { key: 'Cyber', icon: '💻', label: 'Cyber' },
+    { key: 'more', icon: '⋮', label: 'More' },
+  ];
+
+  const handleMobileNavClick = (itemKey) => {
+    if (itemKey === 'more') {
+      setMobileDrawerVisible(prev => !prev);
+    } else {
+      setActiveTab(itemKey);
+      setMobileDrawerVisible(false);
+    }
+  };
+
+  const handleMenuItemClick = (itemKey) => {
+    setActiveTab(itemKey);
+    if (isMobile) {
+      setMobileDrawerVisible(false);
+    }
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'Dating':
+        return <Dating />;
+      case 'Market':
+        return <Market />;
+      case 'jobs':
+        return (
+          <div className="jobs-content-blacks">
+            <h2>Jobs</h2>
+            <div className="empty-state-blacks">
+              <Briefcase size={64} weight="light" />
+              <p>Job listings will appear here</p>
+            </div>
+          </div>
+        );
+      case 'rent':
+        return (
+          <div className="rent-content-blacks">
+            <h2>Rentals</h2>
+            <div className="empty-state-blacks">
+              <House size={64} weight="light" />
+              <p>Rental properties will appear here</p>
+            </div>
+          </div>
+        );
+      case 'studio':
+        return <Studio hideMobileNav={isMobile} />;
+      case 'Cyber':
+        return (
+          <div className="cyber-content-blacks">
+            <h2>Cyber</h2>
+            <div className="empty-state-blacks">
+              <Desktop size={64} weight="light" />
+              <p>Cyber services will appear here</p>
+            </div>
+          </div>
+        );
+      default:
+        return <div>Select a tab to view content</div>;
+    }
+  };
+
+  const shouldShowMobileNav = isMobile && activeTab !== 'studio';
+
+  return (
+    <div className="app-layout-blacks">
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <div className={`sidebar-blacks ${collapsed ? 'collapsed-blacks' : ''}`}>
+          <div className="logo-blacks">
+            {collapsed ? 'SP' : 'Social Portal'}
+            <button 
+              className="collapse-btn-blacks"
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              {collapsed ? '»' : '«'}
+            </button>
+          </div>
+          <div className="menu-blacks">
+            {menuItems.map(item => (
+              <button
+                key={item.key}
+                className={`menu-item-blacks ${activeTab === item.key ? 'active-blacks' : ''}`}
+                onClick={() => handleMenuItemClick(item.key)}
+              >
+                <span className="menu-icon-blacks">{item.icon}</span>
+                {!collapsed && <span className="menu-label-blacks">{item.label}</span>}
+              </button>
+            ))}
+            <button
+              className={`menu-item-blacks ${collapsed ? 'collapsed-profile-blacks' : ''}`}
+              style={{ marginTop: 'auto', paddingBottom: '20px' }}
+            >
+              <UserProfile 
+                user={user} 
+                onLogout={onLogout}
+                showAsIconOnly={collapsed}
+                size={24}
+              />
+              {!collapsed && <span className="menu-label-blacks">Profile</span>}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Drawer */}
+      {isMobile && mobileDrawerVisible && (
+        <div className="mobile-drawer-blacks">
+          <div className="drawer-content-blacks">
+            <div className="logo-blacks">
+              Fun
+              <button 
+                className="close-drawer-blacks"
+                onClick={() => setMobileDrawerVisible(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="menu-blacks">
+              {menuItems.map(item => (
+                <button
+                  key={item.key}
+                  className={`menu-item-blacks ${activeTab === item.key ? 'active-blacks' : ''}`}
+                  onClick={() => handleMenuItemClick(item.key)}
+                >
+                  <span className="menu-icon-blacks">{item.icon}</span>
+                  <span className="menu-label-blacks">{item.label}</span>
+                </button>
+              ))}
+              <button className="menu-item-blacks" style={{ padding: '15px 20px' }}>
+                <UserProfile 
+                  user={user} 
+                  onLogout={onLogout}
+                  isMobile={true}
+                />
+              </button>
+            </div>
+          </div>
+          <div 
+            className="drawer-overlay-blacks" 
+            onClick={() => setMobileDrawerVisible(false)}
+          />
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div 
+        className="main-content-blacks" 
+        style={{ 
+          marginLeft: !isMobile && collapsed ? '80px' : !isMobile ? '250px' : '0',
+          paddingBottom: shouldShowMobileNav ? '80px' : '0'
+        }}
+      >
+        {renderTabContent()}
+        
+        {/* Mobile bottom navigation */}
+        {shouldShowMobileNav && (
+          <div className="mobile-bottom-nav-blacks">
+            {mobileNavItems.map(item => (
+              <button
+                key={item.key}
+                className={`mobile-nav-item-blacks ${activeTab === item.key ? 'active-blacks' : ''}`}
+                onClick={() => handleMobileNavClick(item.key)}
+              >
+                <span className="mobile-nav-icon-blacks">{item.icon}</span>
+                <span className="mobile-nav-label-blacks">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}; 

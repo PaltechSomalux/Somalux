@@ -1,0 +1,230 @@
+:root {
+  --settings-primary: #00a884; /* WhatsApp green */
+  --settings-secondary: #25D366; /* WhatsApp secondary green */
+  --settings-accent: #34B7F1; /* WhatsApp blue */
+  --settings-dark: #111b21; /* Dark background */
+  --settings-light: #2a3942; /* Darker background */
+  --settings-gray: #8696a0; /* Medium gray */
+  --settings-light-gray: #2a3942; /* Darker background */
+  --settings-text: #e9edef; /* Light text */
+  --settings-text-light: #8696a0; /* Medium gray */
+  --settings-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  --settings-shadow-hover: 0 4px 15px rgba(0, 0, 0, 0.4);
+  --settings-transition: all 0.3s ease;
+  --settings-radius: 12px;
+  --settings-radius-sm: 8px;
+  --settings-spacing: 1rem;
+  --settings-spacing-sm: 0.5rem;
+  --settings-spacing-lg: 1.5rem;
+}
+
+/* Settings Container */
+.settings-tab {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--settings-spacing-lg);
+  background: var(--settings-dark);
+  border-radius: var(--settings-radius);
+  box-shadow: var(--settings-shadow);
+  color: var(--settings-text);
+  border: 1px solid var(--settings-light-gray);
+}
+
+.settings-tab h3 {
+  color: var(--settings-text);
+  font-size: 1.5rem;
+  margin-bottom: var(--settings-spacing-lg);
+  font-weight: 700;
+  text-align: center;
+  position: relative;
+  padding-bottom: var(--settings-spacing-sm);
+}
+
+.settings-tab h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 25%;
+  right: 25%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--settings-primary), var(--settings-accent));
+  border-radius: 3px;
+}
+
+/* Setting Groups */
+.setting-group {
+  margin-bottom: var(--settings-spacing-lg);
+  padding-bottom: var(--settings-spacing-lg);
+  border-bottom: 1px solid var(--settings-light-gray);
+}
+
+.setting-group:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.setting-group h4 {
+  color: var(--settings-text);
+  font-size: 1.1rem;
+  margin-bottom: var(--settings-spacing);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--settings-spacing-sm);
+}
+
+/* Buttons */
+.activity-status-button,
+.update-location,
+.safety-button,
+.delete-account,
+.logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--settings-spacing-sm);
+  padding: 0.8rem 1.2rem;
+  border: none;
+  border-radius: var(--settings-radius-sm);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--settings-transition);
+  width: 100%;
+  margin-bottom: var(--settings-spacing-sm);
+}
+
+.activity-status-button {
+  background: var(--settings-light-gray);
+  color: var(--settings-text);
+}
+
+.activity-status-button:hover {
+  background: #3a4a52; /* Slightly lighter dark */
+  transform: translateY(-2px);
+  box-shadow: var(--settings-shadow-hover);
+}
+
+.update-location {
+  background: transparent;
+  color: var(--settings-accent);
+  border: 1px solid var(--settings-accent);
+}
+
+.update-location:hover {
+  background: rgba(52, 183, 241, 0.1);
+  transform: translateY(-2px);
+  box-shadow: var(--settings-shadow-hover);
+}
+
+.safety-button {
+  background: var(--settings-primary);
+  color: white;
+}
+
+.safety-button:hover {
+  background: #008069; /* Darker WhatsApp green */
+  transform: translateY(-2px);
+  box-shadow: var(--settings-shadow-hover);
+}
+
+.delete-account {
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+.delete-account:hover {
+  background: rgba(231, 76, 60, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.2);
+}
+
+.logout-button {
+  background: var(--settings-light-gray);
+  color: var(--settings-text);
+  border: 1px solid var(--settings-gray);
+}
+
+.logout-button:hover {
+  background: #3a4a52;
+  transform: translateY(-2px);
+  box-shadow: var(--settings-shadow-hover);
+}
+
+/* Button Icons */
+.safety-button svg,
+.logout-button svg {
+  font-size: 0.9rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .settings-tab {
+    padding: var(--settings-spacing);
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+    border-top: 1px solid var(--settings-light-gray);
+  }
+  
+  .setting-group {
+    margin-bottom: var(--settings-spacing);
+    padding-bottom: var(--settings-spacing);
+  }
+  
+  .activity-status-button,
+  .update-location,
+  .safety-button,
+  .delete-account,
+  .logout-button {
+    padding: 0.7rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Animation for button hover effects */
+@keyframes buttonPulse {
+  0% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.02); }
+  100% { transform: translateY(-2px) scale(1); }
+}
+
+.activity-status-button:hover,
+.update-location:hover,
+.safety-button:hover,
+.delete-account:hover,
+.logout-button:hover {
+  animation: buttonPulse 0.4s ease-out forwards;
+}
+
+/* Focus states for accessibility */
+button:focus-visible {
+  outline: 2px solid var(--settings-accent);
+  outline-offset: 2px;
+}
+
+/* Warning styles for destructive actions */
+.destructive-action {
+  position: relative;
+}
+
+.destructive-action::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 10px;
+  height: 10px;
+  background: #e74c3c;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(0.95); opacity: 1; }
+}

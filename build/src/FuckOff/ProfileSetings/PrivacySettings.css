@@ -1,0 +1,388 @@
+/* PrivacySettings.css - Fully Responsive with Updated Color Scheme */
+.privacy-management {
+    width: 100%;
+    max-width: min(900px, 96vw);
+    margin-top: 3%;
+    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    color: #e9edef;
+    background-color: #0b1216;
+    padding: clamp(0.75rem, 2vw, 1.5rem);
+    box-sizing: border-box;
+    border-radius: 0;
+    padding-bottom: 130px;
+}
+
+/* Header - Responsive */
+.privacy-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: clamp(0.5rem, 1.5vw, 0.75rem) clamp(0.75rem, 2vw, 1rem);
+    margin-bottom: clamp(0.25rem, 1vw, 0.5rem);
+    background-color: #0b1216;
+}
+
+.privacy-header h2 {
+    font-size: clamp(1.1rem, 4vw, 1.25rem);
+    margin: 0;
+    color: #e9edef;
+    font-weight: 550;
+}
+
+/* Tabs - Responsive Pill Style */
+.privacy-tabs {
+    display: flex;
+    gap: clamp(0.25rem, 1vw, 0.5rem);
+    margin-bottom: clamp(0.5rem, 1.5vw, 0.75rem);
+    padding: clamp(0.15rem, 0.5vw, 0.25rem);
+    background-color: #0b1216;
+    border-radius: clamp(6px, 1vw, 8px);
+}
+
+.privacy-tabs button {
+    flex: 1;
+    padding: clamp(0.4rem, 1.2vw, 0.5rem);
+    background: transparent;
+    border: none;
+    border-radius: clamp(4px, 0.8vw, 6px);
+    cursor: pointer;
+    font-size: clamp(0.75rem, 3vw, 0.85rem);
+    font-weight: 500;
+    transition: all 0.2s ease;
+    color: #8696a0;
+    white-space: nowrap;
+}
+
+.privacy-tabs button.active {
+    background: #00a884;
+    color: #0b1216;
+}
+
+/* Action Cards - Responsive */
+.action-card {
+    display: flex;
+    align-items: center;
+    padding: clamp(0.5rem, 1.5vw, 0.75rem) clamp(0.75rem, 2vw, 1rem);
+    background-color: #0b1216;
+    border-radius: clamp(6px, 1vw, 8px);
+    margin-bottom: clamp(0.25rem, 1vw, 0.5rem);
+    min-height: clamp(50px, 8vw, 60px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.setting-header {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.5rem, 2vw, 1rem);
+    width: 100%;
+}
+
+.setting-icon {
+    flex-shrink: 0;
+    width: clamp(20px, 5vw, 24px);
+    height: clamp(20px, 5vw, 24px);
+    font-size: clamp(0.9rem, 3.5vw, 1rem);
+    color: #8696a0;
+}
+
+.setting-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.setting-info h3 {
+    font-size: clamp(0.9rem, 3.5vw, 1rem);
+    margin: 0;
+    color: #e9edef;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.setting-info p {
+    margin: clamp(1px, 0.5vw, 2px) 0 0;
+    color: #8696a0;
+    font-size: clamp(0.75rem, 3vw, 0.85rem);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Compact Toggle Switch - Responsive */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: clamp(30px, 8vw, 36px);
+    height: clamp(16px, 5vw, 20px);
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #2a3942;
+    transition: 0.2s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: clamp(12px, 3.5vw, 14px);
+    width: clamp(12px, 3.5vw, 14px);
+    left: clamp(2px, 0.8vw, 3px);
+    bottom: clamp(2px, 0.8vw, 3px);
+    background-color: white;
+    transition: 0.2s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #00a884;
+}
+
+input:checked + .slider:before {
+    transform: translateX(clamp(12px, 4vw, 16px));
+}
+
+/* Compact Select Dropdown - Responsive */
+.privacy-select {
+    padding: clamp(0.3rem, 1vw, 0.4rem) clamp(0.6rem, 1.5vw, 0.8rem);
+    border: 1px solid #2a3942;
+    border-radius: clamp(4px, 1vw, 6px);
+    font-size: clamp(0.75rem, 3vw, 0.85rem);
+    background: #0b1216;
+    color: #e9edef;
+    min-width: clamp(100px, 25vw, 140px);
+    height: clamp(30px, 8vw, 36px);
+}
+
+.privacy-select:focus {
+    outline: none;
+    border-color: #00a884;
+}
+
+/* Contact Lists - Responsive */
+.contacts-list {
+    margin: clamp(0.25rem, 1vw, 0.5rem) 0;
+    max-height: min(300px, 50vh);
+    overflow-y: auto;
+    background-color: #0b1216;
+    border-radius: clamp(4px, 1vw, 6px);
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    padding: clamp(0.4rem, 1.5vw, 0.6rem) clamp(0.75rem, 2vw, 1rem);
+    min-height: clamp(48px, 8vw, 56px);
+}
+
+.contact-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.contact-info .name {
+    font-size: clamp(0.8rem, 3.2vw, 0.9rem);
+    color: #e9edef;
+    font-weight: 500;
+}
+
+.contact-info .phone {
+    font-size: clamp(0.7rem, 2.8vw, 0.8rem);
+    color: #8696a0;
+}
+
+/* Buttons - Responsive */
+.btn {
+    padding: clamp(0.4rem, 1.2vw, 0.5rem) clamp(0.8rem, 2vw, 1rem);
+    font-size: clamp(0.75rem, 3vw, 0.85rem);
+    border-radius: clamp(4px, 1vw, 6px);
+    height: clamp(30px, 8vw, 36px);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn-reset {
+    background: #2a3942;
+    color: #e9edef;
+}
+
+.btn-confirm {
+    background: #00a884;
+    color: #0b1216;
+    font-weight: 500;
+}
+
+.btn-cancel {
+    background: #2a3942;
+    color: #e9edef;
+}
+
+.btn-unblock, .btn-unmute {
+    background: transparent;
+    color: #00a884;
+    border: 1px solid #00a884;
+    padding: clamp(0.3rem, 1vw, 0.4rem) clamp(0.6rem, 1.5vw, 0.8rem);
+}
+
+.btn-manage {
+    background: #00a884;
+    color: #0b1216;
+    width: 100%;
+    margin-top: clamp(0.25rem, 1vw, 0.5rem);
+    font-weight: 500;
+}
+
+/* Form Actions - Responsive */
+.form-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(0.5rem, 1.5vw, 0.75rem);
+    margin-top: clamp(0.5rem, 1.5vw, 1rem);
+}
+
+.reset-confirm p {
+    margin: 0 0 clamp(0.5rem, 1.5vw, 0.75rem) 0;
+    color: #8696a0;
+    font-size: clamp(0.75rem, 3vw, 0.85rem);
+}
+
+/* Empty States - Responsive */
+.no-contacts {
+    margin: clamp(0.25rem, 1vw, 0.5rem) 0;
+    color: #8696a0;
+    font-size: clamp(0.75rem, 3vw, 0.85rem);
+    text-align: center;
+    padding: clamp(0.5rem, 2vw, 1rem);
+    background-color: #0b1216;
+    border-radius: clamp(4px, 1vw, 6px);
+}
+
+/* Mobile Landscape Optimization */
+@media (max-width: 900px) and (orientation: landscape) {
+    .privacy-management {
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .contacts-list {
+        max-height: min(200px, 40vh);
+    }
+}
+
+/* Animation for smooth scaling */
+@media (prefers-reduced-motion: no-preference) {
+    .privacy-management, 
+    .action-card,
+    .privacy-tabs button,
+    .btn {
+        transition: all 0.3s ease;
+    } 
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .privacy-management {
+        padding: clamp(0.5rem, 2vw, 0.75rem);
+        max-width: 100%;
+        padding-bottom: 130px;
+    }
+    
+    .form-actions {
+        grid-template-columns: 1fr;
+    }
+    
+    .privacy-select {
+        width: 100%;
+    }
+    
+    .action-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: clamp(0.5rem, 2vw, 0.75rem);
+    }
+    
+    .setting-control {
+        align-self: flex-end;
+    }
+}/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .privacy-management {
+    height: 100vh;
+    padding: 16px;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    max-width: 100%;
+    padding-bottom: 130px;
+    padding-top: 30px;
+  }
+
+  .privacy-management::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+
+  .form-actions {
+    grid-template-columns: 1fr;
+  }
+  
+  .privacy-select {
+    width: 100%;
+  }
+  
+  .action-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(0.5rem, 2vw, 0.75rem);
+  }
+  
+  .setting-control {
+    align-self: flex-end;
+  }
+
+  /* Prevent any horizontal overflow */
+  * {
+    max-width: 100%;
+    overflow-wrap: break-word;
+  }
+  
+  /* Fix for iOS scrolling */
+  @supports (-webkit-touch-callout: none) {
+    .privacy-management {
+      height: -webkit-fill-available;
+    }
+  }
+}
+
+/* ============================================= */
+/* SCROLLING DISABLER - ADDED FROM SECOND EXAMPLE */
+/* ============================================= */
+
+/* Disable scrolling on root elements */
+html, body {
+  overflow: hidden !important;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}

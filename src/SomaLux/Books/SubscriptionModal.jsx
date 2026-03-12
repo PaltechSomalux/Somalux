@@ -38,7 +38,7 @@ export const SubscriptionModal = ({
     }
 
     if (!phoneNumber.trim()) {
-      setError('Please enter your M-Pesa phone number.');
+      setError('Please enter your payment details.');
       return;
     }
 
@@ -60,7 +60,7 @@ export const SubscriptionModal = ({
         return;
       }
 
-      console.log('📱 Starting M-Pesa subscription:', { product, planId: currentPlan.id, phoneNumber: phoneNumber.trim() });
+      console.log('📱 Starting subscription:', { product, planId: currentPlan.id, phoneNumber: phoneNumber.trim() });
 
       const initRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/subscriptions/mpesa/init`, {
         method: 'POST',
@@ -84,14 +84,14 @@ export const SubscriptionModal = ({
       }
 
       if (!initJson.checkoutRequestId) {
-        throw new Error('Invalid M-Pesa initialize response');
+        throw new Error('Invalid payment initialization response');
       }
 
       setCheckoutRequestId(initJson.reference);
       setAwaitingPayment(true);
 
-      // Show success message - M-Pesa will send STK push to user's phone
-      alert(`M-Pesa payment request sent to ${phoneNumber}. Please check your phone and enter your M-Pesa PIN to complete the payment.`);
+      // Show success message - payment request will be processed
+      alert(`Payment request sent to ${phoneNumber}. Please complete your payment to activate your subscription.`);
 
     } catch (e) {
       console.error('Subscription failed Error:', e.message || e);
@@ -205,7 +205,7 @@ export const SubscriptionModal = ({
 
               <div className="subscription-phone-inputBKP">
                 <label htmlFor="phoneNumber" className="subscription-phone-labelBKP">
-                  M-Pesa Phone Number
+                  Phone Number
                 </label>
                 <input
                   id="phoneNumber"
@@ -217,7 +217,7 @@ export const SubscriptionModal = ({
                   disabled={awaitingPayment}
                 />
                 <p className="subscription-phone-helpBKP">
-                  Enter the phone number registered with M-Pesa
+                  Enter your phone number
                 </p>
               </div>
 
@@ -234,7 +234,7 @@ export const SubscriptionModal = ({
                     onClick={handleSubscribe}
                     disabled={loading}
                   >
-                    {loading ? 'Processing…' : `Pay with M-Pesa – Ksh ${currentPlan.priceKes}`}
+                    {loading ? 'Processing…' : `Pay – Ksh ${currentPlan.priceKes}`}
                   </button>
                 ) : (
                   <button
@@ -247,7 +247,7 @@ export const SubscriptionModal = ({
                   </button>
                 )}
                 <p className="subscription-smallprintBKP">
-                  Payment is processed securely via M-Pesa. After entering your PIN on your phone,
+                  Payment will be processed securely. After completing your payment,
                   click "Verify" to activate your subscription.
                 </p>
               </div>

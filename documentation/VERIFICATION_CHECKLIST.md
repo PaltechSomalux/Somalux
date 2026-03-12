@@ -273,7 +273,7 @@ The VerificationBadge component can now be integrated into:
 ## Future Enhancement Phases
 
 ### Phase 2 (Planned)
-- [ ] Payment integration (Stripe/M-Pesa)
+- [ ] Payment integration (Stripe/alternative)
 - [ ] User tier purchase UI
 - [ ] Subscription management
 

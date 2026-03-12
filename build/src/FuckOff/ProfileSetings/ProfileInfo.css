@@ -1,0 +1,428 @@
+:root {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --transition: all 0.2s ease;
+  --primary-color: #00a884;
+  --primary-hover: #06cf9f;
+  --error-color: #f15e6c;
+  --success-color: #00a884;
+  --warning-color: #ff9800;
+  --text-primary: #e9edef;
+  --text-secondary: #8696a0;
+  --text-tertiary: #667781;
+  --bg-primary: #0b1216;
+  --bg-secondary: #202c33;
+  --bg-input: #2a3942;
+  --bg-hover: rgba(233, 237, 239, 0.05);
+  --border-color: rgba(134, 150, 160, 0.15);
+}
+
+/* Base Container */
+.profile-info-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  padding: 1px;
+  box-sizing: border-box;
+}
+
+/* Action Buttons */
+.profile-actions {
+  display: flex;
+  gap: 0px;
+  margin-top: 12px;
+}
+
+.cancel-button {
+  background: transparent;
+  color: var(--warning-color);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.cancel-button:hover {
+  background: transparent;
+}
+
+.save-button {
+  background: transparent;
+  color: rgb(10, 180, 10);
+  border: none;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.save-button:hover {
+  background: transparent;
+}
+
+.save-button:disabled,
+.cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Profile Sections */
+.profile-section {
+  margin-bottom: 2px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  color: var(--text-primary);
+  font-weight: 300;
+  margin-bottom: 1px;
+  padding-bottom: 1px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.section-icon {
+  margin-right: 20px;
+  font-size: 16px;
+  margin-left: -10px;
+  color: var(--text-primary);
+}
+
+/* Field Layout */
+.profile-field {
+  margin-bottom: 1px;
+}
+
+.field-wrapper {
+  display: flex;
+  gap: 10px;
+  margin-top: 2px;
+ 
+}
+
+.field-icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.field-icon svg {
+  width: 18px;
+  height: 18px;
+  margin-left: -25px;
+  color: lightgray;
+}
+
+.field-content {
+  flex: 1;
+  min-width: 0;
+  font-size: 12;
+}
+
+.field-content label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 480;
+  margin-bottom: 3px;
+  line-height: 20px;
+}
+
+/* Input Fields */
+.profile-input,
+.profile-textarea,
+.social-input {
+  width: 95%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 10px;
+  outline: none;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+
+.profile-input:focus,
+.profile-textarea:focus,
+.social-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 168, 132, 0.2);
+}
+
+/* Textarea */
+.textarea-container {
+  position: relative;
+}
+
+.profile-textarea {
+  min-height: 80px;
+  resize: none;
+  line-height: 1.5;
+}
+
+.char-counter {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: right;
+  margin-top: 4px;
+}
+
+/* View Mode Fields */
+.field-value {
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-word;
+  line-height: 1.4;
+  margin-top: -2px;
+  padding: -10px 0px;
+}
+
+/* Social Links */
+.social-links-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  font-size: 14px;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: var(--transition);
+  flex: 1 1 calc(50% - 8px);
+  min-width: calc(50% - 8px);
+}
+
+.social-link:hover {
+  background: var(--bg-hover);
+}
+
+.social-link svg {
+  width: 18px;
+  height: 18px;
+}
+
+.no-social-links {
+  color: var(--text-secondary);
+  font-size: 14px;
+  padding: -1px 0;  
+}
+
+/* Error States */
+.has-error .profile-input,
+.has-error .profile-textarea,
+.has-error .social-input {
+  border-color: var(--error-color);
+}
+
+.has-error .profile-input:focus,
+.has-error .profile-textarea:focus,
+.has-error .social-input:focus {
+  box-shadow: 0 0 0 2px rgba(241, 94, 108, 0.2);
+}
+
+.error-message {
+  color: var(--error-color);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Placeholder */
+::placeholder {
+  color: var(--text-tertiary);
+  opacity: 0.8;
+}
+
+/* Avatar Edit Button */
+.avatar-edit-button {
+  background: transparent;
+  color: var(--primary-color);
+  border: none;
+  font-size: 14px;
+  margin-left: 45%;
+  font-weight: 500;
+  margin-top: -30px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+
+.avatar-edit-button:hover {
+  background: rgba(0, 168, 132, 0.1);
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .profile-info-container {
+    height: 100vh;
+    padding: 16px;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  .profile-info-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+
+  .profile-section {
+    margin-bottom: 1px;
+  }
+
+  .profile-field {
+    margin-bottom: 12px;
+  }
+
+  .field-icon {
+    margin-top: 14px;
+  }
+
+  .social-link {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+
+  .avatar-edit-button {
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+    margin-top: 10px;
+    margin-bottom: 20px;
+  }
+
+  .profile-input,
+  .profile-textarea,
+  .social-input {
+    width: 100%;
+    font-size: 11px;
+    padding: 12px 16px;
+
+  }
+
+  .profile-textarea {
+    min-height: 120px;
+  }
+
+  .field-content label {
+    font-size: 14px;
+  }
+
+  .field-value {
+    font-size: 12px;
+    padding: 0px 0;
+  }
+
+  .section-title {
+    font-size: 16px;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+
+  /* Ensure content doesn't get cut off */
+  .profile-info-container {
+    padding-bottom: 130px;
+    padding-top: 30px;
+  }
+} 
+  /* Prevent any horizontal overflow */
+  * {
+    max-width: 100%;
+    overflow-wrap: break-word;
+  }
+  
+  /* Fix for iOS scrolling */
+  @supports (-webkit-touch-callout: none) {
+    .profile-info-container {
+      height: -webkit-fill-available;
+      background-color: transparent;
+    }
+  }
+/* Social Links */
+.social-links-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.social-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.social-link.twitter {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.social-link.linkedin {
+  background-color: rgba(0, 119, 181, 0.05);
+}
+
+.social-link.facebook {
+  background-color: rgba(24, 119, 242, 0.05);
+}
+
+.social-link.instagram {
+  background-color: rgba(228, 64, 95, 0.05);
+}
+
+.no-social-links {
+  color: #666;
+  font-style: italic;
+  padding: 8px 0;
+} /* ============================================= */
+/* SCROLLING DISABLER - ADDED WITHOUT MODIFICATIONS */
+/* ============================================= */
+
+/* Disable scrolling on root elements */
+html, body {
+  overflow: hidden !important;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+/* Disable all scrollbars globally */
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}

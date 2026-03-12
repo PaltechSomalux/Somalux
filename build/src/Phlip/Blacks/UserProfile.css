@@ -1,0 +1,161 @@
+/* Base Styles */
+.user-avatar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #8696a0; /* WhatsApp medium gray */
+}
+
+.user-avatar-button:hover {
+  background-color: transparent;
+  transform: scale(1.05);
+}
+
+.user-avatar-button.activeBlack {
+  background-color: transparent;
+}
+
+.avatar-imageBlack {
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #00a884; /* WhatsApp green accent */
+}
+
+/* Unified User Panel */
+.user-panelBlack {
+  position: fixed;
+  background: #111b21; /* WhatsApp dark background */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 999;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid #2a3942; /* WhatsApp darker border */
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  max-height: 70vh;
+  overflow-y: auto;
+  width: 100%;
+  color: #e9edef; /* WhatsApp light text */
+  max-width: 300px;
+  border-radius: 0.5rem;
+}
+
+.user-panelBlack.desktop {
+  right: 26.5rem;
+  max-width: max-content;
+  top: 120px;
+  transform: translateY(-10px);
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Modified mobile styles */
+.user-panelBlack.mobile {
+  right: 0;
+  bottom: 100%;
+  max-width: fit-content;
+  max-height: fit-content;
+  transform: translateY(-20px);
+  opacity: 0;
+  visibility: hidden;
+  border-radius: 0.5rem;
+}
+
+.user-panelBlack.open {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.user-nameBlack {
+  font-weight: bold;
+  color: #e9edef; /* WhatsApp light text */
+  margin-bottom: 0.5rem;
+}
+
+.user-emailBlack {
+  font-size: 0.8rem;
+  color: #8696a0; /* WhatsApp medium gray */
+  border-bottom: 1px solid #2a3942; /* WhatsApp darker border */
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.panel-itemBlack {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: #e9edef; /* WhatsApp light text */
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.25rem;
+  margin: 0.25rem 0;
+}
+
+.panel-itemBlack:hover {
+  background-color: #2a3942; /* WhatsApp darker background */
+}
+
+.panel-itemBlack:active {
+  background-color: #00a884; /* WhatsApp green */
+  color: #111b21; /* Dark text on active */
+}
+
+/* Mobile specific styles */
+.mobile-nav-labelBlack {
+  display: none;
+  right: 0;
+  font-size: 0.75rem;
+  color: #8696a0; /* WhatsApp medium gray */
+}
+
+@media (max-width: 640px) {
+  .user-avatar-button {
+    flex-direction: column;
+    padding: 0.25rem;
+  }
+  
+  .mobile-nav-labelBlack {
+    display: block;
+  }
+  
+  .user-panelBlack.desktop {
+    width: 280px;
+    right: 1rem;
+  }
+}
+
+/* Dark mode support (already using WhatsApp dark theme) */
+@media (prefers-color-scheme: dark) {
+  .user-avatar-button {
+    color: #8696a0; /* WhatsApp medium gray */
+  }
+  
+  .user-avatar-button:hover {
+    color: #e9edef; /* WhatsApp light text */
+  }
+  
+  .user-infoBlack {
+    background-color: #111b21; /* WhatsApp dark background */
+    border-bottom-color: #2a3942; /* WhatsApp darker border */
+  }
+  
+  .panel-itemBlack:hover {
+    background-color: #2a3942; /* WhatsApp darker background */
+  }
+  
+  .panel-itemBlack:active {
+    background-color: #00a884; /* WhatsApp green */
+  }
+  
+  .mobile-nav-labelBlack {
+    color: #8696a0; /* WhatsApp medium gray */
+  }
+}

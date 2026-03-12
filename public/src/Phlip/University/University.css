@@ -1,0 +1,539 @@
+/* University.css */
+
+/* Color variables */
+:root {
+  --primary: #18a184;
+  --primary-hover: #008069;
+  --text-dark: #e9edef;
+  --text-light: #8696a0;
+  --bg-dark: #0b1216;
+  --bg-darker: #2a3942;
+  --rating-star: #fbbf24;
+  --reset-button: #005b96;
+  --website-button: #008771; /* Deeper teal-green, close to --primary */
+  --website-button-hover: #006b57; /* Darker hover state for website button */
+}
+
+/* Scale factor for responsive sizing */
+:root {
+  --scale-factor: 0.9;
+}
+
+.container-uni {
+  width: 100%;
+  margin-top: calc(40px * var(--scale-factor));
+  padding: calc(1rem * var(--scale-factor));
+  background: var(--bg-dark);
+}
+
+.header-uni {
+  text-align: center;
+  margin-bottom: calc(1.5rem * var(--scale-factor));
+  color: var(--text-dark);
+  font-size: 14px;
+}
+
+.title-uni {
+  font-size: 16px;
+  color: var(--text-dark);
+  margin-bottom: calc(0.25rem * var(--scale-factor));
+}
+
+.subtitle-uni {
+  font-size: calc(0.95rem * var(--scale-factor));
+  color: var(--text-light);
+  max-width: calc(700px * var(--scale-factor));
+  margin: 0 auto;
+}
+
+.controls-uni {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: calc(1.25rem * var(--scale-factor));
+  gap: calc(0.75rem * var(--scale-factor));
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .controls-uni {
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+}
+
+.search-container-uni {
+  position: relative;
+  flex: 1;
+  min-width: calc(200px * var(--scale-factor));
+}
+
+@media (max-width: 480px) {
+  .search-container-uni {
+    max-width: calc(100% - calc(120px * var(--scale-factor)));
+  }
+}
+
+.search-input-uni {
+  width: 100%;
+  padding: calc(0.5rem * var(--scale-factor)) calc(0.75rem * var(--scale-factor)) calc(0.5rem * var(--scale-factor)) calc(2rem * var(--scale-factor));
+  border: 1px solid var(--bg-darker);
+  border-radius: calc(4px * var(--scale-factor));
+  font-size: calc(0.9rem * var(--scale-factor));
+  transition: all 0.2s;
+  background-color: transparent !important;
+  color: var(--text-dark);
+}
+
+.search-input-uni:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: none;
+}
+
+@media (max-width: 480px) {
+  .search-input-uni {
+    height: 100%;
+  }
+}
+
+.search-icon-uni {
+  position: absolute;
+  left: calc(0.75rem * var(--scale-factor));
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-light);
+  font-size: calc(0.9rem * var(--scale-factor));
+}
+
+.clear-search-uni {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 calc(8px * var(--scale-factor));
+  color: var(--text-light);
+}
+
+.filter-wrapper-uni {
+  position: relative;
+  width: auto;
+}
+
+.filter-button-uni {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(6px * var(--scale-factor));
+  padding: calc(8px * var(--scale-factor)) calc(12px * var(--scale-factor));
+  background: transparent;
+  color: var(--text-dark);
+  border: 1px solid var(--bg-darker);
+  border-radius: calc(4px * var(--scale-factor));
+  font-weight: 500;
+  font-size: calc(0.9rem * var(--scale-factor));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  height: 100%;
+}
+
+.filter-button-uni.active-uni {
+  background: var(--bg-darker);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.filter-button-uni:hover {
+  background: var(--bg-darker);
+  border-color: var(--primary);
+}
+
+.filter-dropdown-uni {
+  /* Fixed so the filter panel remains visible while the user scrolls */
+  position: fixed;
+  top: 88px; /* adjusts under the main header area */
+  right: 24px;
+  margin-top: 0;
+  width: calc(340px * var(--scale-factor));
+  min-width: calc(280px * var(--scale-factor));
+  max-width: calc(420px * var(--scale-factor));
+  background: var(--bg-dark);
+  border-radius: calc(8px * var(--scale-factor));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  padding: calc(12px * var(--scale-factor));
+  z-index: 1100;
+  border: 1px solid var(--bg-darker);
+  display: flex;
+  flex-direction: column;
+  gap: calc(8px * var(--scale-factor));
+  transition: transform 180ms ease, opacity 180ms ease, box-shadow 200ms ease;
+}
+
+.filter-option-uni {
+  padding: calc(8px * var(--scale-factor)) calc(12px * var(--scale-factor));
+  border-radius: calc(6px * var(--scale-factor));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: calc(8px * var(--scale-factor));
+  font-size: calc(0.95rem * var(--scale-factor));
+  background: transparent;
+  color: var(--text-dark);
+  margin-bottom: calc(6px * var(--scale-factor));
+  transition: all 0.18s;
+}
+
+.filter-option-uni.active-uni {
+  background: var(--bg-darker);
+  color: var(--primary);
+}
+
+.filter-option-uni:hover {
+  background: var(--bg-darker);
+}
+
+.filter-section-uni h5 {
+  color: var(--text-dark);
+  font-size: calc(0.8rem * var(--scale-factor));
+  margin-bottom: calc(0.4rem * var(--scale-factor));
+}
+
+/* Inputs and selects inside dropdown should take full width and be readable */
+.filter-dropdown-uni label {
+  display: block;
+  color: var(--text-light);
+  font-size: calc(0.85rem * var(--scale-factor));
+  margin-bottom: calc(4px * var(--scale-factor));
+}
+
+.filter-dropdown-uni input[type="text"],
+.filter-dropdown-uni input[type="number"],
+.filter-dropdown-uni select,
+.filter-dropdown-uni textarea {
+  width: 100%;
+  padding: calc(8px * var(--scale-factor)) calc(10px * var(--scale-factor));
+  border-radius: calc(6px * var(--scale-factor));
+  border: 1px solid var(--bg-darker);
+  background: rgba(42,57,66,0.4);
+  color: var(--text-dark);
+  font-size: calc(0.95rem * var(--scale-factor));
+}
+
+.filter-dropdown-uni .checkbox-label {
+  gap: calc(8px * var(--scale-factor));
+  padding: calc(6px * var(--scale-factor));
+  width: 100%;
+  border-radius: calc(6px * var(--scale-factor));
+}
+
+/* On smaller screens make the filter panel full-width and centered under the header */
+@media (max-width: 768px) {
+  .filter-dropdown-uni {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    top: 88px; /* below header area */
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    margin-top: 0;
+    padding: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  }
+
+  .filter-dropdown-uni .filter-option-uni {
+    font-size: calc(1rem * var(--scale-factor));
+  }
+}
+
+.grid-uni {
+  display: grid;
+  gap: calc(1rem * var(--scale-factor));
+  margin-bottom: calc(1.5rem * var(--scale-factor));
+  grid-template-columns: repeat(auto-fill, minmax(calc(240px * var(--scale-factor)), 1fr));
+}
+
+@media (max-width: 480px) {
+  .grid-uni {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 320px) {
+  .grid-uni {
+    grid-template-columns: 1fr;
+  }
+}
+
+.category-card-uni {
+  background: var(--bg-dark);
+  border-radius: calc(8px * var(--scale-factor));
+  overflow: hidden;
+  box-shadow: 0 calc(2px * var(--scale-factor)) calc(6px * var(--scale-factor)) rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid var(--bg-darker);
+  display: flex;
+  flex-direction: column;
+}
+
+.card-content-uni {
+  padding: calc(1rem * var(--scale-factor));
+  flex: 1;
+}
+
+.category-icon-uni {
+  font-size: calc(1.5rem * var(--scale-factor));
+  margin-bottom: calc(0.75rem * var(--scale-factor));
+  color: var(--primary);
+}
+
+.category-name-uni {
+  font-size: calc(1.1rem * var(--scale-factor));
+  margin-bottom: calc(0.25rem * var(--scale-factor));
+  color: var(--text-dark);
+}
+
+.category-desc-uni {
+  color: var(--text-light);
+  font-size: calc(0.8rem * var(--scale-factor));
+  margin-bottom: calc(1rem * var(--scale-factor));
+  line-height: 1.4;
+}
+
+.category-meta-uni {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: calc(0.75rem * var(--scale-factor));
+}
+
+.rating-uni {
+  display: flex;
+  align-items: center;
+  gap: calc(4px * var(--scale-factor));
+  font-size: calc(0.8rem * var(--scale-factor));
+  color: var(--text-light);
+}
+
+.rating-uni svg {
+  fill: var(--rating-star);
+}
+
+.action-buttonspast-uni {
+  display: flex;
+  justify-content: flex-end;
+  gap: calc(0.5rem * var(--scale-factor));
+  padding: calc(0.5rem * var(--scale-factor));
+}
+
+.view-button-uni {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(0.5rem * var(--scale-factor));
+  background: var(--bg-darker);
+  color: var(--primary);
+  font-weight: 500;
+  font-size: calc(0.85rem * var(--scale-factor));
+  transition: all 0.2s;
+  border-radius: calc(4px * var(--scale-factor));
+  cursor: pointer;
+  text-align: center;
+}
+
+.view-button-uni:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.view-button-uni svg {
+  transition: transform 0.2s;
+  font-size: calc(0.9rem * var(--scale-factor));
+}
+
+.view-button-uni:hover svg {
+  transform: translateX(calc(2px * var(--scale-factor)));
+}
+
+.website-button-uni {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(0.5rem * var(--scale-factor));
+  background: #1a2227 ;
+  color: #06a381;
+  font-weight: 500;
+  font-size: calc(0.85rem * var(--scale-factor));
+  transition: all 0.2s;
+  border-radius: calc(4px * var(--scale-factor));
+  text-decoration: none;
+  cursor: pointer;
+  text-align: center;
+}
+
+.website-button-uni:hover {
+  background: var(--website-button-hover);
+}
+
+.website-button-uni svg {
+  font-size: calc(0.9rem * var(--scale-factor));
+}
+
+.load-more-button-uni {
+  display: block;
+  margin: calc(1.5rem * var(--scale-factor)) auto 0;
+  padding: calc(0.6rem * var(--scale-factor)) calc(1.25rem * var(--scale-factor));
+  background: #044436;
+  color: white;
+  border: none;
+  border-radius: calc(4px * var(--scale-factor));
+  font-weight: 500;
+  font-size: calc(0.9rem * var(--scale-factor));
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.load-more-button-uni:hover {
+  background: var(--primary-hover);
+}
+
+.empty-state-uni {
+  text-align: center;
+  padding: calc(2rem * var(--scale-factor));
+  background: var(--bg-darker);
+  border-radius: calc(6px * var(--scale-factor));
+  margin: calc(1.5rem * var(--scale-factor)) 0;
+  border: 1px solid var(--bg-darker);
+}
+
+.empty-state-uni svg {
+  color: var(--text-light);
+  margin-bottom: calc(0.75rem * var(--scale-factor));
+  font-size: calc(2rem * var(--scale-factor));
+}
+
+.empty-state-uni h3 {
+  color: var(--text-dark);
+  margin-bottom: calc(0.25rem * var(--scale-factor));
+  font-size: calc(1.25rem * var(--scale-factor));
+}
+
+.empty-state-uni p {
+  color: var(--text-light);
+  margin-bottom: calc(0.75rem * var(--scale-factor));
+  font-size: calc(0.9rem * var(--scale-factor));
+}
+
+.empty-state-uni .reset-filters-uni {
+  margin-top: calc(16px * var(--scale-factor));
+  padding: calc(8px * var(--scale-factor)) calc(16px * var(--scale-factor));
+  background: var(--reset-button);
+  color: white;
+  border: none;
+  border-radius: calc(4px * var(--scale-factor));
+  cursor: pointer;
+}
+
+.skeleton-card-uni {
+  background: var(--bg-dark);
+  border-radius: calc(8px * var(--scale-factor));
+  padding: calc(1rem * var(--scale-factor));
+  box-shadow: 0 calc(2px * var(--scale-factor)) calc(6px * var(--scale-factor)) rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--bg-darker);
+}
+
+.skeleton-icon-uni {
+  width: calc(32px * var(--scale-factor));
+  height: calc(32px * var(--scale-factor));
+  background: var(--bg-darker);
+  border-radius: 50%;
+  margin-bottom: calc(0.75rem * var(--scale-factor));
+}
+
+.skeleton-text-uni {
+  height: calc(10px * var(--scale-factor));
+  background: var(--bg-darker);
+  border-radius: calc(3px * var(--scale-factor));
+  margin-bottom: calc(0.5rem * var(--scale-factor));
+}
+
+.past-papers-container-uni {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: calc(1.5rem * var(--scale-factor));
+  padding: calc(0.5rem * var(--scale-factor));
+}
+
+.past-papers-button-uni {
+  padding: calc(0.6rem * var(--scale-factor)) calc(1.25rem * var(--scale-factor));
+  background: #2a3942;
+  color: white;
+  border: none;
+  border-radius: calc(4px * var(--scale-factor));
+  font-size: calc(0.9rem * var(--scale-factor));
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  text-align: center;
+}
+
+.past-papers-button-uni:hover {
+  background: var(--primary-hover);
+}
+
+/* Image carousel for university cards */
+.image-carousel-uni {
+  width: 100%;
+  height: calc(140px * var(--scale-factor));
+  border-radius: calc(8px * var(--scale-factor));
+  overflow: hidden;
+  position: relative;
+  background: var(--bg-darker);
+}
+
+.image-track-uni {
+  display: flex;
+  height: 100%;
+  transition: transform 600ms cubic-bezier(.2,.9,.2,1);
+  will-change: transform;
+}
+
+.image-slide-uni {
+  flex: 0 0 100%;
+  height: 100%;
+}
+
+.image-slide-uni img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.carousel-indicators-uni {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 6;
+}
+
+.carousel-dot-uni {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.35);
+  cursor: pointer;
+}
+
+.carousel-dot-uni.active {
+  background: rgba(255,255,255,0.95);
+}
+
+@media (max-width: 480px) {
+  .image-carousel-uni { height: calc(110px * var(--scale-factor)); }
+}

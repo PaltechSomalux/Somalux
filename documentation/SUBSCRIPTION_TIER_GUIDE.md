@@ -284,7 +284,7 @@ function RankingsTable({ users }) {
 ## Future Enhancements
 
 1. **Payment Integration**:
-   - Stripe/M-Pesa for tier purchases
+   - Stripe/alternative for tier purchases
    - Recurring billing
 
 2. **Tier Features**:

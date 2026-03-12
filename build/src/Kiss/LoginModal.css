@@ -1,0 +1,81 @@
+/* Login Modal */
+.login-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 400px;
+  z-index: 1000;
+  background: var(--dark); /* Dark background */
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--light-gray); /* Border color */
+  color: var(--text); /* Light text */
+}
+
+.login-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--light-gray);
+}
+
+.login-header h2 {
+  font-size: 20px;
+  color: var(--text); /* Light text */
+}
+
+.login-button {
+  padding: 12px;
+  background-color: var(--primary); /* WhatsApp green */
+  color: var(--text); /* Light text */
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  width: 100%;
+  margin-top: 16px;
+}
+
+.login-button:hover {
+  background: #008069; /* Darker green */
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.login-footer {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-light); /* Medium gray */
+  font-size: 14px;
+}
+
+.text-button {
+  background: none;
+  border: none;
+  color: var(--accent); /* WhatsApp blue */
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Auth Messages */
+.auth-error {
+  padding: 12px;
+  background-color: rgba(255, 68, 68, 0.1);
+  color: #ff4444;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.auth-success {
+  padding: 12px;
+  background-color: rgba(0, 200, 81, 0.1);
+  color: #00c851;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  font-size: 14px;
+}

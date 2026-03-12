@@ -1,0 +1,114 @@
+.video-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background-color: #0b1216;
+  font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: #e9edef;
+  overflow: hidden;
+}
+
+.tabs-container {
+  width: 100%;
+  overflow-x: auto;
+  background-color: #0b1216;
+  border-bottom: 0.009px solid #2a3942;
+  padding: 0 0px;
+}
+
+.tabs-scrollable {
+  display: flex;
+  min-width: max-content;
+}
+
+.tab-button {
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  color: #8696a0;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  position: relative;
+  margin-right: 4px;
+}
+
+.tab-button.active {
+  color: #00a884;
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #00a884;
+}
+
+.content-area {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  background-color: #0b1216;
+}
+
+.tab-content {
+  background-color: #1f2c33;
+  border-radius: 8px;
+  padding: 16px;
+  height: 100%;
+}
+
+.tab-content h3 {
+  margin-top: 0;
+  color: #e9edef;
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.tab-content p {
+  color: #8696a0;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.placeholder-content {
+  height: 400px;
+  background-color: #0b1216;
+  border: 1px dashed #2a3942;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8696a0;
+}
+
+/* Custom scrollbars */
+.tabs-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabs-container::-webkit-scrollbar-track {
+  background: #0b1216;
+}
+
+.tabs-container::-webkit-scrollbar-thumb {
+  background: #2a3942;
+  border-radius: 2px;
+}
+
+.content-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content-area::-webkit-scrollbar-track {
+  background: #0b1216;
+}
+
+.content-area::-webkit-scrollbar-thumb {
+  background: #2a3942;
+  border-radius: 3px;
+}

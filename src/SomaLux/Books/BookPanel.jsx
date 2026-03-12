@@ -2528,6 +2528,68 @@ export const BookPanel = ({ demoMode = false }) => {
     setShowReader(true);
   };
 
+  const openBookDirectly = (book) => {
+    console.log('🚀 openBookDirectly called with book:', book.id, book.title, 'downloadUrl:', book.downloadUrl);
+    
+    if (!requireAuth('read')) {
+      console.log('❌ Auth required, returning');
+      return;
+    }
+    
+    // Set the selected book and open the book detail modal
+    // User can then choose to read, download, share, or rate from the modal
+    setSelectedBook(book);
+    setWelcomeMessage(false);
+    // Note: showReader stays false - the modal will display with action buttons
+    
+    console.log('✅ Book modal will display');
+    
+    // Track view and award points in background (fire and forget)
+    if (user && book && book.id) {
+      (async () => {
+        try {
+          await supabase.rpc('track_book_view', { p_book_id: book.id, p_user_id: user.id });
+        } catch (err) {
+          try {
+            await supabase.from('books').update({ views: (book.views || 0) + 1 }).eq('id', book.id);
+          } catch (e) {}
+        }
+
+        try {
+          const { data } = await supabase.auth.getSession();
+          const token = data?.session?.access_token;
+          await fetch(`${API_URL}/api/reading/session`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ userId: user.id, bookId: book.id, pagesRead: 1, progressPercent: 1 })
+          });
+        } catch (err) {
+          console.warn('Session tracking failed:', err);
+        }
+
+        setBooks(prev => prev.map(b => b.id === book.id ? { ...b, views: (b.views || 0) + 1 } : b));
+        setTimeout(() => fetchRecommendations(), 500);
+
+        try {
+          const { data: rewardData } = await supabase.rpc('award_reading_points', {
+            p_book_id: book.id,
+            p_past_paper_id: null,
+            p_pages_read: 1,
+            p_points: 3,
+          });
+          if (rewardData) {
+            setPointsStats(prev => ({ ...(prev || {}), points: rewardData.points, streak_days: rewardData.streak }));
+          }
+        } catch (err) {
+          console.debug('award_reading_points failed:', err?.message);
+        }
+      })();
+    }
+  };
+
   const handleShare = async (method, book) => {
     if (!book) return;
     
@@ -3395,7 +3457,7 @@ export const BookPanel = ({ demoMode = false }) => {
                 return (
                   <motion.div
                     key={`${book.id}-${idx}`}
-                    onClick={() => setFullScreenBook(book)}
+                    onClick={() => openBookDirectly(book)}
                     whileHover={hoverProps}
                     whileTap={{ scale: 0.98 }}
                     initial={initialProps}
@@ -3925,7 +3987,7 @@ export const BookPanel = ({ demoMode = false }) => {
                     className="recommendation-itemBKP"
                     onClick={() => {
                       setShowRecommendations(false);
-                      viewBookDetails(book);
+                      openBookDirectly(book);
                     }}
                   >
                     <img src={book.bookImage} alt={book.title} className="rec-book-imgBKP" loading="lazy" decoding="async" />
@@ -3972,7 +4034,7 @@ export const BookPanel = ({ demoMode = false }) => {
                     key={book.id}
                     className="recommendation-itemBKP"
                     onClick={() => {
-                      viewBookDetails(book);
+                      openBookDirectly(book);
                       setShowWishlist(false);
                     }}
                   >
@@ -4088,7 +4150,7 @@ export const BookPanel = ({ demoMode = false }) => {
                     >
                     <div
                       className="book-cardBKP"
-                      onClick={() => bulkDownloadMode ? toggleBookSelection(book.id) : viewBookDetails(book)}
+                      onClick={() => bulkDownloadMode ? toggleBookSelection(book.id) : openBookDirectly(book)}
                       onMouseEnter={() => prefetchResource(book.downloadUrl)}
                       onFocus={() => prefetchResource(book.downloadUrl)}
                       tabIndex={0}
@@ -4192,7 +4254,7 @@ export const BookPanel = ({ demoMode = false }) => {
                   >
                     <div
                       className="book-cardBKP"
-                      onClick={() => viewBookDetails(book)}
+                      onClick={() => openBookDirectly(book)}
                       onMouseEnter={() => prefetchResource(book.downloadUrl)}
                       onFocus={() => prefetchResource(book.downloadUrl)}
                       tabIndex={0}
@@ -4329,7 +4391,7 @@ export const BookPanel = ({ demoMode = false }) => {
       )}
 
       <AnimatePresence initial={false}>
-        {selectedBook && (
+        {selectedBook && !showReader && (
           <motion.div
             className="modal-overlayBKP"
             initial={isMounted ? { opacity: 0 } : false}
@@ -4589,6 +4651,9 @@ export const BookPanel = ({ demoMode = false }) => {
           title={selectedBook.title}
           author={selectedBook.author}
           sampleText={selectedBook.sampleText || selectedBook.description}
+          userId={user?.id}
+          bookId={selectedBook.id}
+          user={user}
           onClose={() => setShowReader(false)}
         />
       )}

@@ -39,7 +39,7 @@ services:
       - key: ADMIN_EMAILS
         value: campuslives254@gmail.com
       
-      # M-Pesa Configuration
+      # Payment Configuration
       - key: MPESA_MODE
         value: demo
       - key: MPESA_CONSUMER_KEY

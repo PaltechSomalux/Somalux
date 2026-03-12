@@ -1,0 +1,267 @@
+.imo-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1px 6px;
+  background-color: var(--dark);
+  position: sticky;
+  max-width: 100%;
+  margin-top: 0;
+  border-radius: 20px;
+  z-index: 100;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.imo-top-left {
+  flex: 1;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.imo-top-left::-webkit-scrollbar {
+  display: none;
+}
+
+.imo-stories {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding-bottom: 4px;
+}
+
+.imo-story {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.imo-story-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+  padding: 2px;
+  transition: transform 0.2s ease;
+}
+
+.imo-add-story-circle {
+  background: var(--light-gray) !important;
+  position: relative;
+}
+
+.imo-story.unviewed .imo-story-circle {
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+}
+
+.imo-story.viewed .imo-story-circle,
+.imo-story.no-story .imo-story-circle {
+  background: var(--gray);
+}
+
+.imo-story-circle::after {
+  content: '';
+  position: absolute;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  border-radius: 50%;
+  background-color: var(--dark);
+}
+
+.imo-avatar {
+  font-size: 24px;
+  z-index: 1;
+  color: var(--text);
+}
+
+.imo-story-count {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  background: var(--accent);
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  z-index: 2;
+}
+
+.imo-add-story-icon {
+  font-size: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  color: var(--text);
+}
+
+.imo-add-story-plus {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  z-index: 2;
+}
+
+.imo-story-username {
+  font-size: 12px;
+  color: var(--text);
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imo-top-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: 16px;
+}
+
+.imo-status-btn {
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: background-color 0.2s, transform 0.2s;
+  position: relative;
+}
+
+.imo-status-btn::before {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  top: 2px;
+  right: 2px;
+}
+
+.imo-status-btn.online::before {
+  background-color: var(--secondary);
+}
+
+.imo-status-btn.offline::before {
+  background-color: var(--gray);
+}
+
+.imo-status-btn:hover {
+  background-color: var(--light);
+  transform: scale(1.1);
+}
+
+.imo-planet {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.imo-dark-mode-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: background-color 0.2s, transform 0.2s;
+  color: var(--text);
+}
+
+.imo-dark-mode-btn:hover {
+  background-color: var(--light);
+  transform: scale(1.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .imo-story-circle {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .imo-stories {
+    gap: 12px;
+  }
+  
+  .imo-top-right {
+    gap: 12px;
+  }
+  
+  .imo-add-story-icon {
+    font-size: 22px;
+  }
+
+  .imo-add-story-plus {
+    width: 18px;
+    height: 18px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .imo-top-bar {
+    padding: 8px 12px;
+  }
+  
+  .imo-story-circle {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .imo-story-username {
+    font-size: 11px;
+    max-width: 48px;
+  }
+  
+  .imo-top-right {
+    gap: 8px;
+  }
+  
+  .imo-planet {
+    display: none;
+  }
+  
+  .imo-add-story-icon {
+    font-size: 20px;
+  }
+
+  .imo-add-story-plus {
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+  }
+}
+
+/* Animation for better interactivity */
+.imo-story:hover .imo-story-circle {
+  transform: scale(1.05);
+}
+
+.imo-story:hover .imo-add-story-circle {
+  transform: scale(1.05);
+}

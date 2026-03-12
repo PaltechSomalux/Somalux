@@ -1,0 +1,134 @@
+.pdf-to-word-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.converter-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.converter-header h2 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.converter-header p {
+  color: #7f8c8d;
+}
+
+.dropzone {
+  border: 2px dashed #3498db;
+  border-radius: 5px;
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 20px;
+}
+
+.dropzone.active {
+  border-color: #2ecc71;
+  background-color: rgba(46, 204, 113, 0.1);
+}
+
+.dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropzone-text {
+  font-size: 18px;
+  color: #3498db;
+  margin-bottom: 10px;
+}
+
+.dropzone-hint {
+  font-size: 14px;
+  color: #95a5a6;
+}
+
+.file-info {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+}
+
+.progress-container {
+  width: 100%;
+  background-color: #ecf0f1;
+  border-radius: 5px;
+  margin: 20px 0;
+  position: relative;
+  height: 25px;
+}
+
+.progress-bar {
+  background-color: #3498db;
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.3s;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #2c3e50;
+  font-weight: bold;
+}
+
+.status-message {
+  padding: 15px;
+  border-radius: 5px;
+  margin: 20px 0;
+  text-align: center;
+  font-weight: bold;
+}
+
+.status-message.success {
+  background-color: rgba(46, 204, 113, 0.2);
+  color: #27ae60;
+}
+
+.status-message.error {
+  background-color: rgba(231, 76, 60, 0.2);
+  color: #c0392b;
+}
+
+.converter-features {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+}
+
+.converter-features h3 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+}
+
+.converter-features ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.converter-features li {
+  padding: 8px 0;
+  position: relative;
+  padding-left: 25px;
+}
+
+.converter-features li:before {
+  content: "✓";
+  color: #2ecc71;
+  position: absolute;
+  left: 0;
+  font-weight: bold;
+}

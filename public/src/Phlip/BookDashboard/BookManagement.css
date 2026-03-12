@@ -1,0 +1,40 @@
+/* BookManagement tab bar layout */
+.tools-scroll-container-convert {
+	position: -webkit-sticky; /* Safari */
+	position: sticky;
+	top: 60px; /* keep tabs 50px from top */
+	z-index: 90;
+	background: transparent;
+	backdrop-filter: blur(4px);
+}
+
+.tool-group-convert {
+	display: flex;
+	gap: 8px;
+	padding: 8px 12px;
+	align-items: center;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+.tool-button-convert {
+	background: transparent;
+	border: 1px solid rgba(255,255,255,0.06);
+	color: #e6eef7;
+	padding: 8px 12px;
+	border-radius: 8px;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.tool-button-convert.active-convert {
+	background: linear-gradient(90deg, #00a884 0%, #6366f1 100%);
+	border-color: transparent;
+	color: white;
+}
+
+/* Ensure mobile menu does not overlap tabs when open */
+.mobile-menu.open {
+	padding-top: 60px; /* leave space for sticky tabs */
+}
+

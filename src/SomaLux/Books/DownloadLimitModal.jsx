@@ -24,9 +24,9 @@ const DownloadLimitModal = ({
       <div className="download-limit-modal-content" onClick={(e) => e.stopPropagation()}>
         {/* Message */}
         <div className="download-limit-modal-body">
-          <h3 className="limit-title">Daily Download Limit</h3>
-          <p className="limit-message">You've reached your {limit} downloads for today</p>
-          <p className="upgrade-hint">Upgrade to Premium for unlimited downloads</p>
+          <h3 className="limit-title">Download Access Required</h3>
+          <p className="limit-message">{error || `You've reached your ${limit} downloads for today`}</p>
+          <p className="upgrade-hint">Upgrade to Premium to access downloads</p>
         </div>
 
         {/* Actions */}

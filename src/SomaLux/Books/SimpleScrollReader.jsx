@@ -15,6 +15,7 @@ import useWPSPrecisionSelectionPerfect from './useWPSPrecisionSelectionPerfect';
 import { generateSummaryDocument } from './utils/generateWordDoc';
 import useMobileZoomGestures from './hooks/useMobileZoomGestures';
 import usePanGesture from './hooks/usePanGesture';
+import { saveReadingPosition, loadReadingPosition } from './utils/readingPositionManager';
 import './SimpleScrollReader.css';
 
 // Verify worker is configured (set in pdfConfig.js at startup)
@@ -35,7 +36,7 @@ if (pdfjs.GlobalWorkerOptions.workerSrc) {
   }
 }
 
-const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
+const SimpleScrollReader = ({ src, title, author, onClose, sampleText, userId, bookId, user }) => {
   // Debug: Log the PDF source
   useEffect(() => {
     console.log('🔍 SimpleScrollReader received src:', src);
@@ -51,7 +52,22 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [pdfError, setPdfError] = useState(!simpleReaderWorkerReady);
   const [showTOC, setShowTOC] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(() => {
+    // Load saved reading position on mount
+    if (userId && bookId) {
+      const saved = loadReadingPosition(userId, bookId);
+      if (saved) return saved.pageNumber;
+    }
+    return 1;
+  });
+  const [savedScrollOffset, setSavedScrollOffset] = useState(() => {
+    // Load saved scroll offset on mount
+    if (userId && bookId) {
+      const saved = loadReadingPosition(userId, bookId);
+      if (saved) return saved.scrollOffset;
+    }
+    return 0;
+  });
   const [audioCurrentPage, setAudioCurrentPage] = useState(1);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
@@ -73,7 +89,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
   const [totalReadingTime, setTotalReadingTime] = useState(0);
   const [fontSize, setFontSize] = useState(16);
   const [theme, setTheme] = useState('dark');
-  const [mobileButtonsVisible, setMobileButtonsVisible] = useState(window.innerWidth > 768 ? true : false); // Show on desktop, hide on mobile by default
+  const [mobileButtonsVisible, setMobileButtonsVisible] = useState(true); // Show controls by default on all devices
 
   // Use perfect WPS-grade selection with uniform styling support (all colors/styles)
   console.log('🔧 SimpleScrollReader: About to call useWPSPrecisionSelectionPerfect hook');
@@ -157,6 +173,72 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
       }
     }
   }, []);
+
+  // Save reading position when current page changes
+  useEffect(() => {
+    if (userId && bookId && currentPage > 0) {
+      // Get current scroll position
+      if (scrollAreaRef.current) {
+        const scrollTop = scrollAreaRef.current.scrollTop;
+        const pageElement = pageRefsMap.current[currentPage];
+        if (pageElement) {
+          // Use offsetTop for reliable position calculation
+          const pageTop = pageElement.offsetTop;
+          const pageHeight = pageElement.offsetHeight;
+          const scrollWithinPage = Math.max(0, scrollTop - pageTop);
+          const scrollOffset = Math.min(1, scrollWithinPage / pageHeight);
+          saveReadingPosition(userId, bookId, currentPage, scrollOffset);
+        }
+      }
+    }
+  }, [currentPage, userId, bookId]);
+
+  // Save reading position when closing
+  useEffect(() => {
+    return () => {
+      if (userId && bookId && currentPage > 0) {
+        // Final save on unmount
+        if (scrollAreaRef.current) {
+          const scrollTop = scrollAreaRef.current.scrollTop;
+          const pageElement = pageRefsMap.current[currentPage];
+          if (pageElement) {
+            // Use offsetTop for reliable position calculation
+            const pageTop = pageElement.offsetTop;
+            const pageHeight = pageElement.offsetHeight;
+            const scrollWithinPage = Math.max(0, scrollTop - pageTop);
+            const scrollOffset = Math.min(1, scrollWithinPage / pageHeight);
+            saveReadingPosition(userId, bookId, currentPage, scrollOffset);
+          }
+        }
+      }
+    };
+  }, [userId, bookId, currentPage]);
+
+  // Scroll to saved page and position when document loads
+  useEffect(() => {
+    if (!isLoading && numPages && currentPage > 1) {
+      // Add current page and nearby pages to visible set so they render
+      const pagesToRender = new Set();
+      for (let i = Math.max(1, currentPage - 1); i <= Math.min(numPages, currentPage + 1); i++) {
+        pagesToRender.add(i);
+      }
+      setVisiblePages(prev => new Set([...prev, ...pagesToRender]));
+      
+      // Schedule scroll after pages have rendered - increase timeout to ensure pages are ready
+      setTimeout(() => {
+        const pageElement = pageRefsMap.current[currentPage];
+        if (pageElement && scrollAreaRef.current) {
+          // Use offsetTop which is reliable and relative to the scroll container
+          const pageTop = pageElement.offsetTop;
+          const pageHeight = pageElement.offsetHeight;
+          const targetScroll = pageTop + (pageHeight * savedScrollOffset);
+          
+          scrollAreaRef.current.scrollTop = targetScroll;
+          console.log('📖 Restored exact position: page', currentPage, 'offset', Math.round(savedScrollOffset * 100) + '% (targetScroll:', targetScroll + ')');
+        }
+      }, 300);
+    }
+  }, [isLoading, numPages, currentPage, savedScrollOffset]);
 
 
 
@@ -265,6 +347,18 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
           // Update current page only if in viewport center
           if (!currentPageFound && elementTop <= scrollTop + containerHeight / 2 && elementBottom >= scrollTop + containerHeight / 2) {
             setCurrentPage(page);
+            
+            // Calculate scroll offset (0-1) within this page
+            const pageTop = elementTop;
+            const pageHeight = elementBottom - elementTop;
+            const scrollWithinPage = Math.max(0, scrollTop - pageTop);
+            const scrollOffset = Math.min(1, scrollWithinPage / pageHeight);
+            
+            // Save position with scroll offset
+            if (userId && bookId) {
+              saveReadingPosition(userId, bookId, page, scrollOffset);
+            }
+            
             currentPageFound = true;
           }
           
@@ -1203,6 +1297,7 @@ const SimpleScrollReader = ({ src, title, author, onClose, sampleText }) => {
           pageText={summaryPageNumber ? pageTextMap[summaryPageNumber]?.text : ''}
           title={title}
           onClose={() => setSummaryModalOpen(false)}
+          user={user}
         />
 
         {/* Download Modal */}

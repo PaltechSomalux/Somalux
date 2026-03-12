@@ -253,13 +253,13 @@ export const FacultyGridDisplay = React.memo(({
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: isLiked ? '#e63946' : '#8696a0',
+                          color: isLiked ? '#FF1493' : '#8696a0',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '4px',
-                          fontSize: '0.75rem',
+                          gap: '3px',
                           padding: 0,
+                          transition: 'color 0.2s',
                           position: 'relative',
                         }}
                         title={isLiked ? 'Unlike' : 'Like'}

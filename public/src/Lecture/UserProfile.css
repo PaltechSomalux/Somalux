@@ -1,0 +1,202 @@
+/* UserProfile.css */
+
+/* Base styles */
+.user-avatar-container {
+  position: relative;
+  display: inline-block;
+}
+
+.user-avatar-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.user-avatar-button:hover {
+  transform: scale(1.05);
+}
+
+.user-avatar-button:active {
+  transform: scale(0.98);
+}
+
+.user-avatar-button.tab-active {
+  box-shadow: 0 0 0 2px var(--primary-color, #4a6cf7);
+}
+
+.avatar-imagelec {
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Centered panel styles - for both desktop and mobile */
+.user-panellec {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.95);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  width: 90%;
+ max-width: fit-content;
+  max-height: 80vh;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 1000;
+  overflow-y: auto;
+  padding-bottom: 16px;
+}
+
+.user-panellec.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Panel content styles */
+.user-namelec {
+  font-weight: 600;
+  font-size: 1.1rem;
+  padding: 16px 20px 8px;
+  color: #333;
+  text-align: center;
+}
+
+.user-emailec {
+  font-size: 0.85rem;
+  padding: 0 20px 16px;
+  color: #666;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+.panel-itemlec {
+  display: block;
+max-width: fit-content;
+  margin: 8px 20px;
+  padding: 12px 16px;
+  text-align: center;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.panel-itemlec:hover {
+  background: #f5f5f5;
+  color: #000;
+}
+
+.panel-itemlec:active {
+  background: #eee;
+  transform: scale(0.98);
+}
+
+.panel-itemlec.secondary {
+  color: #666;
+  background: transparent;
+}
+
+.panel-itemlec[disabled] {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: #f5f5f5;
+}
+
+/* Login form styles */
+.login-form {
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.login-form input {
+  width: calc(100% - 24px);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.login-form input:focus {
+  outline: none;
+  border-color: var(--primary-color, #4a6cf7);
+  box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.2);
+}
+
+/* Error message */
+.auth-error-message {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  padding: 8px 20px;
+  background: #fdecea;
+  margin: 8px 20px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+/* Overlay for when panel is open */
+.user-panellec-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.user-panellec-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Animation */
+@keyframes panelFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.user-panellec.open {
+  animation: panelFadeIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .user-panellec {
+    max-width: 360px;
+  }
+  
+  .user-namelec {
+    font-size: 1.2rem;
+  }
+  
+  .panel-itemlec {
+    padding: 14px 16px;
+    font-size: 1rem;
+  }
+}

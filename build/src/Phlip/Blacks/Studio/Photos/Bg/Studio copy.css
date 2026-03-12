@@ -1,0 +1,292 @@
+/* Fixed Position Container */
+.studio-fixed-container {
+  position: fixed;
+  top: 35px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background-color: #0b1216;
+  color: #c9d3d8;
+  font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+/* Sidebar Styles */
+.sidebar-studio {
+  width: 240px;
+  height: 100vh;
+  position: fixed;
+  background: #0b1216;
+  transition: width 0.3s ease;
+  overflow: hidden;
+  z-index: 100;
+} 
+
+.sidebar-studio.collapsed-studio {
+  width: 60px;
+}
+
+
+/* Logo Area - No changes */
+.logo-studio {
+  height: 60px;
+  margin-top: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  box-shadow: 0 15px 15px rgba(0, 0, 0, 0.2);
+  font-size: 1.2rem;
+  font-weight: bold;
+  background: transparent;
+}
+
+/* Menu Items - No changes */
+.menu-studio {
+  padding: 10px 0;
+}
+
+.menu-item-studio {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  color: #8696a0;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  text-align: left;
+  margin: 2px 0;
+}
+
+.menu-item-studio:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e9edef;
+}
+
+.menu-item-studio.active-studio {
+  color: #00a884;
+  background: rgba(0, 168, 132, 0.1);
+}
+
+.menu-icon-studio {
+  min-width: 24px;
+  margin-left: auto;
+  text-align: right;
+  padding-left: 16px;
+  font-size: 1.2rem;
+  color: #8696a0;
+}
+
+.menu-item-studio.active-studio .menu-icon-studio {
+  color: #00a884;
+}
+
+.menu-label-studio {
+  flex-grow: 1;
+  text-align: left;
+  padding-right: 8px;
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+
+/* Collapsed State - No changes */
+.collapsed-studio .menu-label-studio {
+  opacity: 0;
+  width: 0;
+  padding: 0;
+}
+
+.collapsed-studio .menu-item-studio {
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.collapsed-studio .menu-icon-studio {
+  margin-left: 0;
+  padding-left: 0;
+  text-align: center;
+}
+
+/* Main Content Area - Only changed height to 100% */
+.main-content-studio {
+  flex: 1;
+  margin-left: 240px;
+  transition: margin-left 0.3s ease;
+  background-color: #0b1216;
+  border-bottom: 1px solid #2a3942;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.collapsed-studio ~ .main-content-studio {
+  margin-left: 60px;
+}
+
+/* Content Styles - Borderless - No changes */
+.content-area-studio {
+  padding: 0;
+  background: transparent;
+}
+
+.tab-content-studio {
+  background: transparent;
+  padding: 20px;
+  min-height: calc(100vh - 60px);
+}
+
+.tab-content-placeholder-studio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8696a0;
+  text-align: center;
+  background: transparent;
+}
+
+.placeholder-icon-studio {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  opacity: 0.7;
+}
+
+/* Mobile Styles - No changes */
+@media (max-width: 767px) {
+  .sidebar-studio {
+    display: none;
+  }
+  
+  .main-content-studio {
+    margin-left: 0;
+  }
+  
+  .mobile-header-studio {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 15px;
+    background: #0b1216;
+    position: sticky;
+    box-shadow: 0 15px 15px rgba(0, 0, 0, 0.2);
+    top: 0;
+    z-index: 90;
+  }
+  
+  .mobile-menu-toggle-studio {
+    position: absolute;
+    right: 15px;
+    font-size: 1.2rem;
+    background: none;
+    border: none;
+    color:#8696a0;
+    cursor: pointer;
+  }
+  
+  .mobile-header-title-studio {
+    font-size: 1.2rem;
+    margin: 0 auto;
+  }
+  
+  /* Mobile Drawer */
+  .mobile-drawer-studio {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 40%;
+    height: fit-content;
+    background: #0b1216;
+    z-index: 110;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .mobile-drawer-studio.visible {
+    transform: translateX(0);
+  }
+  
+  .drawer-content-studio {
+    height: 100%;
+  }
+  
+  .close-drawer-studio {
+    font-size: 1.5rem;
+    background: none;
+    border: none;
+    color: #e9edef;
+    cursor: pointer;
+  }
+  
+  .drawer-overlay-studio {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 105;
+  }
+  
+  /* Mobile menu items */
+  .mobile-drawer-studio .menu-item-studio {
+    justify-content: space-between;
+    padding: 12px 16px;
+  }
+  
+  .mobile-drawer-studio .menu-icon-studio {
+    margin-left: 16px;
+    padding-left: 0;
+  }
+  
+  .mobile-drawer-studio .logo-studio {
+    flex-direction: row-reverse;
+  }
+}
+
+/* Mobile Logo - No changes */
+.mobile-logo-image-studio {
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+}
+
+.mobile-header-title-studio {
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.mobile-header-title-studio h1 {
+  font-size: 18px;
+  margin: 0;
+}
+
+/* Buttons - No changes */
+.collapse-btn-studio, 
+.close-drawer-studio,
+.mobile-menu-toggle-studio {
+  background: none;
+  border: none;
+  color: #e9edef;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.collapse-btn-studio:hover,
+.close-drawer-studio:hover,
+.mobile-menu-toggle-studio:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Animation - No changes */
+* {
+  transition: background-color 0.2s, color 0.2s, opacity 0.2s;
+}

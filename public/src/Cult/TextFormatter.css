@@ -1,0 +1,94 @@
+/* Text Formatting Styles */
+.formatted-text-container {
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.formatted-bold {
+  font-weight: 600;
+  color: #e9edef;
+}
+
+.formatted-italic {
+  font-style: italic;
+  color: #d1d7db;
+}
+
+.formatted-strikethrough {
+  text-decoration: line-through;
+  color: #8696a0;
+  opacity: 0.7;
+}
+
+.formatted-code {
+  font-family: 'Courier New', monospace;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #00a884;
+}
+
+.formatted-highlight {
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #000;
+  font-weight: 500;
+  display: inline-block;
+  margin: 0 2px;
+}
+
+/* Mention styling */
+.formatted-mention {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: rgba(102, 126, 234, 0.18);
+  color: #e9efff;
+  font-weight: 600;
+  margin: 0 2px;
+  cursor: pointer;
+  border: 1px solid rgba(102, 126, 234, 0.35);
+}
+
+.message-bubble.outgoing .formatted-mention {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.formatted-mention:hover {
+  filter: brightness(1.05);
+}
+
+/* Highlight color variations */
+.highlight-yellow { background-color: #ffd43b; color: #000; }
+.highlight-red { background-color: #ff6b6b; color: #fff; }
+.highlight-blue { background-color: #4dabf7; color: #fff; }
+.highlight-green { background-color: #51cf66; color: #000; }
+.highlight-orange { background-color: #ff922b; color: #000; }
+.highlight-purple { background-color: #a78bfa; color: #fff; }
+.highlight-pink { background-color: #f783ac; color: #fff; }
+.highlight-cyan { background-color: #3bc9db; color: #000; }
+.highlight-lime { background-color: #94d82d; color: #000; }
+.highlight-teal { background-color: #20c997; color: #fff; }
+.highlight-indigo { background-color: #748ffc; color: #fff; }
+.highlight-violet { background-color: #da77f2; color: #000; }
+.highlight-gray { background-color: #868e96; color: #fff; }
+.highlight-grey { background-color: #868e96; color: #fff; }
+
+/* Ensure highlights work in both incoming and outgoing messages */
+.message-bubble.outgoing .formatted-highlight,
+.message-bubble.incoming .formatted-highlight {
+  opacity: 1;
+}
+
+/* Make bold more visible */
+.message-bubble.outgoing .formatted-bold {
+  color: #fff;
+}
+
+.message-bubble.incoming .formatted-bold {
+  color: #e9edef;
+}

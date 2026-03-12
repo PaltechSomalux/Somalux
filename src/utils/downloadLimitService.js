@@ -1,7 +1,7 @@
 import { supabase } from '../SomaLux/Books/supabaseClient';
 
-const DAILY_DOWNLOAD_LIMIT_FREE = 1; // Non-premium users
-const DAILY_DOWNLOAD_LIMIT_PREMIUM = 999; // Premium users (essentially unlimited)
+const DAILY_DOWNLOAD_LIMIT_PREMIUM = 1; // Premium users: 1 file per day
+const DAILY_DOWNLOAD_LIMIT_PREMIUM_PRO = 3; // Premium Pro users: 3 files per day
 const STORAGE_KEY = 'somalux_daily_downloads';
 
 /**
@@ -47,26 +47,43 @@ const incrementDownloadCount = () => {
  * @returns {object} { allowed: boolean, remaining: number, limit: number, error: string }
  */
 export const checkDownloadLimit = (user) => {
-  // Allow downloads if no user
+  // Block downloads if no user (not authenticated)
   if (!user) {
-    return { allowed: true, remaining: 999, limit: 999 };
+    return {
+      allowed: false,
+      remaining: 0,
+      limit: 0,
+      error: 'You must be logged in to download files. Please sign in to your Premium account.'
+    };
   }
 
   const tier = user.subscription_tier || 'basic';
-  const isBasic = tier === 'basic';
-  const limit = isBasic ? DAILY_DOWNLOAD_LIMIT_FREE : DAILY_DOWNLOAD_LIMIT_PREMIUM;
   
+  // Only premium and premium_pro tiers can download
+  const isPremium = tier === 'premium';
+  const isPremiumPro = tier === 'premium_pro';
+  
+  if (!isPremium && !isPremiumPro) {
+    return {
+      allowed: false,
+      remaining: 0,
+      limit: 0,
+      error: `Downloads are only available for Premium members. Your current tier (${tier}) does not have download access. Please upgrade to Premium to access downloads.`
+    };
+  }
+
+  // Set limit based on tier
+  const limit = isPremiumPro ? DAILY_DOWNLOAD_LIMIT_PREMIUM_PRO : DAILY_DOWNLOAD_LIMIT_PREMIUM;
   const currentCount = getTodayDownloadCount();
   const remaining = Math.max(0, limit - currentCount);
 
   if (currentCount >= limit) {
+    const tierName = isPremiumPro ? 'Premium Pro' : 'Premium';
     return {
       allowed: false,
       remaining: 0,
       limit,
-      error: isBasic
-        ? `You've reached your daily limit of ${limit} downloads. Upgrade to Premium for unlimited downloads.`
-        : `You've reached your download limit for today.`
+      error: `You've reached your daily limit of ${limit} download${limit === 1 ? '' : 's'} for ${tierName}. Your limit resets tomorrow.`
     };
   }
 

@@ -124,7 +124,7 @@ The badge automatically appears in the user details view:
 ### Handle Tier Selection
 ```jsx
 onSelectTier={(tier) => {
-  // Next phase: Process payment via Stripe/M-Pesa
+  // Next phase: Process payment via Stripe/alternative
   // For now: Just close modal
   setShowVerificationModal(false);
 }}
@@ -165,7 +165,7 @@ onSelectTier={(tier) => {
 
 ### Phase 2: Payment Integration
 - [ ] Add Stripe payment processing
-- [ ] Add M-Pesa payment processing
+- [ ] Add payment processing
 - [ ] Store payment methods
 - [ ] Handle subscription renewals
 - [ ] Send confirmation emails
@@ -231,7 +231,7 @@ Add VerificationBadge in these locations:
 - No payment processing yet
 
 ### Payment Phase (Coming)
-- Integrate Stripe/M-Pesa for payments
+- Integrate Stripe/alternative for payments
 - Webhook handlers for payment confirmation
 - Automatic tier upgrade on successful payment
 - Billing portal for subscription management

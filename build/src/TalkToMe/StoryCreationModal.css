@@ -1,0 +1,328 @@
+/* StoryCreationModal.css */
+.imo-story-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(17, 27, 33, 0.9); /* var(--dark) with opacity */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  padding: 20px;
+}
+
+.imo-story-modal {
+  background-color: #111b21; /* var(--dark) */
+  border-radius: 12px; /* var(--radius) */
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4); /* var(--shadow-hover) */
+  overflow: hidden;
+  animation: fadeIn 0.3s ease-out;
+  border: 1px solid #2a3942; /* var(--light-gray) */
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.imo-story-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #2a3942; /* var(--light-gray) */
+}
+
+.imo-story-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #e9edef; /* var(--text) */
+}
+
+.imo-close-modal {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #8696a0; /* var(--gray) */
+  transition: color 0.2s;
+  padding: 4px;
+  line-height: 1;
+}
+
+.imo-close-modal:hover {
+  color: #e9edef; /* var(--text) */
+}
+
+.imo-story-preview-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 24px;
+  margin: 16px 0;
+}
+
+.imo-stories-preview h4 {
+  margin: 0 0 12px 0;
+  font-size: 0.95rem;
+  color: #8696a0; /* var(--gray) */
+  font-weight: 500;
+}
+
+.imo-stories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.imo-story-preview-item {
+  position: relative;
+  border-radius: 8px; /* var(--radius-sm) */
+  overflow: hidden;
+  aspect-ratio: 9/16;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid #2a3942; /* var(--light-gray) */
+}
+
+.imo-story-preview-item img,
+.imo-story-preview-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.imo-text-preview {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: linear-gradient(135deg, #00a884, #25D366); /* var(--primary) to var(--secondary) */
+  color: #e9edef; /* var(--text) */
+  font-size: 1rem;
+  word-break: break-word;
+  overflow: hidden;
+  text-align: center;
+}
+
+.imo-remove-story {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: rgba(42, 57, 66, 0.8); /* var(--light) with opacity */
+  color: #e9edef; /* var(--text) */
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.imo-remove-story:hover {
+  background-color: rgba(255, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+.imo-story-creation-options {
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 24px;
+  border-top: 1px solid #2a3942; /* var(--light-gray) */
+  border-bottom: 1px solid #2a3942; /* var(--light-gray) */
+  background-color: #111b21; /* var(--dark) */
+}
+
+.imo-story-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px; /* var(--radius-sm) */
+  transition: all 0.2s;
+}
+
+.imo-story-option:hover {
+  background-color: #2a3942; /* var(--light-gray) */
+}
+
+.imo-story-option input[type="file"] {
+  display: none;
+}
+
+.imo-story-option-icon {
+  font-size: 1.8rem;
+  margin-bottom: 6px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #2a3942; /* var(--light-gray) */
+  border-radius: 50%;
+  transition: all 0.2s;
+  color: #e9edef; /* var(--text) */
+}
+
+.imo-story-option:hover .imo-story-option-icon {
+  background-color: #3a4a52; /* Slightly lighter dark */
+  transform: scale(1.05);
+}
+
+.imo-story-option span {
+  font-size: 0.85rem;
+  color: #e9edef; /* var(--text) */
+  font-weight: 500;
+}
+
+.imo-text-story-input-container {
+  padding: 16px 24px;
+}
+
+.imo-text-story-input-container textarea {
+  width: 100%;
+  border: 1px solid #2a3942; /* var(--light-gray) */
+  border-radius: 8px; /* var(--radius-sm) */
+  padding: 12px;
+  font-size: 1rem;
+  resize: none;
+  min-height: 120px;
+  transition: border 0.2s;
+  background-color: #2a3942; /* var(--light-gray) */
+  color: #e9edef; /* var(--text) */
+}
+
+.imo-text-story-input-container textarea:focus {
+  outline: none;
+  border-color: #34B7F1; /* var(--accent) */
+  box-shadow: 0 0 0 2px rgba(52, 183, 241, 0.2); /* var(--accent) with opacity */
+}
+
+.imo-story-privacy {
+  padding: 12px 24px;
+  border-top: 1px solid #2a3942; /* var(--light-gray) */
+}
+
+.imo-story-privacy h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.95rem;
+  color: #8696a0; /* var(--gray) */
+  font-weight: 500;
+}
+
+.imo-story-privacy select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px; /* var(--radius-sm) */
+  border: 1px solid #2a3942; /* var(--light-gray) */
+  font-size: 0.95rem;
+  background-color: #2a3942; /* var(--light-gray) */
+  transition: all 0.2s;
+  color: #e9edef; /* var(--text) */
+}
+
+.imo-story-privacy select:focus {
+  outline: none;
+  border-color: #34B7F1; /* var(--accent) */
+  box-shadow: 0 0 0 2px rgba(52, 183, 241, 0.2); /* var(--accent) with opacity */
+}
+
+.imo-story-modal-buttons {
+  display: flex;
+  padding: 16px 24px;
+  gap: 12px;
+  border-top: 1px solid #2a3942; /* var(--light-gray) */
+  background-color: #111b21; /* var(--dark) */
+}
+
+.imo-story-modal-buttons button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px; /* var(--radius-sm) */
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.imo-cancel-btn {
+  background-color: #2a3942; /* var(--light-gray) */
+  color: #8696a0; /* var(--gray) */
+}
+
+.imo-cancel-btn:hover {
+  background-color: #3a4a52; /* Slightly lighter dark */
+}
+
+.imo-add-btn {
+  background-color: #00a884; /* var(--primary) */
+  color: #e9edef; /* var(--text) */
+}
+
+.imo-add-btn:hover {
+  background-color: #008069; /* Darker green */
+}
+
+.imo-add-btn:disabled {
+  background-color: #2a3942; /* var(--light-gray) */
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.imo-post-all-btn {
+  background-color: #25D366; /* var(--secondary) */
+  color: #e9edef; /* var(--text) */
+}
+
+.imo-post-all-btn:hover {
+  background-color: #1db954;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .imo-story-modal {
+    max-height: 85vh;
+  }
+  
+  .imo-story-creation-options {
+    padding: 8px 12px;
+  }
+  
+  .imo-story-option-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+  }
+  
+  .imo-story-option span {
+    font-size: 0.75rem;
+  }
+  
+  .imo-story-modal-buttons {
+    flex-wrap: wrap;
+  }
+  
+  .imo-story-modal-buttons button {
+    min-width: calc(50% - 6px);
+  }
+  
+  .imo-stories-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
+}

@@ -1,12 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { FiX, FiCopy, FiDownload } from 'react-icons/fi';
 import { generateSummary, generateKeyPoints, getTextStats } from './utils/summarizeText';
+import { checkDownloadLimit } from '../../utils/downloadLimitService';
+import DownloadLimitModal from './DownloadLimitModal';
 import './SummaryModal.css';
 
-const SummaryModal = ({ isOpen, pageNumber, pageText, title, onClose }) => {
+const SummaryModal = ({ isOpen, pageNumber, pageText, title, onClose, user }) => {
   const [summaryLength, setSummaryLength] = useState(5);
   const [viewMode, setViewMode] = useState('summary'); // 'summary' or 'keypoints'
   const [copied, setCopied] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitInfo, setLimitInfo] = useState(null);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -40,6 +44,14 @@ const SummaryModal = ({ isOpen, pageNumber, pageText, title, onClose }) => {
   };
 
   const handleDownload = () => {
+    // Check download limit
+    const limitCheck = checkDownloadLimit(user);
+    if (!limitCheck.allowed) {
+      setLimitInfo(limitCheck);
+      setShowLimitModal(true);
+      return;
+    }
+
     const textToCopy = viewMode === 'summary' ? summary : keyPoints.join('\n• ');
     const element = document.createElement('a');
     const file = new Blob([textToCopy], { type: 'text/plain' });
@@ -53,7 +65,15 @@ const SummaryModal = ({ isOpen, pageNumber, pageText, title, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="summary-modal-overlay" onClick={onClose}>
+    <>
+      <DownloadLimitModal
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        remaining={limitInfo?.remaining}
+        limit={limitInfo?.limit}
+        error={limitInfo?.error}
+      />
+      <div className="summary-modal-overlay" onClick={onClose}>
       <div className="summary-modal-content" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="summary-modal-header">
@@ -149,6 +169,7 @@ const SummaryModal = ({ isOpen, pageNumber, pageText, title, onClose }) => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

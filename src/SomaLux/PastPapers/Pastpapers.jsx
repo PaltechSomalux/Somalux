@@ -2779,6 +2779,7 @@ export const PaperPanel = ({ demoMode = false }) => {
           title={selectedPaper.title}
           author={selectedPaper.courseCode || ''}
           sampleText={`${selectedPaper.university} - ${selectedPaper.year}`}
+          user={user}
           onClose={() => {
             setShowReader(false);
             setReaderUrl(null);

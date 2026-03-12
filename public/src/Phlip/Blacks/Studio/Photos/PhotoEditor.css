@@ -1,0 +1,78 @@
+.photo-editor-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #0b1216;
+}
+
+.photo-editor-tabs {
+  display: flex;
+  border-bottom: 1px solid #2a3942;
+  margin-bottom: 0px;
+  background: #0b1216;
+  padding: 0 2px;
+}
+
+.photo-editor-tabs button {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s;
+  margin: 0 3px;
+  color: #8696a0;
+}
+
+.photo-editor-tabs button.active {
+  border-bottom: 2px solid #00a884;
+  color: #e9edef;
+  font-weight: bold;
+}
+
+.photo-editor-tabs button:hover:not(.active) {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.photo-editor-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background-color: #0b1216;
+  color: #e9edef;
+}
+
+/* Consistent styling for child components */
+.converter-container,
+.background-remover-container {
+  padding: 20px;
+  max-width: 100%;
+  background-color: #0b1216;
+  color: #e9edef;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .photo-editor-tabs {
+    overflow-x: auto;
+    padding: 0 10px;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .photo-editor-tabs::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+  
+  .photo-editor-tabs button {
+    padding: 6px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  
+  .photo-editor-content {
+    padding: 10px;
+  }
+}

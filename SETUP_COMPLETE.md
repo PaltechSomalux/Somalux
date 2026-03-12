@@ -103,7 +103,7 @@ EMAIL_PASS=zeroeafivxxlzllp
 EMAIL_FROM=Paltech Support Team <campuslives254@gmail.com>
 ADMIN_EMAILS=campuslives254@gmail.com
 
-# M-Pesa
+# Payment Integration
 MPESA_MODE=demo
 MPESA_CONSUMER_KEY=JmTIKawu0Jvur2YA7iFnSmS2ZO15ObCJSGtXHNb1WSv6F83U
 MPESA_CONSUMER_SECRET=ILRULsnEKAhzzZXBwmyJsM0FjiGeHjm1SP7BQKFTXAZSgK9bBcCnfCZTJKnblih4

@@ -1,0 +1,473 @@
+/* Base Navbar Styles - WhatsApp Dark Theme */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background-color: #0b1216;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  color: #e9edef;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-scrolled {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  background: rgba(17, 27, 33, 0.95);
+}
+
+/* Removed ConnectMe-specific scoping: navbar stays full width */
+
+.navbar-container {
+  width: 100%;
+  height: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Brand/Logo */
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+
+.logo-image {
+  height: 40px;
+  width: auto;
+  margin-right: 8px;
+  transition: transform 0.2s ease;
+}
+
+.logo-text {
+  color: #e9edef;
+  font-weight: 600;
+  font-size: 1.125rem;
+  transition: opacity 0.3s ease;
+}
+
+.navbar-logo:hover .logo-image {
+  transform: scale(1.05);
+}
+
+/* Navigation Links */
+.navbar-links {
+  display: flex;
+  gap: 4rem;
+  margin-left: 3rem;
+  color: white;
+}
+
+.nav-link1 {
+  position: relative;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #b8c6d0;
+  padding: 0.5rem 0;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.nav-link1:hover {
+  color: #e9edef;
+}
+
+.nav-link1::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 3px;
+  background: lightgreen;
+  transition: all 0.3s ease;
+  border-radius: 2px 2px 0 0;
+}
+
+.nav-link1:hover::after {
+  width: 100%;
+  background: rgba(144, 238, 144, 0.6);
+}
+
+.nav-link1.active::after {
+  width: 100%;
+  background: rgb(86, 235, 86);
+}
+
+.nav-link1.active {
+  color: #e9edef;
+  font-weight: 600;
+}
+
+/* Connect Button Specific Styling */
+.connect-btn {
+  color: #00a884 !important;
+  font-weight: 600 !important;
+}
+
+.connect-btn:hover {
+  color: #00d4a0 !important;
+}
+
+.connect-btn::after {
+  background: #00a884 !important;
+}
+
+.connect-btn:hover::after {
+  background: rgba(0, 168, 132, 0.6) !important;
+}
+
+.connect-btn.active::after {
+  background: #00d4a0 !important;
+}
+
+/* User Section */
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-left: auto;
+  padding-left: 1rem;
+}
+
+/* UserProfile Component Container */
+.user-profile-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1200px) {
+  .navbar-links {
+    gap: 2.5rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .navbar-container {
+    padding: 0 1.35rem;
+    background-color: #0b1216;
+  }
+  
+  .navbar-links {
+    gap: 2rem;
+    margin-left: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar-container {
+    padding: 0 1rem;
+  }
+  
+  .navbar-links {
+    gap: 1.75rem;
+    margin-left: 1.5rem;
+  }
+  
+  .logo-text {
+    font-size: 1rem;
+  }
+  
+  .navbar-user {
+    gap: 1rem;
+    padding-left: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .navbar {
+    padding: 0;
+  }
+  
+  .navbar-container {
+    padding: 0 0.75rem;
+  }
+  
+  .navbar-links {
+    gap: 1.5rem;
+    margin-left: 1rem;
+  }
+  
+  .logo-text {
+    font-size: 0.9rem;
+    opacity: 0.9;
+  }
+  
+  .logo-image {
+    height: 36px;
+  }
+  
+  .navbar-user {
+    gap: 0.75rem;
+    padding-left: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    height: 40px;
+    background: #111b21;
+  }
+  
+  .navbar-container {
+    padding: 0 0.75rem;
+  }
+  
+  .navbar-links {
+    gap: 1.25rem;
+    margin-left: 0.5rem;
+  }
+  
+  .logo-text {
+    display: none;
+  }
+  
+  .nav-link1 {
+    font-size: 0.7rem;
+  }
+  
+  .navbar-user {
+    gap: 0.5rem;
+    padding-left: 0.25rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .navbar-container {
+    padding: 0 0.5rem;
+  }
+  
+  .navbar-links {
+    gap: 1rem;
+    margin-left: 0.25rem;
+  }
+  
+  .nav-link1 {
+    font-size: 0.65rem;
+  }
+  
+  .navbar-user {
+    gap: 0.5rem;
+    padding-left: 0.25rem;
+  }
+}
+
+/* ============================================================================ */
+/* NEW FEATURES: Connect Modal Styles (Added for new component features) */
+/* ============================================================================ */
+
+/* Connect Modal Overlay */
+.connect-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.connect-modal {
+  background: #111b21;
+  border-radius: 1rem;
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 1px solid #2a3942;
+  text-align: center;
+}
+
+.close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: #8696a0;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: rgba(42, 57, 66, 0.5);
+  color: #e9edef;
+}
+
+.modal-logo {
+  height: 48px;
+  width: auto;
+  margin-bottom: 1rem;
+}
+
+.connect-modal h2 {
+  color: #e9edef;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+
+.connect-modal p {
+  color: #8696a0;
+  font-size: 0.9rem;
+  margin: 0 0 2rem 0;
+}
+
+.google-signin-container {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.google-btn,
+.twitter-btn,
+.facebook-btn,
+.manual-btn {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.twitter-btn,
+.facebook-btn,
+.manual-btn {
+  margin-bottom: 1rem;
+}
+
+.google-btn {
+  background: #fff;
+  color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.google-btn:hover {
+  background: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.google-btn img {
+  height: 20px;
+  width: auto;
+}
+
+.saved-email-hint {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #8696a0;
+  margin-top: 0.5rem;
+  padding: 0 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.twitter-btn {
+  background: #000;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.twitter-btn:hover {
+  background: #1a1a1a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.twitter-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.facebook-btn {
+  background: #1877f2;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(24, 119, 242, 0.3);
+}
+
+.facebook-btn:hover {
+  background: #166fe5;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 119, 242, 0.4);
+}
+
+.facebook-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.manual-btn {
+  background: transparent;
+  color: #00a884;
+  border: 1px solid #00a884;
+}
+
+.manual-btn:hover {
+  background: rgba(0, 168, 132, 0.1);
+  transform: translateY(-1px);
+}
+
+/* UserProfile Integration */
+.user-profile-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Ensure UserProfile dropdown appears above modal */
+.user-profile-dropdown {
+  z-index: 1000;
+}
+
+/* Hide unused mobile elements (as per original) */
+.mobile-menu-button,
+.mobile-menu {
+  display: none !important;
+}
+
+/* Mobile menu adjustments (kept for compatibility) */
+.mobile-user-actions {
+  padding: 15px;
+  border-top: 1px solid #2a3942;
+}

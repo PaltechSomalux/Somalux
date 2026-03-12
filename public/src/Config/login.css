@@ -1,0 +1,6 @@
+.circular-image {
+  border-radius: 50%;
+  width: 200px; /* Adjust as needed */
+  height: 200px; /* Adjust as needed */
+  object-fit: cover; /* Ensures the image covers the area without stretching */
+}

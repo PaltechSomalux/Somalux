@@ -1,0 +1,272 @@
+/* NotificationsSettings.css - Dark Theme Enhanced Version */
+
+/* Base Container */
+.notifications-settings-container {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    color: #e9edef;
+    background-color: #0b1216; /* Dark background */
+    height: auto;
+    padding: 1rem;
+    box-sizing: border-box;
+    border-bottom: 1px solid #2a3942; /* Dark separator */
+}
+
+/* Settings Section - Compact Height */
+.settings-section {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border: none;
+}
+
+.settings-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: #0b1216; /* Dark background */
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    min-height: 60px;
+    border-bottom: 1px solid #2a3942; /* Dark separator */
+}
+
+.settings-item.clickable {
+    cursor: pointer;
+}
+
+.settings-item.clickable:hover {
+    background-color: rgba(255, 255, 255, 0.02); /* Subtle hover effect */
+}
+
+.settings-icon {
+    margin-right: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: #8696a0; /* Secondary text */
+}
+
+.settings-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.settings-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-content h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #e9edef; /* Primary text */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.settings-content p {
+    margin: 2px 0 0;
+    font-size: 0.85rem;
+    color: #8696a0; /* Secondary text */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.settings-arrow {
+    margin-left: 0.5rem;
+    color: #8696a0; /* Secondary text */
+    flex-shrink: 0;
+}
+
+.settings-arrow svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Toggle Switch Styles */
+.settings-toggle {
+    margin-left: 0.5rem;
+    flex-shrink: 0;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #2a3942; /* Dark toggle background */
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #00a884; /* WhatsApp green */
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+/* Animation for toggle */
+.slider.round {
+    border-radius: 24px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* ============================================= */
+/* MOBILE SCROLLING ADJUSTMENTS */
+/* ============================================= */
+
+@media (max-width: 600px) {
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .notifications-settings-container {
+        height: 100vh;
+        padding: 0.5rem;
+        overflow-y: scroll;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+        max-width: 100%;
+        padding-bottom: 130px;
+        padding-top: 30px;
+    }
+
+    .notifications-settings-container::-webkit-scrollbar {
+        display: none; /* Chrome, Safari and Opera */
+    }
+
+    .settings-item {
+        padding: 0.6rem 0.8rem;
+        min-height: 56px;
+    }
+    
+    .settings-content h3 {
+        font-size: 0.9rem;
+    }
+    
+    .settings-content p {
+        font-size: 0.8rem;
+    }
+    
+    .switch {
+        width: 42px;
+        height: 20px;
+    }
+    
+    .slider:before {
+        height: 14px;
+        width: 14px;
+    }
+    
+    input:checked + .slider:before {
+        transform: translateX(22px);
+    }
+
+    /* Prevent any horizontal overflow */
+    * {
+        max-width: 100%;
+        overflow-wrap: break-word;
+    }
+    
+    /* Fix for iOS scrolling */
+    @supports (-webkit-touch-callout: none) {
+        .notifications-settings-container {
+            height: -webkit-fill-available;
+        }
+    }
+}
+
+/* Desktop Enhancements */
+@media (min-width: 768px) {
+    .notifications-settings-container {
+        margin: 1.5rem auto;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        padding: 1.25rem 1.5rem;
+        border: 1px solid #2a3942; /* Dark border */
+    }
+    
+    .settings-section {
+        gap: 0.6rem;
+    }
+    
+    .settings-item {
+        padding: 0.8rem 1.25rem;
+    }
+}
+
+/* Large Desktop Screens */
+@media (min-width: 1200px) {
+    .notifications-settings-container {
+        max-width: 1000px;
+        margin: 2rem auto;
+        padding: 1.5rem 2rem;
+    }
+    
+    .settings-item {
+        padding: 0.8rem 1.5rem;
+    }
+    
+    .settings-content h3 {
+        font-size: 1.05rem;
+    }
+}
+
+/* ============================================= */
+/* SCROLLING DISABLER - ADDED FROM SECOND EXAMPLE */
+/* ============================================= */
+
+/* Disable scrolling on root elements */
+html, body {
+    overflow: hidden !important;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+}
+

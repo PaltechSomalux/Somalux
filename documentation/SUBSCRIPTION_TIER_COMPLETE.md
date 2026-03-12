@@ -285,7 +285,7 @@ function UserProfile({ user }) {
 ## 🔮 Future Enhancements
 
 ### Phase 2: Payment Integration
-- Stripe/M-Pesa tier purchase
+- Stripe/alternative tier purchase
 - Subscription management UI
 - Invoice generation
 

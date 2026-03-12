@@ -26,7 +26,7 @@ export const SubscriptionThanks = () => {
       >
         <h1 style={{ marginBottom: 12 }}>Payment Complete</h1>
         <p style={{ marginBottom: 16, color: '#8696a0' }}>
-          Thank you for your payment via M-Pesa.
+          Thank you for your payment.
         </p>
         <p style={{ marginBottom: 24, color: '#8696a0' }}>
           Please return to the main Campuslife tab and click <strong>Verify</strong> in the

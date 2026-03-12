@@ -1,0 +1,712 @@
+/* Memes.css - Responsive, Smooth Scrolling, and Invisible Scrollbars */
+
+/* Reset default margins and ensure box-sizing */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Enable smooth scrolling globally */
+html {
+  scroll-behavior: smooth;
+  overscroll-behavior: auto;
+}
+
+/* Root editor container */
+.meme-editor {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  background: #0b1216;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto; /* Enable vertical scrolling */
+  scroll-behavior: smooth; /* Smooth scrolling */
+  -webkit-overflow-scrolling: touch; /* Momentum scrolling for touch devices */
+  font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: #e9edef;
+  touch-action: manipulation; /* Optimize for touch interactions */
+  scrollbar-width: none; /* Firefox: Hide scrollbar */
+}
+
+.meme-editor::-webkit-scrollbar {
+  display: none; /* Chrome/Safari: Hide scrollbar */
+}
+
+/* Editor container for centering content */
+.editor-container {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* Canvas wrapper: responsive and centered */
+.canvas-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 90vw; /* Limit width on large screens */
+  max-height: 80vh; /* Limit height to avoid overflow */
+  touch-action: none; /* Preserve canvas interactions */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: none;
+  overflow: hidden; /* Prevent overflow of child elements */
+}
+
+/* Image container: scales with canvas */
+.image-container {
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-height: 70vh; /* Match component's max-height */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: transparent;
+  border-radius: none;
+  overflow: hidden;
+  border: none;
+}
+
+/* Background image: responsive with aspect ratio preservation */
+.image-container img {
+  width: 100%;
+  height: auto;
+  max-height: 70vh; /* Ensure image fits viewport */
+  object-fit: contain; /* Preserve aspect ratio */
+  user-select: none;
+  border: none;
+  outline: none;
+}
+
+/* Overlaid elements: absolute positioning relative to image */
+.text-element,
+.shape-element,
+.emoji-element,
+.photo-element {
+  position: absolute;
+  user-select: none;
+  touch-action: none; /* Ensure touch interactions work */
+}
+
+.text-element.active,
+.shape-element.active,
+.emoji-element.active,
+.photo-element.active {
+  outline: none;
+  z-index: 10; /* Ensure active elements are on top */
+}
+
+/* Shape element styling */
+.shape-element {
+  position: absolute;
+  box-sizing: border-box;
+  transform-origin: center;
+}
+
+.shape-element.rectangle,
+.shape-element.square,
+.shape-element.circle,
+.shape-element.oval,
+.shape-element.trapezoid,
+.shape-element.parallelogram,
+.shape-element.diamond,
+.shape-element.crescent,
+.shape-element.heart {
+  background: transparent;
+  border-style: solid;
+}
+
+.shape-element.triangle,
+.shape-element.pentagon,
+.shape-element.hexagon,
+.shape-element.heptagon,
+.shape-element.octagon {
+  background: transparent;
+  border: none;
+}
+
+.shape-element.line,
+.shape-element.line-arrow,
+.shape-element.line-double-arrow {
+  background: none;
+  border: none;
+}
+
+.shape-element.callout-circle-arrow,
+.shape-element.callout-rectangle,
+.shape-element.callout-rounded-rectangle {
+  background: transparent;
+  border-style: solid;
+  position: relative;
+}
+
+.shape-element.callout-circle-arrow::after,
+.shape-element.callout-rectangle::after,
+.shape-element.callout-rounded-rectangle::after {
+  content: '';
+  position: absolute;
+  border: inherit;
+  background: inherit;
+}
+
+/* Rotation handle */
+.rotation-handle {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
+  background: #00a884;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Upload prompt: centered and responsive */
+.upload-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 50vh; /* Adjust for smaller screens */
+  background: #0b1216;
+  border-radius: 0;
+  border: none;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox: Hide scrollbar */
+}
+
+.upload-prompt::-webkit-scrollbar {
+  display: none; /* Chrome/Safari: Hide scrollbar */
+}
+
+.upload-button {
+  border: 0.2px dashed #3498db;
+  border-radius: 5px;
+  padding: clamp(40px, 10vw, 60px) clamp(60px, 15vw, 80px); /* Responsive padding */
+  text-align: center;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: clamp(14px, 4vw, 16px); /* Responsive font size */
+  color: #abb1b4;
+}
+
+.upload-button:hover {
+  background: transparent;
+}
+
+/* Toolbar: sticky and responsive */
+.bottom-toolbar-memes {
+  width: 100%;
+  max-width: 90vw; /* Match canvas-wrapper */
+  padding: 12px 0;
+  background: #0b1216;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+  overscroll-behavior-x: contain;
+}
+
+/* Primary tools scroll container */
+.primary-tools-scroll-container-memes {
+  display: flex;
+  overflow-x: auto;
+  padding: 1px 24px 12px 0;
+  margin-left: 24px;
+  white-space: nowrap;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox: Hide scrollbar */
+}
+
+.primary-tools-scroll-container-memes::-webkit-scrollbar {
+  display: none; /* Chrome/Safari: Hide scrollbar */
+}
+
+.tool-group-memes.primary-tools {
+  justify-content: flex-start;
+  gap: 15px;
+  padding-left: 24px;
+  margin-left: -24px;
+  flex-wrap: nowrap;
+}
+
+/* Secondary tools scroll container */
+.secondary-tools-scroll-container-memes {
+  display: flex;
+  overflow-x: auto;
+  padding: 12px 24px;
+  white-space: nowrap;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox: Hide scrollbar */
+}
+
+.secondary-tools-scroll-container-memes::-webkit-scrollbar {
+  display: none; /* Chrome/Safari: Hide scrollbar */
+}
+
+/* Tool buttons */
+.tool-group-memes {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tool-group-memes.secondary-tools {
+  gap: 15px;
+}
+
+.tool-button-memes,
+.download-button-memes {
+  padding: 10px 18px;
+  background: transparent;
+  color: #e9edef;
+  border: 1px solid #2a3942;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: all 0.3s;
+  margin: 5px;
+  height: 36px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+}
+
+.tool-button-memes:hover,
+.download-button-memes:hover {
+  background: rgba(0, 168, 132, 0.1);
+  border-color: transparent;
+  color: #00a884;
+}
+
+.tool-button-memes.active,
+.download-button-memes.active {
+  background: transparent;
+  border-color: #00a884;
+  color: #00a884;
+}
+
+.tool-button-memes:disabled,
+.download-button-memes:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #2a3942;
+}
+
+/* File input for New Photo button */
+.new-photo-input {
+  display: none; /* Hide the file input */
+}
+
+/* Form controls */
+.form-group-memes {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  vertical-align: middle;
+}
+
+.form-group-memes label {
+  font-size: 14px;
+  color: #8696a0;
+  margin: 0;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
+.font-select-memes,
+.shape-select-memes,
+.color-select-memes,
+.width-select-memes,
+.underline-select-memes {
+  padding: 8px;
+  background: #0b1216;
+  border: 1px solid #2a3942;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #e9edef;
+  height: 36px;
+  box-sizing: border-box;
+  min-width: 120px;
+  cursor: pointer;
+}
+
+.underline-select-memes option {
+  background: #0b1216;
+  color: #e9edef;
+}
+
+.color-input-memes {
+  width: 36px;
+  height: 36px;
+  padding: 2px;
+  background: #0b1216;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.style-buttons-memes {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.style-button-memes {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #2a3942;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #e9edef;
+  height: 36px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.3s;
+}
+
+.style-button-memes:hover {
+  border-color: #00a884;
+  color: #00a884;
+}
+
+.style-button-memes.active {
+  background: rgba(0, 168, 132, 0.2);
+  border-color: #00a884;
+  color: #00a884;
+}
+
+/* Emoji selector */
+.emoji-selector-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-top: -10px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox: Hide scrollbar */
+}
+
+.emoji-selector-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari: Hide scrollbar */
+}
+
+.emoji-selector {
+  display: grid;
+  grid-template-rows: repeat(4, 36px);
+  grid-auto-flow: column;
+  gap: 8px;
+  padding: 8px;
+  width: max-content;
+  min-width: 100%;
+  height: 184px;
+  background: #0b1216;
+  border-radius: 8px;
+  border: 1px solid #2a3942;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox: Hide scrollbar */
+}
+
+.emoji-selector::-webkit-scrollbar {
+  display: none; /* Chrome/Safari: Hide scrollbar */
+}
+
+.emoji-option {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  cursor: pointer;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.emoji-option:hover {
+  border-color: transparent;
+  transform: scale(1.1);
+  background: rgba(0, 168, 132, 0.1);
+}
+
+.emoji-option.active {
+  background: transparent;
+  border-color: #00a884;
+}
+
+/* Download and New Photo button container */
+.download-button-container {
+  display: flex;
+  justify-content: center;
+  gap: 15px; /* Add spacing between Download and New Photo buttons */
+  padding: 12px 24px;
+}
+
+/* Text element input */
+.text-element input {
+  background: transparent;
+  border: none;
+  outline: none;
+  text-align: center;
+  width: auto;
+  min-width: 100px;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  font-style: inherit;
+  text-decoration: inherit;
+  -webkit-text-stroke: inherit;
+}
+
+/* Tooltip styles */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2a3942;
+  color: #e9edef;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  margin-bottom: 8px;
+}
+
+/* Responsive adjustments */
+
+/* Small screens (≤768px) */
+@media (max-width: 768px) {
+  .meme-editor {
+    padding: 0;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .meme-editor::-webkit-scrollbar {
+    display: none;
+  }
+  .canvas-wrapper {
+    max-width: 95vw; /* More width on small screens */
+    max-height: 60vh; /* Reduce height for mobile */
+  }
+  .image-container {
+    max-height: 60vh;
+  }
+  .image-container img {
+    max-height: 60vh;
+  }
+  .upload-prompt {
+    height: 40vh; /* Smaller height for mobile */
+  }
+  .upload-button {
+    padding: clamp(30px, 8vw, 40px) clamp(40px, 12vw, 60px);
+    font-size: clamp(12px, 3.5vw, 14px);
+  }
+  .bottom-toolbar-memes {
+    padding: 10px 0;
+    max-width: 95vw;
+    border-top: 1px solid #2a3942;
+  }
+  .primary-tools-scroll-container-memes,
+  .secondary-tools-scroll-container-memes {
+    padding: 10px 18px 10px 0;
+    margin-left: 18px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .primary-tools-scroll-container-memes::-webkit-scrollbar,
+  .secondary-tools-scroll-container-memes::-webkit-scrollbar {
+    display: none;
+  }
+  .tool-group-memes.primary-tools {
+    padding-left: 18px;
+    margin-left: -18px;
+  }
+  .tool-button-memes,
+  .download-button-memes,
+  .font-select-memes,
+  .shape-select-memes,
+  .color-select-memes,
+  .width-select-memes,
+  .underline-select-memes {
+    height: 32px;
+    font-size: 13px;
+    padding: 8px 14px;
+    min-width: 70px;
+  }
+  .form-group-memes label {
+    font-size: 13px;
+  }
+  .color-input-memes {
+    height: 32px;
+    width: 32px;
+  }
+  .emoji-option {
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+  }
+  .size-slider {
+    width: 100px;
+  }
+  .download-button-container {
+    gap: 10px; /* Smaller gap on smaller screens */
+  }
+}
+
+/* Extra small screens (≤480px) */
+@media (max-width: 480px) {
+  .canvas-wrapper {
+    max-width: 98vw; /* Maximize width on very small screens */
+    max-height: 55vh;
+  }
+  .image-container {
+    max-height: 55vh;
+  }
+  .image-container img {
+    max-height: 55vh;
+  }
+  .upload-prompt {
+    height: 35vh;
+  }
+  .upload-button {
+    padding: clamp(20px, 6vw, 30px) clamp(30px, 10vw, 40px);
+    font-size: clamp(10px, 3vw, 12px);
+  }
+  .tool-group-memes {
+    gap: 8px;
+  }
+  .tool-group-memes.primary-tools {
+    gap: 10px;
+  }
+  .form-group-memes {
+    gap: 6px;
+  }
+  .primary-tools-scroll-container-memes,
+  .secondary-tools-scroll-container-memes {
+    padding: 10px 12px 10px 0;
+    margin-left: 12px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .primary-tools-scroll-container-memes::-webkit-scrollbar,
+  .secondary-tools-scroll-container-memes::-webkit-scrollbar {
+    display: none;
+  }
+  .tool-group-memes.primary-tools {
+    padding-left: 12px;
+    margin-left: -12px;
+  }
+  .tool-button-memes,
+  .download-button-memes,
+  .font-select-memes,
+  .shape-select-memes,
+  .color-select-memes,
+  .width-select-memes,
+  .underline-select-memes {
+    height: 30px;
+    font-size: 12px;
+    padding: 6px 12px;
+    min-width: 60px;
+  }
+  .color-input-memes {
+    height: 30px;
+    width: 30px;
+  }
+  .emoji-option {
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
+  }
+  .size-slider {
+    width: 80px;
+  }
+  .download-button-container {
+    gap: 8px; /* Even smaller gap on extra small screens */
+  }
+}
+
+/* Handle landscape orientation */
+@media (orientation: landscape) {
+  .canvas-wrapper {
+    max-height: 85vh; /* More height in landscape */
+  }
+  .image-container {
+    max-height: 85vh;
+  }
+  .image-container img {
+    max-height: 85vh;
+  }
+  .upload-prompt {
+    height: 60vh;
+  }
+}
+
+/* Handle portrait orientation */
+@media (orientation: portrait) {
+  .canvas-wrapper {
+    max-height: 70vh; /* Slightly less height in portrait */
+  }
+  .image-container {
+    max-height: 70vh;
+  }
+  .image-container img {
+    max-height: 70vh;
+  }
+  .upload-prompt {
+    height: 50vh;
+  }
+}.download-button {
+  padding: 10px 20px;
+  margin: 10px;
+  background-color: green;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.download-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
