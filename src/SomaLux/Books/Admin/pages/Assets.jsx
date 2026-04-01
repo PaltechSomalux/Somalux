@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   TextField,
@@ -38,6 +38,9 @@ const Assets = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(15);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Check if user is authorized superadmin and load assets
   useEffect(() => {
@@ -118,6 +121,33 @@ const Assets = () => {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
+
+  // Filter assets based on search query
+  const filteredAssets = useMemo(() => {
+    if (!searchQuery.trim()) return assets;
+    
+    const query = searchQuery.toLowerCase().trim();
+    return assets.filter((asset) => {
+      const email = asset.email.toLowerCase();
+      const date = formatDateDisplay(asset.end_date).toLowerCase();
+      return email.includes(query) || date.includes(query);
+    });
+  }, [assets, searchQuery]);
+
+  // Compute paginated assets from filtered results
+  const paginatedAssets = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredAssets.slice(start, end);
+  }, [filteredAssets, page, pageSize]);
+
+  // Compute total pages
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(filteredAssets.length / pageSize)), [filteredAssets.length, pageSize]);
+
+  // Reset to page 1 when results change
+  useEffect(() => {
+    setPage(1);
+  }, [filteredAssets.length]);
 
   const handleAddAsset = async () => {
     if (!newEmail.trim()) {
@@ -272,14 +302,21 @@ const Assets = () => {
         <>
           <div className="assets-header-simple">
             <h2 className="assets-title">Assets</h2>
-            <Button
-              variant="contained"
-              color="primary"
+            <TextField
+              placeholder="Search by email or date..."
+              variant="outlined"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="assets-search-input"
+              size="small"
+            />
+            <button
+              className="btn"
               onClick={handleOpenDialog}
-              className="add-asset-btn"
+              style={{ padding: '6px 12px', fontSize: '12px', background: '#00a884', borderRadius: '4px', flex: '0 0 auto', minWidth: 'auto', marginLeft: 'auto' }}
             >
-              Add
-            </Button>
+              Add Asset
+            </button>
           </div>
 
           {successMessage && (
@@ -302,12 +339,29 @@ const Assets = () => {
             autoFocus
             margin="dense"
             label="Email Address"
-            type="email"
+            type="text"
             fullWidth
             variant="outlined"
             value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            placeholder="user@example.com"
+            onChange={(e) => {
+              let value = e.target.value;
+              
+              // Extract only the username part (before any @)
+              let username = value.split('@')[0].trim();
+              
+              // Only allow valid email characters in username
+              username = username.replace(/[^a-zA-Z0-9._-]/g, '');
+              
+              // While typing, show only the username
+              setNewEmail(username);
+            }}
+            onBlur={() => {
+              // When they finish typing, add @gmail.com
+              if (newEmail && !newEmail.includes('@')) {
+                setNewEmail(newEmail + '@gmail.com');
+              }
+            }}
+            placeholder="username"
             sx={{ mb: 2, mt: 2 }}
           />
           <div className="manual-fields">
@@ -338,6 +392,10 @@ const Assets = () => {
           <Box className="empty-state">
             <p>No assets yet. Click "Add Asset" to create your first entry.</p>
           </Box>
+        ) : filteredAssets.length === 0 ? (
+          <Box className="empty-state">
+            <p>No assets found matching your search.</p>
+          </Box>
         ) : (
           <Table>
             <TableHead>
@@ -349,38 +407,41 @@ const Assets = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {assets.map((asset, index) => (
-                <TableRow key={asset.id} className="table-row">
-                  <TableCell className="number-cell">{index + 1}</TableCell>
-                  <TableCell className="email-cell">
-                    <div className="email-content">
-                      <span className="email-text">{asset.email}</span>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleCopyEmail(asset.email, asset.id)}
-                        className={`copy-btn ${copiedId === asset.id ? 'copied' : ''}`}
-                        title="Copy email"
+              {paginatedAssets.map((asset, index) => {
+                const assetNumber = (page - 1) * pageSize + index + 1;
+                return (
+                  <TableRow key={asset.id} className="table-row">
+                    <TableCell className="number-cell">{assetNumber}</TableCell>
+                    <TableCell className="email-cell">
+                      <div className="email-content">
+                        <span className="email-text">{asset.email}</span>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleCopyEmail(asset.email, asset.id)}
+                          className={`copy-btn ${copiedId === asset.id ? 'copied' : ''}`}
+                          title="Copy email"
+                        >
+                          {copiedId === asset.id ? (
+                            <FiCheck style={{ color: '#2ecc71' }} />
+                          ) : (
+                            <FiCopy />
+                          )}
+                        </IconButton>
+                      </div>
+                    </TableCell>
+                    <TableCell className="date-cell">{formatDateDisplay(asset.end_date)}</TableCell>
+                    <TableCell align="center" className="actions-cell">
+                      <button
+                        className="action-btn edit-btn"
+                        onClick={() => handleEditAsset(asset)}
+                        title="Edit asset"
                       >
-                        {copiedId === asset.id ? (
-                          <FiCheck style={{ color: '#2ecc71' }} />
-                        ) : (
-                          <FiCopy />
-                        )}
-                      </IconButton>
-                    </div>
-                  </TableCell>
-                  <TableCell className="date-cell">{formatDateDisplay(asset.end_date)}</TableCell>
-                  <TableCell align="center" className="actions-cell">
-                    <button
-                      className="action-btn edit-btn"
-                      onClick={() => handleEditAsset(asset)}
-                      title="Edit asset"
-                    >
-                      Edit
-                    </button>
-                  </TableCell>
-                </TableRow>
-              ))}
+                        Edit
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
@@ -392,64 +453,86 @@ const Assets = () => {
           <Box className="empty-state">
             <p>No assets yet. Tap "Add Asset" to create your first entry.</p>
           </Box>
+        ) : filteredAssets.length === 0 ? (
+          <Box className="empty-state">
+            <p>No assets found matching your search.</p>
+          </Box>
         ) : (
-          assets.map((asset, index) => (
-            <div key={asset.id} className="asset-card">
-              <div className="asset-card-header">
-                <div className="asset-number">{index + 1}</div>
-              </div>
+          paginatedAssets.map((asset, index) => {
+            const assetNumber = (page - 1) * pageSize + index + 1;
+            return (
+              <div key={asset.id} className="asset-card">
+                <div className="asset-card-header">
+                  <div className="asset-number">{assetNumber}</div>
+                </div>
 
-              <div className="asset-field">
-                <span className="asset-label">Email Address</span>
-                <div className="asset-email-value">
-                  <span className="asset-email-text">{asset.email}</span>
+                <div className="asset-field">
+                  <span className="asset-label">Email Address</span>
+                  <div className="asset-email-value">
+                    <span className="asset-email-text">{asset.email}</span>
+                    <button
+                      className={`asset-email-copy-btn ${copiedId === asset.id ? 'copied' : ''}`}
+                      onClick={() => handleCopyEmail(asset.email, asset.id)}
+                      title="Copy email to clipboard"
+                    >
+                      {copiedId === asset.id ? (
+                        <>
+                          <FiCheck style={{ fontSize: '14px' }} />
+                          <span>Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <FiCopy style={{ fontSize: '14px' }} />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="asset-field">
+                  <span className="asset-label">Expiration Date</span>
+                  <span className="asset-value">{formatDateDisplay(asset.end_date)}</span>
+                </div>
+
+                <div className="asset-card-footer">
                   <button
-                    className={`asset-email-copy-btn ${copiedId === asset.id ? 'copied' : ''}`}
-                    onClick={() => handleCopyEmail(asset.email, asset.id)}
-                    title="Copy email to clipboard"
+                    className="asset-footer-btn"
+                    onClick={() => handleEditAsset(asset)}
+                    title="Edit this asset"
+                    style={{ flex: 1 }}
                   >
-                    {copiedId === asset.id ? (
-                      <>
-                        <FiCheck style={{ fontSize: '14px' }} />
-                        <span>Copied</span>
-                      </>
-                    ) : (
-                      <>
-                        <FiCopy style={{ fontSize: '14px' }} />
-                        <span>Copy</span>
-                      </>
-                    )}
+                    ✏️ Edit
+                  </button>
+                  <button
+                    className="asset-footer-btn"
+                    onClick={() => handleDeleteAsset(asset.id)}
+                    title="Delete this asset"
+                    style={{ flex: 1, borderColor: '#e74c3c', color: '#e74c3c', background: 'rgba(231, 76, 60, 0.05)' }}
+                  >
+                    🗑️ Delete
                   </button>
                 </div>
               </div>
-
-              <div className="asset-field">
-                <span className="asset-label">Expiration Date</span>
-                <span className="asset-value">{formatDateDisplay(asset.end_date)}</span>
-              </div>
-
-              <div className="asset-card-footer">
-                <button
-                  className="asset-footer-btn"
-                  onClick={() => handleEditAsset(asset)}
-                  title="Edit this asset"
-                  style={{ flex: 1 }}
-                >
-                  ✏️ Edit
-                </button>
-                <button
-                  className="asset-footer-btn"
-                  onClick={() => handleDeleteAsset(asset.id)}
-                  title="Delete this asset"
-                  style={{ flex: 1, borderColor: '#e74c3c', color: '#e74c3c', background: 'rgba(231, 76, 60, 0.05)' }}
-                >
-                  🗑️ Delete
-                </button>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {filteredAssets.length > 0 && (
+        <div className="actions" style={{ marginTop: 10, justifyContent: 'space-between', padding: '12px', background: 'transparent', borderTop: 'none' }}>
+          <button className="btn" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
+          <span style={{ color: '#cfd8dc' }}>Page {page} of {totalPages} ({filteredAssets.length})</span>
+          <button className="btn" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
+        </div>
+      )}
+
+      {searchQuery && filteredAssets.length === 0 && (
+        <Alert severity="info" className="success-alert" sx={{ mt: 2 }}>
+          No assets found matching "{searchQuery}"
+        </Alert>
+      )}
         </>
       )}
     </Box>

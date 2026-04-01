@@ -92,6 +92,8 @@ const Books = ({ userProfile }) => {
   const canEdit = (row) => {
     if (isAdmin) return true;
     if (isEditor) return true;
+    // Also allow users with super_admin role
+    if (userProfile?.role === 'super_admin') return true;
     return false;
   };
 

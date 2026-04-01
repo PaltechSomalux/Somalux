@@ -44,8 +44,9 @@ const PastPapersManagement = ({ userProfile }) => {
 
   const { confirm, showToast } = useAdminUI();
 
-  const isAdmin = userProfile?.role === 'admin';
-  const isEditor = userProfile?.role === 'editor';
+  const ADMIN_EMAILS = ['campuslives254@gmail.com', 'paltechsomalux@gmail.com'];
+  const isAdmin = userProfile?.role === 'admin' || ADMIN_EMAILS.includes(userProfile?.email);
+  const isEditor = userProfile?.role === 'editor' || ADMIN_EMAILS.includes(userProfile?.email);
   const totalPages = useMemo(() => Math.max(1, Math.ceil(count / pageSize)), [count, pageSize]);
 
   const load = async () => {
@@ -79,6 +80,8 @@ const PastPapersManagement = ({ userProfile }) => {
   const canEdit = (row) => {
     if (isAdmin) return true;
     if (isEditor) return true;
+    // Also allow users with super_admin role
+    if (userProfile?.role === 'super_admin') return true;
     return false;
   };
 

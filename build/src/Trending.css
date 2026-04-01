@@ -1,0 +1,134 @@
+.Trending {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 20px 35px 25px 35px;
+  color: #ffffff;
+  background: transparent;
+}
+
+.Trending-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.trending-search-section {
+  width: 100%;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.trending-header {
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.Trending h2 {
+  font-size: 2.1rem;
+  margin: 0;
+  color: #56c8ff;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.Trending p {
+  font-size: 0.85rem;
+  color: #ffffff;
+  line-height: 1.5;
+  margin: 6px 0 0 0;
+  font-weight: 400;
+}
+
+.jobs-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+  gap: 16px !important;
+  width: 100% !important;
+}
+
+/* TABLET */
+@media (max-width: 1024px) {
+  .Trending {
+    padding: 22px 28px;
+  }
+
+  .trending-header {
+    margin-bottom: 18px;
+  }
+
+  .Trending h2 {
+    font-size: 1.85rem;
+  }
+
+  .Trending p {
+    font-size: 0.9rem;
+  }
+
+  .jobs-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+    gap: 16px !important;
+  }
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .Trending {
+    padding: 16px 14px;
+  }
+
+  .home-search-section {
+    max-width: 70%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .trending-header {
+    margin-bottom: 14px;
+  }
+
+  .Trending h2 {
+    font-size: 1.5rem;
+  }
+
+  .Trending p {
+    font-size: 0.85rem;
+  }
+
+  .jobs-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0 !important;
+  }
+}
+
+/* SMALL MOBILE */
+@media (max-width: 480px) {
+  .Trending {
+    padding: 12px 10px;
+  }
+
+  .home-search-section {
+    max-width: 70%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .trending-header {
+    margin-bottom: 12px;
+  }
+
+  .Trending h2 {
+    font-size: 1.35rem;
+    margin-bottom: 3px;
+  }
+
+  .Trending p {
+    font-size: 0.75rem;
+  }
+
+  .jobs-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0 !important;
+  }
+}

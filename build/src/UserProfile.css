@@ -1,0 +1,231 @@
+/* User Profile Menu - Professional and Clean Design */
+
+:root {
+  --primary: #00a884;
+  --primary-hover: #008069;
+  --bg-card: #202c33;
+  --bg-dark: #0b141a;
+  --border-color: #2a3942;
+  --text: #e9edef;
+  --text-light: #8696a0;
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --transition: all 0.25s ease;
+}
+
+.user-profile-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  background: var(--bg-card);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  min-width: 320px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  z-index: 2000;
+  animation: slideDown 0.25s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  padding-bottom: 12px;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.user-profile-header {
+  display: flex;
+  gap: 12px;
+  padding: 16px 16px 16px 16px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+  align-items: flex-start;
+  min-height: 90px;
+}
+
+.user-avatar {
+  width: 65px;
+  height: 65px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+  cursor: pointer;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+
+.user-avatar:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+.user-avatar-container {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 65px;
+  height: 65px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.user-avatar-container:hover {
+  transform: scale(1.1);
+}
+
+.user-avatar-placeholder {
+  color: rgba(255, 255, 255, 0.6);
+  width: 65px;
+  height: 65px;
+  padding: 8px;
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: 75px;
+}
+
+.user-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-email {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: var(--text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.action-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-dark);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 11px;
+  color: var(--text);
+  text-align: center;
+  border-radius: 6px;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.action-btn:hover {
+  background: rgba(0, 168, 132, 0.1);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.action-btn:active {
+  background: rgba(0, 168, 132, 0.15);
+}
+
+.upgrade-btn {
+  flex-direction: column;
+  gap: 1px;
+}
+
+.btn-icon {
+  font-size: 12px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.btn-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.upgrade-badge {
+  font-size: 7px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+/* Scrollbar styling */
+.user-profile-menu {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.user-profile-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.user-profile-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.user-profile-menu::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.user-profile-menu::-webkit-scrollbar-thumb:hover {
+  background: var(--text-light);
+}
+
+/* Scrollbar styling */
+.user-profile-menu {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.user-profile-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.user-profile-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.user-profile-menu::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.user-profile-menu::-webkit-scrollbar-thumb:hover {
+  background: var(--text-light);
+}

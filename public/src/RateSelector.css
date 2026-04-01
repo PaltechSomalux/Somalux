@@ -1,0 +1,197 @@
+.rate-sel-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: -18px;
+}
+
+.rate-sel-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.rate-sel-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #a0a8b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+.rate-sel-type-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+}
+
+.rate-sel-type-selector .rate-sel-label {
+  display: inline-block;
+  margin: 0;
+  margin-bottom: -4px;
+  flex-shrink: 0;
+  color: #3b82f6 !important;
+  align-self: center;
+}
+
+.rate-sel-input-group .rate-sel-label {
+  display: inline-block;
+  margin: 0;
+  flex-shrink: 0;
+  color: #3b82f6 !important;
+}
+
+.rate-sel-duration-select-wrapper {
+  display: flex;
+  width: 100%;
+  align-self: center;
+}
+
+.rate-sel-type-selector .rate-sel-duration-select {
+  width: 100%;
+  min-width: 150px;
+}
+
+.rate-sel-duration-select {
+  padding: 10px;
+  border: none;
+  border-radius: 12px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  width: 100%;
+}
+
+.rate-sel-duration-select:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.rate-sel-duration-select:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 2px rgba(0, 217, 255, 0.2);
+}
+
+.rate-sel-duration-select option {
+  background: #1a1f2e;
+  color: #ffffff;
+  padding: 8px;
+}
+
+/* Rate Input Group */
+.rate-sel-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+}
+
+.rate-sel-input-group .rate-sel-label {
+  display: inline-block;
+  margin: 0;
+  margin-bottom: -4px;
+  flex-shrink: 0;
+  color: #3b82f6 !important;
+  align-self: center;
+}
+
+.rate-sel-input-wrapper {
+  display: flex;
+  gap: 0 !important;
+  align-items: center;
+  width: 100%;
+  position: relative;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0 12px;
+  transition: all 0.3s ease;
+  align-self: center;
+}
+
+.rate-sel-input-wrapper:has(.rate-sel-input:focus) {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 2px rgba(0, 217, 255, 0.2);
+}
+
+.rate-sel-currency-prefix {
+  font-weight: 700;
+  color: #00d9ff;
+  font-size: 11px;
+  padding: 0;
+  flex-shrink: 0;
+  pointer-events: none;
+  letter-spacing: 0.5px;
+  margin-right: -7px !important;
+}
+
+.rate-sel-input {
+  flex: 1;
+  border: none;
+  padding: 8px 0;
+  font-size: 13px;
+  background: transparent !important;
+  font-family: inherit;
+  color: #ffffff;
+  min-width: 80px;
+  box-shadow: none !important;
+}
+
+.rate-sel-input:focus {
+  outline: none;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.rate-sel-input:-webkit-autofill,
+.rate-sel-input:-webkit-autofill:hover,
+.rate-sel-input:-webkit-autofill:focus,
+.rate-sel-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px transparent inset !important;
+  box-shadow: 0 0 0 30px transparent inset !important;
+}
+
+.rate-sel-input::placeholder {
+  color: #6a7280;
+}
+
+.rate-sel-input::-webkit-outer-spin-button,
+.rate-sel-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.rate-sel-input[type=number] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.rate-sel-suffix {
+  color: #6a7280;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Rate Preview */
+.rate-sel-preview {
+  display: none;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .rate-sel-wrapper {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+}
+

@@ -316,6 +316,13 @@ export const BookPanel = ({ demoMode = false }) => {
   const [fullScreenBook, setFullScreenBook] = useState(null);
   const [isShuffling, setIsShuffling] = useState(true);
 
+  // Track scroll overflow for each category grid
+  const [gridScrollStates, setGridScrollStates] = useState({});
+
+  // Category shuffling state
+  const [categoryOrder, setCategoryOrder] = useState([]);
+  const isCategoryShufflingRef = useRef(false);
+
   const CACHE_TTL_MS = 5 * 60 * 1000;
 
   // Rewards: load daily login bonus and current points once user is known
@@ -2082,9 +2089,25 @@ export const BookPanel = ({ demoMode = false }) => {
   }, [books, debouncedSearchTerm, activeFilter, sortBy, wishlist, categoryFilterId, focusedBookId]);
 
   useEffect(() => {
-    // Show the current page slice
-    const start = (currentPage - 1) * BOOKS_PER_PAGE;
-    setDisplayedBooks(filteredBooks.slice(start, start + BOOKS_PER_PAGE));
+    // Group books by category first
+    const groupedByCategory = filteredBooks.reduce((acc, book) => {
+      const category = book.genre || 'Uncategorized';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(book);
+      return acc;
+    }, {});
+
+    // Convert to array and paginate by categories
+    const categories = Object.entries(groupedByCategory);
+    const CATEGORIES_PER_PAGE = 5; // Show up to 5 categories per page
+    const start = (currentPage - 1) * CATEGORIES_PER_PAGE;
+    const paginatedCategories = categories.slice(start, start + CATEGORIES_PER_PAGE);
+
+    // Flatten all books from paginated categories
+    const booksToDisplay = paginatedCategories.flatMap(([_, booksInCategory]) => booksInCategory);
+    setDisplayedBooks(booksToDisplay);
   }, [filteredBooks, currentPage]);
 
   // Server-side search fetch (paginated) to provide accurate results when searching
@@ -2223,7 +2246,20 @@ export const BookPanel = ({ demoMode = false }) => {
   const handlePageChange = async (page) => {
     if (page < 1) return;
     const totalCountForPaging = filteredByCategory !== null ? (filteredByCategory.length || 0) : (totalBooks || filteredBooks.length);
-    const computedTotalPages = Math.max(1, Math.ceil((totalCountForPaging) / BOOKS_PER_PAGE));
+    
+    // Group books by category and calculate pages based on categories
+    const groupedByCategory = filteredBooks.reduce((acc, book) => {
+      const category = book.genre || 'Uncategorized';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(book);
+      return acc;
+    }, {});
+    const CATEGORIES_PER_PAGE = 5;
+    const totalCategories = Object.keys(groupedByCategory).length;
+    const computedTotalPages = Math.max(1, Math.ceil((totalCategories) / CATEGORIES_PER_PAGE));
+    
     if (page > computedTotalPages) return;
     setCurrentPage(page);
     // Ensure the page data is loaded (use cache if available) — skip network fetch when paginating filtered results
@@ -2384,6 +2420,137 @@ export const BookPanel = ({ demoMode = false }) => {
       throw error;
     }
   };
+
+  // Book grid scroll handlers - per grid element
+  const createScrollHandler = (element) => {
+    if (!element) return { canLeft: false, canRight: true };
+    const { scrollLeft, scrollWidth, clientWidth } = element;
+    return {
+      canLeft: scrollLeft > 10,
+      canRight: scrollLeft < scrollWidth - clientWidth - 10
+    };
+  };
+
+  const scrollGridLeft = (element) => {
+    if (element) {
+      element.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  };
+
+  const scrollGridRight = (element) => {
+    if (element) {
+      element.scrollBy({ left: 300, behavior: 'smooth' });
+    }
+  };
+
+  const handleGridScroll = (e) => {
+    // Update scroll state and button visibility
+    const target = e.target;
+    const gridId = target?.id;
+    if (target && gridId) {
+      const { scrollLeft, scrollWidth, clientWidth } = target;
+      const hasOverflow = scrollWidth > clientWidth;
+      const canScrollLeft = scrollLeft > 10;
+      const canScrollRight = scrollLeft < scrollWidth - clientWidth - 10;
+      
+      setGridScrollStates(prev => ({
+        ...prev,
+        [gridId]: { hasOverflow, canScrollLeft, canScrollRight }
+      }));
+    }
+  };
+
+  // Check grid scroll state on mount and on content changes
+  const checkGridScroll = useCallback((gridId) => {
+    const grid = document.getElementById(gridId);
+    if (grid) {
+      const { scrollLeft, scrollWidth, clientWidth } = grid;
+      const hasOverflow = scrollWidth > clientWidth;
+      const canScrollLeft = scrollLeft > 10;
+      const canScrollRight = scrollLeft < scrollWidth - clientWidth - 10;
+      
+      setGridScrollStates(prev => ({
+        ...prev,
+        [gridId]: { hasOverflow, canScrollLeft, canScrollRight }
+      }));
+    }
+  }, []);
+
+  // Check all grids for overflow after books are displayed
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Get all grid IDs and check them
+      const grids = document.querySelectorAll('[id^="grid-"]');
+      grids.forEach(grid => {
+        checkGridScroll(grid.id);
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [displayedBooks, checkGridScroll]);
+
+  // Add window resize listener to recheck grids
+  useEffect(() => {
+    const handleResize = () => {
+      const grids = document.querySelectorAll('[id^="grid-"]');
+      grids.forEach(grid => {
+        checkGridScroll(grid.id);
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [checkGridScroll]);
+
+  // Initialize category order with Fisher-Yates shuffle
+  useEffect(() => {
+    if (displayedBooks.length === 0) return;
+
+    const groupedByCategory = displayedBooks.reduce((acc, book) => {
+      const category = book.genre || 'Uncategorized';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      return acc;
+    }, {});
+
+    const categories = Object.keys(groupedByCategory);
+    const initialOrder = [...Array(categories.length).keys()];
+    
+    // Fisher-Yates shuffle
+    const shuffled = [...initialOrder];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    setCategoryOrder(shuffled);
+  }, [displayedBooks]);
+
+  // Shuffle categories randomly at staggered intervals
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isCategoryShufflingRef.current && categoryOrder.length > 0) {
+        isCategoryShufflingRef.current = true;
+        setCategoryOrder(prevOrder => {
+          const newOrder = [...prevOrder];
+          // Swap only 1 pair of random categories
+          const i = Math.floor(Math.random() * newOrder.length);
+          const j = Math.floor(Math.random() * newOrder.length);
+          if (i !== j) {
+            [newOrder[i], newOrder[j]] = [newOrder[j], newOrder[i]];
+          }
+          return newOrder;
+        });
+
+        // Wait for transition to complete before allowing next shuffle
+        setTimeout(() => {
+          isCategoryShufflingRef.current = false;
+        }, 2000);
+      }
+    }, 30000); // Every 30 seconds, shuffle one category pair
+
+    return () => clearInterval(interval);
+  }, [categoryOrder.length]);
 
   const loadRecommendations = async () => {
     if (!user) return;
@@ -3133,7 +3300,8 @@ export const BookPanel = ({ demoMode = false }) => {
   }
 
   return (
-    <div className="containerBKP">
+    <>
+      <div className="containerBKP">
       {/* Ads Banner */}
       <AdBanner placement="homepage" limit={1} user={user} />
       
@@ -3428,9 +3596,9 @@ export const BookPanel = ({ demoMode = false }) => {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12, paddingLeft: 8, paddingRight: 8 }}>
             <div>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>📖 Currently Reading</div>
+              <div style={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>📖 Currently Reading</div>
             </div>
-            <div style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontSize: 12, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
               <FiClock size={14} />
               <span>{recentBooks.length} book{recentBooks.length === 1 ? '' : 's'}</span>
             </div>
@@ -4112,209 +4280,270 @@ export const BookPanel = ({ demoMode = false }) => {
         </div>
       ) : (
         <>
-          <div className="gridBKP" aria-busy={pageLoading} aria-live={pageLoading ? 'polite' : 'off'}>
-            <AnimatePresence initial={false}>
-              {displayedBooks.map((book, index) => {
-                // For mobile: Show ad after 3rd book (index 2)
-                // For desktop: Show ad in middle position
-                const isMobile = window.innerWidth < 768;
-                const adPosition = isMobile ? 3 : Math.floor(displayedBooks.length / 2);
-                
-                // Render ad at the appropriate position
-                // Render ad at the appropriate position
-                if (index === adPosition && displayedBooks.length > 0 && user?.subscription_tier !== 'premium_pro') {
-                  return (
-                    <React.Fragment key={`ad-position-${index}`}>
-                      {/* Grid Ad */}
-                      <motion.div
-                        key="grid-ad-0"
-                        initial={isMounted ? { opacity: 0, y: 12 } : false}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.22 }}
-                        layout
-                      >
-                        <div className="book-cardBKP">
-                          <AdBanner placement="grid-books" limit={5} user={user} />
-                        </div>
-                      </motion.div>
-                      
-                      {/* Current Book */}
-                      <motion.div
-                      key={book.id}
-                      initial={isMounted ? { opacity: 0, y: 12 } : false}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.22 }}
-                      layout
-                    >
-                    <div
-                      className="book-cardBKP"
-                      onClick={() => bulkDownloadMode ? toggleBookSelection(book.id) : openBookDirectly(book)}
-                      onMouseEnter={() => prefetchResource(book.downloadUrl)}
-                      onFocus={() => prefetchResource(book.downloadUrl)}
-                      tabIndex={0}
-                      style={{ position: 'relative' }}
-                    >
-                      {/* Bulk Selection Checkbox */}
-                      {bulkDownloadMode && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '8px',
-                          left: '8px',
-                          zIndex: 10,
-                          background: 'rgba(0, 0, 0, 0.7)',
-                          padding: '8px',
-                          borderRadius: '8px',
-                          border: selectedBooksForDownload.has(book.id) ? '3px solid #00a884' : '3px solid #374151',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedBooksForDownload.has(book.id)}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              toggleBookSelection(book.id);
-                            }}
-                            style={{ cursor: 'pointer', width: '22px', height: '22px', accentColor: '#00a884' }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </div>
-                      )}
+          {(() => {
+            // Group books by genre/category
+            const groupedByCategory = displayedBooks.reduce((acc, book) => {
+              const category = book.genre || 'Uncategorized';
+              if (!acc[category]) {
+                acc[category] = [];
+              }
+              acc[category].push(book);
+              return acc;
+            }, {});
 
-                      <div className="badge-containerBKP">
-                        {book.trending && (
-                          <span className="trending-badgeBKP">
-                            <FiTrendingUp size={12} /> Trending
-                          </span>
-                        )}
-                      </div>
-
-                      <img src={book.bookImage} alt={book.title} className="book-coverBKP" loading="lazy" decoding="async" />
-
-                        <div className="card-contentBKP">
-                          <h3 className="book-titleBKP">{book.title}</h3>
-                          <p className="book-authorBKP">by {book.author}</p>
-
-                          <div className="book-metaBKP">
-                            <span className="ratingBKP">
-                              <FiStar fill={book.rating > 0 ? "#fbbf24" : "none"} color={book.rating > 0 ? "#fbbf24" : "#64748b"} />
-                              {book.rating > 0 ? book.rating.toFixed(1) : <span className="na-textBKP">N/A</span>}
-                              {book.ratingCount > 0 && <span className="rating-countBKP">({book.ratingCount})</span>}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="action-buttonsBKP">
-                          <ReactionButtonsBKP
-                            itemId={book.id}
-                            loves={bookLoves[book.id] || 0}
-                            onLove={toggleLove}
-                            isLoved={bookReactions[book.id]?.loved}
-                          />
-                          <span className="view-countBKP">
-                            <FiEye size={14} color="#64748b" /> <span className="countBKP">{book.views.toLocaleString()}</span>
-                          </span>
-                          <span className="downloads-countBKP">
-                            <FiDownload size={14} color="#64748b" /> <span className="countBKP">{book.downloads.toLocaleString()}</span>
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleWishlist(book.id);
-                            }}
-                            className={`wishlist-buttonBKP ${wishlist.includes(book.id) ? 'activeBKP' : ''}`}
-                          >
-                            <FiBookmark
-                              size={14}
-                              fill={wishlist.includes(book.id) ? '#6366f1' : 'none'}
-                              color={wishlist.includes(book.id) ? '#6366f1' : '#64748b'}
-                            />
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  </React.Fragment>
-                  );
-                }
-                
-                // For all other indices, render the book normally
-                return (
-                  <motion.div
-                    key={book.id}
-                    initial={isMounted ? { opacity: 0, y: 12 } : false}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.22 }}
-                    layout
+            // Render each category section
+            const categories = Object.entries(groupedByCategory);
+            return categories.map(([category, books], index) => {
+              const gridId = `grid-${category}`;
+              const scrollState = gridScrollStates[gridId] || { hasOverflow: false, canScrollLeft: false, canScrollRight: false };
+              const categoryNewIndex = categoryOrder[index] !== undefined ? categoryOrder[index] : index;
+              
+              return (
+              <div 
+                key={category} 
+                className="category-sectionBKP"
+                style={{ order: categoryNewIndex }}
+              >
+                <h2 className="category-headerBKP">{category}</h2>
+                <div className="grid-with-scrollBKP" id={`wrapper-${gridId}`}>
+                  {scrollState.canScrollLeft && (
+                    <button
+                      className="grid-scroll-navBKP grid-scroll-nav-leftBKP"
+                      onClick={(e) => {
+                        const wrapper = e.currentTarget.parentElement;
+                      const grid = wrapper?.querySelector('.gridBKP');
+                      scrollGridLeft(grid);
+                    }}
+                    aria-label="Scroll books left"
                   >
-                    <div
-                      className="book-cardBKP"
-                      onClick={() => openBookDirectly(book)}
-                      onMouseEnter={() => prefetchResource(book.downloadUrl)}
-                      onFocus={() => prefetchResource(book.downloadUrl)}
-                      tabIndex={0}
+                    <FiChevronLeft size={24} />
+                  </button>
+                  )}
+                  <div 
+                    className="gridBKP" 
+                    id={gridId}
+                    aria-busy={pageLoading} 
+                    aria-live={pageLoading ? 'polite' : 'off'} 
+                    onScroll={handleGridScroll}
+                  >
+                  <AnimatePresence initial={false}>
+                    {books.map((book, index) => {
+                      // Show ad at middle position for each category
+                      const isMobile = window.innerWidth < 768;
+                      const adPosition = isMobile ? 3 : Math.floor(books.length / 2);
+                      
+                      if (index === adPosition && books.length > 0 && user?.subscription_tier !== 'premium_pro') {
+                        return (
+                          <React.Fragment key={`ad-position-${category}-${index}`}>
+                            {/* Grid Ad */}
+                            <motion.div
+                              key={`grid-ad-${category}-0`}
+                              initial={isMounted ? { opacity: 0, y: 12 } : false}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.22 }}
+                              layout
+                            >
+                              <div className="book-cardBKP">
+                                <AdBanner placement="grid-books" limit={5} user={user} />
+                              </div>
+                            </motion.div>
+                            
+                            {/* Current Book */}
+                            <motion.div
+                              key={book.id}
+                              initial={isMounted ? { opacity: 0, y: 12 } : false}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.22 }}
+                              layout
+                            >
+                              <div
+                                className="book-cardBKP"
+                                onClick={() => bulkDownloadMode ? toggleBookSelection(book.id) : openBookDirectly(book)}
+                                onMouseEnter={() => prefetchResource(book.downloadUrl)}
+                                onFocus={() => prefetchResource(book.downloadUrl)}
+                                tabIndex={0}
+                                style={{ position: 'relative' }}
+                              >
+                                {/* Bulk Selection Checkbox */}
+                                {bulkDownloadMode && (
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '8px',
+                                    left: '8px',
+                                    zIndex: 10,
+                                    background: 'rgba(0, 0, 0, 0.7)',
+                                    padding: '8px',
+                                    borderRadius: '8px',
+                                    border: selectedBooksForDownload.has(book.id) ? '3px solid #00a884' : '3px solid #374151',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedBooksForDownload.has(book.id)}
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        toggleBookSelection(book.id);
+                                      }}
+                                      style={{ cursor: 'pointer', width: '22px', height: '22px', accentColor: '#00a884' }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  </div>
+                                )}
+
+                                <div className="badge-containerBKP">
+                                  {book.trending && (
+                                    <span className="trending-badgeBKP">
+                                      <FiTrendingUp size={12} /> Trending
+                                    </span>
+                                  )}
+                                </div>
+
+                                <img src={book.bookImage} alt={book.title} className="book-coverBKP" loading="lazy" decoding="async" />
+
+                                  <div className="card-contentBKP">
+                                    <h3 className="book-titleBKP">{book.title}</h3>
+                                    <p className="book-authorBKP">by {book.author}</p>
+
+                                    <div className="book-metaBKP">
+                                      <span className="ratingBKP">
+                                        <FiStar fill={book.rating > 0 ? "#fbbf24" : "none"} color={book.rating > 0 ? "#fbbf24" : "#64748b"} />
+                                        {book.rating > 0 ? book.rating.toFixed(1) : <span className="na-textBKP">N/A</span>}
+                                        {book.ratingCount > 0 && <span className="rating-countBKP">({book.ratingCount})</span>}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="action-buttonsBKP">
+                                    <ReactionButtonsBKP
+                                      itemId={book.id}
+                                      loves={bookLoves[book.id] || 0}
+                                      onLove={toggleLove}
+                                      isLoved={bookReactions[book.id]?.loved}
+                                    />
+                                    <span className="view-countBKP">
+                                      <FiEye size={14} color="#64748b" /> <span className="countBKP">{book.views.toLocaleString()}</span>
+                                    </span>
+                                    <span className="downloads-countBKP">
+                                      <FiDownload size={14} color="#64748b" /> <span className="countBKP">{book.downloads.toLocaleString()}</span>
+                                    </span>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleWishlist(book.id);
+                                      }}
+                                      className={`wishlist-buttonBKP ${wishlist.includes(book.id) ? 'activeBKP' : ''}`}
+                                    >
+                                      <FiBookmark
+                                        size={14}
+                                        fill={wishlist.includes(book.id) ? '#6366f1' : 'none'}
+                                        color={wishlist.includes(book.id) ? '#6366f1' : '#64748b'}
+                                      />
+                                    </button>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            </React.Fragment>
+                          );
+                        }
+                        
+                        // For all other indices, render the book normally
+                        return (
+                          <motion.div
+                            key={book.id}
+                            initial={isMounted ? { opacity: 0, y: 12 } : false}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.22 }}
+                            layout
+                          >
+                            <div
+                              className="book-cardBKP"
+                              onClick={() => openBookDirectly(book)}
+                              onMouseEnter={() => prefetchResource(book.downloadUrl)}
+                              onFocus={() => prefetchResource(book.downloadUrl)}
+                              tabIndex={0}
+                            >
+                              <div className="badge-containerBKP">
+                                {book.trending && (
+                                  <span className="trending-badgeBKP">
+                                    <FiTrendingUp size={12} /> Trending
+                                  </span>
+                                )}
+                              </div>
+
+                              <img src={book.bookImage} alt={book.title} className="book-coverBKP" loading="lazy" decoding="async" />
+
+                              <div className="card-contentBKP">
+                                <h3 className="book-titleBKP">{book.title}</h3>
+                                <p className="book-authorBKP">by {book.author}</p>
+
+                                <div className="book-metaBKP">
+                                  <span className="ratingBKP">
+                                    <FiStar fill={book.rating > 0 ? "#fbbf24" : "none"} color={book.rating > 0 ? "#fbbf24" : "#64748b"} />
+                                    {book.rating > 0 ? book.rating.toFixed(1) : <span className="na-textBKP">N/A</span>}
+                                    {book.ratingCount > 0 && <span className="rating-countBKP">({book.ratingCount})</span>}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="action-buttonsBKP">
+                                <ReactionButtonsBKP
+                                  itemId={book.id}
+                                  loves={bookLoves[book.id] || 0}
+                                  onLove={toggleLove}
+                                  isLoved={bookReactions[book.id]?.loved}
+                                />
+                                <span className="view-countBKP">
+                                  <FiEye size={10} color="#64748b" /> <span className="countBKP">{book.views.toLocaleString()}</span>
+                                </span>
+                                <span className="downloads-countBKP">
+                                  <FiDownload size={10} color="#64748b" /> <span className="countBKP">{book.downloads.toLocaleString()}</span>
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleWishlist(book.id);
+                                  }}
+                                  className={`wishlist-buttonBKP ${wishlist.includes(book.id) ? 'activeBKP' : ''}`}
+                                >
+                                  <FiBookmark
+                                    size={10}
+                                    fill={wishlist.includes(book.id) ? '#6366f1' : 'none'}
+                                    color={wishlist.includes(book.id) ? '#6366f1' : '#64748b'}
+                                  />
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                  </AnimatePresence>
+                  </div>
+                  {scrollState.canScrollRight && (
+                    <button
+                      className="grid-scroll-navBKP grid-scroll-nav-rightBKP"
+                      onClick={(e) => {
+                        const wrapper = e.currentTarget.parentElement;
+                        const grid = wrapper?.querySelector('.gridBKP');
+                        scrollGridRight(grid);
+                      }}
+                      aria-label="Scroll books right"
                     >
-                      <div className="badge-containerBKP">
-                        {book.trending && (
-                          <span className="trending-badgeBKP">
-                            <FiTrendingUp size={12} /> Trending
-                          </span>
-                        )}
-                      </div>
+                      <FiChevronRight size={24} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              );
+            });
+          })()}
 
-                      <img src={book.bookImage} alt={book.title} className="book-coverBKP" loading="lazy" decoding="async" />
-
-                      <div className="card-contentBKP">
-                        <h3 className="book-titleBKP">{book.title}</h3>
-                        <p className="book-authorBKP">by {book.author}</p>
-
-                        <div className="book-metaBKP">
-                          <span className="ratingBKP">
-                            <FiStar fill={book.rating > 0 ? "#fbbf24" : "none"} color={book.rating > 0 ? "#fbbf24" : "#64748b"} />
-                            {book.rating > 0 ? book.rating.toFixed(1) : <span className="na-textBKP">N/A</span>}
-                            {book.ratingCount > 0 && <span className="rating-countBKP">({book.ratingCount})</span>}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="action-buttonsBKP">
-                        <ReactionButtonsBKP
-                          itemId={book.id}
-                          loves={bookLoves[book.id] || 0}
-                          onLove={toggleLove}
-                          isLoved={bookReactions[book.id]?.loved}
-                        />
-                        <span className="view-countBKP">
-                          <FiEye size={10} color="#64748b" /> <span className="countBKP">{book.views.toLocaleString()}</span>
-                        </span>
-                        <span className="downloads-countBKP">
-                          <FiDownload size={10} color="#64748b" /> <span className="countBKP">{book.downloads.toLocaleString()}</span>
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleWishlist(book.id);
-                          }}
-                          className={`wishlist-buttonBKP ${wishlist.includes(book.id) ? 'activeBKP' : ''}`}
-                        >
-                          <FiBookmark
-                            size={10}
-                            fill={wishlist.includes(book.id) ? '#6366f1' : 'none'}
-                            color={wishlist.includes(book.id) ? '#6366f1' : '#64748b'}
-                          />
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
 
           {/* If we're loading a page and there are no displayedBooks yet, show skeletons */}
           {pageLoading && displayedBooks.length === 0 && (
@@ -4344,49 +4573,6 @@ export const BookPanel = ({ demoMode = false }) => {
             </div>
           )}
 
-          {(() => {
-            const totalCountForPaging = filteredByCategory !== null ? (filteredByCategory.length || 0) : (totalBooks || filteredBooks.length);
-            const computedTotal = Math.max(1, Math.ceil((totalCountForPaging) / BOOKS_PER_PAGE));
-            if (computedTotal <= 1) return null;
-
-            return (
-              <div>
-                <div className="actions" style={{ marginTop: 10, justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-                  <button
-                    className="btn"
-                    disabled={currentPage <= 1}
-                    onClick={() => handlePageChange(currentPage - 1)}
-                  >
-                    ← Prev
-                  </button>
-
-                  <span style={{ color: '#cfd8dc', fontSize: 12 }}>
-                    Page {currentPage} of {computedTotal}
-                  </span>
-
-                  <button
-                    className="btn"
-                    disabled={currentPage >= computedTotal}
-                    onClick={() => handlePageChange(currentPage + 1)}
-                  >
-                    Next →
-                  </button>
-                </div>
-
-                {pageLoading && (
-                  <div>
-                    <div className="dots-loader" aria-hidden>
-                      <span></span>
-                      <span></span>
-                      <span></span>
-                    </div>
-                    <div role="status" aria-live="polite" className="sr-only">Loading page {currentPage}…</div>
-                  </div>
-                )}
-
-              </div>
-            );
-          })()}
         </>
       )}
 
@@ -5060,5 +5246,61 @@ export const BookPanel = ({ demoMode = false }) => {
         )}
       </AnimatePresence>
     </div>
+
+    {/* Pagination at the very end */}
+    {displayedBooks.length > 0 && (() => {
+      // Group books by category and calculate pages based on categories
+      const groupedByCategory = filteredBooks.reduce((acc, book) => {
+        const category = book.genre || 'Uncategorized';
+        if (!acc[category]) {
+          acc[category] = [];
+        }
+        acc[category].push(book);
+        return acc;
+      }, {});
+      const CATEGORIES_PER_PAGE = 5;
+      const totalCategories = Object.keys(groupedByCategory).length;
+      const computedTotal = Math.max(1, Math.ceil((totalCategories) / CATEGORIES_PER_PAGE));
+      if (computedTotal <= 1) return null;
+
+      return (
+        <div style={{ marginTop: '40px', marginBottom: '20px', paddingLeft: '12px', paddingRight: '12px' }}>
+          <div className="actions" style={{ marginTop: 10, justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+            <button
+              className="btn"
+              disabled={currentPage <= 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+            >
+              ← Prev
+            </button>
+
+            <span style={{ color: '#cfd8dc', fontSize: 12 }}>
+              Page {currentPage} of {computedTotal}
+            </span>
+
+            <button
+              className="btn"
+              disabled={currentPage >= computedTotal}
+              onClick={() => handlePageChange(currentPage + 1)}
+            >
+              Next →
+            </button>
+          </div>
+
+          {pageLoading && (
+            <div>
+              <div className="dots-loader" aria-hidden>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div role="status" aria-live="polite" className="sr-only">Loading page {currentPage}…</div>
+            </div>
+          )}
+
+        </div>
+      );
+    })()}
+    </>
   );
 };

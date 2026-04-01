@@ -8,7 +8,6 @@ import {Profile} from './Profile';   // ← imported here
 import VerificationBadge from "../Books/Admin/components/VerificationBadge";
 import VerificationTierModal from "../Books/VerificationTierModal";
 import { supabase } from "../Books/supabaseClient";
-import { useSwipeTabs } from './useSwipeTabs';
 import './BookManagement.css';
 
 export const BookManagement = () => {
@@ -26,7 +25,7 @@ export const BookManagement = () => {
     const match = path.match(/\/BookManagement\/([a-z]+)/);
     if (match) {
       const tabName = match[1];
-      if (['categories', 'pastpapers', 'chatme'].includes(tabName)) {
+      if (['genres', 'pastpapers', 'chatme'].includes(tabName)) {
         return tabName;
       }
     }
@@ -40,10 +39,10 @@ export const BookManagement = () => {
     try {
       console.log('[BookManagement] Rendering tab:', activeTab);
       switch (activeTab) {
-        case 'categories':
+        case 'genres':
           console.log('[BookManagement] About to render BookCategories');
           return (
-            <React.Suspense fallback={<div style={{ padding: '20px', color: '#888' }}>Loading Categories...</div>}>
+            <React.Suspense fallback={<div style={{ padding: '20px', color: '#888' }}>Loading Genres...</div>}>
               <BookCategories />
             </React.Suspense>
           );
@@ -98,14 +97,10 @@ export const BookManagement = () => {
   // Tab definitions (without components to avoid rendering all)
   const tabs = [
     { id: 'books',      label: 'Books' },
-    { id: 'categories', label: 'Categories' },
+    { id: 'genres',     label: 'Genre' },
     { id: 'pastpapers', label: 'Past Papers' },
     { id: 'chatme',     label: 'ChatMe' },
   ];
-
-  const swipeHandlers = useSwipeTabs(tabs, activeTab, (tabId) => {
-    navigateToTab(tabId);
-  }, contentRef);
 
   // Navigate to tab by updating URL
   const navigateToTab = (tabId) => {
@@ -222,7 +217,6 @@ export const BookManagement = () => {
       <div
         className={`file-converter-content-convert ${isFullScreenChat ? 'fullscreen-chat-content' : ''}`}
         ref={contentRef}
-        {...swipeHandlers}
         data-active-tab={activeTab}
       >
         {renderActiveComponent()}

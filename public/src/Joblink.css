@@ -1,0 +1,438 @@
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #000000 !important;
+  background-image: none !important;
+}
+
+.Joblink {
+  width: 100%;
+  height: 100vh;
+  background: #000000 !important;
+  background-image: none !important;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0;
+  overflow: hidden;
+  padding-top: 90px;
+}
+
+.Joblink-header-title {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(5px);
+  border-bottom: 1px solid rgba(0, 217, 255, 0.1);
+}
+
+.Joblink-header-top {
+  padding: clamp(4px, 1vw, 8px) clamp(8px, 3vw, 20px);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: clamp(4px, 1vw, 10px);
+  flex-wrap: nowrap;
+  min-height: 40px;
+  width: 100%;
+}
+
+.Joblink-header-title h1 {
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  color: #ffffff;
+  margin: 0;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.tabs-container {
+  display: flex;
+  gap: clamp(6px, 1.5vw, 12px);
+  width: 100%;
+  padding: 0 clamp(8px, 3vw, 20px);
+  background: transparent;
+  overflow-x: auto;
+  overflow-y: hidden;
+  justify-content: flex-start;
+  align-items: center;
+  scrollbar-width: none;
+  border-top: 1px solid rgba(0, 217, 255, 0.05);
+  position: relative;
+  z-index: 1001;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.tabs-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.tabs-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tabs-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 217, 255, 0.3);
+  border-radius: 3px;
+}
+
+.tab-button {
+  padding: clamp(8px, 1.5vh, 12px) clamp(16px, 2vw, 24px);
+  font-size: clamp(0.75rem, 1.8vw, 0.85rem);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 400;
+  transition: all 0.3s ease;
+  box-shadow: none;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-button.active {
+  color: rgba(0, 217, 255, 1);
+  background: transparent;
+  text-shadow: 0 0 10px rgba(0, 217, 255, 0.6);
+}
+
+.Joblink-content {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+  -ms-overflow-style: none;
+  margin-top: 0;
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
+}
+
+.Joblink-content::-webkit-scrollbar {
+  display: none;
+}
+
+.Home,
+.Trending,
+.Following {
+  color: #333;
+}
+
+.Home h2,
+.Trending h2,
+.Following h2 {
+  font-size: 2rem;
+  margin-bottom: 15px;
+  color: #007AFF;
+}
+
+.Home p,
+.Trending p,
+.Following p {
+  font-size: 1.1rem;
+  color: #555;
+}
+
+.Profile {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 50px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none;
+  backdrop-filter: none;
+  pointer-events: auto;
+}
+
+.profile-wrapper {
+  position: fixed;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  cursor: pointer;
+  z-index: 1100;
+  flex-shrink: 0;
+}
+
+.Profile:hover {
+  transform: scale(1.05);
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.Profile:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.profile-avatar {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(0, 217, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: relative;
+  border: none;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.profile-name {
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  font-size: clamp(0.65rem, 2vw, 0.75rem);
+  display: none;
+}
+
+.profile-status {
+  font-size: clamp(0.65rem, 2vw, 0.8rem);
+  color: #a0a8b8;
+  margin: 0;
+  display: none;
+}
+
+.Joblink-header-title .Search {
+  display: flex;
+  justify-content: center;
+}
+
+.Joblink-header-title > .Profile {
+  order: 3;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* RESPONSIVE DESIGN - TABLET SCREENS (768px to 1024px) */
+@media (max-width: 1024px) {
+  .Joblink {
+    padding-top: 120px;
+  }
+
+  .Joblink-header-top {
+    padding: clamp(8px, 3vw, 16px) clamp(20px, 3vw, 30px);
+    gap: clamp(15px, 2.5vw, 20px);
+  }
+
+  .tabs-container {
+    padding: 0 clamp(20px, 3vw, 30px);
+    gap: clamp(10px, 2vw, 15px);
+  }
+
+  .tab-button {
+    font-size: clamp(0.8rem, 1.8vw, 0.85rem);
+  }
+
+  .Joblink-content {
+    padding: clamp(16px, 3vw, 30px);
+  }
+
+  .Home h2,
+  .Trending h2,
+  .Following h2 {
+    font-size: clamp(1.4rem, 3vw, 1.8rem);
+  }
+
+  .Home p,
+  .Trending p,
+  .Following p {
+    font-size: clamp(0.85rem, 2vw, 1rem);
+  }
+}
+
+/* RESPONSIVE DESIGN - MOBILE SCREENS (480px to 768px) */
+@media (max-width: 768px) {
+  .Joblink {
+    padding-top: 115px;
+  }
+
+  .Joblink-header-top {
+    padding: clamp(8px, 2.5vw, 10px) clamp(8px, 2vw, 15px);
+    gap: clamp(6px, 1.2vw, 10px);
+    flex-wrap: nowrap;
+  }
+
+  .Joblink-header-title h1 {
+    font-size: clamp(1.5rem, 6vw, 1.8rem);
+    flex-shrink: 0;
+    font-weight: 500;
+  }
+
+  .Joblink-header-title .Search {
+    flex: 1 1 auto;
+    min-width: clamp(80px, 25vw, 150px);
+    margin-left: clamp(4px, 1vw, 8px);
+    margin-right: auto;
+  }
+
+  .tabs-container {
+    padding: 0 clamp(8px, 2vw, 15px);
+    gap: clamp(12px, 2.5vw, 18px);
+    margin-top: 0;
+    display: flex;
+    flex-wrap: wrap;
+    overflow-x: auto;
+    justify-content: space-around;
+  }
+
+  .tab-button {
+    padding: clamp(6px, 1.2vw, 8px) clamp(10px, 1.5vw, 14px);
+    font-size: clamp(0.75rem, 2vw, 0.85rem);
+    text-align: center;
+    flex: 1;
+    white-space: nowrap;
+    min-width: clamp(60px, 20vw, 80px);
+  }
+
+  .profile-avatar {
+    width: clamp(52px, 11vw, 58px) !important;
+    height: clamp(52px, 11vw, 58px) !important;
+  }
+
+  .Joblink-content {
+    padding: clamp(8px, 2vw, 16px);
+  }
+
+  .Home h2,
+  .Trending h2,
+  .Following h2 {
+    font-size: clamp(1.2rem, 2.5vw, 1.4rem);
+  }
+
+  .Home p,
+  .Trending p,
+  .Following p {
+    font-size: clamp(0.8rem, 2vw, 0.9rem);
+  }
+
+  .Home,
+  .Trending,
+  .Following {
+    padding: clamp(12px, 2.5vw, 20px);
+  }
+}
+
+/* RESPONSIVE DESIGN - SMALL MOBILE SCREENS (< 480px) */
+@media (max-width: 480px) {
+  .Joblink {
+    padding-top: 105px;
+  }
+
+  .Joblink-header-top {
+    padding: clamp(6px, 2vw, 8px) clamp(6px, 1.5vw, 10px);
+    gap: clamp(5px, 1vw, 8px);
+    flex-wrap: nowrap;
+  }
+
+  .Joblink-header-title h1 {
+    font-size: clamp(1.3rem, 5vw, 1.6rem);
+    flex-shrink: 0;
+    font-weight: 500;
+  }
+
+  .Joblink-header-title .Search {
+    flex: 1 1 auto;
+    min-width: clamp(70px, 20vw, 90px);
+    margin-left: clamp(3px, 0.8vw, 6px);
+    margin-right: auto;
+  }
+
+  .profile-name {
+    display: none;
+  }
+
+  .tabs-container {
+    padding: 0 clamp(6px, 1.5vw, 12px);
+    gap: clamp(10px, 2vw, 16px);
+    margin-top: 0;
+    display: flex;
+    flex-wrap: wrap;
+    overflow-x: auto;
+    justify-content: space-around;
+  }
+
+  .tab-button {
+    padding: clamp(5px, 1vw, 6px) clamp(8px, 1.2vw, 10px);
+    font-size: clamp(0.7rem, 1.8vw, 0.75rem);
+    text-align: center;
+    flex: 1;
+    white-space: nowrap;
+    min-width: clamp(50px, 18vw, 70px);
+  }
+
+  .profile-avatar {
+    width: clamp(49px, 11vw, 54px) !important;
+    height: clamp(49px, 11vw, 54px) !important;
+  }
+
+  .Joblink-content {
+    padding: clamp(6px, 1.5vw, 12px);
+  }
+
+  .Home h2,
+  .Trending h2,
+  .Following h2 {
+    font-size: clamp(1rem, 2.5vw, 1.1rem);
+  }
+
+  .Home p,
+  .Trending p,
+  .Following p {
+    font-size: clamp(0.75rem, 2vw, 0.8rem);
+  }
+
+  .Home,
+  .Trending,
+  .Following {
+    padding: clamp(10px, 2vw, 12px);
+    max-width: 100%;
+  }
+}
+
