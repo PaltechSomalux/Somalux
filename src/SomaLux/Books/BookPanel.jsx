@@ -322,6 +322,10 @@ export const BookPanel = ({ demoMode = false }) => {
   // Category shuffling state
   const [categoryOrder, setCategoryOrder] = useState([]);
   const isCategoryShufflingRef = useRef(false);
+  
+  // Grid books shuffling state - track shuffled order for each category
+  const [categoryShuffledBooks, setCategoryShuffledBooks] = useState({});
+  const isGridShufflingRef = useRef(false);
 
   const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -3160,6 +3164,67 @@ export const BookPanel = ({ demoMode = false }) => {
     return () => clearInterval(animationCycleInterval);
   }, []);
 
+  // Initialize and shuffle grid books by category on load
+  useEffect(() => {
+    if (!filteredBooks || filteredBooks.length === 0) return;
+
+    const groupedByCategory = filteredBooks.reduce((acc, book) => {
+      const category = book.genre || 'Uncategorized';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(book);
+      return acc;
+    }, {});
+
+    const newShuffledBooks = {};
+    Object.entries(groupedByCategory).forEach(([category, books]) => {
+      // Shuffle using Fisher-Yates algorithm
+      const shuffled = [...books];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      newShuffledBooks[category] = shuffled;
+    });
+
+    setCategoryShuffledBooks(newShuffledBooks);
+  }, [filteredBooks]);
+
+  // Shuffle individual grid books randomly at staggered intervals
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Only shuffle if not currently shuffling
+      if (!isGridShufflingRef.current) {
+        isGridShufflingRef.current = true;
+        setCategoryShuffledBooks(prevState => {
+          const newState = { ...prevState };
+          Object.keys(newState).forEach(category => {
+            const books = newState[category];
+            if (books && books.length > 0) {
+              // Swap only 1 pair of random books
+              const i = Math.floor(Math.random() * books.length);
+              const j = Math.floor(Math.random() * books.length);
+              if (i !== j) {
+                const newBooks = [...books];
+                [newBooks[i], newBooks[j]] = [newBooks[j], newBooks[i]];
+                newState[category] = newBooks;
+              }
+            }
+          });
+          return newState;
+        });
+
+        // Wait for transition to complete before allowing next shuffle
+        setTimeout(() => {
+          isGridShufflingRef.current = false;
+        }, 2000);
+      }
+    }, 30000); // Every 30 seconds, shuffle one book in each category
+
+    return () => clearInterval(interval);
+  }, []);
+
   // PowerPoint-style transition variants helper
   const getPPTVariant = (typeIndex, idx) => {
     const delay = idx * 0.06;
@@ -4327,12 +4392,13 @@ export const BookPanel = ({ demoMode = false }) => {
                     onScroll={handleGridScroll}
                   >
                   <AnimatePresence initial={false}>
-                    {books.map((book, index) => {
+                    {(categoryShuffledBooks[category] || books).map((book, index) => {
                       // Show ad at middle position for each category
                       const isMobile = window.innerWidth < 768;
-                      const adPosition = isMobile ? 3 : Math.floor(books.length / 2);
+                      const booksToRender = categoryShuffledBooks[category] || books;
+                      const adPosition = isMobile ? 3 : Math.floor(booksToRender.length / 2);
                       
-                      if (index === adPosition && books.length > 0 && user?.subscription_tier !== 'premium_pro') {
+                      if (index === adPosition && booksToRender.length > 0 && user?.subscription_tier !== 'premium_pro') {
                         return (
                           <React.Fragment key={`ad-position-${category}-${index}`}>
                             {/* Grid Ad */}
@@ -5274,9 +5340,11 @@ export const BookPanel = ({ demoMode = false }) => {
               ← Prev
             </button>
 
-            <span style={{ color: '#cfd8dc', fontSize: 12 }}>
-              Page {currentPage} of {computedTotal}
-            </span>
+            {(user?.subscription_tier === 'premium' || user?.subscription_tier === 'premium_pro') && (
+              <span style={{ color: '#cfd8dc', fontSize: 12 }}>
+                Page {currentPage} of {computedTotal}
+              </span>
+            )}
 
             <button
               className="btn"

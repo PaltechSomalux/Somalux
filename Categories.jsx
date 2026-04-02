@@ -476,9 +476,11 @@ const Categories = () => {
             >
               Previo
             </button>
-            <span style={{ color: '#cfd8dc', fontSize: '0.875rem' }}>
-              Page {page} of {totalPages} ({filteredRows.length} {filteredRows.length === 1 ? 'category' : 'categories'})
-            </span>
+            {(user?.subscription_tier === 'premium' || user?.subscription_tier === 'premium_pro') && (
+              <span style={{ color: '#cfd8dc', fontSize: '0.875rem' }}>
+                Page {page} of {totalPages} ({filteredRows.length} {filteredRows.length === 1 ? 'category' : 'categories'})
+              </span>
+            )}
             <button 
               className="btn" 
               disabled={page >= totalPages} 

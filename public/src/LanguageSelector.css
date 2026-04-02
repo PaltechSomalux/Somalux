@@ -1,0 +1,110 @@
+.lang-sel-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Selected Languages Display - Inline with Label */
+.lang-sel-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 8px;
+  row-gap: 0;
+}
+
+.lang-sel-label {
+  color: #00d973;
+  font-weight: 600;
+  font-size: 11px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.lang-sel-badge {
+  display: inline;
+  color: #00d9ff;
+  font-size: 13px;
+  font-weight: 500;
+  flex: 1;
+  word-break: break-word;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.lang-sel-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #00d9ff;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.lang-sel-clear-btn:hover {
+  color: #ff5555;
+}
+
+/* Input Row - select only */
+.lang-sel-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Select Wrapper */
+.lang-sel-select-wrapper {
+  flex: 1;
+  position: relative;
+}
+
+/* Select Dropdown - matches form-group select exactly */
+.lang-sel-select {
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none !important;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.lang-sel-select::-webkit-scrollbar {
+  display: none;
+}
+
+.lang-sel-select:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.lang-sel-select:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 2px rgba(0, 217, 255, 0.2);
+}
+
+.lang-sel-select option {
+  background: #1a1f2e;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 8px;
+}
+

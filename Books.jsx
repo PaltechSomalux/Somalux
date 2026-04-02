@@ -368,7 +368,9 @@ const Books = ({ userProfile }) => {
 
         <div className="actions" style={{ marginTop: 10 }}>
           <button className="btn" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
-          <span style={{ color: '#cfd8dc' }}>Page {page} of {totalPages}</span>
+          {(userProfile?.subscription_tier === 'premium' || userProfile?.subscription_tier === 'premium_pro') && (
+            <span style={{ color: '#cfd8dc' }}>Page {page} of {totalPages}</span>
+          )}
           <button className="btn" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
         </div>
       </div>

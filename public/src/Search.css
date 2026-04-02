@@ -1,0 +1,282 @@
+.search-search {
+  width: 100%;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: auto;
+  flex: 1;
+  min-width: 0;
+  gap: 8px;
+}
+
+.home-search-section .search-search {
+  margin-right: 0;
+  flex: none;
+  width: 100%;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.search-icon-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 50%;
+}
+
+.home-search-section .search-icon-btn {
+  margin-left: 0;
+  display: none;
+}
+
+.search-icon-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.search-icon-btn:active {
+  color: rgba(0, 217, 255, 0.8);
+}
+
+/* When search is open, bring icon closer */
+.search-form-search.open ~ .search-icon-btn {
+  margin-left: -12px;
+}
+
+.search-form-search {
+  position: relative;
+  width: 100%;
+  max-width: 0px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.search-form-search.open {
+  max-width: 280px;
+}
+
+.home-search-section .search-form-search {
+  max-width: 100%;
+  width: 100%;
+  margin-bottom: 0px;
+}
+
+.search-input-search {
+  width: 100%;
+  padding: 8px 28px 8px 10px;
+  font-size: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background-color: transparent;
+  color: #fff;
+  line-height: 1.2;
+  transition: all 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+.home-search-section .search-input-search {
+  font-size: 11px;
+  padding: 10px 12px;
+}
+
+.search-input-search::placeholder {
+  color: white;
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.search-input-search:focus {
+  outline: none;
+  border-color: rgba(0, 217, 255, 0.6);
+  background-color: transparent;
+  box-shadow: 0 0 0 2px rgba(0, 217, 255, 0.2);
+}
+
+.search-input-search:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  background-color: transparent;
+}
+
+.search-clear-btn-search {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 1px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.search-clear-btn-search:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.search-clear-btn-search:active {
+  color: rgba(0, 217, 255, 0.8);
+}
+
+/* Responsive Design */
+
+/* Large screens (1200px and up) */
+@media (min-width: 1200px) {
+  .search-form-search {
+    max-width: 0px;
+  }
+
+  .search-form-search.open {
+    max-width: 350px;
+  }
+
+  .search-input-search {
+    padding: 10px 28px 10px 10px;
+    font-size: 12px;
+  }
+}
+
+/* Tablets and iPads (768px to 1199px) */
+@media (max-width: 1199px) and (min-width: 768px) {
+  .search-search {
+    padding: 12px 10px;
+  }
+
+  .search-form-search {
+    max-width: 0px;
+  }
+
+  .search-form-search.open {
+    max-width: 260px;
+  }
+
+  .search-input-search {
+    font-size: 13px;
+    padding: 8px 32px 8px 12px;
+    border-radius: 10px;
+  }
+
+  .search-clear-btn-search {
+    right: 8px;
+    font-size: 13px;
+  }
+}
+
+/* Medium tablets and small desktops (600px to 767px) */
+@media (max-width: 767px) and (min-width: 600px) {
+  .search-search {
+    padding: 10px 8px;
+  }
+
+  .search-form-search {
+    max-width: 0px;
+  }
+
+  .search-form-search.open {
+    max-width: 160px;
+  }
+
+  .search-input-search {
+    font-size: 10px;
+    padding: 6px 28px 6px 10px;
+    border-radius: 9px;
+  }
+
+  .search-clear-btn-search {
+    right: 8px;
+    font-size: 11px;
+  }
+}
+
+/* Small phones and devices (400px to 599px) */
+@media (max-width: 599px) and (min-width: 400px) {
+  .search-search {
+    padding: 8px 5px;
+  }
+
+  .search-form-search {
+    max-width: 0px;
+  }
+
+  .search-form-search.open {
+    max-width: 140px;
+  }
+
+  .search-input-search {
+    font-size: 10px;
+    padding: 6px 26px 6px 9px;
+    border-radius: 8px;
+  }
+
+  .search-input-search::placeholder {
+    font-size: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .search-clear-btn-search {
+    right: 6px;
+    font-size: 11px;
+    padding: 2px 5px;
+  }
+}
+
+/* Extra small phones (below 400px) */
+@media (max-width: 399px) {
+  .search-search {
+    padding: 6px 3px;
+  }
+
+  .search-form-search {
+    max-width: 0px;
+  }
+
+  .search-form-search.open {
+    max-width: 120px;
+  }
+
+  .search-input-search {
+    font-size: 9px;
+    padding: 5px 24px 5px 8px;
+    border-radius: 7px;
+  }
+
+  .search-input-search::placeholder {
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .search-clear-btn-search {
+    right: 5px;
+    font-size: 10px;
+    padding: 2px 4px;
+  }
+}
+
+/* Touch devices optimization */
+@media (hover: none) and (pointer: coarse) {
+  .search-input-search:focus {
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
+  }
+
+  .search-clear-btn-search {
+    padding: 8px 10px;
+  }
+}

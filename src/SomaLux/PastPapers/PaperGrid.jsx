@@ -492,14 +492,16 @@ export const PaperGrid = React.memo(({
               ← Prev
             </button>
 
-            <span
-              style={{
-                color: '#cfd8dc',
-                fontSize: 12
-              }}
-            >
-              Page {currentPage} of {totalPages}
-            </span>
+            {(user?.subscription_tier === 'premium' || user?.subscription_tier === 'premium_pro') && (
+              <span
+                style={{
+                  color: '#cfd8dc',
+                  fontSize: 12
+                }}
+              >
+                Page {currentPage} of {totalPages}
+              </span>
+            )}
 
             <button className="btn" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>
               Next →

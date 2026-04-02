@@ -1,0 +1,235 @@
+.tz-sel-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Dropdown Button */
+.tz-sel-button {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 13px;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tz-sel-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.tz-sel-button:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 2px rgba(0, 217, 255, 0.2);
+}
+
+.tz-sel-value {
+  flex: 1;
+  text-align: left;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tz-sel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #00d9ff;
+  font-size: 14px;
+  margin-left: 8px;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.tz-sel-button[aria-expanded="true"] .tz-sel-icon {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu */
+.tz-sel-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 8px;
+  background: #1a1f2e;
+  border: 1px solid rgba(0, 217, 255, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  animation: slideDown 0.2s ease-out;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Search Input */
+.tz-sel-search-wrapper {
+  position: relative;
+  padding: 8px 8px;
+  border-bottom: 1px solid rgba(0, 217, 255, 0.1);
+  background: rgba(0, 217, 255, 0.05);
+}
+
+.tz-sel-search-input {
+  width: 100%;
+  padding: 8px 10px;
+  padding-right: 32px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(0, 217, 255, 0.2);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 12px;
+  font-family: inherit;
+  transition: all 0.3s ease;
+}
+
+.tz-sel-search-input::placeholder {
+  color: #6a7280;
+}
+
+.tz-sel-search-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(0, 217, 255, 0.4);
+  box-shadow: 0 0 0 2px rgba(0, 217, 255, 0.1);
+}
+
+.tz-sel-search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6a7280;
+  font-size: 14px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Options List */
+.tz-sel-options-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.tz-sel-options-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tz-sel-options-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tz-sel-options-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 217, 255, 0.2);
+  border-radius: 3px;
+}
+
+.tz-sel-options-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 217, 255, 0.3);
+}
+
+/* Individual Options */
+.tz-sel-option {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+  color: #a0a8b8;
+}
+
+.tz-sel-option:hover {
+  background: rgba(0, 217, 255, 0.1);
+  color: #ffffff;
+}
+
+.tz-sel-option.selected {
+  background: rgba(0, 217, 255, 0.15);
+  border-left-color: #00d9ff;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.tz-sel-option-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.tz-sel-option-checkmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #00d9ff;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* No Results */
+.tz-sel-no-results {
+  padding: 16px 12px;
+  text-align: center;
+  color: #6a7280;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+  .tz-sel-dropdown-menu {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    margin: 0;
+    border-radius: 12px 12px 0 0;
+    max-height: 50vh;
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+

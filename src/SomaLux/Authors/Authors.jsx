@@ -1003,7 +1003,9 @@ export const Authors = () => {
             >
               Previous
             </button>
-            <span>Page {currentPage} of {totalPages}</span>
+            {(userProfile?.subscription_tier === 'premium' || userProfile?.subscription_tier === 'premium_pro') && (
+              <span>Page {currentPage} of {totalPages}</span>
+            )}
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}

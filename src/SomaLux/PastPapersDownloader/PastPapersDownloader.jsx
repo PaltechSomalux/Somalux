@@ -488,9 +488,11 @@ const PastPapersDownloader = ({ userProfile, asSubmission = false }) => {
                   >
                     Previous
                   </button>
-                  <span>
-                    Page {historyPage} of {totalPages}
-                  </span>
+                  {(userProfile?.subscription_tier === 'premium' || userProfile?.subscription_tier === 'premium_pro') && (
+                    <span>
+                      Page {historyPage} of {totalPages}
+                    </span>
+                  )}
                   <button
                     disabled={historyPage === totalPages}
                     onClick={() => setHistoryPage(historyPage + 1)}
