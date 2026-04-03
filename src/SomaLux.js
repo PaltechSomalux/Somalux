@@ -8,7 +8,6 @@ import { BookManagement } from "./SomaLux/BookDashboard/BookManagement";
 import { Onboarding } from "./SomaLux/Onboarding/Onboarding";
 import { BooksAdmin } from "./SomaLux/Books/Admin/BooksAdmin";
 import ReadingDashboard from "./SomaLux/Books/ReadingDashboard/ReadingDashboard";
-import { SubscriptionThanks } from "./SomaLux/Subscriptions/SubscriptionThanks";
 import { EmailSender } from "./SomaLux/Admin/EmailSender";
 import ChatMe from "./ChatMe";
 import SuspendedPage from "./SomaLux/SuspendedPage";
@@ -88,9 +87,6 @@ function AppContent() {
       <Route path="/books/admin/*" element={<BooksAdmin />} />
       <Route path="/past-papers/admin" element={<Navigate to="/books/admin/content?tab=pastpapers" replace />} />
       <Route path="/books/reading-dashboard" element={<ReadingDashboard />} />
-
-      {/* Subscription */}
-      <Route path="/subscription/thanks" element={<SubscriptionThanks />} />
 
       {/* Email */}
       <Route path="/admin/email" element={<EmailSender />} />

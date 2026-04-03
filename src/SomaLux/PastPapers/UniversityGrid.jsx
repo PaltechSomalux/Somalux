@@ -40,7 +40,7 @@ const UniversityCard = React.memo(({
   user,
   onUniversitySelect,
   onToggleLike,
-  setShowSubscriptionModal,
+  setShowPremiumPanel,
   bubbleMap,
   onHandleLike
 }) => (
@@ -121,7 +121,7 @@ const UniversityCard = React.memo(({
           <span 
             onClick={(e) => {
               e.stopPropagation();
-              setShowSubscriptionModal?.(true);
+              setShowPremiumPanel?.(true);
             }}
             style={{ fontSize: '0.65rem', color: '#1DA1F2', display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }} 
             title="Click to upgrade to Premium"
@@ -186,7 +186,7 @@ export const UniversityGrid = React.memo(({
   universityLikes = {},
   universityLikesCounts = {},
   onToggleLike,
-  setShowSubscriptionModal
+  setShowPremiumPanel
 }) => {
   const [paperCounts, setPaperCounts] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -363,7 +363,7 @@ export const UniversityGrid = React.memo(({
                     user={user}
                     onUniversitySelect={onUniversitySelect}
                     onToggleLike={onToggleLike}
-                    setShowSubscriptionModal={setShowSubscriptionModal}
+                    setShowPremiumPanel={setShowPremiumPanel}
                     bubbleMap={bubbleMap}
                     onHandleLike={handleUniversityLike}
                   />
@@ -384,7 +384,7 @@ export const UniversityGrid = React.memo(({
                 user={user}
                 onUniversitySelect={onUniversitySelect}
                 onToggleLike={onToggleLike}
-                setShowSubscriptionModal={setShowSubscriptionModal}
+                setShowPremiumPanel={setShowPremiumPanel}
                 bubbleMap={bubbleMap}
                 onHandleLike={handleUniversityLike}
               />

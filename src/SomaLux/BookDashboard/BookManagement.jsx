@@ -6,7 +6,6 @@ import { PaperPanel } from "../PastPapers/Pastpapers";
 import ChatMeWrapper from "../../components/ChatMe/ChatMeWrapper";
 import {Profile} from './Profile';   // ← imported here
 import VerificationBadge from "../Books/Admin/components/VerificationBadge";
-import VerificationTierModal from "../Books/VerificationTierModal";
 import { supabase } from "../Books/supabaseClient";
 import './BookManagement.css';
 

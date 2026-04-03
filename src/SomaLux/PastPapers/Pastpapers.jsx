@@ -25,7 +25,7 @@ import { ShareButton } from './PastpaperShare';
 import { Download } from './PastpaperDownload';
 import { AuthModal } from '../Books/AuthModal';
 import { RatingModal } from '../Books/RatingModal';
-import VerificationTierModal from '../Books/VerificationTierModal';
+import PremiumPanel from '../../premium-features/PremiumPanel';
 import SecureReader from '../Books/SecureReader';
 import SimpleScrollReader from '../Books/SimpleScrollReader';
 import { FaSearch, FaFacebook, FaLinkedin, FaWhatsapp } from 'react-icons/fa';
@@ -90,7 +90,7 @@ export const PaperPanel = ({ demoMode = false }) => {
   const [subscription, setSubscription] = useState(null);
   const [checkingSubscription, setCheckingSubscription] = useState(false);
   const [showBookmarksPanel, setShowBookmarksPanel] = useState(false);
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showPremiumPanel, setShowPremiumPanel] = useState(false);
   const [ratingStats, setRatingStats] = useState({});
   const [userRatings, setUserRatings] = useState({});
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
@@ -1963,6 +1963,7 @@ export const PaperPanel = ({ demoMode = false }) => {
   }
 
   return (
+    <>
     <div className="containerpast" style={{ display: 'flex', flexDirection: 'column' }}>
       {/* Feed Ad - Between Past Paper Items */}
       <AdBanner placement="papers" limit={1} user={user} />
@@ -2001,7 +2002,7 @@ export const PaperPanel = ({ demoMode = false }) => {
           universityLikes={universityLikes}
           universityLikesCounts={universityLikesCounts}
           onToggleLike={handleToggleUniversityLike}
-          setShowSubscriptionModal={setShowSubscriptionModal}
+          setShowPremiumPanel={setShowPremiumPanel}
         />
       ) : (
         <>
@@ -2168,7 +2169,7 @@ export const PaperPanel = ({ demoMode = false }) => {
                     paper={selectedPaper} 
                     variant="full" 
                     user={user}
-                    onUpgradeClick={() => setShowSubscriptionModal(true)}
+                    onUpgradeClick={() => setShowPremiumPanel(true)}
                     downloadText="Save"
                     downloadingText="Saving..."
                     className="btn-readBKP btn-action-primaryBKP"
@@ -2530,19 +2531,6 @@ export const PaperPanel = ({ demoMode = false }) => {
         onClose={() => setAuthModalOpen(false)}
         onSuccess={() => setAuthModalOpen(false)}
         action={authAction}
-      />
-
-      <VerificationTierModal
-        isOpen={showSubscriptionModal}
-        onClose={() => {
-          setShowSubscriptionModal(false);
-        }}
-        userTier={user?.subscription_tier || 'basic'}
-        onSelectTier={(tier) => {
-          // The tier selection will be handled by VerificationTierModal
-          // which handles the payment flow
-          setShowSubscriptionModal(false);
-        }}
       />
 
       {/* Enhanced User Upload Past Paper Modal - Simplified */}
@@ -2950,5 +2938,14 @@ export const PaperPanel = ({ demoMode = false }) => {
         )}
       </AnimatePresence>
     </div>
+
+    {/* Premium Panel - Outside all containers for proper centering */}
+    {showPremiumPanel && (
+      <PremiumPanel
+        onClose={() => setShowPremiumPanel(false)}
+        onSelectPlan={() => setShowPremiumPanel(false)}
+      />
+    )}
+    </>
   );
 };

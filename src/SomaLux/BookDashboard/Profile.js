@@ -7,7 +7,7 @@ import { statsCache, userCache } from "../Books/utils/cacheManager";
 import { supabase } from "../Books/supabaseClient";
 import { ProfileAvatar } from "./ProfileAvatar";
 import { AuthModals } from "./AuthModals";
-import VerificationTierModal from "../Books/VerificationTierModal";
+import PremiumPanel from '../../premium-features/PremiumPanel';
 import VerificationBadge from "../Books/Admin/components/VerificationBadge";
 import QRCodeShare from "../../components/QRCodeShare";
 import { API_URL } from "../../config";
@@ -25,6 +25,7 @@ export const Profile = ({ user: propUser = null }) => {
   const [authUser, setAuthUser] = useState(null);
   const [currentUserTier, setCurrentUserTier] = useState('basic');
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showPremiumPanel, setShowPremiumPanel] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [showActionsGrid, setShowActionsGrid] = useState(false);
   const [showSavedModal, setShowSavedModal] = useState(false);
@@ -760,7 +761,7 @@ export const Profile = ({ user: propUser = null }) => {
                 <button
                   onClick={() => {
                     setIsOpen(false);
-                    setShowVerificationModal(true);
+                    setShowPremiumPanel(true);
                   }}
                   style={{
                     padding: '5px 6px',
@@ -1081,20 +1082,15 @@ export const Profile = ({ user: propUser = null }) => {
         setAuthUser={setAuthUser}
         markProfileSignedOut={markProfileSignedOut}
       />
-
-      {/* Verification Tier Modal */}
-      <VerificationTierModal
-        isOpen={showVerificationModal}
-        onClose={() => setShowVerificationModal(false)}
-        userTier={currentUserTier || 'basic'}
-        onSelectTier={(tier) => {
-          // This will handle tier selection
-          // In next phase: integrate payment processing
-          setShowVerificationModal(false);
-        }}
-        isLoading={false}
-      />
       </div>
+
+      {/* Premium Panel - Outside all containers for proper centering */}
+      {showPremiumPanel && (
+        <PremiumPanel
+          onClose={() => setShowPremiumPanel(false)}
+          onSelectPlan={() => setShowPremiumPanel(false)}
+        />
+      )}
 
       {/* QR Code Share Modal - Outside all containers for proper centering */}
       {showQRCode && (

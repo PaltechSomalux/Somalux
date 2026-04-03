@@ -146,7 +146,7 @@ function AdBannerContent({ placement, limit = 1, className = '', demo = false })
     return () => {
       clearInterval(countdownInterval);
     };
-  }, [ads, countdown, isAdClosed, placement]);
+  }, [ads, isAdClosed, placement]);
 
   // SAFETY: Force stop any video if countdown reaches 0
   useEffect(() => {

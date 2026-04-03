@@ -171,6 +171,10 @@ app.post('/api/utils/send-test-email', async (req, res) => {
 // Record user login - optimized for performance
 app.post('/api/user/session/login', async (req, res) => {
   try {
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase not configured on server' });
+    }
+    
     const { userId, ipAddress, userAgent, deviceType } = req.body || {};
     
     if (!userId) {
@@ -214,6 +218,10 @@ app.post('/api/user/session/login', async (req, res) => {
 // Record user logout - optimized for performance
 app.post('/api/user/session/logout', async (req, res) => {
   try {
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase not configured on server' });
+    }
+    
     const { userId, sessionId } = req.body || {};
     
     if (!userId) {
@@ -251,6 +259,10 @@ app.post('/api/user/session/logout', async (req, res) => {
 // Track user activity - updates last_active_at when user interacts with app
 app.post('/api/user/activity', async (req, res) => {
   try {
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase not configured on server' });
+    }
+    
     const { userId } = req.body || {};
     
     if (!userId) {
@@ -280,6 +292,10 @@ app.post('/api/user/activity', async (req, res) => {
 // Get user's first login information
 app.get('/api/user/first-login-info', async (req, res) => {
   try {
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase not configured on server' });
+    }
+    
     const { userId } = req.query;
     
     if (!userId) {
@@ -311,6 +327,10 @@ app.get('/api/user/first-login-info', async (req, res) => {
 // Get first login statistics (admin only)
 app.get('/api/admin/first-login-statistics', async (req, res) => {
   try {
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase not configured on server' });
+    }
+    
     // Verify user is admin (optional - add proper auth check if needed)
     
     // Total first logins recorded
@@ -373,6 +393,10 @@ app.get('/api/admin/first-login-statistics', async (req, res) => {
 // Get all authenticated users with detailed status
 app.get('/api/admin/authenticated-users', async (req, res) => {
   try {
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase not configured on server' });
+    }
+    
     console.log('[authenticated-users] Endpoint called');
 
     // Fetch all profiles with pagination (handle 1000+ users)
@@ -593,7 +617,7 @@ app.post('/api/agora/token', async (req, res) => {
 // --- Supabase (service role) for secure writes + audit logs ---
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 let supabaseAdmin = null;
 if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
   supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });

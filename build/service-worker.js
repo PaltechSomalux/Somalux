@@ -87,9 +87,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML pages (index.html, etc) - NETWORK FIRST to always get latest app
+  // HTML pages (index.html, etc) - CACHE FIRST to prevent auto-refresh
   if (request.destination === 'document' || url.pathname === '/') {
-    event.respondWith(networkFirstStrategy(request, STATIC_CACHE));
+    event.respondWith(cacheFirstStrategy(request, STATIC_CACHE));
     return;
   }
 

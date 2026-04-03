@@ -63,7 +63,8 @@
     ]
   },
   "devDependencies": {
+    "@csstools/postcss-progressive-custom-properties": "^5.0.0",
     "browserslist": "^4.26.3",
-    "caniuse-lite": "^1.0.30001749"
+    "caniuse-lite": "^1.0.30001784"
   }
 }

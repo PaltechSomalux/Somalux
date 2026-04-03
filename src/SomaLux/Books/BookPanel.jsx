@@ -6,8 +6,7 @@ import { Download } from './Download';
 import { CommentsSection } from './CommentsSection';
 import { AuthModal } from './AuthModal';
 import { RatingModal } from './RatingModal';
-import { SubscriptionModal } from './SubscriptionModal';
-import VerificationTierModal from './VerificationTierModal';
+import PremiumPanel from '../../premium-features/PremiumPanel';
 import { AdBanner } from '../Ads/AdBanner';
 import {
   FaHeart,
@@ -2506,7 +2505,7 @@ export const BookPanel = ({ demoMode = false }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, [checkGridScroll]);
 
-  // Initialize category order with Fisher-Yates shuffle
+  // Initialize category order - shuffle only ONE category during refresh
   useEffect(() => {
     if (displayedBooks.length === 0) return;
 
@@ -2521,27 +2520,44 @@ export const BookPanel = ({ demoMode = false }) => {
     const categories = Object.keys(groupedByCategory);
     const initialOrder = [...Array(categories.length).keys()];
     
-    // Fisher-Yates shuffle
-    const shuffled = [...initialOrder];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    setCategoryOrder(shuffled);
+    // Initialize in order, then shuffle only ONE category instead of all
+    setCategoryOrder(prevOrder => {
+      let newOrder = [...initialOrder];
+      
+      // On first load, keep the sequential order
+      // On refresh, only shuffle one random category
+      if (prevOrder.length === initialOrder.length) {
+        const categoryIndex = Math.floor(Math.random() * newOrder.length);
+        const newPosition = Math.floor(Math.random() * newOrder.length);
+        
+        if (categoryIndex !== newPosition) {
+          const [category] = newOrder.splice(categoryIndex, 1);
+          newOrder.splice(newPosition, 0, category);
+        }
+      }
+      
+      return newOrder;
+    });
   }, [displayedBooks]);
 
-  // Shuffle categories randomly at staggered intervals
+  // Shuffle categories on page load/refresh and after 3 minutes of inactivity
   useEffect(() => {
-    const interval = setInterval(() => {
+    let inactivityTimer = null;
+    let hasShuffledOnLoad = false;
+
+    // Function to perform category shuffle
+    const performCategoryShuffle = () => {
       if (!isCategoryShufflingRef.current && categoryOrder.length > 0) {
         isCategoryShufflingRef.current = true;
         setCategoryOrder(prevOrder => {
           const newOrder = [...prevOrder];
-          // Swap only 1 pair of random categories
-          const i = Math.floor(Math.random() * newOrder.length);
-          const j = Math.floor(Math.random() * newOrder.length);
-          if (i !== j) {
-            [newOrder[i], newOrder[j]] = [newOrder[j], newOrder[i]];
+          // Move only 1 category to a random position
+          const categoryIndex = Math.floor(Math.random() * newOrder.length);
+          const newPosition = Math.floor(Math.random() * newOrder.length);
+          
+          if (categoryIndex !== newPosition) {
+            const [category] = newOrder.splice(categoryIndex, 1);
+            newOrder.splice(newPosition, 0, category);
           }
           return newOrder;
         });
@@ -2551,9 +2567,42 @@ export const BookPanel = ({ demoMode = false }) => {
           isCategoryShufflingRef.current = false;
         }, 2000);
       }
-    }, 30000); // Every 30 seconds, shuffle one category pair
+    };
 
-    return () => clearInterval(interval);
+    // Shuffle on page load/refresh
+    if (!hasShuffledOnLoad && categoryOrder.length > 0) {
+      performCategoryShuffle();
+      hasShuffledOnLoad = true;
+    }
+
+    // Function to reset inactivity timer for category shuffle (3 minutes)
+    const resetCategoryInactivityTimer = () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        performCategoryShuffle();
+      }, 3 * 60 * 1000); // 3 minutes
+    };
+
+    // Activity event listeners for category shuffle
+    const handleActivity = () => {
+      resetCategoryInactivityTimer();
+    };
+
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+
+    // Initialize the timer
+    resetCategoryInactivityTimer();
+
+    return () => {
+      clearTimeout(inactivityTimer);
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+    };
   }, [categoryOrder.length]);
 
   const loadRecommendations = async () => {
@@ -3122,36 +3171,74 @@ export const BookPanel = ({ demoMode = false }) => {
   useEffect(() => {
     if (!user || recentBooks.length === 0) return;
 
-    // Initialize shuffled books
-    setShuffledBooks([...recentBooks].sort(() => Math.random() - 0.5));
-    setIsShuffling(true);
+    // Initialize shuffled books (no shuffle yet)
+    setShuffledBooks([...recentBooks]);
+    setIsShuffling(false);
 
-    // Shuffle interval: shuffles every 2-4 seconds (will check isShuffling state)
-    const shuffleInterval = setInterval(() => {
-      setIsShuffling(prev => {
-        if (prev) {
-          // Only shuffle if currently enabled
-          setShuffledBooks(s => [...s].sort(() => Math.random() - 0.5));
-        }
-        return prev;
-      });
-    }, 2000 + Math.random() * 2000);
+    let inactivityTimer = null;
+    let hasShuffledOnLoad = false;
 
-    // Master control cycle: 5 seconds ON, 20 seconds OFF, repeat
-    let cycleTimeout;
-    const startCycle = () => {
+    // Function to perform book shuffle - move two books at a time
+    const performBookShuffle = () => {
       setIsShuffling(true);
-      cycleTimeout = setTimeout(() => {
+      setShuffledBooks(s => {
+        const newBooks = [...s];
+        
+        // Move first book to a random position
+        const bookIndex1 = Math.floor(Math.random() * newBooks.length);
+        const newPosition1 = Math.floor(Math.random() * newBooks.length);
+        
+        if (bookIndex1 !== newPosition1) {
+          const [book1] = newBooks.splice(bookIndex1, 1);
+          newBooks.splice(newPosition1, 0, book1);
+        }
+        
+        // Move second book to a random position
+        const bookIndex2 = Math.floor(Math.random() * newBooks.length);
+        const newPosition2 = Math.floor(Math.random() * newBooks.length);
+        
+        if (bookIndex2 !== newPosition2) {
+          const [book2] = newBooks.splice(bookIndex2, 1);
+          newBooks.splice(newPosition2, 0, book2);
+        }
+        
+        return newBooks;
+      });
+      setTimeout(() => {
         setIsShuffling(false);
-        setTimeout(startCycle, 20000); // 20 second pause
-      }, 5000); // 5 second active shuffle
+      }, 2000);
     };
 
-    startCycle();
+    // Don't shuffle on page load/refresh - only shuffle after inactivity
+    // Shuffle only happens after 1 minute of inactivity
+
+    // Function to reset inactivity timer for book shuffle (1 minute)
+    const resetBookInactivityTimer = () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        performBookShuffle();
+      }, 60 * 1000); // 1 minute
+    };
+
+    // Activity event listeners for book shuffle
+    const handleActivity = () => {
+      resetBookInactivityTimer();
+    };
+
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+
+    // Initialize the timer
+    resetBookInactivityTimer();
 
     return () => {
-      clearInterval(shuffleInterval);
-      if (cycleTimeout) clearTimeout(cycleTimeout);
+      clearTimeout(inactivityTimer);
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
     };
   }, [user, recentBooks]);
 
@@ -3179,13 +3266,8 @@ export const BookPanel = ({ demoMode = false }) => {
 
     const newShuffledBooks = {};
     Object.entries(groupedByCategory).forEach(([category, books]) => {
-      // Shuffle using Fisher-Yates algorithm
-      const shuffled = [...books];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      newShuffledBooks[category] = shuffled;
+      // Keep books in original order during refresh - interval-based shuffle will handle repositioning
+      newShuffledBooks[category] = [...books];
     });
 
     setCategoryShuffledBooks(newShuffledBooks);
@@ -4921,28 +5003,23 @@ export const BookPanel = ({ demoMode = false }) => {
         action={authAction}
       />
 
-      <SubscriptionModal
-        isOpen={showSubscriptionModal}
-        onClose={() => {
-          setShowSubscriptionModal(false);
-        }}
-        user={user}
-        onSubscribed={async (sub) => {
-          setSubscription(sub);
-          setShowSubscriptionModal(false);
-        }}
-      />
+      {showSubscriptionModal && (
+        <PremiumPanel
+          onClose={() => {
+            setShowSubscriptionModal(false);
+          }}
+          onSelectPlan={() => {
+            setShowSubscriptionModal(false);
+          }}
+        />
+      )}
 
-      <VerificationTierModal
-        isOpen={showSubscriptionModal}
-        onClose={() => setShowSubscriptionModal(false)}
-        userTier={user?.subscription_tier || 'basic'}
-        onSelectTier={(tier) => {
-          // This will handle tier selection
-          // In next phase: integrate payment processing
-          setShowSubscriptionModal(false);
-        }}
-      />
+      {showSubscriptionModal && (
+        <PremiumPanel
+          onClose={() => setShowSubscriptionModal(false)}
+          onSelectPlan={() => setShowSubscriptionModal(false)}
+        />
+      )}
 
       <RatingModal
         isOpen={showRatingModal && selectedBook !== null}
