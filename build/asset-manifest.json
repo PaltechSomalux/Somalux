@@ -1,39 +1,54 @@
 {
   "files": {
-    "main.css": "/static/css/main.4435ea57.css",
-    "main.js": "/static/js/main.da0dd70d.js",
-    "static/media/PaltechWhite.png": "/static/media/PaltechBlack.png",
-    "static/media/splash-screen.png": "/static/media/splash-screen.a1b2c3d4.png", 
-    "static/media/notification.mp3": "/static/media/notification.12345678.mp3", 
-    "index.html": "/index.html",
-    "manifest.json": "/manifest.json", 
-    "service-worker.js": "/service-worker.js",
-    "main.4435ea57.css.map": "/static/css/main.4435ea57.css.map",
-    "main.da0dd70d.js.map": "/static/js/main.da0dd70d.js.map",
-    "asset-manifest.json": "/asset-manifest.json" 
+    "main.css": "/static/css/main.2251bd46.css",
+    "main.js": "/static/js/main.70815b5e.js",
+    "static/js/54.2c16126a.chunk.js": "/static/js/54.2c16126a.chunk.js",
+    "static/js/284.04ba0c27.chunk.js": "/static/js/284.04ba0c27.chunk.js",
+    "static/js/635.4341a594.chunk.js": "/static/js/635.4341a594.chunk.js",
+    "static/js/781.ac399cb9.chunk.js": "/static/js/781.ac399cb9.chunk.js",
+    "static/js/52.44c91b85.chunk.js": "/static/js/52.44c91b85.chunk.js",
+    "static/js/82.d5ed6339.chunk.js": "/static/js/82.d5ed6339.chunk.js",
+    "static/js/265.5685bb98.chunk.js": "/static/js/265.5685bb98.chunk.js",
+    "static/js/409.741dea18.chunk.js": "/static/js/409.741dea18.chunk.js",
+    "static/css/213.723121b7.chunk.css": "/static/css/213.723121b7.chunk.css",
+    "static/js/213.7760d980.chunk.js": "/static/js/213.7760d980.chunk.js",
+    "static/js/26.188d5a6d.chunk.js": "/static/js/26.188d5a6d.chunk.js",
+    "static/css/286.f3afb0ad.chunk.css": "/static/css/286.f3afb0ad.chunk.css",
+    "static/js/286.12600d8f.chunk.js": "/static/js/286.12600d8f.chunk.js",
+    "static/js/780.2dfd207d.chunk.js": "/static/js/780.2dfd207d.chunk.js",
+    "static/js/243.fbb5ce70.chunk.js": "/static/js/243.fbb5ce70.chunk.js",
+    "static/js/74.60ec80d4.chunk.js": "/static/js/74.60ec80d4.chunk.js",
+    "static/js/874.5b856746.chunk.js": "/static/js/874.5b856746.chunk.js",
+    "static/js/704.f1d3fb71.chunk.js": "/static/js/704.f1d3fb71.chunk.js",
+    "static/js/107.bdd950c9.chunk.js": "/static/js/107.bdd950c9.chunk.js",
+    "static/js/755.dc59bf0e.chunk.js": "/static/js/755.dc59bf0e.chunk.js",
+    "static/js/6.be2d4dd0.chunk.js": "/static/js/6.be2d4dd0.chunk.js",
+    "static/js/735.18859ad2.chunk.js": "/static/js/735.18859ad2.chunk.js",
+    "static/css/98.da7bceac.chunk.css": "/static/css/98.da7bceac.chunk.css",
+    "static/js/98.32c55fda.chunk.js": "/static/js/98.32c55fda.chunk.js",
+    "static/css/220.f178674a.chunk.css": "/static/css/220.f178674a.chunk.css",
+    "static/js/220.149b8580.chunk.js": "/static/js/220.149b8580.chunk.js",
+    "static/css/797.918c22db.chunk.css": "/static/css/797.918c22db.chunk.css",
+    "static/js/797.83c81268.chunk.js": "/static/js/797.83c81268.chunk.js",
+    "static/js/609.78a87712.chunk.js": "/static/js/609.78a87712.chunk.js",
+    "static/css/485.be275e94.chunk.css": "/static/css/485.be275e94.chunk.css",
+    "static/js/485.d2baa76c.chunk.js": "/static/js/485.d2baa76c.chunk.js",
+    "static/js/87.3f817640.chunk.js": "/static/js/87.3f817640.chunk.js",
+    "static/js/0.a64bb5d9.chunk.js": "/static/js/0.a64bb5d9.chunk.js",
+    "static/js/209.50f3ed77.chunk.js": "/static/js/209.50f3ed77.chunk.js",
+    "static/js/706.6eb9031a.chunk.js": "/static/js/706.6eb9031a.chunk.js",
+    "static/js/480.dd60b366.chunk.js": "/static/js/480.dd60b366.chunk.js",
+    "static/js/524.0b33754b.chunk.js": "/static/js/524.0b33754b.chunk.js",
+    "static/js/505.e70ee56a.chunk.js": "/static/js/505.e70ee56a.chunk.js",
+    "static/js/361.747b9103.chunk.js": "/static/js/361.747b9103.chunk.js",
+    "static/js/575.19c70609.chunk.js": "/static/js/575.19c70609.chunk.js",
+    "static/js/29.b0d520dd.chunk.js": "/static/js/29.b0d520dd.chunk.js",
+    "static/js/620.4f0ac4c5.chunk.js": "/static/js/620.4f0ac4c5.chunk.js",
+    "static/css/586.6e1a9e87.chunk.css": "/static/css/586.6e1a9e87.chunk.css",
+    "index.html": "/index.html"
   },
   "entrypoints": [
-    "static/css/main.4435ea57.css",
-    "static/js/main.da0dd70d.js"
-  ],
-  "precache": [ 
-    "/",
-    "/index.html",
-    "/static/css/main.4435ea57.css",
-    "/static/js/main.da0dd70d.js",
-    "/static/media/Paltech.png",
-    "/manifest.json"
-  ],
-  "version": "1.0.0", 
-  "buildTime": "2023-11-15T12:00:00Z", 
-  "strategy": "cache-first", 
-  "performanceHints": { 
-    "cssSize": "45kb",
-    "jsSize": "1.2mb",
-    "imageCount": 3,
-    "criticalResources": [
-      "/static/css/main.4435ea57.css",
-      "/static/js/main.da0dd70d.js"
-    ]
-  }
+    "static/css/main.2251bd46.css",
+    "static/js/main.70815b5e.js"
+  ]
 }
