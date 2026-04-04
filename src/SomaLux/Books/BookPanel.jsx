@@ -1,7 +1,8 @@
 // src/BookPanel.jsx
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from './supabaseClient';
-import { initializeSession, setupAuthListener, clearSessionCache } from '../../Services/utils/sessionManager';
+import { clearSessionCache } from '../../Services/utils/sessionManager';
+import { useGlobalAuth } from '../../Services/context/GlobalAuthProvider';
 import { Download } from './Download';
 import { AuthModal } from './AuthModal';
 import PremiumPanel from '../../premium-features/PremiumPanel';
@@ -247,6 +248,10 @@ const ReaderSessionPinger = ({ user, book }) => {
 export const BookPanel = ({ demoMode = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Get auth state from global provider
+  const { user, loading: authLoading } = useGlobalAuth();
+  
   const [categoryFilterName, setCategoryFilterName] = useState(null);
   const [books, setBooks] = useState([]);
   const [displayedBooks, setDisplayedBooks] = useState([]);
@@ -266,7 +271,6 @@ export const BookPanel = ({ demoMode = false }) => {
   const [sortBy, setSortBy] = useState('default');
   const [showWishlist, setShowWishlist] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState(demoMode);
-  const [user, setUser] = useState(null);
   const [userRanking, setUserRanking] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authAction, setAuthAction] = useState('action');
@@ -844,227 +848,161 @@ export const BookPanel = ({ demoMode = false }) => {
     }
   };
 
-  // Auth state listener - optimized to prevent flickering
+  // Auth state listener - load user ranking and setup profile realtime updates
+  // Session initialization is now handled globally by GlobalAuthProvider
   useEffect(() => {
-    let userCache = null;
+    if (!user?.id) {
+      setLoadingUser(false);
+      setUserRanking(null);
+      return;
+    }
 
-    const fetchUserWithRole = async (session) => {
-      if (!session?.user) {
-        setUser(null);
-        setLoadingUser(false);
-        return;
-      }
-
-      try {
-        setLoadingUser(true);
-        // Fetch the user's role and activity metadata from the profiles table
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('created_at, last_active_at, subscription_tier, role, display_name, full_name')
-          .eq('id', session.user.id)
-          .single();
-
-        if (error) {
-          console.warn('Error fetching profile:', error);
-          // If profile fetch fails, still set user with session data
-          const userData = {
-            ...session.user,
-            role: 'viewer',
-            subscription_tier: 'basic'
-          };
-          userCache = userData;
-          setUser(userData);
-          setLoadingUser(false);
-          return;
-        }
-
-        // Set user with the role information and cache it
-        const userData = {
-          ...session.user,
-          role: profile?.role || 'viewer',
-          subscription_tier: profile?.subscription_tier || 'basic',
-          display_name: profile?.full_name || profile?.display_name || session.user.email?.split('@')[0] || 'User'
-        };
-        userCache = userData;
-        setUser(userData);
-        // load ranking for this user (admin rankings may be shaped differently)
-        (async () => {
-          try {
-            const rankings = await fetchUserRankingsAdmin();
-
-            // helper: normalize a single ranking record like in Admin Users
-            const normalizeRanking = (r) => {
-              if (!r) return null;
-              const pickNumber = (...keys) => {
-                for (const k of keys) {
-                  if (r && Object.prototype.hasOwnProperty.call(r, k)) {
-                    const n = Number(r[k]);
-                    if (!Number.isNaN(n)) return n;
-                  }
-                }
-                return null;
-              };
-              const score = pickNumber(
-                'score',
-                'score_30',
-                'score_30_days',
-                'score30',
-                'score_last_30',
-                'last_30_score',
-                'value'
-              );
-              const tier = r.tier ?? r.rank_tier ?? r.level ?? r.category ?? null;
-              const position = pickNumber('rank_position', 'position', 'rank', 'rankPos');
-              const subscription = !!(r.subscription_bonus_applied ?? r.has_subscription_boost ?? r.subscription_boost ?? r.subscriber_bonus);
-              return { raw: r, score, tier, position, subscription };
-            };
-
-            // Fallback ranking when server-side ranking is missing, mirroring Users.jsx
-            const computeFallbackRanking = (profileRow, uploadsCount) => {
-              const uploads = uploadsCount || 0;
-              const createdAt = profileRow?.created_at ? new Date(profileRow.created_at) : null;
-              const lastActiveAt = profileRow?.last_active_at ? new Date(profileRow.last_active_at) : createdAt;
-              let recencyScore = 0;
-              if (lastActiveAt) {
-                const days = (Date.now() - lastActiveAt.getTime()) / (1000 * 60 * 60 * 24);
-                if (days <= 7) recencyScore = 50;
-                else if (days <= 30) recencyScore = 20;
-                else if (days <= 90) recencyScore = 5;
-              }
-              const score = uploads * 10 + recencyScore;
-              let tier = null;
-              if (score >= 200) tier = 'legend';
-              else if (score >= 100) tier = 'power_reader';
-              else if (score >= 50) tier = 'active_reader';
-              else if (score >= 10) tier = 'community_star';
-              else if (score > 0) tier = 'new_reader';
-              return { score, tier };
-            };
-
-            let match = null;
-            if (Array.isArray(rankings) && rankings.length > 0) {
-              match = rankings.find(r => {
-                const candidates = [
-                  r.user_id,
-                  r.user?.id,
-                  r.profile_id,
-                  r.profiles?.id,
-                  r.profiles?.profile_id,
-                  r.email,
-                  r.user_email,
-                ].map(x => (x === undefined || x === null) ? null : String(x));
-                return candidates.includes(String(userData.id)) || (userData.email && candidates.includes(String(userData.email)));
-              }) || null;
-            }
-
-            const norm = normalizeRanking(match);
-
-            // Fetch uploads count for this user to support fallback scoring
-            let uploadsCount = 0;
-            try {
-              const { count, error: uploadsErr } = await supabase
-                .from('books')
-                .select('id', { count: 'exact', head: true })
-                .eq('uploaded_by', userData.id);
-              if (!uploadsErr) uploadsCount = count || 0;
-            } catch {
-              // ignore upload count errors, fallback will simply use 0 uploads
-            }
-
-            let finalScore = null;
-            let finalTier = null;
-
-            if (norm && typeof norm.score === 'number') {
-              finalScore = norm.score;
-              finalTier = norm.tier || null;
-            } else {
-              const fb = computeFallbackRanking(profile, uploadsCount);
-              if (fb && typeof fb.score === 'number') {
-                finalScore = fb.score;
-                finalTier = fb.tier || null;
-              }
-            }
-
-            if (finalScore === null && !finalTier) {
-              setUserRanking(null);
-            } else {
-              setUserRanking({ raw: match, score: finalScore, tier: finalTier || null });
-            }
-          } catch (err) {
-            console.warn('Failed to load user ranking', err);
-            setUserRanking(null);
-          }
-        })();
-      } catch (error) {
-        console.error('Error fetching user role:', error);
-        const userData = { ...session.user, role: 'viewer' };
-        userCache = userData;
-        setUser(userData);
-      } finally {
-        setLoadingUser(false);
-      }
-    };
-
-    // Initialize session with cache-first approach
+    // Load ranking for this user (admin rankings may be shaped differently)
     (async () => {
       try {
-        // Try to restore from cache instantly (no network call)
-        const cachedSession = await initializeSession(supabase);
-        if (cachedSession) {
-          console.log('✓ Session restored from cache (instant)');
-          fetchUserWithRole(cachedSession);
+        setLoadingUser(true);
+        const rankings = await fetchUserRankingsAdmin();
+
+        // helper: normalize a single ranking record like in Admin Users
+        const normalizeRanking = (r) => {
+          if (!r) return null;
+          const pickNumber = (...keys) => {
+            for (const k of keys) {
+              if (r && Object.prototype.hasOwnProperty.call(r, k)) {
+                const n = Number(r[k]);
+                if (!Number.isNaN(n)) return n;
+              }
+            }
+            return null;
+          };
+          const score = pickNumber(
+            'score',
+            'score_30',
+            'score_30_days',
+            'score30',
+            'score_last_30',
+            'last_30_score',
+            'value'
+          );
+          const tier = r.tier ?? r.rank_tier ?? r.level ?? r.category ?? null;
+          const position = pickNumber('rank_position', 'position', 'rank', 'rankPos');
+          const subscription = !!(r.subscription_bonus_applied ?? r.has_subscription_boost ?? r.subscription_boost ?? r.subscriber_bonus);
+          return { raw: r, score, tier, position, subscription };
+        };
+
+        // Fallback ranking when server-side ranking is missing, mirroring Users.jsx
+        const computeFallbackRanking = (profileRow, uploadsCount) => {
+          const uploads = uploadsCount || 0;
+          const createdAt = profileRow?.created_at ? new Date(profileRow.created_at) : null;
+          const lastActiveAt = profileRow?.last_active_at ? new Date(profileRow.last_active_at) : createdAt;
+          let recencyScore = 0;
+          if (lastActiveAt) {
+            const days = (Date.now() - lastActiveAt.getTime()) / (1000 * 60 * 60 * 24);
+            if (days <= 7) recencyScore = 50;
+            else if (days <= 30) recencyScore = 20;
+            else if (days <= 90) recencyScore = 5;
+          }
+          const score = uploads * 10 + recencyScore;
+          let tier = null;
+          if (score >= 200) tier = 'legend';
+          else if (score >= 100) tier = 'power_reader';
+          else if (score >= 50) tier = 'active_reader';
+          else if (score >= 10) tier = 'community_star';
+          else if (score > 0) tier = 'new_reader';
+          return { score, tier };
+        };
+
+        let match = null;
+        if (Array.isArray(rankings) && rankings.length > 0) {
+          match = rankings.find(r => {
+            const candidates = [
+              r.user_id,
+              r.user?.id,
+              r.profile_id,
+              r.profiles?.id,
+              r.profiles?.profile_id,
+              r.email,
+              r.user_email,
+            ].map(x => (x === undefined || x === null) ? null : String(x));
+            return candidates.includes(String(user.id)) || (user.email && candidates.includes(String(user.email)));
+          }) || null;
+        }
+
+        const norm = normalizeRanking(match);
+
+        // Fetch uploads count for this user to support fallback scoring
+        let uploadsCount = 0;
+        try {
+          const { count, error: uploadsErr } = await supabase
+            .from('books')
+            .select('id', { count: 'exact', head: true })
+            .eq('uploaded_by', user.id);
+          if (!uploadsErr) uploadsCount = count || 0;
+        } catch {
+          // ignore upload count errors, fallback will simply use 0 uploads
+        }
+
+        let finalScore = null;
+        let finalTier = null;
+
+        if (norm && typeof norm.score === 'number') {
+          finalScore = norm.score;
+          finalTier = norm.tier || null;
         } else {
-          console.log('ℹ No cached session, user will be prompted to login');
-          setLoadingUser(false);
+          // Fetch profile for fallback calculation
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('created_at, last_active_at')
+            .eq('id', user.id)
+            .single();
+
+          const fb = computeFallbackRanking(profile, uploadsCount);
+          if (fb && typeof fb.score === 'number') {
+            finalScore = fb.score;
+            finalTier = fb.tier || null;
+          }
+        }
+
+        if (finalScore === null && !finalTier) {
+          setUserRanking(null);
+        } else {
+          setUserRanking({ raw: match, score: finalScore, tier: finalTier || null });
         }
       } catch (err) {
-        console.error('Session initialization failed:', err);
+        console.warn('Failed to load user ranking', err);
+        setUserRanking(null);
+      } finally {
         setLoadingUser(false);
       }
     })();
 
-    // Setup auth listener for ongoing changes
-    const subscription = setupAuthListener(supabase, (_event, session) => {
-      fetchUserWithRole(session);
-    });
-
     // Setup realtime listener for profile changes (e.g., role updates)
-    let profileSubscription = null;
-    if (user?.id) {
-      profileSubscription = supabase
-        .channel(`public:profiles:id=eq.${user.id}`)
-        .on('postgres_changes', 
-          { 
-            event: 'UPDATE', 
-            schema: 'public', 
-            table: 'profiles',
-            filter: `id=eq.${user.id}`
-          },
-          (payload) => {
-            console.log('[BookPanel] Profile updated:', payload);
-            if (payload.new?.role) {
-              // Refresh user with new role data
-              setUser(prev => ({
-                ...prev,
-                role: payload.new.role,
-                subscription_tier: payload.new.subscription_tier || prev?.subscription_tier
-              }));
-              userCache = { ...userCache, role: payload.new.role, subscription_tier: payload.new.subscription_tier };
-            }
+    const profileSubscription = supabase
+      .channel(`public:profiles:id=eq.${user.id}`)
+      .on('postgres_changes', 
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('[BookPanel] Profile updated:', payload);
+          if (payload.new?.role) {
+            // Profile changed - the global auth provider will handle this update
+            // Just log for now
+            console.log('[BookPanel] Role or subscription updated');
           }
-        )
-        .subscribe();
-    }
+        }
+      )
+      .subscribe();
 
     return () => {
-      if (subscription?.unsubscribe && typeof subscription.unsubscribe === 'function') {
-        try { subscription.unsubscribe(); } catch (e) {}
-      }
       if (profileSubscription?.unsubscribe && typeof profileSubscription.unsubscribe === 'function') {
         try { profileSubscription.unsubscribe(); } catch (e) {}
       }
     };
-  }, []);
+  }, [user?.id, user?.email]);
 
   // Fetch pending submissions count for admins
   useEffect(() => {
@@ -3020,12 +2958,11 @@ export const BookPanel = ({ demoMode = false }) => {
     return () => clearInterval(animationCycleInterval);
   }, []);
 
-  // Track shuffle state for triple category shuffling with staggered timing
+  // Track shuffle state for single category shuffling
   const shuffleStateRef = useRef({
-    currentCategoryTripletIndex: 0,
+    currentCategoryIndex: 0,
     rotationCounts: {}, // Track rotation count per category
-    categories: [],
-    tickCounter: 0 // Track ticks for staggered rotation (0, 1, 2 cycle)
+    categories: []
   });
 
   // Initialize and shuffle grid books by category on load
@@ -3051,10 +2988,9 @@ export const BookPanel = ({ demoMode = false }) => {
     // Initialize shuffle state with new categories
     const categoryList = Object.keys(groupedByCategory);
     shuffleStateRef.current = {
-      currentCategoryTripletIndex: 0,
+      currentCategoryIndex: 0,
       rotationCounts: {},
-      categories: categoryList,
-      tickCounter: 0
+      categories: categoryList
     };
   }, [filteredBooks]);
 
@@ -3096,7 +3032,7 @@ export const BookPanel = ({ demoMode = false }) => {
     });
   }, []);
 
-  // Triple category shuffling with staggered timing: rotate three categories at different times
+  // Single category shuffling with 3x increased duration
   useEffect(() => {
     const timer = setInterval(() => {
       if (!isGridShufflingRef.current && !isHoveringRef.current) {
@@ -3105,83 +3041,34 @@ export const BookPanel = ({ demoMode = false }) => {
         
         if (categories.length === 0) return;
         
-        // Get three categories at current triplet index
-        const categoryIndex1 = state.currentCategoryTripletIndex * 3;
-        const categoryIndex2 = state.currentCategoryTripletIndex * 3 + 1;
-        const categoryIndex3 = state.currentCategoryTripletIndex * 3 + 2;
+        // Get current category
+        const categoryIndex = state.currentCategoryIndex;
+        const category = categories[categoryIndex];
         
-        const category1 = categories[categoryIndex1];
-        const category2 = categories[categoryIndex2];
-        const category3 = categories[categoryIndex3];
+        // Initialize rotation count if needed
+        if (!state.rotationCounts[category]) state.rotationCounts[category] = 0;
         
-        // Initialize rotation counts if needed
-        if (!state.rotationCounts[category1]) state.rotationCounts[category1] = 0;
-        if (category2 && !state.rotationCounts[category2]) state.rotationCounts[category2] = 0;
-        if (category3 && !state.rotationCounts[category3]) state.rotationCounts[category3] = 0;
+        const booksInCategory = categoryShuffledBooks[category]?.length || 0;
         
-        const booksInCategory1 = categoryShuffledBooks[category1]?.length || 0;
-        const booksInCategory2 = category2 ? (categoryShuffledBooks[category2]?.length || 0) : 0;
-        const booksInCategory3 = category3 ? (categoryShuffledBooks[category3]?.length || 0) : 0;
-        
-        // Stagger rotation: use modulo 3 for tick counter (0, 1, 2 cycle)
-        const currentTick = state.tickCounter % 3;
-        
-        // Rotate category 1 when tick = 0
-        if (currentTick === 0 && booksInCategory1 > 1) {
-          rotateBookInCategory(category1);
-          state.rotationCounts[category1]++;
+        // Rotate category books
+        if (booksInCategory > 1) {
+          rotateBookInCategory(category);
+          state.rotationCounts[category]++;
           
-          // If category 1 is done, shuffle its position and reset its count
-          if (state.rotationCounts[category1] >= booksInCategory1) {
-            shuffleSingleCategoryPosition(categoryIndex1);
-            state.rotationCounts[category1] = 0;
-          }
-        }
-        
-        // Rotate category 2 when tick = 1
-        if (currentTick === 1 && category2 && booksInCategory2 > 1) {
-          rotateBookInCategory(category2);
-          state.rotationCounts[category2]++;
-          
-          // If category 2 is done, shuffle its position and reset its count
-          if (state.rotationCounts[category2] >= booksInCategory2) {
-            shuffleSingleCategoryPosition(categoryIndex2);
-            state.rotationCounts[category2] = 0;
-          }
-        }
-        
-        // Rotate category 3 when tick = 2
-        if (currentTick === 2 && category3 && booksInCategory3 > 1) {
-          rotateBookInCategory(category3);
-          state.rotationCounts[category3]++;
-          
-          // If category 3 is done, shuffle its position and reset its count
-          if (state.rotationCounts[category3] >= booksInCategory3) {
-            shuffleSingleCategoryPosition(categoryIndex3);
-            state.rotationCounts[category3] = 0;
-          }
-        }
-        
-        // Check if all three categories in triplet are done
-        const cat1Done = booksInCategory1 < 2 || state.rotationCounts[category1] === 0;
-        const cat2Done = !category2 || booksInCategory2 < 2 || state.rotationCounts[category2] === 0;
-        const cat3Done = !category3 || booksInCategory3 < 2 || state.rotationCounts[category3] === 0;
-        
-        // All done when current tick completes and all are marked done
-        if (currentTick === 2 && cat1Done && cat2Done && cat3Done) {
-          state.currentCategoryTripletIndex++;
-          state.tickCounter = 0; // Reset tick counter for next triplet
-          
-          // If all triplets done, reset and start over
-          if (categoryIndex3 >= categories.length) {
-            state.currentCategoryTripletIndex = 0;
-            state.rotationCounts = {};
+          // If category is done, shuffle its position and move to next category
+          if (state.rotationCounts[category] >= booksInCategory) {
+            shuffleSingleCategoryPosition(categoryIndex);
+            state.rotationCounts[category] = 0;
+            
+            // Move to next category
+            state.currentCategoryIndex = (state.currentCategoryIndex + 1) % categories.length;
           }
         } else {
-          state.tickCounter++; // Increment tick counter for staggering
+          // If category has fewer than 2 books, skip to next
+          state.currentCategoryIndex = (state.currentCategoryIndex + 1) % categories.length;
         }
       }
-    }, 1500); // Every 1.5 seconds for smooth rotation
+    }, 30000); // Every 30 seconds
 
     shuffleTimersRef.current = timer;
 

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
 import { FeatureFlagsProvider } from "./Services/context/FeatureFlagsContext";
+import { GlobalAuthProvider } from "./Services/context/GlobalAuthProvider";
 import UserUploadPage from "./User/UserUploadPage";
 import { BookManagement } from "./SomaLux/Books/Dashboard/BookManagement";
 // import { Onboarding } from "./SomaLux/Onboarding/Onboarding";  // TODO: Fix missing Onboarding component
@@ -98,20 +99,22 @@ function AppContent() {
 export function SomaLux() {
     return (
         <FeatureFlagsProvider>
-            <div className="SomaLux">
-                {/* Global Toasts */}
-                <ToastContainer
-                    position="top-right"
-                    autoClose={4000}
-                    hideProgressBar={false}
-                    closeButton={false}
-                    pauseOnHover
-                />
+            <GlobalAuthProvider>
+                <div className="SomaLux">
+                    {/* Global Toasts */}
+                    <ToastContainer
+                        position="top-right"
+                        autoClose={4000}
+                        hideProgressBar={false}
+                        closeButton={false}
+                        pauseOnHover
+                    />
 
-                <Router>
-                    <AppContent />
-                </Router>
-            </div>
+                    <Router>
+                        <AppContent />
+                    </Router>
+                </div>
+            </GlobalAuthProvider>
         </FeatureFlagsProvider>
     );
 }

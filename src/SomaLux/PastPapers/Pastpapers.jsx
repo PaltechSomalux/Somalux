@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense } fr
 import { Document, Page } from 'react-pdf';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../Books/supabaseClient';
+import { useGlobalAuth } from '../../Services/context/GlobalAuthProvider';
 import {
   fetchPastPapers,
   subscribeToPastPapers,
@@ -64,6 +65,10 @@ const preloadPDFForInstantDisplay = (pdfUrl) => {
 export const PaperPanel = ({ demoMode = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // Get auth state from global provider
+  const { user, loading: authLoading } = useGlobalAuth();
+  
   const reloadTimeoutRef = useRef(null);
   const [papers, setPapers] = useState([]);
   const [displayedPapers, setDisplayedPapers] = useState([]);
@@ -81,8 +86,6 @@ export const PaperPanel = ({ demoMode = false }) => {
   const [universityFilter, setUniversityFilter] = useState(null);
   const [facultyFilter, setFacultyFilter] = useState(null);
   const [showFacultyGrid, setShowFacultyGrid] = useState(false);
-  const [user, setUser] = useState(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authAction, setAuthAction] = useState('view');
   const [universities, setUniversities] = useState([]);
@@ -343,7 +346,7 @@ export const PaperPanel = ({ demoMode = false }) => {
       console.error('Error loading universities:', error);
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   const fetchAndUpdateUniversities = async () => {
     try {
@@ -368,21 +371,8 @@ export const PaperPanel = ({ demoMode = false }) => {
           await Promise.all(statsPromises.slice(i, i + 3)).catch(() => {});
         }
       })();
-
-      if (user) {
-        (async () => {
-          const ratingPromises = (data || []).map(async (uni) => {
-            try {
-              const rating = await getUserUniversityRating(uni.id);
-              if (rating) setUserRatings(prev => ({ ...prev, [uni.id]: rating }));
-            } catch (e) {}
-          });
-          
-          for (let i = 0; i < ratingPromises.length; i += 3) {
-            await Promise.all(ratingPromises.slice(i, i + 3)).catch(() => {});
-          }
-        })();
-      }
+      
+      // Note: User ratings are now loaded in a separate effect that depends on user changes
     } catch (error) {
       console.error('Error fetching universities:', error);
       setLoading(false);
@@ -398,102 +388,44 @@ export const PaperPanel = ({ demoMode = false }) => {
     }
   }, []);
 
-  // Check authentication status and load user profile with subscription_tier and role
+  // Auth state listener - only keep profile realtime updates
+  // Session initialization is now handled globally by GlobalAuthProvider
   useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user) {
-          // Fetch user profile to get subscription_tier and role
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('subscription_tier, role, display_name, full_name')
-            .eq('id', user.id)
-            .single();
-          
-          // Merge profile data with auth user
-          setUser({
-            ...user,
-            subscription_tier: profile?.subscription_tier || 'basic',
-            role: profile?.role || 'viewer',
-            display_name: profile?.full_name || profile?.display_name || user.email?.split('@')[0] || 'User'
-          });
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('Error checking user auth:', error);
-        setUser(null);
-      } finally {
-        setIsAuthLoading(false);
-      }
-    };
-    
-    checkUser();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        // Fetch user profile to get subscription_tier and role
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('subscription_tier, role, display_name, full_name')
-          .eq('id', session.user.id)
-          .single();
-        
-        // Merge profile data with auth user
-        setUser({
-          ...session.user,
-          subscription_tier: profile?.subscription_tier || 'basic',
-          role: profile?.role || 'viewer',
-          display_name: profile?.full_name || profile?.display_name || session.user.email?.split('@')[0] || 'User'
-        });
-        setAuthModalOpen(false);
-      } else {
-        setUser(null);
-      }
-      setIsAuthLoading(false);
-    });
+    if (!user?.id) return;
 
     // Setup realtime listener for profile changes (e.g., role updates)
-    let profileSubscription = null;
-    const setupProfileListener = async () => {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser?.id) {
-        profileSubscription = supabase
-          .channel(`public:profiles:id=eq.${currentUser.id}`)
-          .on('postgres_changes', 
-            { 
-              event: 'UPDATE', 
-              schema: 'public', 
-              table: 'profiles',
-              filter: `id=eq.${currentUser.id}`
-            },
-            (payload) => {
-              console.log('[PastPapers] Profile updated:', payload);
-              if (payload.new) {
-                setUser(prev => ({
-                  ...prev,
-                  role: payload.new.role || prev?.role || 'viewer',
-                  subscription_tier: payload.new.subscription_tier || prev?.subscription_tier || 'basic',
-                  display_name: payload.new.full_name || payload.new.display_name || prev?.display_name || 'User'
-                }));
-              }
-            }
-          )
-          .subscribe();
-      }
-    };
-
-    setupProfileListener();
+    const profileSubscription = supabase
+      .channel(`public:profiles:id=eq.${user.id}`)
+      .on('postgres_changes', 
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('[PastPapers] Profile updated:', payload);
+          if (payload.new) {
+            // Profile changed - the global auth provider will handle this update
+            console.log('[PastPapers] Role or subscription updated');
+          }
+        }
+      )
+      .subscribe();
 
     return () => {
-      authListener?.subscription?.unsubscribe();
       if (profileSubscription?.unsubscribe && typeof profileSubscription.unsubscribe === 'function') {
         try { profileSubscription.unsubscribe(); } catch (e) {}
       }
     };
-  }, []);
+  }, [user?.id]);
+
+  // Close auth modal when user logs in via global provider
+  useEffect(() => {
+    if (user && authModalOpen) {
+      setAuthModalOpen(false);
+    }
+  }, [user, authModalOpen]);
 
   // Track user activity - updates last_active_at for metrics
   useEffect(() => {
@@ -788,10 +720,31 @@ export const PaperPanel = ({ demoMode = false }) => {
   useEffect(() => {
     if (user) {
       fetchSubscription(user);
+      
+      // Also load user ratings for universities when user changes
+      if (universities.length > 0) {
+        (async () => {
+          try {
+            const ratingPromises = universities.map(async (uni) => {
+              try {
+                const rating = await getUserUniversityRating(uni.id);
+                if (rating) setUserRatings(prev => ({ ...prev, [uni.id]: rating }));
+              } catch (e) {}
+            });
+            
+            for (let i = 0; i < ratingPromises.length; i += 3) {
+              await Promise.all(ratingPromises.slice(i, i + 3)).catch(() => {});
+            }
+          } catch (error) {
+            console.error('Error loading user ratings:', error);
+          }
+        })();
+      }
     } else {
       setSubscription(null);
+      setUserRatings({}); // Clear ratings when user logs out
     }
-  }, [user, fetchSubscription]);
+  }, [user, fetchSubscription, universities.length]);
 
   // Real-time subscription to universities changes (likes_count updates)
   useEffect(() => {
@@ -830,7 +783,7 @@ export const PaperPanel = ({ demoMode = false }) => {
   const handleUniversityRateClick = (e, university) => {
     e.stopPropagation();
     // Don't show modal while auth is loading - wait for verification
-    if (isAuthLoading) {
+    if (authLoading) {
       return;
     }
     if (!user) {
@@ -871,7 +824,7 @@ export const PaperPanel = ({ demoMode = false }) => {
 
   const handleSubmitUpload = async () => {
     // Don't show modal while auth is loading - wait for verification
-    if (isAuthLoading) {
+    if (authLoading) {
       setNotification({ type: 'info', message: 'Verifying your account...' });
       setTimeout(() => setNotification(null), 4000);
       return;
@@ -1059,7 +1012,7 @@ export const PaperPanel = ({ demoMode = false }) => {
   // Comment handlers for CommentsSection
   const handleSubmitComment = async (commentData) => {
     // Don't show modal while auth is loading - wait for verification
-    if (isAuthLoading) {
+    if (authLoading) {
       return;
     }
     if (!user) {
@@ -1157,7 +1110,7 @@ export const PaperPanel = ({ demoMode = false }) => {
 
   const handleLikeComment = async (commentId) => {
     // Don't show modal while auth is loading - wait for verification
-    if (isAuthLoading) {
+    if (authLoading) {
       return;
     }
     if (!user) {
@@ -1413,7 +1366,7 @@ export const PaperPanel = ({ demoMode = false }) => {
 
   const handlePaperClick = async (paper) => {
     // Don't show modal while auth is loading - wait for verification
-    if (isAuthLoading) {
+    if (authLoading) {
       return;
     }
     if (!user) {
@@ -1450,7 +1403,7 @@ export const PaperPanel = ({ demoMode = false }) => {
 
   const viewPaperDetails = async (paper) => {
     // Don't show modal while auth is loading - wait for verification
-    if (isAuthLoading) {
+    if (authLoading) {
       return;
     }
     if (!user) {
