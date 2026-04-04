@@ -46,6 +46,8 @@ import {
 } from 'react-icons/si';
 import { motion, AnimatePresence } from 'framer-motion';
 import SimpleScrollReader from './SimpleScrollReader';
+import { CommentsSection } from './CommentsSection';
+import { BiCommentDetail } from 'react-icons/bi';
 import { API_URL } from '../../config';
 import './BookPanel.css';
 import '../../Admin/admin.css';
@@ -275,6 +277,8 @@ export const BookPanel = ({ demoMode = false }) => {
   const [loadingUser, setLoadingUser] = useState(true);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [showReader, setShowReader] = useState(false);
+  const [readerUrl, setReaderUrl] = useState(null);
+  const [selectedBook, setSelectedBook] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [checkingSubscription, setCheckingSubscription] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
@@ -325,6 +329,7 @@ export const BookPanel = ({ demoMode = false }) => {
   const isHoveringRef = useRef(false); // Track if user is hovering over books
   const shuffleTimersRef = useRef(null);
   const longPressTimeoutRef = useRef(null);
+  const commentsRef = useRef(null);
 
   const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -2448,7 +2453,7 @@ export const BookPanel = ({ demoMode = false }) => {
         // Wait for transition to complete before allowing next shuffle
         setTimeout(() => {
           isCategoryShufflingRef.current = false;
-        }, 2000);
+        }, 50000);
       }
     };
 
@@ -2463,7 +2468,7 @@ export const BookPanel = ({ demoMode = false }) => {
       if (inactivityTimer) clearTimeout(inactivityTimer);
       inactivityTimer = setTimeout(() => {
         performCategoryShuffle();
-      }, 3 * 60 * 1000); // 3 minutes
+      }, 5 * 60 * 1000); // 5 minutes
     };
 
     // Activity event listeners for category shuffle
@@ -2582,24 +2587,208 @@ export const BookPanel = ({ demoMode = false }) => {
   };
 
 
+  /**
+   * Utility: Preload PDF into cache for instant loading in modal
+   * Uses service worker cache to ensure instant display when modal opens
+   */
+  const preloadPDFForInstantDisplay = (pdfUrl) => {
+    if (!pdfUrl) return;
+    
+    // Fetch in background to cache it with service worker
+    fetch(pdfUrl, { 
+      method: 'GET',
+      cache: 'force-cache' // Force browser to use cache aggressively
+    }).catch(() => {
+      // Silently fail - preloading is optional
+    });
+  };
 
   const handleReadClick = async () => {
     if (!requireAuth('read')) return;
     setShowReader(true);
   };
 
-  const openBookDirectly = (book) => {
-    // Un-remove book if it was previously removed
-    const bookIdStr = String(book.id);
-    if (removedBookIds.includes(bookIdStr)) {
-      setRemovedBookIds(prev => {
-        const updated = prev.filter(id => id !== bookIdStr);
-        localStorage.setItem('removedBookIds', JSON.stringify(updated));
-        return updated;
-      });
+  const openBookDirectly = async (book) => {
+    if (!book) return;
+    if (!user) {
+      setAuthAction('view');
+      setShowAuthModal(true);
+      return;
     }
-    // Book popup feature removed
-    return;
+
+    // Just set the selected book - this will show the details modal
+    setSelectedBook(book);
+    
+    // INSTANT LOADING: Preload PDF for lightning-fast modal display
+    if (book.downloadUrl) {
+      preloadPDFForInstantDisplay(book.downloadUrl);
+    }
+  };
+
+  const openBookReader = async (book) => {
+    if (!book) return;
+    if (!user) {
+      setAuthAction('view');
+      setShowAuthModal(true);
+      return;
+    }
+
+    try {
+      // Use the downloadUrl we already generated in mapRowToUi
+      const url = book.downloadUrl;
+
+      if (!url) {
+        console.warn('Unable to resolve reader URL for book', book.id);
+        return;
+      }
+
+      setReaderUrl(url);
+      setShowReader(true);
+      
+      // Track view to database
+      try {
+        await supabase
+          .from('books')
+          .update({ views_count: (book.views || 0) + 1 })
+          .eq('id', book.id);
+        
+        // Update local state with new view count
+        setBooks(prevBooks => prevBooks.map(b => {
+          if (b.id === book.id) {
+            return {
+              ...b,
+              views: (b.views || 0) + 1
+            };
+          }
+          return b;
+        }));
+      } catch (err) {
+        console.error('Failed to track book view:', err);
+      }
+    } catch (e) {
+      console.warn('Failed to open reader for book', e);
+    }
+  };
+
+  const closeBookDetails = () => {
+    setSelectedBook(null);
+  };
+
+  // Load comments when book is selected
+  useEffect(() => {
+    if (selectedBook?.id) {
+      loadCommentsForBook(selectedBook.id);
+    }
+  }, [selectedBook?.id]);
+
+  // Comment handlers - matching PastPapers implementation
+  const handleSubmitComment = async (commentData) => {
+    if (!selectedBook || !user) return;
+    
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      
+      const payload = {
+        mediaId: String(selectedBook.id),
+        authorId: user.id,
+        content: commentData.text,
+        parentCommentId: commentData.parentCommentId || null,
+      };
+
+      const origin = window.__API_ORIGIN__ || API_URL;
+      const response = await fetch(`${origin}/api/elib/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error('Failed to submit comment');
+
+      // Reload comments for this book
+      const comments = await fetch(
+        `${origin}/api/elib/comments?mediaId=${selectedBook.id}&mediaType=book`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      ).then(r => r.json());
+
+      setMediaComments(prev => ({
+        ...prev,
+        [selectedBook.id]: comments.data || comments || []
+      }));
+    } catch (err) {
+      console.error('Failed to submit comment:', err);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!user) return;
+    
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      
+      const origin = window.__API_ORIGIN__ || API_URL;
+      const response = await fetch(`${origin}/api/elib/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!response.ok) throw new Error('Failed to delete comment');
+
+      // Reload comments
+      if (selectedBook) {
+        const comments = await fetch(
+          `${origin}/api/elib/comments?mediaId=${selectedBook.id}&mediaType=book`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        ).then(r => r.json());
+
+        setMediaComments(prev => ({
+          ...prev,
+          [selectedBook.id]: comments.data || comments || []
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to delete comment:', err);
+    }
+  };
+
+  const handleLikeComment = async (commentId) => {
+    if (!user) return;
+    
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      
+      const origin = window.__API_ORIGIN__ || API_URL;
+      const isLiked = commentLikes[commentId];
+      
+      const response = await fetch(`${origin}/api/elib/comments/${commentId}/like`, {
+        method: isLiked ? 'DELETE' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to like comment');
+
+      setCommentLikes(prev => ({
+        ...prev,
+        [commentId]: !isLiked
+      }));
+    } catch (err) {
+      console.error('Failed to like comment:', err);
+    }
+  };
+
+  const handleReplyToComment = async (commentId) => {
+    // Focus on comment input for reply
+    if (commentsRef.current) {
+      commentsRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const handleShare = async (method, book) => {
@@ -2831,6 +3020,14 @@ export const BookPanel = ({ demoMode = false }) => {
     return () => clearInterval(animationCycleInterval);
   }, []);
 
+  // Track shuffle state for triple category shuffling with staggered timing
+  const shuffleStateRef = useRef({
+    currentCategoryTripletIndex: 0,
+    rotationCounts: {}, // Track rotation count per category
+    categories: [],
+    tickCounter: 0 // Track ticks for staggered rotation (0, 1, 2 cycle)
+  });
+
   // Initialize and shuffle grid books by category on load
   useEffect(() => {
     if (!filteredBooks || filteredBooks.length === 0) return;
@@ -2846,15 +3043,23 @@ export const BookPanel = ({ demoMode = false }) => {
 
     const newShuffledBooks = {};
     Object.entries(groupedByCategory).forEach(([category, books]) => {
-      // Keep books in original order during refresh - interval-based shuffle will handle repositioning
       newShuffledBooks[category] = [...books];
     });
 
     setCategoryShuffledBooks(newShuffledBooks);
+    
+    // Initialize shuffle state with new categories
+    const categoryList = Object.keys(groupedByCategory);
+    shuffleStateRef.current = {
+      currentCategoryTripletIndex: 0,
+      rotationCounts: {},
+      categories: categoryList,
+      tickCounter: 0
+    };
   }, [filteredBooks]);
 
-  // Shuffle only the first book in each category
-  const shuffleFirstBook = useCallback((category) => {
+  // Rotate first book to last in a category (carousel rotation)
+  const rotateBookInCategory = useCallback((category) => {
     if (!category) return;
     
     setCategoryShuffledBooks(prevState => {
@@ -2863,40 +3068,127 @@ export const BookPanel = ({ demoMode = false }) => {
       
       if (!books || books.length < 2) return newState;
       
-      // Smooth carousel rotation: move first book to end, shift all others forward
+      // Move first book to end
       const [firstBook] = books.splice(0, 1);
       books.push(firstBook);
-      
       newState[category] = [...books];
       return newState;
     });
   }, []);
 
-  // Shuffle first book every 60 seconds from a random category
-  useEffect(() => {
-    // Get random category
-    const getRandomCategory = () => {
-      if (filteredBooks.length === 0) return null;
-      const categories = ['books', 'genres', 'pastpapers']; // Common categories
-      return categories[Math.floor(Math.random() * categories.length)];
-    };
+  // Shuffle a specific category position in the order
+  const shuffleSingleCategoryPosition = useCallback((categoryIndex) => {
+    setCategoryOrder(prevOrder => {
+      const newOrder = [...prevOrder];
+      if (newOrder.length === 0) {
+        // Initialize with original order
+        const categories = shuffleStateRef.current.categories;
+        newOrder.push(...Array.from({length: categories.length}, (_, i) => i));
+      }
+      
+      if (categoryIndex < newOrder.length) {
+        // Remove category at index and append to end (rotate it)
+        const [cat] = newOrder.splice(categoryIndex, 1);
+        newOrder.push(cat);
+      }
+      
+      return newOrder;
+    });
+  }, []);
 
-    // Shuffle first book at 40-second interval
+  // Triple category shuffling with staggered timing: rotate three categories at different times
+  useEffect(() => {
     const timer = setInterval(() => {
       if (!isGridShufflingRef.current && !isHoveringRef.current) {
-        const category = getRandomCategory();
-        if (category) {
-          shuffleFirstBook(category);
+        const state = shuffleStateRef.current;
+        const categories = state.categories;
+        
+        if (categories.length === 0) return;
+        
+        // Get three categories at current triplet index
+        const categoryIndex1 = state.currentCategoryTripletIndex * 3;
+        const categoryIndex2 = state.currentCategoryTripletIndex * 3 + 1;
+        const categoryIndex3 = state.currentCategoryTripletIndex * 3 + 2;
+        
+        const category1 = categories[categoryIndex1];
+        const category2 = categories[categoryIndex2];
+        const category3 = categories[categoryIndex3];
+        
+        // Initialize rotation counts if needed
+        if (!state.rotationCounts[category1]) state.rotationCounts[category1] = 0;
+        if (category2 && !state.rotationCounts[category2]) state.rotationCounts[category2] = 0;
+        if (category3 && !state.rotationCounts[category3]) state.rotationCounts[category3] = 0;
+        
+        const booksInCategory1 = categoryShuffledBooks[category1]?.length || 0;
+        const booksInCategory2 = category2 ? (categoryShuffledBooks[category2]?.length || 0) : 0;
+        const booksInCategory3 = category3 ? (categoryShuffledBooks[category3]?.length || 0) : 0;
+        
+        // Stagger rotation: use modulo 3 for tick counter (0, 1, 2 cycle)
+        const currentTick = state.tickCounter % 3;
+        
+        // Rotate category 1 when tick = 0
+        if (currentTick === 0 && booksInCategory1 > 1) {
+          rotateBookInCategory(category1);
+          state.rotationCounts[category1]++;
+          
+          // If category 1 is done, shuffle its position and reset its count
+          if (state.rotationCounts[category1] >= booksInCategory1) {
+            shuffleSingleCategoryPosition(categoryIndex1);
+            state.rotationCounts[category1] = 0;
+          }
+        }
+        
+        // Rotate category 2 when tick = 1
+        if (currentTick === 1 && category2 && booksInCategory2 > 1) {
+          rotateBookInCategory(category2);
+          state.rotationCounts[category2]++;
+          
+          // If category 2 is done, shuffle its position and reset its count
+          if (state.rotationCounts[category2] >= booksInCategory2) {
+            shuffleSingleCategoryPosition(categoryIndex2);
+            state.rotationCounts[category2] = 0;
+          }
+        }
+        
+        // Rotate category 3 when tick = 2
+        if (currentTick === 2 && category3 && booksInCategory3 > 1) {
+          rotateBookInCategory(category3);
+          state.rotationCounts[category3]++;
+          
+          // If category 3 is done, shuffle its position and reset its count
+          if (state.rotationCounts[category3] >= booksInCategory3) {
+            shuffleSingleCategoryPosition(categoryIndex3);
+            state.rotationCounts[category3] = 0;
+          }
+        }
+        
+        // Check if all three categories in triplet are done
+        const cat1Done = booksInCategory1 < 2 || state.rotationCounts[category1] === 0;
+        const cat2Done = !category2 || booksInCategory2 < 2 || state.rotationCounts[category2] === 0;
+        const cat3Done = !category3 || booksInCategory3 < 2 || state.rotationCounts[category3] === 0;
+        
+        // All done when current tick completes and all are marked done
+        if (currentTick === 2 && cat1Done && cat2Done && cat3Done) {
+          state.currentCategoryTripletIndex++;
+          state.tickCounter = 0; // Reset tick counter for next triplet
+          
+          // If all triplets done, reset and start over
+          if (categoryIndex3 >= categories.length) {
+            state.currentCategoryTripletIndex = 0;
+            state.rotationCounts = {};
+          }
+        } else {
+          state.tickCounter++; // Increment tick counter for staggering
         }
       }
-    }, 40000); // Every 40 seconds for smooth shuffling
+    }, 1500); // Every 1.5 seconds for smooth rotation
 
     shuffleTimersRef.current = timer;
 
     return () => {
       clearInterval(timer);
     };
-  }, [filteredBooks.length, shuffleFirstBook]);
+  }, [categoryShuffledBooks, rotateBookInCategory, shuffleSingleCategoryPosition]);
 
   // PowerPoint-style transition variants helper
   const getPPTVariant = (typeIndex, idx) => {
@@ -4083,6 +4375,168 @@ export const BookPanel = ({ demoMode = false }) => {
         </div>
       );
     })()}
+
+    {/* Book Details Modal - Shows before PDF reader */}
+    <AnimatePresence>
+      {selectedBook && user && (
+        <motion.div
+          className="modal-overlaypast"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={closeBookDetails}
+        >
+          <motion.div
+            className="modal-contentpast"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button className="close-buttonpast" onClick={closeBookDetails} aria-label="Close">
+              <FiX size={24} />
+            </button>
+
+            <div className="modal-bodyBKP" style={{ paddingTop: '0', paddingLeft: '0', paddingRight: '0' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '0.1rem' }}>
+                {selectedBook.bookImage ? (
+                  <div style={{ width: '100%', maxWidth: '250px', display: 'flex', justifyContent: 'center', borderRadius: '8px', overflow: 'hidden', background: '#121a1f', padding: '0.1rem' }}>
+                    <img 
+                      src={selectedBook.bookImage} 
+                      alt={selectedBook.title}
+                      style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      maxWidth: '250px',
+                      width: '100%',
+                      height: '320px',
+                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1))',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '1.5rem',
+                      textAlign: 'center'
+                    }}
+                  >
+                    <FiBook size={60} style={{ color: '#6366f1', marginBottom: '1rem', opacity: 0.8 }} />
+                    <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '0.95rem', fontWeight: '700', color: '#e9edef' }}>{selectedBook.title}</h2>
+                    <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.85rem', color: '#8696a0', fontWeight: '500' }}>{selectedBook.author}</p>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.75rem', lineHeight: '1.4' }}>
+                      {
+                        [
+                          selectedBook.genre,
+                          selectedBook.year ? `Year: ${selectedBook.year}` : null,
+                          selectedBook.language || null
+                        ].filter(Boolean).join(' • ')
+                      }
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ paddingLeft: '1rem', paddingRight: '1rem', marginTop: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem', fontSize: '0.9rem' }}>
+                  <div className="stat-badge-itemspast">
+                    <span className="stat-label-itempast">
+                      <FiEye size={12} />
+                      Views
+                    </span>
+                    <span className="stat-count-itempast">{selectedBook.views?.toLocaleString() || 0}</span>
+                  </div>
+
+                  <div className="stat-badge-itemspast">
+                    <span className="stat-label-itempast">
+                      <FiDownload size={12} />
+                      Downloads
+                    </span>
+                    <span className="stat-count-itempast">{selectedBook.downloads?.toLocaleString() || 0}</span>
+                  </div>
+
+                  {selectedBook.rating > 0 && (
+                    <div className="stat-badge-itemspast">
+                      <span className="stat-label-itempast">
+                        <FiStar size={12} />
+                        Rating
+                      </span>
+                      <span className="stat-count-itempast">{selectedBook.rating.toFixed(1)}</span>
+                    </div>
+                  )}
+
+                  <div className="stat-badge-itemspast">
+                    <span className="stat-label-itempast">
+                      <BiCommentDetail size={12} />
+                      Comments
+                    </span>
+                    <span className="stat-count-itempast">{(mediaComments[selectedBook.id] || []).length}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <CommentsSection
+                    currentMedia={{ id: String(selectedBook.id) }}
+                    currentUser={user}
+                    showComments={true}
+                    commentsRef={commentsRef}
+                    mediaComments={mediaComments}
+                    commentLikes={commentLikes}
+                    onSubmitComment={handleSubmitComment}
+                    onDeleteComment={handleDeleteComment}
+                    onLikeComment={handleLikeComment}
+                    onReplyToComment={handleReplyToComment}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-actionspast" style={{ marginTop: '12px', paddingTop: '12px' }}>
+              <div className="actions-primary-rowpast">
+                <Download 
+                  book={selectedBook} 
+                  variant="full" 
+                  user={user}
+                  downloadText="Save"
+                  downloadingText="Saving..."
+                  className="btn-readBKP btn-action-primaryBKP"
+                />
+                <button
+                  className="btn-readBKP btn-action-primaryBKP"
+                  onClick={() => handleShare('copy', selectedBook)}
+                  title="Share this book"
+                >
+                  <FiShare2 size={16} /> Share
+                </button>
+                <button
+                  className="btn-readBKP btn-action-primaryBKP"
+                  onClick={() => openBookReader(selectedBook)}
+                >
+                  <FiBook size={16} /> Read
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* PDF Reader - Opens when user clicks Read button */}
+    {showReader && selectedBook && readerUrl && (
+      <SimpleScrollReader
+        src={readerUrl}
+        title={selectedBook.title}
+        author={selectedBook.author || ''}
+        sampleText={selectedBook.genre || selectedBook.categoryId || ''}
+        user={user}
+        onClose={() => {
+          setShowReader(false);
+          setReaderUrl(null);
+        }}
+      />
+    )}
     </>
   );
 };
