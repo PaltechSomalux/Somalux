@@ -4,8 +4,8 @@ import { FiMapPin, FiEye } from 'react-icons/fi';
 import { MdVerified } from 'react-icons/md';
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
 import { FaSearch } from 'react-icons/fa';
-import { AdBanner } from '../Ads/AdBanner';
-import { getPastPaperCountByUniversity } from '../Books/Admin/pastPapersApi';
+import { AdBanner } from '../../Ads/AdBanner';
+import { getPastPaperCountByUniversity } from '../../Admin/pastPapersApi';
 import { formatNumber } from './formatNumber';
 import './PaperPanel.css';
 

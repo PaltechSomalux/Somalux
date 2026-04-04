@@ -1,0 +1,399 @@
+/* ===== MESSAGE CONTAINER - MODERN WHATSAPP STYLE ===== */
+
+/* Main message container */
+.imo-message-container {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  /* Offset for fixed group header (~65px) plus small spacing */
+  padding: 76px 0 88px 0;
+  scroll-behavior: smooth;
+  background-color: #0b141a;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><defs><pattern id="p" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M0 0h100v100H0z" fill="none"/><path d="M10 10h10v10H10z" fill="rgba(255,255,255,0.02)"/><path d="M50 50h10v10H50z" fill="rgba(255,255,255,0.01)"/></pattern></defs><rect width="100" height="100" fill="url(%23p)"/></svg>');
+  background-repeat: repeat;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.imo-message-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.imo-message-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.imo-message-container::-webkit-scrollbar-thumb {
+  background-color: #2a3942;
+  border-radius: 3px;
+}
+
+.imo-message-container::-webkit-scrollbar-thumb:hover {
+  background-color: #374850;
+}
+
+/* WhatsApp Background Pattern */
+.whatsapp-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.whatsapp-bg-pattern {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: var(--wallpaper-opacity);
+}
+
+/* Messages List Container */
+.whatsapp-messages-list {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(var(--total-messages, 100), auto);
+  gap: 3px;
+  width: 100%;
+  min-height: 100%;
+}
+
+/* Date Separator */
+.whatsapp-date-separator {
+  display: contents;
+}
+
+.whatsapp-date-label {
+  grid-column: 1 / -1;
+  text-align: center;
+  margin: 20px 0;
+  position: relative;
+  color: var(--accent-color);
+  font-size: 11px;
+  font-style: normal;
+  z-index: 10;
+}
+
+.whatsapp-date-label::before,
+.whatsapp-date-label::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 30%;
+  height: 1px;
+  background-color: var(--border-color);
+}
+
+.whatsapp-date-label::before {
+  left: 0;
+}
+
+.whatsapp-date-label::after {
+  right: 0;
+}
+
+/* Typing Indicator Container */
+.whatsapp-typing-container {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+/* End of Messages Spacer */
+.whatsapp-messages-end {
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Selection Toolbar */
+.whatsapp-selection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--header-bg);
+  backdrop-filter: blur(8px);
+  padding: 10px 18px;
+  position: sticky;
+  bottom: 0;
+  z-index: 1000;
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.25);
+  margin: 0 16px;
+  border-radius: 12px 12px 0 0;
+}
+
+.whatsapp-selection-count {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--accent-color);
+  letter-spacing: 0.3px;
+}
+
+.whatsapp-selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.whatsapp-selection-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 8px;
+  border-radius: 50%;
+  color: var(--text-color);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.whatsapp-selection-btn:hover {
+  background-color: var(--hover-color);
+  transform: scale(1.1);
+}
+
+.whatsapp-delete-btn {
+  color: #ff4d4d;
+}
+
+.whatsapp-delete-btn:hover {
+  background-color: rgba(255, 77, 77, 0.15);
+}
+
+.whatsapp-forward-btn {
+  color: var(--accent-color);
+}
+
+.whatsapp-star-btn {
+  color: #ffd700;
+}
+
+/* Typing Message Styles */
+.typing-message {
+  opacity: 1 !important;
+  animation: none !important;
+}
+
+.typing-message .whatsapp-message-bubble {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.whatsapp-typing-dots {
+  display: flex;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.whatsapp-typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-secondary);
+  animation: typing 1.4s infinite ease-in-out;
+}
+
+.whatsapp-typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.whatsapp-typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.typing-time {
+  display: none;
+}
+
+/* Typing indicator styling */
+.imo-typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.imo-typing-indicator span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #8696a0;
+  animation: typing-bounce 1.4s infinite ease-in-out;
+}
+
+.imo-typing-indicator span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.imo-typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.imo-typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
+/* No Messages Placeholder */
+.imo-message-container:empty::after {
+  content: "No messages yet";
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+.whatsapp-message-container:empty::before {
+  content: "💬";
+  font-size: 48px;
+  margin-bottom: 10px;
+  display: block;
+}
+
+/* Bigger margins on large screens */
+@media (min-width: 1200px) {
+  .imo-message-container {
+    padding: 76px 30px 88px 30px;
+  }
+  
+  .whatsapp-message-container {
+    padding: 80px 30px 88px 30px;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .whatsapp-message-container {
+    padding: 8px 12px 80px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .whatsapp-message-container {
+    padding: 5px 8px 80px 8px;
+  }
+  
+  .whatsapp-selection-toolbar {
+    margin: 0 8px;
+    padding: 8px 12px;
+  }
+  
+  .whatsapp-selection-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+}
+
+/* Selection Mode Overlay */
+.whatsapp-message-container.selection-mode {
+  --selection-overlay: rgba(37, 211, 102, 0.05);
+}
+
+/* Smooth transitions for scroll and layout changes */
+.whatsapp-message-container {
+  transition: padding 0.3s ease;
+}
+
+/* Ensure proper z-index stacking */
+.whatsapp-messages-list {
+  z-index: 1;
+}
+
+.whatsapp-background {
+  z-index: 0;
+}
+
+.whatsapp-selection-toolbar {
+  z-index: 1000;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .whatsapp-date-label::before,
+  .whatsapp-date-label::after {
+    background-color: var(--text-color);
+    opacity: 0.5;
+  }
+  
+  .whatsapp-selection-toolbar {
+    border-top: 2px solid var(--text-color);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .whatsapp-message-container {
+    scroll-behavior: auto;
+  }
+  
+  .whatsapp-typing-dots span {
+    animation: none;
+    opacity: 0.6;
+  }
+  
+  .whatsapp-typing-dots span:nth-child(2),
+  .whatsapp-typing-dots span:nth-child(3) {
+    animation-delay: 0s;
+  }
+}
+
+/* Focus management for accessibility */
+.whatsapp-message-container:focus-within {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+.whatsapp-selection-toolbar:focus-within {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+/* Print styles */
+@media print {
+  .whatsapp-message-container {
+    padding: 0;
+    overflow: visible;
+  }
+  
+  .whatsapp-background,
+  .whatsapp-selection-toolbar {
+    display: none;
+  }
+}

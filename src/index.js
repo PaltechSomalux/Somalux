@@ -7,7 +7,7 @@ import './pdfConfig.js';
 
 import { SomaLux } from './SomaLux';
 import SpeedTracker from './SpeedTracker';
-import { registerServiceWorker } from './utils/serviceWorkerManager';
+import { registerServiceWorker } from './Services/utils/serviceWorkerManager';
 
 // Register Service Worker for high-speed downloads and offline caching
 if ('serviceWorker' in navigator) {

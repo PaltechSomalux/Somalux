@@ -1,0 +1,145 @@
+/* ChatMenu.css */
+.chat-menu-container {
+  position: relative;
+}
+
+.chat-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  min-width: 145px;
+  background-color: var(--menu-bg-color, #0b1216);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 8px 0;
+  z-index: 1000;
+  border: 1px solid var(--menu-border-color, #2a3942);
+  overflow: hidden;
+  transform-origin: top right;
+  animation: scaleIn 0.15s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.menu-item svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--menu-icon-color, #8696a0);
+  transition: color 0.2s ease;
+  /* Ensure consistent icon alignment */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-item span {
+  /* Ensure text is perfectly aligned */
+  line-height: 1;
+  padding-top: 1px; /* minor optical adjustment */
+}
+
+.menu-item:hover {
+  background-color: lightgreen;
+}
+
+.menu-item:hover svg {
+  color:lightgreen;
+}
+
+.menu-item.danger {
+  color: var(--menu-danger-color, #f15e6c);
+}
+
+.menu-item.danger svg {
+  color: var(--menu-danger-color, #f15e6c);
+}
+
+.menu-item.danger:hover {
+  background-color: var(--menu-danger-hover, rgba(241, 94, 108, 0.1));
+}
+
+.menu-item:not(:last-child) {
+  border-bottom: 1px solid var(--menu-divider-color, #2a3942);
+}
+
+/* Theme variations */
+[data-theme="light"] .chat-menu {
+  --menu-bg-color: transparent;
+  --menu-border-color: #e1e4e6;
+  --menu-text-color: #3d4a52;
+  --menu-item-hover: rgba(0, 0, 0, 0.05);
+  --menu-icon-color: #7d8b94;
+  --menu-icon-hover: #5d6b74;
+  --menu-divider-color: rgba(0, 0, 0, 0.05);
+  --menu-danger-color: #ff3b3b;
+}
+
+[data-theme="dark"] .chat-menu {
+  --menu-bg-color: #0b1216;
+  --menu-border-color: #2a3942;
+  --menu-text-color: #e9edef;
+  --menu-item-hover: rgba(255, 255, 255, 0.02);
+  --menu-icon-color: #8696a0;
+  --menu-icon-hover: #e9edef;
+  --menu-divider-color: #2a3942;
+  --menu-danger-color: #f15e6c;
+}
+
+/* Add these to your existing ChatMenu.css */
+.menu-item-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--menu-icon-color, #8696a0);
+}
+
+.menu-item-text {
+  flex-grow: 1;
+  text-align: left;
+  padding-left: 8px;
+  line-height: 1;
+  color: rgb(214, 212, 212);
+  font-weight: 100px;
+}
+
+.accent-icon {
+  color: var(--menu-accent-color, #00a884);
+}
+
+/* Remove the inline styles from the component and use these instead */
+.menu-item.danger .menu-item-icon {
+  color: var(--menu-danger-color, #f15e6c);
+}
+
+.menu-item.danger .menu-item-text {
+  color: var(--menu-danger-color, #f15e6c);
+}

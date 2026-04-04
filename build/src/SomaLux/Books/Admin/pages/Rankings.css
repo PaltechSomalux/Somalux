@@ -1,0 +1,416 @@
+/* ============================================
+   RANKINGS MAIN PAGE STYLES
+   ============================================ */
+
+.rankings-container {
+  padding: 32px;
+  background: transparent;
+  min-height: 100vh;
+}
+
+.rankings-header {
+  margin-bottom: 40px;
+}
+
+.rankings-header-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.rankings-header-icon {
+  font-size: 36px;
+  color: #00a884;
+  stroke-width: 1.5;
+}
+
+.rankings-header-title {
+  font-weight: 800;
+  color: #e9edef;
+  font-size: 1.3rem;
+  letter-spacing: -0.5px;
+}
+
+.rankings-header-subtitle {
+  color: #8696a0;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+/* Stats Overview Grid */
+.rankings-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.rankings-stat-card {
+  background: #111b21;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  border: 1px solid #202c33;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rankings-stat-label {
+  color: #8696a0;
+  font-weight: 400;
+  font-size: 0.65rem;
+}
+
+.rankings-stat-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.rankings-stat-value {
+  font-weight: 700;
+  color: #e9edef;
+  font-size: 1.1rem;
+}
+
+.rankings-stat-icon {
+  font-size: 10px;
+  padding: 4px 2px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Tabs Styling */
+.rankings-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding: 0 0 12px 0;
+  border-bottom: 2px solid #202c33;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.rankings-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid #202c33;
+  color: #8696a0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.rankings-tab:hover {
+  color: #e9edef;
+  background: rgba(0, 168, 132, 0.08);
+  border-color: #00a884;
+}
+
+.rankings-tab.active {
+  color: #00a884;
+  background: rgba(0, 168, 132, 0.1);
+  border-color: #00a884;
+}
+
+/* Tab Content */
+.rankings-tab-content {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.rankings-content-main {
+  flex: 1;
+}
+
+.rankings-content-chart {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Search and Filter Bar */
+.rankings-search-bar {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.rankings-search-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.rankings-filter-dropdown {
+  min-width: 150px;
+}
+
+/* Common Table Styles */
+.rankings-table-container {
+  border-radius: 8px;
+  background: #111b21;
+  overflow: hidden;
+}
+
+.rankings-table {
+  width: 100%;
+}
+
+.rankings-table-head {
+  background: #1e293b;
+}
+
+.rankings-table-header-cell {
+  font-weight: 700;
+  color: #8696a0;
+  font-size: 0.75rem;
+  padding: 12px;
+  text-align: left;
+  border: none;
+}
+
+.rankings-table-body-row {
+  border-bottom: 1px solid #202c33;
+  transition: background-color 0.2s ease;
+}
+
+.rankings-table-body-row:hover {
+  background: #202c33;
+}
+
+.rankings-table-cell {
+  padding: 12px;
+  color: #cfd8dc;
+  border: none;
+}
+
+.rankings-table-rank-cell {
+  font-weight: 700;
+  color: #d1d5db;
+  font-size: 0.875rem;
+  width: 5%;
+}
+
+.rankings-table-name-cell {
+  color: #d1d5db;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rankings-table-score-cell {
+  font-weight: 700;
+  color: #fff;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.875rem;
+  text-align: right;
+  width: fit-content;
+  margin-left: auto;
+}
+
+/* Score Badge Colors */
+.rankings-score-badge-books {
+  background: #f57c00;
+}
+
+.rankings-score-badge-categories {
+  background: #f15e6c;
+}
+
+.rankings-score-badge-ads {
+  background: #ff9800;
+}
+
+.rankings-score-badge-achievements {
+  background: #ff6b9d;
+}
+
+.rankings-score-badge-engagement {
+  background: #ff6b6b;
+}
+
+.rankings-score-badge-papers {
+  background: #8b5cf6;
+}
+
+.rankings-score-badge-authors {
+  background: #00a884;
+}
+
+.rankings-score-badge-subscribers {
+  background: #34B7F1;
+}
+
+.rankings-score-badge-universities {
+  background: #FFCC00;
+  color: #000 !important;
+}
+
+.rankings-score-badge-reading-activity {
+  background: #22d3ee;
+}
+
+.rankings-score-badge-users {
+  background: #4caf50;
+}
+
+.rankings-score-badge-goals {
+  background: #2196f3;
+}
+
+/* Metric Cell Colors */
+.rankings-metric-views {
+  color: #0066cc;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.rankings-metric-downloads {
+  color: #00a884;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.rankings-metric-likes {
+  color: #ff1744;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.rankings-metric-comments {
+  color: #9c27b0;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.rankings-metric-shares {
+  color: #4caf50;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.rankings-metric-reads {
+  color: #ff9800;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* Avatar Styles */
+.rankings-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #e9edef;
+}
+
+/* Loading and Error States */
+.rankings-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.rankings-error {
+  padding: 16px;
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid #ff6b6b;
+  border-radius: 8px;
+  color: #ff6b6b;
+  margin-bottom: 16px;
+}
+
+.rankings-empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #8696a0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .rankings-container {
+    padding: 16px;
+  }
+
+  .rankings-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .rankings-tab-content {
+    flex-direction: column;
+  }
+
+  .rankings-content-chart {
+    width: 100%;
+  }
+
+  .rankings-search-bar {
+    gap: 8px;
+  }
+
+  .rankings-search-input {
+    min-width: 150px;
+  }
+
+  .rankings-table-header-cell {
+    padding: 8px;
+    font-size: 0.65rem;
+  }
+
+  .rankings-table-cell {
+    padding: 8px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .rankings-header-top {
+    gap: 8px;
+  }
+
+  .rankings-header-title {
+    font-size: 1rem;
+  }
+
+  .rankings-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rankings-tab {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .rankings-search-bar {
+    flex-direction: column;
+  }
+
+  .rankings-search-input,
+  .rankings-filter-dropdown {
+    width: 100%;
+    min-width: unset;
+  }
+}

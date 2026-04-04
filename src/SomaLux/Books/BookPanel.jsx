@@ -1,13 +1,11 @@
 // src/BookPanel.jsx
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from './supabaseClient';
-import { initializeSession, setupAuthListener, clearSessionCache } from '../../utils/sessionManager';
+import { initializeSession, setupAuthListener, clearSessionCache } from '../../Services/utils/sessionManager';
 import { Download } from './Download';
-import { CommentsSection } from './CommentsSection';
 import { AuthModal } from './AuthModal';
-import { RatingModal } from './RatingModal';
 import PremiumPanel from '../../premium-features/PremiumPanel';
-import { AdBanner } from '../Ads/AdBanner';
+import { AdBanner } from '../../Ads/AdBanner';
 import {
   FaHeart,
   FaRegHeart,
@@ -50,10 +48,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SimpleScrollReader from './SimpleScrollReader';
 import { API_URL } from '../../config';
 import './BookPanel.css';
-import './Admin/admin.css';
+import '../../Admin/admin.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { booksCache, categoriesCache, statsCache } from './utils/cacheManager';
-import { fetchUserRankingsAdmin } from './Admin/api';
+import { fetchUserRankingsAdmin } from '../../Admin/api';
 import { perfOptimizer } from './utils/performanceOptimizer';
 import { indexedDBCache } from './utils/indexedDBCache';
 import { fetchBooksOptimized, fetchMinimalBooks, searchBooksOptimized } from './utils/optimizedQueries';
@@ -261,7 +259,6 @@ export const BookPanel = ({ demoMode = false }) => {
   const [hasMore, setHasMore] = useState(true);
   const BOOKS_PER_PAGE = 31;
   const [filteredByCategory, setFilteredByCategory] = useState(null);
-  const [selectedBook, setSelectedBook] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const [sortBy, setSortBy] = useState('default');
@@ -294,9 +291,7 @@ export const BookPanel = ({ demoMode = false }) => {
   // Sharing modal state
   const [showSharingModal, setShowSharingModal] = useState(false);
   
-  // Book Details dropdown state
-  const [showDetailsDropdown, setShowDetailsDropdown] = useState(false);
-  const detailsRef = useRef(null);
+
 
   // Admin notification state
   const [pendingSubmissions, setPendingSubmissions] = useState(0);
@@ -314,6 +309,8 @@ export const BookPanel = ({ demoMode = false }) => {
   const [shuffledBooks, setShuffledBooks] = useState([]);
   const [fullScreenBook, setFullScreenBook] = useState(null);
   const [isShuffling, setIsShuffling] = useState(true);
+  const [showRemovalNotification, setShowRemovalNotification] = useState(false);
+  const [removedBookIds, setRemovedBookIds] = useState([]);
 
   // Track scroll overflow for each category grid
   const [gridScrollStates, setGridScrollStates] = useState({});
@@ -325,8 +322,17 @@ export const BookPanel = ({ demoMode = false }) => {
   // Grid books shuffling state - track shuffled order for each category
   const [categoryShuffledBooks, setCategoryShuffledBooks] = useState({});
   const isGridShufflingRef = useRef(false);
+  const isHoveringRef = useRef(false); // Track if user is hovering over books
+  const shuffleTimersRef = useRef(null);
+  const longPressTimeoutRef = useRef(null);
 
   const CACHE_TTL_MS = 5 * 60 * 1000;
+
+  // Load removed book IDs from localStorage on mount
+  useEffect(() => {
+    const removed = JSON.parse(localStorage.getItem('removedBookIds') || '[]');
+    setRemovedBookIds(removed);
+  }, []);
 
   // Rewards: load daily login bonus and current points once user is known
   useEffect(() => {
@@ -398,47 +404,8 @@ export const BookPanel = ({ demoMode = false }) => {
 
   // Update Open Graph meta tags for sharing
   useEffect(() => {
-    if (selectedBook) {
-      const bookCover = selectedBook.bookImage || selectedBook.cover_image_url;
-      const bookUrl = `${window.location.origin}${window.location.pathname}?id=${selectedBook.id}`;
-      
-      // Update og:image
-      let ogImage = document.querySelector('meta[property="og:image"]');
-      if (!ogImage) {
-        ogImage = document.createElement('meta');
-        ogImage.setAttribute('property', 'og:image');
-        document.head.appendChild(ogImage);
-      }
-      ogImage.setAttribute('content', bookCover);
-      
-      // Update og:title
-      let ogTitle = document.querySelector('meta[property="og:title"]');
-      if (!ogTitle) {
-        ogTitle = document.createElement('meta');
-        ogTitle.setAttribute('property', 'og:title');
-        document.head.appendChild(ogTitle);
-      }
-      ogTitle.setAttribute('content', selectedBook.title);
-      
-      // Update og:description
-      let ogDesc = document.querySelector('meta[property="og:description"]');
-      if (!ogDesc) {
-        ogDesc = document.createElement('meta');
-        ogDesc.setAttribute('property', 'og:description');
-        document.head.appendChild(ogDesc);
-      }
-      ogDesc.setAttribute('content', `Check out "${selectedBook.title}" by ${selectedBook.author || 'Unknown Author'}`);
-      
-      // Update og:url
-      let ogUrl = document.querySelector('meta[property="og:url"]');
-      if (!ogUrl) {
-        ogUrl = document.createElement('meta');
-        ogUrl.setAttribute('property', 'og:url');
-        document.head.appendChild(ogUrl);
-      }
-      ogUrl.setAttribute('content', bookUrl);
-    }
-  }, [selectedBook]);
+    // OG tag updates removed - book popup feature removed
+  }, []);
 
 /*************  ✨ Windsurf Command ⭐  *************/
 /**
@@ -1660,23 +1627,7 @@ export const BookPanel = ({ demoMode = false }) => {
     }
   };
 
-  // Load comments when a book is selected
-  useEffect(() => {
-    if (selectedBook?.id) {
-      loadCommentsForBook(selectedBook.id);
-    }
-  }, [selectedBook?.id, user?.id]);
 
-  // Ensure comments are loaded if missing (handles refresh or recovery from errors)
-  useEffect(() => {
-    if (selectedBook?.id && (!mediaComments[selectedBook.id] || mediaComments[selectedBook.id].length === 0)) {
-      // Delay slightly to avoid race condition
-      const timer = setTimeout(() => {
-        loadCommentsForBook(selectedBook.id);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [selectedBook?.id]);
 
   // Bulk download functions
   const toggleBookSelection = (bookId) => {
@@ -2300,65 +2251,7 @@ export const BookPanel = ({ demoMode = false }) => {
 
   // Note: No infinite scroll. Background fetch can still occur via realtime or manual triggers.
 
-  const viewBookDetails = async (book) => {
-    if (!requireAuth('view')) return;
-    setSelectedBook(book);
-    setWelcomeMessage(false);
 
-    if (user && book && book.id) {
-      try {
-        // Track view in DB (RPC)
-        try {
-          await supabase.rpc('track_book_view', { p_book_id: book.id, p_user_id: user.id });
-        } catch (err) {
-          // If RPC not available, try a lightweight update
-          try {
-            await supabase.from('books').update({ views: (book.views || 0) + 1 }).eq('id', book.id);
-          } catch (e) { /* ignore */ }
-        }
-
-        // Track reading session via backend if available
-        try {
-          const { data } = await supabase.auth.getSession();
-          const token = data?.session?.access_token;
-          await fetch(`${API_URL}/api/reading/session`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify({ userId: user.id, bookId: book.id, pagesRead: 0, progressPercent: 0 })
-          });
-        } catch (err) {
-          console.warn('Session tracking failed:', err);
-        }
-
-        // Optimistically update local views
-        setBooks(prev => prev.map(b => b.id === book.id ? { ...b, views: (b.views || 0) + 1 } : b));
-        // Refresh recommendations after viewing
-        setTimeout(() => fetchRecommendations(), 500);
-      } catch (error) {
-        console.error('Failed to track view:', error);
-      }
-
-      // Load existing user rating for this book if any
-      try {
-        const { data: existingRating } = await supabase
-          .from('book_ratings')
-          .select('rating')
-          .eq('book_id', book.id)
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        setUserRating(existingRating?.rating || null);
-        if (!existingRating && Math.random() < 0.3) {
-          setTimeout(() => setShowRatingModal(true), 3000);
-        }
-      } catch (err) {
-        console.warn('Failed to load user rating', err);
-      }
-    }
-  };
   const handleSortChange = (sortType) => {
     setSortBy(sortType);
     setCurrentPage(1);
@@ -2376,53 +2269,9 @@ export const BookPanel = ({ demoMode = false }) => {
     setWelcomeMessage(false);
   };
 
-  const closeDetails = () => {
-    setSelectedBook(null);
-  };
 
-  // Close details dropdown when clicking outside
-  useEffect(() => {
-    if (!showDetailsDropdown) return;
 
-    const handleClickOutside = (event) => {
-      if (detailsRef.current && !detailsRef.current.contains(event.target)) {
-        setShowDetailsDropdown(false);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showDetailsDropdown]);
-
-  const handleRating = async (rating) => {
-    if (!selectedBook || !user) return;
-
-    try {
-      // Upsert rating (insert or update if exists)
-      const { error } = await supabase
-        .from('book_ratings')
-        .upsert({
-          book_id: selectedBook.id,
-          user_id: user.id,
-          rating
-        }, {
-          onConflict: 'user_id,book_id'
-        });
-
-      if (error) throw error;
-
-      setUserRating(rating);
-
-      // Refresh book data to get new average rating from database
-      // Force refresh to bypass cache and get actual values
-      setTimeout(() => fetchAll(true, currentPage), 500);
-    } catch (error) {
-      console.error('Failed to submit rating:', error);
-      throw error;
-    }
-  };
 
   // Book grid scroll handlers - per grid element
   const createScrollHandler = (element) => {
@@ -2504,6 +2353,40 @@ export const BookPanel = ({ demoMode = false }) => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [checkGridScroll]);
+
+  // Memoized hover handlers to prevent shuffling during user interaction
+  const handleGridMouseEnter = useCallback(() => {
+    isHoveringRef.current = true;
+  }, []);
+
+  const handleGridMouseLeave = useCallback(() => {
+    isHoveringRef.current = false;
+  }, []);
+
+  // Remove book from currently reading list - persist to localStorage
+  const removeFromRecentBooks = useCallback((bookId) => {
+    const bookIdStr = String(bookId);
+    setShuffledBooks(prev => prev.filter(b => String(b.id) !== bookIdStr));
+    // Add to removed books list
+    setRemovedBookIds(prev => {
+      const updated = [...prev, bookIdStr];
+      localStorage.setItem('removedBookIds', JSON.stringify(updated));
+      return updated;
+    });
+    // Show removal notification
+    setShowRemovalNotification(true);
+    // Auto-hide after 2 seconds
+    setTimeout(() => {
+      setShowRemovalNotification(false);
+    }, 2000);
+  }, []);
+
+  // Handle long-press to remove from currently reading
+  const handleBookLongPress = useCallback((e, bookId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    removeFromRecentBooks(bookId);
+  }, [removeFromRecentBooks]);
 
   // Initialize category order - shuffle only ONE category during refresh
   useEffect(() => {
@@ -2698,116 +2581,25 @@ export const BookPanel = ({ demoMode = false }) => {
     } catch (err) {}
   };
 
-  const startReadingSession = async () => {
-    if (!user || !selectedBook) return;
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data?.session?.access_token;
-      await fetch(`${API_URL}/api/reading/session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          bookId: selectedBook.id,
-          pagesRead: 1,
-          progressPercent: 1
-        })
-      });
 
-      // Also award a small number of points for starting a reading session
-      try {
-        const { data: rewardData, error: rewardError } = await supabase.rpc('award_reading_points', {
-          p_book_id: selectedBook.id,
-          p_past_paper_id: null,
-          p_pages_read: 1,
-          p_points: 3,
-        });
-        if (!rewardError && rewardData) {
-          setPointsStats(prev => ({ ...(prev || {}), points: rewardData.points, streak_days: rewardData.streak }));
-        } else if (rewardError?.code === 'PGRST116' || rewardError?.status === 404) {
-          // RPC function doesn't exist yet - ignore silently
-          console.debug('award_reading_points RPC not available');
-        } else if (rewardError) {
-          console.warn('award_reading_points error:', rewardError);
-        }
-      } catch (err) {
-        // Network error or other failure - ignore silently
-        console.debug('award_reading_points request failed:', err?.message);
-      }
-    } catch (e) {
-      console.warn('start read session failed', e);
-    }
-  };
 
   const handleReadClick = async () => {
     if (!requireAuth('read')) return;
-    await startReadingSession();
     setShowReader(true);
   };
 
   const openBookDirectly = (book) => {
-    console.log('🚀 openBookDirectly called with book:', book.id, book.title, 'downloadUrl:', book.downloadUrl);
-    
-    if (!requireAuth('read')) {
-      console.log('❌ Auth required, returning');
-      return;
+    // Un-remove book if it was previously removed
+    const bookIdStr = String(book.id);
+    if (removedBookIds.includes(bookIdStr)) {
+      setRemovedBookIds(prev => {
+        const updated = prev.filter(id => id !== bookIdStr);
+        localStorage.setItem('removedBookIds', JSON.stringify(updated));
+        return updated;
+      });
     }
-    
-    // Set the selected book and open the book detail modal
-    // User can then choose to read, download, share, or rate from the modal
-    setSelectedBook(book);
-    setWelcomeMessage(false);
-    // Note: showReader stays false - the modal will display with action buttons
-    
-    console.log('✅ Book modal will display');
-    
-    // Track view and award points in background (fire and forget)
-    if (user && book && book.id) {
-      (async () => {
-        try {
-          await supabase.rpc('track_book_view', { p_book_id: book.id, p_user_id: user.id });
-        } catch (err) {
-          try {
-            await supabase.from('books').update({ views: (book.views || 0) + 1 }).eq('id', book.id);
-          } catch (e) {}
-        }
-
-        try {
-          const { data } = await supabase.auth.getSession();
-          const token = data?.session?.access_token;
-          await fetch(`${API_URL}/api/reading/session`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify({ userId: user.id, bookId: book.id, pagesRead: 1, progressPercent: 1 })
-          });
-        } catch (err) {
-          console.warn('Session tracking failed:', err);
-        }
-
-        setBooks(prev => prev.map(b => b.id === book.id ? { ...b, views: (b.views || 0) + 1 } : b));
-        setTimeout(() => fetchRecommendations(), 500);
-
-        try {
-          const { data: rewardData } = await supabase.rpc('award_reading_points', {
-            p_book_id: book.id,
-            p_past_paper_id: null,
-            p_pages_read: 1,
-            p_points: 3,
-          });
-          if (rewardData) {
-            setPointsStats(prev => ({ ...(prev || {}), points: rewardData.points, streak_days: rewardData.streak }));
-          }
-        } catch (err) {
-          console.debug('award_reading_points failed:', err?.message);
-        }
-      })();
-    }
+    // Book popup feature removed
+    return;
   };
 
   const handleShare = async (method, book) => {
@@ -2881,222 +2673,7 @@ export const BookPanel = ({ demoMode = false }) => {
     }
   };
 
-  const handleSubmitComment = async (commentData) => {
-    if (!requireAuth('comment')) return;
 
-    try {
-      // Validate comment data
-      if (!commentData.text || commentData.text.trim() === '') {
-        console.error('Comment text is required');
-        return;
-      }
-
-      // Upload media to storage if present (mirror Pastpapers implementation)
-      let mediaUrl = null;
-      let mediaType = null;
-      if (commentData.file) {
-        const ext = commentData.file.name.split('.').pop();
-        const path = `${user.id}/${Date.now()}.${ext}`;
-        const { error: uploadErr } = await supabase
-          .storage
-          .from('comment_media')
-          .upload(path, commentData.file, {
-            upsert: true,
-            contentType: commentData.file.type,
-          });
-        if (uploadErr) throw uploadErr;
-
-        const { data: publicData } = supabase
-          .storage
-          .from('comment_media')
-          .getPublicUrl(path);
-        mediaUrl = publicData?.publicUrl || null;
-        mediaType = commentData.file.type.startsWith('image')
-          ? 'image'
-          : commentData.file.type.startsWith('video')
-          ? 'video'
-          : commentData.file.type.startsWith('audio')
-          ? 'audio'
-          : 'file';
-      }
-
-      const { data, error } = await supabase
-        .from('book_comments')
-        .insert({
-          book_id: selectedBook.id,
-          user_id: user.id,
-          user_email: user.email,
-          user_name: user.display_name || user.email?.split('@')[0] || 'User',
-          text: commentData.text.trim(),
-          media_url: mediaUrl,
-          media_type: mediaType,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Optimistic update with persisted values
-      setMediaComments(prev => ({
-        ...prev,
-        [selectedBook.id]: [
-          ...(Array.isArray(prev[selectedBook.id]) ? prev[selectedBook.id] : []),
-          {
-            id: data.id,
-            user: user.display_name || user.email?.split('@')[0] || 'User',
-            userId: user.id,
-            text: data.text,
-            media: data.media_url ? { type: data.media_type, url: data.media_url } : null,
-            timestamp: data.created_at,
-            liked: false,
-            replies: [],
-            likes: 0,
-          }
-        ]
-      }));
-    } catch (error) {
-      console.error('Failed to submit comment:', error?.message || error);
-    }
-  };
-
-  const handleDeleteComment = async (commentId) => {
-    if (!user) return;
-
-    try {
-      await supabase
-        .from('book_comments')
-        .delete()
-        .eq('id', commentId)
-        .eq('user_id', user.id);
-
-      setMediaComments(prev => ({
-        ...prev,
-        [selectedBook.id]: (Array.isArray(prev[selectedBook.id]) ? prev[selectedBook.id] : []).filter(comment => comment.id !== commentId)
-      }));
-    } catch (error) {
-      console.error('Failed to delete comment:', error);
-    }
-  };
-
-  const handleLikeComment = async (commentId) => {
-    if (!requireAuth('comment')) return;
-
-    const isCurrentlyLiked = !!commentLikes[commentId];
-
-    // Optimistic toggle
-    setCommentLikes(prev => {
-      const next = { ...prev };
-      if (isCurrentlyLiked) {
-        delete next[commentId];
-      } else {
-        next[commentId] = true;
-      }
-      return next;
-    });
-
-    try {
-      if (isCurrentlyLiked) {
-        await supabase
-          .from('book_comment_likes')
-          .delete()
-          .eq('comment_id', commentId)
-          .eq('user_id', user.id);
-      } else {
-        const { error } = await supabase
-          .from('book_comment_likes')
-          .insert({
-            comment_id: commentId,
-            user_id: user.id,
-          });
-        if (error && error.code !== '23505') {
-          throw error;
-        }
-      }
-    } catch (err) {
-      console.error('Failed to toggle like for book comment:', err);
-    }
-  };
-
-  const handleReplyToComment = async (commentId, replyData) => {
-    if (!requireAuth('reply')) return;
-
-    try {
-      // Upload media to storage if present (mirror Pastpapers implementation)
-      let mediaUrl = null;
-      let mediaType = null;
-      if (replyData.file) {
-        const ext = replyData.file.name.split('.').pop();
-        const path = `${user.id}/${Date.now()}.${ext}`;
-        const { error: uploadErr } = await supabase
-          .storage
-          .from('comment_media')
-          .upload(path, replyData.file, {
-            upsert: true,
-            contentType: replyData.file.type,
-          });
-        if (uploadErr) throw uploadErr;
-
-        const { data: publicData } = supabase
-          .storage
-          .from('comment_media')
-          .getPublicUrl(path);
-        mediaUrl = publicData?.publicUrl || null;
-        mediaType = replyData.file.type.startsWith('image')
-          ? 'image'
-          : replyData.file.type.startsWith('video')
-          ? 'video'
-          : replyData.file.type.startsWith('audio')
-          ? 'audio'
-          : 'file';
-      }
-
-      // Save reply to database with plain URL values
-      const { data, error } = await supabase
-        .from('book_replies')
-        .insert({
-          comment_id: commentId,
-          user_id: user.id,
-          user_email: user.email,
-          user_name: user.display_name || user.email?.split('@')[0] || 'User',
-          text: replyData.text,
-          media_url: mediaUrl,
-          media_type: mediaType,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Update local state optimistically
-      setMediaComments(prev => {
-        const bookComments = Array.isArray(prev[selectedBook.id]) ? [...prev[selectedBook.id]] : [];
-        const commentIndex = bookComments.findIndex(comment => comment.id === commentId);
-        if (commentIndex !== -1) {
-          const newReply = {
-            id: data.id,
-            user: user.display_name || user.email?.split('@')[0] || 'User',
-            text: data.text,
-            media: data.media_url ? { type: data.media_type, url: data.media_url } : null,
-            timestamp: data.created_at,
-            liked: false,
-          };
-          bookComments[commentIndex] = {
-            ...bookComments[commentIndex],
-            replies: Array.isArray(bookComments[commentIndex].replies)
-              ? [...bookComments[commentIndex].replies, newReply]
-              : [newReply]
-          };
-        }
-        return {
-          ...prev,
-          [selectedBook.id]: bookComments
-        };
-      });
-    } catch (error) {
-      console.error('Failed to post reply:', error);
-      alert('Failed to post reply. Please try again.');
-    }
-  };
 
   const wishlistBooks = useMemo(() => {
     return books.filter(book => wishlist.includes(book.id));
@@ -3171,8 +2748,11 @@ export const BookPanel = ({ demoMode = false }) => {
   useEffect(() => {
     if (!user || recentBooks.length === 0) return;
 
-    // Initialize shuffled books (no shuffle yet)
-    setShuffledBooks([...recentBooks]);
+    // Initialize shuffled books (no shuffle yet), filtering out removed books
+    const removed = JSON.parse(localStorage.getItem('removedBookIds') || '[]');
+    setRemovedBookIds(removed);
+    const filteredBooks = recentBooks.filter(b => !removed.includes(String(b.id)));
+    setShuffledBooks([...filteredBooks]);
     setIsShuffling(false);
 
     let inactivityTimer = null;
@@ -3212,12 +2792,12 @@ export const BookPanel = ({ demoMode = false }) => {
     // Don't shuffle on page load/refresh - only shuffle after inactivity
     // Shuffle only happens after 1 minute of inactivity
 
-    // Function to reset inactivity timer for book shuffle (1 minute)
+    // Function to reset inactivity timer for book shuffle (5 minutes)
     const resetBookInactivityTimer = () => {
       if (inactivityTimer) clearTimeout(inactivityTimer);
       inactivityTimer = setTimeout(() => {
         performBookShuffle();
-      }, 60 * 1000); // 1 minute
+      }, 300 * 1000); // 5 minutes for shuffle duration
     };
 
     // Activity event listeners for book shuffle
@@ -3246,7 +2826,7 @@ export const BookPanel = ({ demoMode = false }) => {
   useEffect(() => {
     const animationCycleInterval = setInterval(() => {
       setAnimationCycle(prev => (prev + 1) % 4);
-    }, 10000); // Change animation every 10 seconds
+    }, 120000); // Change animation every 2 minutes
 
     return () => clearInterval(animationCycleInterval);
   }, []);
@@ -3273,39 +2853,50 @@ export const BookPanel = ({ demoMode = false }) => {
     setCategoryShuffledBooks(newShuffledBooks);
   }, [filteredBooks]);
 
-  // Shuffle individual grid books randomly at staggered intervals
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Only shuffle if not currently shuffling
-      if (!isGridShufflingRef.current) {
-        isGridShufflingRef.current = true;
-        setCategoryShuffledBooks(prevState => {
-          const newState = { ...prevState };
-          Object.keys(newState).forEach(category => {
-            const books = newState[category];
-            if (books && books.length > 0) {
-              // Swap only 1 pair of random books
-              const i = Math.floor(Math.random() * books.length);
-              const j = Math.floor(Math.random() * books.length);
-              if (i !== j) {
-                const newBooks = [...books];
-                [newBooks[i], newBooks[j]] = [newBooks[j], newBooks[i]];
-                newState[category] = newBooks;
-              }
-            }
-          });
-          return newState;
-        });
-
-        // Wait for transition to complete before allowing next shuffle
-        setTimeout(() => {
-          isGridShufflingRef.current = false;
-        }, 2000);
-      }
-    }, 30000); // Every 30 seconds, shuffle one book in each category
-
-    return () => clearInterval(interval);
+  // Shuffle only the first book in each category
+  const shuffleFirstBook = useCallback((category) => {
+    if (!category) return;
+    
+    setCategoryShuffledBooks(prevState => {
+      const newState = { ...prevState };
+      const books = newState[category];
+      
+      if (!books || books.length < 2) return newState;
+      
+      // Smooth carousel rotation: move first book to end, shift all others forward
+      const [firstBook] = books.splice(0, 1);
+      books.push(firstBook);
+      
+      newState[category] = [...books];
+      return newState;
+    });
   }, []);
+
+  // Shuffle first book every 60 seconds from a random category
+  useEffect(() => {
+    // Get random category
+    const getRandomCategory = () => {
+      if (filteredBooks.length === 0) return null;
+      const categories = ['books', 'genres', 'pastpapers']; // Common categories
+      return categories[Math.floor(Math.random() * categories.length)];
+    };
+
+    // Shuffle first book at 40-second interval
+    const timer = setInterval(() => {
+      if (!isGridShufflingRef.current && !isHoveringRef.current) {
+        const category = getRandomCategory();
+        if (category) {
+          shuffleFirstBook(category);
+        }
+      }
+    }, 40000); // Every 40 seconds for smooth shuffling
+
+    shuffleTimersRef.current = timer;
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [filteredBooks.length, shuffleFirstBook]);
 
   // PowerPoint-style transition variants helper
   const getPPTVariant = (typeIndex, idx) => {
@@ -3773,6 +3364,31 @@ export const BookPanel = ({ demoMode = false }) => {
                   <motion.div
                     key={`${book.id}-${idx}`}
                     onClick={() => openBookDirectly(book)}
+                    onMouseDown={(e) => {
+                      longPressTimeoutRef.current = setTimeout(() => {
+                        handleBookLongPress(e, book.id);
+                      }, 800); // 800ms long-press
+                    }}
+                    onMouseUp={() => {
+                      if (longPressTimeoutRef.current) {
+                        clearTimeout(longPressTimeoutRef.current);
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      if (longPressTimeoutRef.current) {
+                        clearTimeout(longPressTimeoutRef.current);
+                      }
+                    }}
+                    onTouchStart={(e) => {
+                      longPressTimeoutRef.current = setTimeout(() => {
+                        handleBookLongPress(e, book.id);
+                      }, 800); // 800ms long-press
+                    }}
+                    onTouchEnd={() => {
+                      if (longPressTimeoutRef.current) {
+                        clearTimeout(longPressTimeoutRef.current);
+                      }
+                    }}
                     whileHover={hoverProps}
                     whileTap={{ scale: 0.98 }}
                     initial={initialProps}
@@ -3791,7 +3407,8 @@ export const BookPanel = ({ demoMode = false }) => {
                       boxShadow: '0 6px 16px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4)',
                       perspective: 700,
                       transformStyle: 'preserve-3d',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      position: 'relative'
                     }}
                   >
                   <div
@@ -3800,9 +3417,34 @@ export const BookPanel = ({ demoMode = false }) => {
                       aspectRatio: '2/1.9',
                       borderRadius: 0,
                       overflow: 'hidden',
-                      background: '#020617'
+                      background: '#020617',
+                      position: 'relative'
                     }}
                   >
+                    {/* Remove hint on hover */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0,
+                        transition: 'opacity 0.2s',
+                        fontSize: 10,
+                        color: '#e2e8f0',
+                        fontWeight: 600,
+                        zIndex: 10,
+                        pointerEvents: 'none'
+                      }}
+                      className="remove-hint"
+                    >
+                      Hold to remove
+                    </div>
                     <motion.img
                       src={book.bookImage}
                       alt={book.title}
@@ -3840,411 +3482,6 @@ export const BookPanel = ({ demoMode = false }) => {
           </div>
         </section>
       )}
-
-      {/* Congratulations Celebration Popup */}
-      <AnimatePresence>
-        {fullScreenBook && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.7)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 9999,
-              pointerEvents: 'none'
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              transition={{ duration: 0.5, ease: 'backOut' }}
-              style={{
-                position: 'relative',
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                perspective: '1200px'
-              }}
-            >
-              {/* Book Cover Image - Clean and Simple */}
-              <motion.img
-                src={fullScreenBook.bookImage}
-                alt={fullScreenBook.title}
-                style={{
-                  maxWidth: 'min(90vw, 450px)',
-                  maxHeight: 'min(90vh, 580px)',
-                  width: 'auto',
-                  height: 'auto',
-                  objectFit: 'contain',
-                  borderRadius: '12px',
-                  marginBottom: 20,
-                  boxShadow: '0 25px 50px rgba(0, 0, 0, 0.8)'
-                }}
-              />
-
-              {/* Party Confetti Pieces - Realistic Popper Physics */}
-              {[...Array(150)].map((_, idx) => {
-                const angle = (idx / 150) * Math.PI * 2;
-                const distance = 250 + Math.random() * 400;
-                const colors = ['#FF006E', '#FB5607', '#FFBE0B', '#8338EC', '#3A86FF', '#06FFB4', '#00D9FF', '#FF006E', '#FB5607', '#38E54D'];
-                const randomColor = colors[Math.floor(Math.random() * colors.length)];
-                const shapeType = idx % 4; // 0: rectangle, 1: circle, 2: thin strip, 3: star
-                
-                let width, height, borderRadius;
-                
-                if (shapeType === 0) {
-                  // Rectangle confetti
-                  width = 14;
-                  height = 28;
-                  borderRadius = '2px';
-                } else if (shapeType === 1) {
-                  // Circle confetti  
-                  width = 18;
-                  height = 18;
-                  borderRadius = '50%';
-                } else if (shapeType === 2) {
-                  // Thin strip/ribbon
-                  width = 4;
-                  height = 50;
-                  borderRadius = '2px';
-                } else {
-                  // Star-like shape
-                  width = 22;
-                  height = 22;
-                  borderRadius = '0px';
-                }
-                
-                // Physics: gravity effect on Y axis
-                const horizontalDisplacement = Math.cos(angle) * distance + (Math.random() * 150 - 75);
-                const verticalDisplacement = Math.sin(angle) * distance + (Math.random() * 200);
-                
-                return (
-                  <motion.div
-                    key={`confetti-${idx}`}
-                    initial={{
-                      x: 0,
-                      y: 0,
-                      opacity: 1,
-                      scale: Math.random() * 0.6 + 0.7,
-                      rotateX: Math.random() * 360,
-                      rotateY: Math.random() * 360,
-                      rotateZ: Math.random() * 360
-                    }}
-                    animate={{
-                      x: horizontalDisplacement,
-                      y: verticalDisplacement,
-                      opacity: 0,
-                      scale: 0,
-                      rotateX: Math.random() * 1080,
-                      rotateY: Math.random() * 1080,
-                      rotateZ: Math.random() * 1080
-                    }}
-                    transition={{
-                      duration: 2.8 + Math.random() * 1.2,
-                      delay: idx * 0.008,
-                      ease: [0.22, 1, 0.36, 1] // Custom easing for more realistic arc
-                    }}
-                    style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      marginLeft: -(width / 2),
-                      marginTop: -(height / 2),
-                      width: width,
-                      height: height,
-                      background: randomColor,
-                      borderRadius: borderRadius,
-                      boxShadow: `0 0 ${Math.random() * 20 + 12}px ${randomColor}, inset 0 0 8px rgba(255,255,255,0.3)`,
-                      clipPath: shapeType === 3 ? 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' : 'unset',
-                      perspective: '1000px',
-                      transformStyle: 'preserve-3d'
-                    }}
-                  />
-                );
-              })}
-
-              {/* Popper Flash/Explosion Core */}
-              {[...Array(40)].map((_, idx) => {
-                const angle = Math.random() * Math.PI * 2;
-                const distance = 100 + Math.random() * 200;
-                const colors = ['#FFD60A', '#FFC300', '#FFB703', '#FB5607', '#FF006E'];
-                const randomColor = colors[Math.floor(Math.random() * colors.length)];
-                
-                return (
-                  <motion.div
-                    key={`spark-${idx}`}
-                    initial={{
-                      x: 0,
-                      y: 0,
-                      opacity: 1,
-                      scale: 1
-                    }}
-                    animate={{
-                      x: Math.cos(angle) * distance,
-                      y: Math.sin(angle) * distance,
-                      opacity: 0,
-                      scale: 0.1
-                    }}
-                    transition={{
-                      duration: 1.8 + Math.random() * 0.6,
-                      delay: idx * 0.02,
-                      ease: 'easeOut'
-                    }}
-                    style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      width: 8,
-                      height: 8,
-                      background: randomColor,
-                      borderRadius: '50%',
-                      marginLeft: -4,
-                      marginTop: -4,
-                      boxShadow: `0 0 ${Math.random() * 20 + 10}px ${randomColor}`
-                    }}
-                  />
-                );
-              })}
-
-              {/* Spiral Ribbons */}
-              {[...Array(12)].map((_, idx) => {
-                const angle = (idx / 12) * Math.PI * 2;
-                const colors = ['#FF006E', '#FB5607', '#FFBE0B', '#8338EC', '#3A86FF', '#06FFB4'];
-                const randomColor = colors[idx % colors.length];
-                
-                return (
-                  <motion.div
-                    key={`ribbon-${idx}`}
-                    initial={{
-                      scaleY: 0,
-                      opacity: 1
-                    }}
-                    animate={{
-                      scaleY: 1,
-                      opacity: 0
-                    }}
-                    transition={{
-                      duration: 1.8,
-                      delay: idx * 0.06,
-                      ease: 'easeOut'
-                    }}
-                    style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      width: 4,
-                      height: 200,
-                      background: `linear-gradient(to bottom, ${randomColor}, transparent)`,
-                      transformOrigin: 'top center',
-                      transform: `rotate(${angle}rad)`,
-                      marginLeft: -2
-                    }}
-                  />
-                );
-              })}
-
-              {/* Glitter Dust */}
-              {[...Array(50)].map((_, idx) => {
-                const startAngle = Math.random() * Math.PI * 2;
-                const startDist = Math.random() * 50;
-                const colors = ['#FFD60A', '#FFC300', '#06FFB4', '#3A86FF', '#8338EC', '#FF006E'];
-                const randomColor = colors[Math.floor(Math.random() * colors.length)];
-                
-                return (
-                  <motion.div
-                    key={`glitter-${idx}`}
-                    initial={{
-                      x: Math.cos(startAngle) * startDist,
-                      y: Math.sin(startAngle) * startDist,
-                      opacity: 1,
-                      scale: Math.random() * 0.5 + 0.5
-                    }}
-                    animate={{
-                      x: Math.cos(startAngle) * (startDist + 300),
-                      y: Math.sin(startAngle) * (startDist + 300),
-                      opacity: 0,
-                      scale: 0
-                    }}
-                    transition={{
-                      duration: 2.2 + Math.random() * 0.8,
-                      delay: Math.random() * 0.2,
-                      ease: 'easeOut'
-                    }}
-                    style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      width: 3,
-                      height: 3,
-                      background: randomColor,
-                      borderRadius: '50%',
-                      marginLeft: -1.5,
-                      marginTop: -1.5,
-                      boxShadow: `0 0 6px ${randomColor}`
-                    }}
-                  />
-                );
-              })}
-              {[0, 1, 2, 3, 4].map((idx) => (
-                <motion.div
-                  key={`balloon-${idx}`}
-                  initial={{
-                    x: Math.random() * 400 - 200,
-                    y: 0,
-                    opacity: 1,
-                    scale: 1,
-                    rotate: 0
-                  }}
-                  animate={{
-                    x: Math.random() * 600 - 300,
-                    y: -500,
-                    opacity: 0,
-                    scale: 0.2,
-                    rotate: Math.random() * 360
-                  }}
-                  transition={{
-                    duration: 2.5 + Math.random() * 1.5,
-                    delay: idx * 0.08,
-                    ease: 'easeOut'
-                  }}
-                  style={{
-                    position: 'absolute',
-                    fontSize: '3.5rem',
-                    left: '50%',
-                    top: '50%',
-                    marginLeft: -25,
-                    marginTop: -25,
-                    filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3))'
-                  }}
-                >
-                  {['🎈', '🎊', '🎉', '🎈', '🎊'][idx]}
-                </motion.div>
-              ))}
-
-              {/* Burst Particles - Exploding Outward */}
-              {[...Array(16)].map((_, idx) => {
-                const angle = (idx / 16) * Math.PI * 2;
-                const distance = 200;
-                return (
-                  <motion.div
-                    key={`particle-${idx}`}
-                    initial={{
-                      x: 0,
-                      y: 0,
-                      opacity: 1,
-                      scale: 1
-                    }}
-                    animate={{
-                      x: Math.cos(angle) * distance,
-                      y: Math.sin(angle) * distance,
-                      opacity: 0,
-                      scale: 0
-                    }}
-                    transition={{
-                      duration: 1.5,
-                      delay: Math.random() * 0.3,
-                      ease: 'easeOut'
-                    }}
-                    style={{
-                      position: 'absolute',
-                      fontSize: '2rem',
-                      left: '50%',
-                      top: '50%',
-                      marginLeft: -15,
-                      marginTop: -15,
-                      filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))'
-                    }}
-                  >
-                    {['✨', '⭐', '💫', '🌟', '✨', '💛', '❤️', '💜', '💚', '🧡', '💙', '✨', '⭐', '💫', '🌟'][idx]}
-                  </motion.div>
-                );
-              })}
-
-              {/* Confetti Pieces - Random Falls */}
-              {[...Array(20)].map((_, idx) => {
-                const startX = Math.random() * 400 - 200;
-                const duration = 2 + Math.random() * 1;
-                return (
-                  <motion.div
-                    key={`confetti-${idx}`}
-                    initial={{
-                      x: startX,
-                      y: -50,
-                      opacity: 1,
-                      rotate: Math.random() * 360
-                    }}
-                    animate={{
-                      x: startX + (Math.random() * 200 - 100),
-                      y: 150,
-                      opacity: 0,
-                      rotate: Math.random() * 720
-                    }}
-                    transition={{
-                      duration: duration,
-                      delay: Math.random() * 0.4,
-                      ease: 'easeOut'
-                    }}
-                    style={{
-                      position: 'absolute',
-                      fontSize: '1.2rem',
-                      left: '50%',
-                      top: '50%',
-                      marginLeft: -8,
-                      marginTop: -8
-                    }}
-                  >
-                    {['🎈', '🎉', '🎊', '⭐', '✨', '💫'][Math.floor(Math.random() * 6)]}
-                  </motion.div>
-                );
-              })}
-
-              {/* Extra Sparkle Ring - Expanding Circle */}
-              {[0, 1, 2].map((idx) => (
-                <motion.div
-                  key={`ring-${idx}`}
-                  initial={{
-                    scale: 0,
-                    opacity: 1
-                  }}
-                  animate={{
-                    scale: 3,
-                    opacity: 0
-                  }}
-                  transition={{
-                    duration: 1.2,
-                    delay: idx * 0.2,
-                    ease: 'easeOut'
-                  }}
-                  style={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    marginLeft: -40,
-                    marginTop: -40,
-                    width: 80,
-                    height: 80,
-                    border: '3px solid rgba(251, 191, 36, 0.6)',
-                    borderRadius: '50%',
-                    pointerEvents: 'none'
-                  }}
-                />
-              ))}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Recommendations Panel Toggle */}
       {user && recommendations.length > 0 && (
@@ -4472,6 +3709,10 @@ export const BookPanel = ({ demoMode = false }) => {
                     aria-busy={pageLoading} 
                     aria-live={pageLoading ? 'polite' : 'off'} 
                     onScroll={handleGridScroll}
+                    onMouseEnter={handleGridMouseEnter}
+                    onMouseLeave={handleGridMouseLeave}
+                    onTouchStart={handleGridMouseEnter}
+                    onTouchEnd={handleGridMouseLeave}
                   >
                   <AnimatePresence initial={false}>
                     {(categoryShuffledBooks[category] || books).map((book, index) => {
@@ -4489,8 +3730,8 @@ export const BookPanel = ({ demoMode = false }) => {
                               initial={isMounted ? { opacity: 0, y: 12 } : false}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0 }}
-                              transition={{ duration: 0.22 }}
-                              layout
+                              transition={{ duration: 0.65, ease: 'easeInOut' }}
+                              layout="position"
                             >
                               <div className="book-cardBKP">
                                 <AdBanner placement="grid-books" limit={5} user={user} />
@@ -4503,8 +3744,8 @@ export const BookPanel = ({ demoMode = false }) => {
                               initial={isMounted ? { opacity: 0, y: 12 } : false}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0 }}
-                              transition={{ duration: 0.22 }}
-                              layout
+                              transition={{ duration: 0.65, ease: 'easeInOut' }}
+                              layout="position"
                             >
                               <div
                                 className="book-cardBKP"
@@ -4724,277 +3965,9 @@ export const BookPanel = ({ demoMode = false }) => {
         </>
       )}
 
-      <AnimatePresence initial={false}>
-        {selectedBook && !showReader && (
-          <motion.div
-            className="modal-overlayBKP"
-            initial={isMounted ? { opacity: 0 } : false}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeDetails}
-          >
-            <motion.div
-              className="modal-contentBKP"
-              initial={isMounted ? { scale: 0.98, opacity: 0 } : false}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.98, opacity: 0 }}
-              transition={{ type: 'tween', duration: 0.16 }}
-              onClick={(e) => {
-                if (showDetailsDropdown && detailsRef.current && !detailsRef.current.contains(e.target)) {
-                  setShowDetailsDropdown(false);
-                } else {
-                  e.stopPropagation();
-                }
-              }}
-            >
-              <button className="close-buttonBKP" onClick={closeDetails}>
-                <FiX size={24} />
-              </button>
 
-              <div style={{ position: 'relative' }} ref={detailsRef}>
-                <button
-                  style={{
-                    position: 'absolute',
-                    top: '1rem',
-                    left: '1rem',
-                    background: 'transparent',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '6px 8px',
-                    cursor: 'pointer',
-                    color: '#64748b',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '2px',
-                    zIndex: 1001
-                  }}
-                  onClick={() => setShowDetailsDropdown(!showDetailsDropdown)}
-                  title="View book details"
-                >
-                  <div style={{ width: '3px', height: '3px', borderRadius: '50%', backgroundColor: '#64748b' }}></div>
-                  <div style={{ width: '3px', height: '3px', borderRadius: '50%', backgroundColor: '#64748b' }}></div>
-                  <div style={{ width: '3px', height: '3px', borderRadius: '50%', backgroundColor: '#64748b' }}></div>
-                </button>
-                <AnimatePresence>
-                  {showDetailsDropdown && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      style={{
-                        position: 'absolute',
-                        top: '50px',
-                        left: '1rem',
-                        background: '#0d1621',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '12px 16px',
-                        minWidth: '200px',
-                        zIndex: 1001,
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div style={{ borderBottom: '1px solid #1f2c33', paddingBottom: '10px' }}>
-                          <div style={{ color: '#8696a0', fontSize: '0.65rem', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Genre</div>
-                          <div style={{ color: '#e9edef', fontSize: '0.8rem', fontWeight: '500' }}>{selectedBook.genre || 'Uncategorized'}</div>
-                        </div>
-                        <div style={{ borderBottom: '1px solid #1f2c33', paddingBottom: '10px' }}>
-                          <div style={{ color: '#8696a0', fontSize: '0.65rem', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Pages</div>
-                          <div style={{ color: '#e9edef', fontSize: '0.8rem', fontWeight: '500' }}>{selectedBook.pages || 'N/A'}</div>
-                        </div>
-                        <div style={{ borderBottom: '1px solid #1f2c33', paddingBottom: '10px' }}>
-                          <div style={{ color: '#8696a0', fontSize: '0.65rem', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Language</div>
-                          <div style={{ color: '#e9edef', fontSize: '0.8rem', fontWeight: '500' }}>{selectedBook.language || 'Unknown'}</div>
-                        </div>
-                        <div>
-                          <div style={{ color: '#8696a0', fontSize: '0.65rem', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Publisher</div>
-                          <div style={{ color: '#e9edef', fontSize: '0.8rem', fontWeight: '500' }}>{selectedBook.publisher || 'N/A'}</div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
 
-              <div className="modal-headerBKP">
-                <h2>{selectedBook.title}</h2>
-                <p>by {selectedBook.author}</p>
-              </div>
 
-              <div className="modal-bodyBKP" style={{ paddingTop: '0', paddingLeft: '0', paddingRight: '0' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '0.2rem' }}>
-                  <img
-                    src={selectedBook.bookImage}
-                    alt={selectedBook.title}
-                    className="book-coverBKP"
-                    loading="lazy"
-                    decoding="async"
-                    style={{ maxWidth: '600px', width: '100%', height: '500px', objectFit: 'contain', borderRadius: '8px', display: 'block' }}
-                  />
-                </div>
-                <p className="book-descBKP" style={{ margin: '0 1.5rem 0 1.5rem' }}>
-                  {selectedBook.description}
-                </p>
-
-                <div style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem', marginTop: '0' }}>
-                  <CommentsSection
-                  currentMedia={{ id: selectedBook.id }}
-                  currentUser={user}
-                  showComments={true}
-                  commentsRef={null}
-                  mediaComments={mediaComments}
-                  commentLikes={commentLikes}
-                  onSubmitComment={handleSubmitComment}
-                  onDeleteComment={handleDeleteComment}
-                  onLikeComment={handleLikeComment}
-                  onReplyToComment={handleReplyToComment}
-                  />
-                </div>
-              </div>
-
-              <div className="modal-actionsBKP">
-                <div className="actions-primary-rowBKP">
-                  <Download
-                    book={selectedBook}
-                    variant="full"
-                    user={user}
-                    className="btn-readBKP btn-action-primaryBKP"
-                    onUpgradeClick={() => setShowSubscriptionModal?.(true)}
-                    onDownloadStart={async () => {
-                      if (!requireAuth('download')) return false;
-
-                      // Log per-user download (analytics) - with better error handling
-                      try {
-                        if (user && selectedBook && selectedBook.id) {
-                          const downloadRecord = {
-                            user_id: user.id,
-                            book_id: selectedBook.id,
-                            downloaded_at: new Date().toISOString(),
-                            user_agent: navigator.userAgent || 'unknown'
-                          };
-
-                          const { data, error } = await supabase
-                            .from('book_downloads')
-                            .insert([downloadRecord])
-                            .select();
-
-                          if (error) {
-                            console.error('❌ Failed to log book download:', {
-                              error: error.message,
-                              code: error.code,
-                              details: error.details,
-                              hint: error.hint,
-                              context: { userId: user.id, bookId: selectedBook.id }
-                            });
-                        } else {
-                          console.log('✅ Download logged successfully:', data);
-                          
-                          // Increment count using the SQL function (bypasses RLS)
-                          try {
-                            const { data: result, error: rpcError } = await supabase
-                              .rpc('increment_book_downloads', { p_book_id: selectedBook.id });
-                            
-                            if (rpcError) {
-                              console.error('❌ RPC increment failed, trying direct update:', {
-                                message: rpcError.message,
-                                code: rpcError.code,
-                                details: rpcError.details
-                              });
-                              
-                              // Fallback: direct update
-                              const { data: bookData } = await supabase
-                                .from('books')
-                                .select('downloads_count')
-                                .eq('id', selectedBook.id)
-                                .single();
-                              
-                              const currentCount = bookData?.downloads_count || 0;
-                              const newCount = currentCount + 1;
-                              
-                              const { error: updateError } = await supabase
-                                .from('books')
-                                .update({ downloads_count: newCount })
-                                .eq('id', selectedBook.id);
-                              
-                              if (updateError) {
-                                console.error('❌ Count UPDATE FAILED:', {
-                                  message: updateError.message,
-                                  code: updateError.code,
-                                  details: updateError.details,
-                                  status: updateError.status
-                                });
-                              } else {
-                                console.log(`✅ Count incremented (fallback): ${currentCount} → ${newCount}`);
-                                setSelectedBook(prev => ({
-                                  ...prev,
-                                  downloads_count: newCount
-                                }));
-                              }
-                            } else {
-                              const newCount = result || (selectedBook.downloads_count || 0) + 1;
-                              console.log(`✅ Count incremented (RPC): ${selectedBook.downloads_count || 0} → ${newCount}`);
-                              setSelectedBook(prev => ({
-                                ...prev,
-                                downloads_count: newCount
-                              }));
-                            }
-                          } catch (countError) {
-                            console.error('⚠️ Count increment exception:', countError);
-                          }
-                        }
-                      }
-                    } catch (error) {
-                      console.error('Exception while logging book download:', error);
-                    }
-
-                    return true;
-                  }}
-                />
-                  <button
-                    className="btn-readBKP btn-action-primaryBKP"
-                    onClick={() => setShowRatingModal(true)}
-                    title="Rate this book"
-                  >
-                    <FiStar size={16} /> {userRating ? `${userRating}★` : 'Rate'}
-                  </button>
-                  <button
-                    className="btn-readBKP btn-action-primaryBKP"
-                    onClick={() => setShowSharingModal(true)}
-                    title="Share this book"
-                  >
-                    <FiShare2 size={16} /> Share
-                  </button>
-                  <button
-                    className="btn-readBKP btn-action-primaryBKP"
-                    onClick={handleReadClick}
-                    title="Read this book"
-                  >
-                    <FiBook size={16} /> Read
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {showReader && selectedBook && (
-        <SimpleScrollReader
-          src={selectedBook.downloadUrl}
-          title={selectedBook.title}
-          author={selectedBook.author}
-          sampleText={selectedBook.sampleText || selectedBook.description}
-          userId={user?.id}
-          bookId={selectedBook.id}
-          user={user}
-          onClose={() => setShowReader(false)}
-        />
-      )}
-      {/* Periodic reading session update while reader is open */}
-      {showReader && selectedBook && (
-        <ReaderSessionPinger user={user} book={selectedBook} />
-      )}
 
       <AuthModal
         isOpen={showAuthModal}
@@ -5021,373 +3994,37 @@ export const BookPanel = ({ demoMode = false }) => {
         />
       )}
 
-      <RatingModal
-        isOpen={showRatingModal && selectedBook !== null}
-        onClose={() => setShowRatingModal(false)}
-        book={selectedBook}
-        onRate={handleRating}
-        existingRating={userRating}
-      />
+      {/* Removal Notification Popup */}
+      {showRemovalNotification && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: '#10b981',
+            color: '#ffffff',
+            padding: '16px 32px',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '600',
+            zIndex: 1050,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            animation: 'fadeInOut 2s ease-in-out',
+          }}
+        >
+          Removed
+        </div>
+      )}
+      <style>{`
+        @keyframes fadeInOut {
+          0% { opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+      `}</style>
 
-      {/* Sharing Modal */}
-      <AnimatePresence>
-        {showSharingModal && selectedBook && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowSharingModal(false)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(0,0,0,0.6)',
-              zIndex: 1100,
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                background: '#0b1220',
-                color: '#e6eef7',
-                padding: 48,
-                borderRadius: 20,
-                boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
-                textAlign: 'center',
-                maxWidth: '600px',
-                width: '85%',
-                maxHeight: '90vh',
-                position: 'relative',
-              }}
-            >
-              <button
-                className="share-modal-btn"
-                title="Close"
-                onClick={() => setShowSharingModal(false)}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  right: 12,
-                  background: 'transparent',
-                  color: '#9ca3af',
-                  border: 'none',
-                  padding: '0',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '0.8';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '1';
-                }}
-              >
-                <FiX size={20} color="#9ca3af" />
-              </button>
-              <div style={{ marginBottom: 24 }}>
-                <h3 style={{ margin: 0, marginBottom: 8, fontSize: 28, fontWeight: 700, color: '#e6eef7' }}>
-                  Share "{selectedBook.title}"
-                </h3>
-              </div>
-
-              {/* Book Cover Image as Clickable Link */}
-              <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
-                <a 
-                  href={`${window.location.origin}${window.location.pathname}?id=${selectedBook.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'block',
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer',
-                    textDecoration: 'none',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.05)';
-                    e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.6)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)';
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.4)';
-                  }}
-                >
-                  <img 
-                    src={selectedBook.bookImage || selectedBook.cover_image_url} 
-                    alt={selectedBook.title}
-                    style={{
-                      width: 140,
-                      height: 200,
-                      objectFit: 'cover',
-                      display: 'block',
-                    }}
-                  />
-                </a>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 0 }}>
-                <button
-                  className="share-modal-btn"
-                  title="Share on WhatsApp"
-                  onClick={() => {
-                    handleShare('whatsapp', selectedBook);
-                    setShowSharingModal(false);
-                  }}
-                  style={{
-                    background: 'transparent',
-                    color: '#e6eef7',
-                    border: 'none',
-                    padding: '8px 0',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontSize: 9,
-                    fontWeight: 400,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 6,
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.8';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1';
-                  }}
-                >
-                  <div style={{ background: '#34C759', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <SiWhatsapp size={30} color="#ffffff" />
-                  </div>
-                  WhatsApp
-                </button>
-
-                <button
-                  className="share-modal-btn"
-                  title="Share on X"
-                  onClick={() => {
-                    handleShare('twitter', selectedBook);
-                    setShowSharingModal(false);
-                  }}
-                  style={{
-                    background: 'transparent',
-                    color: '#e6eef7',
-                    border: 'none',
-                    padding: '8px 0',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontSize: 9,
-                    fontWeight: 400,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 6,
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.8';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1';
-                  }}
-                >
-                  <div style={{ background: '#000000', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <SiX size={26} color="#ffffff" />
-                  </div>
-                  X
-                </button>
-
-                <button
-                  className="share-modal-btn"
-                  title="Copy Link"
-                  onClick={() => {
-                    handleShare('copy', selectedBook);
-                    setShowSharingModal(false);
-                  }}
-                  style={{
-                    background: 'transparent',
-                    color: '#e6eef7',
-                    border: 'none',
-                    padding: '8px 0',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontSize: 9,
-                    fontWeight: 400,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 6,
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.8';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1';
-                  }}
-                >
-                  <div style={{ background: '#8B5CF6', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <FiLink size={26} color="#ffffff" />
-                  </div>
-                  Copy Link
-                </button>
-
-                <button
-                  className="share-modal-btn"
-                  title="Share on Facebook"
-                  onClick={() => {
-                    handleShare('facebook', selectedBook);
-                    setShowSharingModal(false);
-                  }}
-                  style={{
-                    background: 'transparent',
-                    color: '#e6eef7',
-                    border: 'none',
-                    padding: '8px 0',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontSize: 9,
-                    fontWeight: 400,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 6,
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.8';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1';
-                  }}
-                >
-                  <div style={{ background: '#1877F2', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <SiFacebook size={26} color="#ffffff" />
-                  </div>
-                  Facebook
-                </button>
-
-                <button
-                  className="share-modal-btn"
-                  title="Share on LinkedIn"
-                  onClick={() => {
-                    handleShare('linkedin', selectedBook);
-                    setShowSharingModal(false);
-                  }}
-                  style={{
-                    background: 'transparent',
-                    color: '#e6eef7',
-                    border: 'none',
-                    padding: '8px 0',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontSize: 9,
-                    fontWeight: 400,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 6,
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.8';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1';
-                  }}
-                >
-                  <div style={{ background: '#0A66C2', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <SiLinkedin size={26} color="#ffffff" />
-                  </div>
-                  LinkedIn
-                </button>
-
-                <button
-                  className="share-modal-btn"
-                  title="Share via Email"
-                  onClick={() => {
-                    handleShare('email', selectedBook);
-                    setShowSharingModal(false);
-                  }}
-                  style={{
-                    background: 'transparent',
-                    color: '#e6eef7',
-                    border: 'none',
-                    padding: '8px 0',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontSize: 9,
-                    fontWeight: 400,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 6,
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.8';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1';
-                  }}
-                >
-                  <div style={{ background: '#D44638', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="#ffffff">
-                      <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
-                    </svg>
-                  </div>
-                  Email
-                </button>
-
-                <button
-                  className="share-modal-btn"
-                  title="Save to Google Drive"
-                  onClick={() => {
-                    handleShare('googledrive', selectedBook);
-                    setShowSharingModal(false);
-                  }}
-                  style={{
-                    background: 'transparent',
-                    color: '#e6eef7',
-                    border: 'none',
-                    padding: '8px 0',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontSize: 9,
-                    fontWeight: 400,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 6,
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.8';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1';
-                  }}
-                >
-                  <div style={{ background: '#1F2937', borderRadius: '8px', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <SiGoogledrive size={26} color="#ffffff" />
-                  </div>
-                  Google Drive
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
 
     {/* Pagination at the very end */}

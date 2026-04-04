@@ -1,0 +1,283 @@
+/* Add these styles to your existing ChatMe.css file */
+
+/* Main ChatMe Container for Layout Control */
+.chatme-main-container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+/* Desktop View: Side-by-side layout */
+.chatme-main-container.desktop-view {
+  flex-direction: row;
+}
+
+/* Mobile View: Show header on top, then split list and chat below */
+.chatme-main-container.mobile-view {
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  width: 100dvw;
+  position: fixed;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+}
+
+/* ChatList Styles - Base (desktop-focused) */
+.chatme-chat-list {
+  width: 30%;
+  min-width: 380px;
+  max-width: 440px;
+  top: 0 !important;
+  height: 100%;
+  background-color: #0b1216;
+  /* Solid background for visibility */
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.3);
+  /* Shadow for separation on desktop */
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.3s ease;
+  /* Smooth slide on mobile */
+}
+
+/* MOBILE-SPECIFIC OVERRIDES: Show header only, hide list items when chat selected */
+@media (max-width: 768px) {
+  .chatme-main-container.mobile-view .chatme-chat-list {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: 10;
+    transform: none !important;
+    border-right: none !important;
+    background-color: #0b1216;
+    height: auto;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    box-shadow: none;
+  }
+
+  /* Hide chat list items on mobile when chat is selected */
+  .chatme-main-container.mobile-view:has(.chatme-chat-window.full-width) .chatme-chat-list {
+    max-height: 80px !important;
+    overflow: hidden !important;
+  }
+
+  /* Always show the header */
+  .chatme-main-container.mobile-view .chatme-header {
+    display: flex !important;
+    visibility: visible !important;
+    z-index: 200 !important;
+  }
+
+  /* Ensure chat window takes full space on mobile */
+  .chatme-main-container.mobile-view .chatme-chat-window.full-width {
+    width: 100%;
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: 20;
+    height: auto;
+    flex: 1;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+  }
+}
+
+/* On mobile, keep the chat list visible */
+.chatme-main-container.mobile-view .chatme-chat-list {
+  transform: none;
+}
+
+/* Keep ChatList visible on mobile even when chat window is shown */
+.chatme-main-container.mobile-view:has(.chatme-chat-window.full-width) .chatme-chat-list {
+  display: flex;
+  /* Keep visible */
+}
+
+/* Make sure header stays visible */
+.chatme-chat-list-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Chat Window Styles for Side-by-Side */
+.chatme-chat-window {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background-color: #0b1216;
+  /* Match your chat background */
+  margin: 0;
+  padding: 0;
+}
+
+/* Full width on mobile */
+.chatme-chat-window.full-width {
+  width: 100%;
+}
+
+/* Side-by-side on desktop */
+.chatme-chat-window.side-by-side {
+  width: 70%;
+  min-width: 0;
+  /* Allow flex shrink */
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
+  /* Shadow divider */
+}
+
+/* Ensure Chat component fills the window */
+.chatme-chat-window .whatsapp-chat-container {
+  height: 100%;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Desktop: chat container should be positioned within flex container */
+.chatme-main-container.desktop-view .chatme-chat-window {
+  position: relative;
+  overflow: hidden;
+}
+
+.chatme-main-container.desktop-view .whatsapp-chat-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* FAB positioning adjustments */
+.chatme-main-container.desktop-view .chatme-fab {
+  position: fixed;
+  bottom: 30px;
+  left: 500px;
+  z-index: 1010;
+  text-align: center;
+  background-color: transparent;
+  font-size: larger;
+  border-radius: 50;
+}
+
+.chatme-main-container.desktop-view .chatme-fab .fab-container {
+  position: relative;
+  bottom: auto;
+  right: auto;
+}
+
+/* On mobile, FAB only shows when no chat selected */
+.chatme-main-container.mobile-view .chatme-fab {
+  position: fixed;
+  bottom: 70px;
+  right: 20px;
+  z-index: 110;
+  text-align: center;
+  background-color: transparent;
+  font-size: larger;
+  border-radius: 50;
+}
+
+/* In-folder FAB should sit at bottosm-right of the list pane on desktop */
+.chatme-chat-list .in-folder-fab {
+  position: absolute;
+  right: 16px;
+  bottom: 70px;
+  z-index: 1010;
+}
+
+/* On mobile, make it fixed like other FABs */
+@media (max-width: 768px) {
+  .in-folder-fab {
+    position: fixed;
+    right: 16px;
+    bottom: 80px;
+    z-index: 110;
+  }
+}
+
+/* Light Mode Adjustments */
+@media (prefers-color-scheme: light) {
+  .chatme-chat-list {
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+  }
+
+  .chatme-chat-window.side-by-side {
+    border-left: 1px solid #dee2e6;
+  }
+
+  /* Mobile light mode background */
+  @media (max-width: 768px) {
+    .chatme-main-container.mobile-view .chatme-chat-list {
+      background-color: #f8f9fa;
+    }
+  }
+}
+
+/* Responsive: On very small desktop, adjust widths */
+@media (min-width: 1200px) {
+  .chatme-chat-list {
+    max-width: 500px;
+  }
+
+  .chatme-chat-window.side-by-side {
+    width: 70%;
+  }
+}
+
+@media (max-width: 768px) {
+  .chatme-main-container.mobile-view .chatme-chat-list {
+    width: 100vw;
+    width: 100dvw;
+    min-width: 100vw;
+    min-width: 100dvw;
+    max-width: 100vw;
+    max-width: 100dvw;
+    transform: translateX(0);
+    /* visible by default */
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    height: 100vh;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Ensure no overflow issues */
+  .chatme-main-container.mobile-view .chatme-chat-list {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 10;
+  }
+
+  /* Mobile footer positioning */
+  .chat-footer-vibe {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100vw;
+    width: 100dvw;
+    z-index: 999;
+  }
+}

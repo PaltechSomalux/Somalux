@@ -1,0 +1,39 @@
+
+/* Offline Notification */
+.offline-notification {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #f44336;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 18px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 200;
+  animation: slideUp 0.3s ease-out;
+}
+
+@media (min-width: 768px) {
+  .offline-notification {
+    bottom: 20px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    gap: 8px;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateX(-50%) translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}

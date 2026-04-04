@@ -12,7 +12,7 @@ import {
   rateAuthor,
   addAuthorComment,
   recordAuthorShare
-} from '../Admin/authorInteractionsApi';
+} from '../../Admin/authorInteractionsApi';
 import { supabase } from '../supabaseClient';
 import './AuthorProfile.css';
 

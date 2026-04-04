@@ -45,6 +45,15 @@ class PerformanceOptimizer {
     }
   }
 
+  clearMemoryCache() {
+    try {
+      this.memoryCache.clear();
+      console.log('✅ Memory cache cleared');
+    } catch (e) {
+      console.warn('Error clearing memory cache:', e);
+    }
+  }
+
   // COMPRESSION: Compress large data before storage
   compressData(data) {
     try {

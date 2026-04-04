@@ -2,10 +2,10 @@ import React, { useRef, useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { FiFileText, FiFilter, FiX, FiDownload, FiUpload, FiEye, FiBookmark, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { AiOutlineHeart, AiFillHeart } from 'react-icons/ai';
-import { AdBanner } from '../Ads/AdBanner';
+import { AdBanner } from '../../Ads/AdBanner';
 import { formatNumber } from './formatNumber';
 import './PaperPanel.css';
-import '../Books/Admin/admin.css';
+import '../../Admin/admin.css';
 
 export const PaperGrid = React.memo(({
   displayedPapers,

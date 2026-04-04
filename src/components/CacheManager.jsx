@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { downloadOptimizer } from '../utils/DownloadOptimizer';
+import { downloadOptimizer } from '../Services/utils/DownloadOptimizer';
 
 const CacheManagerContainer = styled.div`
   background: rgba(20, 30, 48, 0.95);

@@ -1,0 +1,210 @@
+/**
+ * LoadingGears Component Styles
+ * 
+ * Complete styling logic for the three-gear loading animation.
+ * Uses CSS animations with different speeds and directions for visual interest.
+ */
+
+/* ============================================
+   CONTAINER & LAYOUT STYLES
+   ============================================ */
+
+.loading-gears-container {
+  /* Primary Layout */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 60vh;
+  
+  /* Background: Dark gradient for visual depth */
+  background: linear-gradient(135deg, #0b1216 0%, #0f1a1e 100%);
+  
+  /* Spacing */
+  padding: 40px 20px;
+  
+  /* Text colors */
+  color: #8696a0;
+  gap: 20px;
+}
+
+/* ============================================
+   SPINNER CONTAINER
+   ============================================ */
+
+.loading-gears-spinner {
+  /* SVG Container Sizing */
+  width: 100px;
+  height: 100px;
+  
+  /* Centering Content */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================
+   SVG STYLING
+   ============================================ */
+
+.loading-gears-svg {
+  /* Drop shadow for 3D depth effect */
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+  
+  /* Smooth animations */
+  will-change: transform;
+}
+
+/* ============================================
+   GEAR BASE STYLES
+   ============================================ */
+
+.gear {
+  /* Transform origin for rotation - overridden per gear */
+  transform-origin: center;
+  
+  /* Smooth animation transitions */
+  will-change: transform;
+}
+
+/* ============================================
+   GEAR-SPECIFIC ANIMATION LOGIC
+   ============================================ */
+
+/**
+ * GEAR 1 - Top Left (Navy Blue)
+ * Position: (30, 28)
+ * Rotation: Clockwise
+ * Speed: 4 seconds (slowest - gives weight to design)
+ * Direction: 0deg → 360deg (clockwise)
+ */
+.gear-1 {
+  animation: gear-rotate-clockwise 4s linear infinite;
+  transform-origin: 30px 28px;
+}
+
+/**
+ * GEAR 2 - Top Right (Gray)
+ * Position: (70, 28)
+ * Rotation: Counter-clockwise (opposite to Gear 1)
+ * Speed: 3 seconds (medium speed)
+ * Direction: 360deg → 0deg (counter-clockwise)
+ * Purpose: Creates opposing motion for gear-like appearance
+ */
+.gear-2 {
+  animation: gear-rotate-counterclockwise 3s linear infinite;
+  transform-origin: 70px 28px;
+}
+
+/**
+ * GEAR 3 - Bottom Center (Cyan)
+ * Position: (50, 62)
+ * Rotation: Clockwise (same as Gear 1)
+ * Speed: 3.5 seconds (medium-slow)
+ * Direction: 0deg → 360deg (clockwise)
+ * Purpose: Interlocks with upper gears, synchronized with Gear 1
+ */
+.gear-3 {
+  animation: gear-rotate-clockwise 3.5s linear infinite;
+  transform-origin: 50px 62px;
+}
+
+/* ============================================
+   ANIMATION KEYFRAMES
+   ============================================ */
+
+/**
+ * Clockwise Rotation Animation
+ * Used by: Gear 1, Gear 3
+ * Effect: Rotates from 0° to 360° (full clockwise rotation)
+ */
+@keyframes gear-rotate-clockwise {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/**
+ * Counter-Clockwise Rotation Animation
+ * Used by: Gear 2
+ * Effect: Rotates from 360° to 0° (full counter-clockwise rotation)
+ * Purpose: Creates opposing gear motion
+ */
+@keyframes gear-rotate-counterclockwise {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+/* ============================================
+   TEXT STYLING
+   ============================================ */
+
+.loading-gears-text {
+  /* Typography */
+  font-size: 16px;
+  font-weight: 500;
+  
+  /* Spacing */
+  margin: 0;
+  
+  /* Color: Light text for dark background */
+  color: #e9edef;
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+@media (max-width: 768px) {
+  .loading-gears-container {
+    min-height: 50vh;
+    padding: 30px 15px;
+  }
+  
+  .loading-gears-text {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .loading-gears-container {
+    min-height: 40vh;
+    padding: 20px 10px;
+  }
+  
+  .loading-gears-spinner {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+/* ============================================
+   DARK MODE SUPPORT (CSS VARIABLES)
+   ============================================ */
+
+:root {
+  --text-dark: #e9edef;
+  --text-light: #8696a0;
+  --border-color: #2a3942;
+  --bg-primary: #0b1216;
+  --bg-secondary: #0f1a1e;
+}
+
+.loading-gears-container {
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  color: var(--text-light);
+}
+
+.loading-gears-text {
+  color: var(--text-dark);
+}

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { FiX, FiCopy, FiDownload } from 'react-icons/fi';
 import { generateSummary, generateKeyPoints, getTextStats } from './utils/summarizeText';
-import { checkDownloadLimit } from '../../utils/downloadLimitService';
+import { checkDownloadLimit } from '../../Services/utils/downloadLimitService';
 import DownloadLimitModal from './DownloadLimitModal';
 import './SummaryModal.css';
 

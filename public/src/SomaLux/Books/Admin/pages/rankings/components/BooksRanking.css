@@ -1,0 +1,181 @@
+/* Books Ranking Component Styles */
+
+.books-ranking-container {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  border: none;
+}
+
+.books-ranking-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: flex-end;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.books-ranking-control-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.books-ranking-control-group .label {
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.books-ranking-control-group .input,
+.books-ranking-control-group .select {
+  flex-shrink: 0;
+  height: 32px;
+  font-size: 12px;
+  background: #0b1216;
+}
+
+.books-ranking-table-container {
+  background: transparent;
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.books-ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #111b21;
+  border: 1px solid #2a3942;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.books-ranking-table-head {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.books-ranking-table-header-cell {
+  font-weight: 600;
+  color: #8696a0;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 12px;
+  border-bottom: 1px solid #2a3942;
+}
+
+.books-ranking-right {
+  text-align: right;
+}
+
+.books-ranking-table-row:hover {
+  background-color: rgba(0, 168, 132, 0.05);
+}
+
+.books-ranking-table-cell {
+  padding: 10px 12px;
+  color: #e9edef;
+  border-bottom: 1px solid #2a3942;
+  font-size: 12px;
+}
+
+.books-ranking-rank-cell {
+  font-weight: 600;
+  text-align: center;
+  width: 50px;
+}
+
+.books-ranking-title-cell {
+  max-width: 250px;
+}
+
+.books-ranking-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.books-ranking-author-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.books-ranking-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.books-ranking-author-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.books-ranking-metric-cell {
+  text-align: right;
+  font-size: 14px;
+}
+
+.books-ranking-score-cell {
+  font-weight: 600;
+  color: #00a884;
+  text-align: right;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .books-ranking-table {
+    font-size: 11px;
+  }
+
+  .books-ranking-table-cell,
+  .books-ranking-table-header-cell {
+    padding: 8px 10px;
+  }
+
+  .books-ranking-avatar {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .books-ranking-table {
+    font-size: 10px;
+  }
+
+  .books-ranking-table-cell,
+  .books-ranking-table-header-cell {
+    padding: 6px 8px;
+  }
+
+  .books-ranking-avatar {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .books-ranking-table {
+    font-size: 9px;
+  }
+
+  .books-ranking-table-cell,
+  .books-ranking-table-header-cell {
+    padding: 4px 6px;
+  }
+
+  .books-ranking-avatar {
+    width: 20px;
+    height: 20px;
+  }
+
+  .books-ranking-author-cell {
+    gap: 4px;
+  }
+}

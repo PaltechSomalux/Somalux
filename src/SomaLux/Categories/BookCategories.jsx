@@ -10,8 +10,8 @@ import {
   FiClock
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AdBanner } from '../Ads/AdBanner';
-import { cacheDB } from '../utils/cacheDB';
+import { AdBanner } from '../../Ads/AdBanner';
+import { cacheDB } from '../../Services/utils/cacheDB';
 import './BookCategories.css';
 import { API_URL } from '../../config';
 import { supabase } from '../Books/supabaseClient';

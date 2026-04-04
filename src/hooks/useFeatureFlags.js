@@ -6,7 +6,7 @@
 
 import { useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from './useAuth'; // Your existing auth hook
-import FeatureFlagsContext from '../context/FeatureFlagsContext';
+import FeatureFlagsContext from '../Services/context/FeatureFlagsContext';
 
 export const useFeatureFlags = () => {
   const context = useContext(FeatureFlagsContext);

@@ -1,0 +1,474 @@
+/* InputAreaGroupChatmeGroups - Fixed at bottom for mobile, static for desktop */
+.input-area-groupChatmeGroups-footer-vibe {
+  background-color: transparent; /* From second CSS */
+  padding: 10px 16px;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+}
+
+/* Desktop: Remove fixed positioning */
+@media (min-width: 769px) {
+  .input-area-groupChatmeGroups-footer-vibe {
+    position: static;
+    z-index: auto;
+  }
+}
+
+/* Mobile: Fixed at bottom */
+@media (max-width: 768px) {
+  .input-area-groupChatmeGroups-footer-vibe {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+}
+
+.input-area-groupChatmeGroups-footer-content-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.input-area-groupChatmeGroups-footer-content-vibe {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  width: 100%;
+  background-color: transparent; /* From second CSS */
+}
+
+/* Merged Reply Preview + Input Container */
+.input-area-groupChatmeGroups-reply-input-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: calc(100% - 98px);
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  background-color: #161b1d; /* From second CSS */
+  animation: fadeIn-vibe 0.15s ease-out;
+  z-index: 1001;
+}
+
+/* Reply Preview Section */
+.input-area-groupChatmeGroups-reply-preview {
+  background-color: #161b1d; /* From second CSS */
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  animation: slideDown-vibe 0.2s ease-out;
+  border-radius: 10px 10px 0 0;
+}
+
+.input-area-groupChatmeGroups-reply-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  border-left: 1px solid rgb(0, 140, 255); /* From second CSS */
+  border-bottom-left-radius: 10px;
+  padding-left: 10px;
+}
+
+.input-area-groupChatmeGroups-reply-sender {
+  font-weight: 600;
+  color: #34B7F1; /* From second CSS */
+  font-size: 0.85em;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+.input-area-groupChatmeGroups-reply-text {
+  font-size: 0.85em;
+  color: #e9edef; /* From second CSS */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  line-height: 1.2;
+}
+
+.input-area-groupChatmeGroups-reply-cancel-button {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #8696a0; /* From second CSS */
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.input-area-groupChatmeGroups-reply-cancel-button:hover {
+  color: #e9edef; /* From second CSS */
+  background-color: rgba(255, 255, 255, 0.1); /* From second CSS */
+}
+
+/* Input Field Section */
+.input-area-groupChatmeGroups-message-input-section {
+  flex: 1;
+  border-radius: 0 0 20px 20px;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input-area-groupChatmeGroups-message-input-vibe {
+  flex: 1;
+  outline: none;
+  font-size: 15px;
+  position: relative;
+  background-color: #161b1d; /* From second CSS */
+  color: #e9edef; /* From second CSS */
+  border: none;
+  border-radius: 20px;
+  padding: 9px 12px;
+  min-height: 40px;
+  max-height: 100px;
+  max-width: 100%;
+  resize: none;
+  width: 100%;
+  box-sizing: border-box;
+  caret-color: #90EE90; /* From second CSS */
+}
+
+.input-area-groupChatmeGroups-message-input-vibe::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: #90EE90; /* From second CSS */
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: blink-cursor-smooth 1s ease-in-out infinite;
+}
+
+@keyframes blink-cursor-smooth {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.input-area-groupChatmeGroups-message-input-vibe:focus {
+  border-color: transparent;
+}
+
+.input-area-groupChatmeGroups-message-input-vibe::placeholder {
+  color: #8696a0; /* From second CSS */
+  opacity: 0.8;
+}
+
+/* Buttons */
+.input-area-groupChatmeGroups-icon-button-vibe {
+  background-color: #161b1d; /* From second CSS */
+  border: none;
+  color: white; /* From second CSS */
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.input-area-groupChatmeGroups-icon-button-vibe svg {
+  width: 23px !important;
+  height: 23px !important;
+  display: block !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+.input-area-groupChatmeGroups-icon-button-vibe:hover {
+  background-color: #2a3942; /* From second CSS */
+}
+
+.input-area-groupChatmeGroups-send-button-vibe {
+  background-color: #161b1d; /* From second CSS */
+  color: rgb(42, 151, 42); /* From second CSS */
+  font-size: 30px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.input-area-groupChatmeGroups-send-button-vibe:hover {
+  transform: scale(1.15);
+  background-color: transparent; /* From second CSS */
+}
+
+/* Attachment Options */
+.input-area-groupChatmeGroups-attachment-options-vibe {
+  position: absolute;
+  bottom: 70px;
+  left: 0;
+  width: 100%;
+  background-color: #111b21; /* From second CSS */
+  border-radius: 16px;
+  padding: 1px;
+  z-index: 1000;
+  animation: fadeIn-vibe 0.15s ease-out;
+  box-sizing: border-box;
+}
+
+.input-area-groupChatmeGroups-options-grid-vibe {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+.input-area-groupChatmeGroups-option-vibe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.input-area-groupChatmeGroups-option-vibe:hover {
+  background-color: #2a3942; /* From second CSS */
+}
+
+.input-area-groupChatmeGroups-option-vibe span {
+  font-size: 12px;
+  margin-top: 5px;
+  color: #e9edef; /* From second CSS */
+}
+
+.input-area-groupChatmeGroups-option-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: white; /* From second CSS */
+}
+
+.input-area-groupChatmeGroups-option-icon.camera-vibe {
+  background-color: #D3396D; /* From second CSS */
+}
+
+.input-area-groupChatmeGroups-option-icon.gallery-vibe {
+  background-color: #25D366; /* From second CSS */
+}
+
+.input-area-groupChatmeGroups-option-icon.document-vibe {
+  background-color: #128C7E; /* From second CSS */
+}
+
+.input-area-groupChatmeGroups-option-icon.poll-vibe {
+  background-color: #34B7F1; /* From second CSS */
+}
+
+.input-area-groupChatmeGroups-option-icon.contact-vibe {
+  background-color: #075E54; /* From second CSS */
+}
+
+.input-area-groupChatmeGroups-option-icon.location-vibe {
+  background-color: #ED4D6E; /* From second CSS */
+}
+
+/* Animations */
+@keyframes fadeIn-vibe {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown-vibe {
+  from { 
+    opacity: 0; 
+    transform: translateY(-10px); 
+    max-height: 0; 
+    padding: 0 12px;
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+    max-height: 60px; 
+    padding: 8px 12px;
+  }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .input-area-groupChatmeGroups-footer-vibe {
+    padding: 1px 12px;
+  }
+
+  .input-area-groupChatmeGroups-footer-content-container {
+    max-width: 100%;
+  }
+
+  .input-area-groupChatmeGroups-reply-input-container {
+    max-width: calc(100% - 92px);
+  }
+
+  .input-area-groupChatmeGroups-message-input-vibe {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .input-area-groupChatmeGroups-attachment-options-vibe {
+    width: 100%;
+    bottom: 60px;
+  }
+
+  .input-area-groupChatmeGroups-icon-button-vibe {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+
+  .input-area-groupChatmeGroups-send-button-vibe {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+  }
+
+  .input-area-groupChatmeGroups-reply-preview {
+    padding: 6px 10px;
+  }
+
+  .input-area-groupChatmeGroups-reply-sender {
+    font-size: 0.85em;
+  }
+
+  .input-area-groupChatmeGroups-reply-text {
+    font-size: 0.8em;
+    padding-left: 10px;
+  }
+
+  .input-area-groupChatmeGroups-reply-cancel-button {
+    font-size: 1.2em;
+    width: 24px;
+    height: 24px;
+    top: 6px;
+    right: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@media (max-width: 480px) {
+  .input-area-groupChatmeGroups-footer-vibe {
+    padding: 5px 4px;
+  }
+
+  .input-area-groupChatmeGroups-footer-content-vibe {
+    gap: 6px;
+  }
+
+  .input-area-groupChatmeGroups-reply-input-container {
+    max-width: calc(100% - 84px);
+  }
+
+  .input-area-groupChatmeGroups-attachment-options-vibe {
+    width: 100%;
+    left: 0;
+    right: 0;
+    bottom: 55px;
+  }
+
+  .input-area-groupChatmeGroups-send-button-vibe {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+  }
+
+  .input-area-groupChatmeGroups-reply-preview {
+    padding: 5px 8px;
+  }
+
+  .input-area-groupChatmeGroups-reply-sender {
+    font-size: 0.8em;
+  }
+
+  .input-area-groupChatmeGroups-reply-text {
+    font-size: 0.75em;
+    padding-left: 8px;
+  }
+
+  .input-area-groupChatmeGroups-reply-cancel-button {
+    font-size: 1.1em;
+    width: 22px;
+    height: 22px;
+    top: 5px;
+    right: 5px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Input wrapper for non-replying state */
+.input-area-groupChatmeGroups-input-wrapper {
+  flex: 1;
+  max-width: calc(100% - 98px);
+}
+
+/* Formatting Preview */
+.formatting-preview-container {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 48px;
+  right: 48px;
+  background: #1a242c;
+  border: 1px solid #2a3942;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+  max-height: 120px;
+  overflow-y: auto;
+  z-index: 999;
+}
+
+.formatting-preview-label {
+  font-size: 11px;
+  color: #8696a0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.formatting-preview-content {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #e9edef;
+  word-wrap: break-word;
+}
+
+@media (max-width: 480px) {
+  .formatting-preview-container {
+    left: 16px;
+    right: 16px;
+    max-height: 80px;
+  }
+}

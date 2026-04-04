@@ -1,23 +1,22 @@
 // SomaLux.js
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
-import { FeatureFlagsProvider } from "./context/FeatureFlagsContext";
-import UserUploadPage from "./SomaLux/User/UserProfile/UserUploadPage";
-import { SettingsPanel } from "./SomaLux/Settings/SettingsPanel";
-import { BookManagement } from "./SomaLux/BookDashboard/BookManagement";
-import { Onboarding } from "./SomaLux/Onboarding/Onboarding";
-import { BooksAdmin } from "./SomaLux/Books/Admin/BooksAdmin";
+import { FeatureFlagsProvider } from "./Services/context/FeatureFlagsContext";
+import UserUploadPage from "./User/UserUploadPage";
+import { BookManagement } from "./SomaLux/Books/Dashboard/BookManagement";
+// import { Onboarding } from "./SomaLux/Onboarding/Onboarding";  // TODO: Fix missing Onboarding component
+import { BooksAdmin } from "./Admin/BooksAdmin";
 import ReadingDashboard from "./SomaLux/Books/ReadingDashboard/ReadingDashboard";
-import { EmailSender } from "./SomaLux/Admin/EmailSender";
-import ChatMe from "./ChatMe";
+import { EmailSender } from "./Admin/EmailSender";
+import ChatMe from "./chat/ChatMe";
 import SuspendedPage from "./SomaLux/SuspendedPage";
-import { useSuspensionStatus } from "./hooks/useSuspensionStatus";
+import { useSuspensionStatus } from "./Services/hooks/useSuspensionStatus";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const UserRequestPageNew = React.lazy(() => import('./SomaLux/User/UserProfile/UserRequestPageNew'));
-const UserAdPage = React.lazy(() => import('./SomaLux/User/UserProfile/UserAdPage'));
+const UserRequestPageNew = React.lazy(() => import('./User/UserRequestPageNew'));
+const UserAdPage = React.lazy(() => import('./User/UserAdPage'));
 
 // Wrapper component to check suspension status
 function AppContent() {
@@ -69,7 +68,7 @@ function AppContent() {
       <Route path="/" element={<Navigate to="/BookManagement" replace />} />
 
       {/* Onboarding */}
-      <Route path="/onboarding" element={<Onboarding />} />
+      {/* <Route path="/onboarding" element={<Onboarding />} /> */}
 
 
       {/* User */}
@@ -79,7 +78,6 @@ function AppContent() {
       <Route path="/user/request" element={<UserRequestPageNew />} />
       <Route path="/user/request/:tabType" element={<UserRequestPageNew />} />
       <Route path="/user/ad" element={<React.Suspense fallback={<div>Loading...</div>}><UserAdPage /></React.Suspense>} />
-      <Route path="/SettingsPanel" element={<SettingsPanel />} />
 
       {/* Books */}
       <Route path="/BookManagement" element={<BookManagement />} />

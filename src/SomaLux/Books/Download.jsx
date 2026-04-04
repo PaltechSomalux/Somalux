@@ -2,12 +2,12 @@ import React, { useState, useRef } from 'react';
 import { FiDownload, FiFolder } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
-import { downloadOptimizer } from '../../utils/DownloadOptimizer';
-import { checkDownloadLimit, recordDownload } from '../../utils/downloadLimitService';
-import { getSelectedFolder, setSelectedFolder } from '../utils/downloadFolderManager';
+import { downloadOptimizer } from '../../Services/utils/DownloadOptimizer';
+import { checkDownloadLimit, recordDownload } from '../../Services/utils/downloadLimitService';
+import { getSelectedFolder, setSelectedFolder } from '../../Services/utils/downloadFolderManager';
 import { trackBookDownload, trackPaperDownload } from './utils/savedItemsService';
 import DownloadLimitModal from './DownloadLimitModal';
-import FolderSelectModal from '../PastPapersDownloader/FolderSelectModal';
+import FolderSelectModal from '../PastPapers/Downloader/FolderSelectModal';
 
 const IconDownloadButton = styled(motion.button)`
   background: transparent; /* Keep background transparent */

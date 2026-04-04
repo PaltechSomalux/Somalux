@@ -4,10 +4,10 @@ import { FiDownload } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import { supabase } from '../Books/supabaseClient';
-import { trackPastPaperDownload } from '../Books/Admin/pastPapersApi';
+import { trackPastPaperDownload } from '../../Admin/pastPapersApi';
 import { trackPaperDownload } from '../Books/utils/savedItemsService';
-import { downloadOptimizer } from '../../utils/DownloadOptimizer';
-import { checkDownloadLimit, recordDownload } from '../../utils/downloadLimitService';
+import { downloadOptimizer } from '../../Services/utils/DownloadOptimizer';
+import { checkDownloadLimit, recordDownload } from '../../Services/utils/downloadLimitService';
 import DownloadLimitModal from '../Books/DownloadLimitModal';
 
 const DownloadButton = styled(motion.button)`

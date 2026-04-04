@@ -1,0 +1,165 @@
+/* Engagement Ranking Component Styles */
+
+.engagement-ranking-container {
+  padding: 16px;
+  background: #111b21;
+  border-radius: 8px;
+  border: 1px solid #202c33;
+}
+
+.engagement-ranking-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: flex-end;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.engagement-ranking-control-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.engagement-ranking-control-group .label {
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.engagement-ranking-control-group .input,
+.engagement-ranking-control-group .select {
+  flex-shrink: 0;
+  height: 32px;
+  font-size: 12px;
+  background: #0b1216;
+}
+
+.engagement-ranking-table-container {
+  background: transparent;
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.engagement-ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #111b21;
+  border: 1px solid #2a3942;
+  border-radius: 6px;
+}
+
+.engagement-ranking-table-head {
+  background-color: #1e293b;
+  border-bottom: 2px solid #202c33;
+}
+
+.engagement-ranking-table-header-cell {
+  font-weight: 600;
+  color: #8696a0;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #2a3942;
+  font-size: 13px;
+}
+
+.engagement-ranking-table-row:hover {
+  background-color: #202c33;
+  box-shadow: 0 2px 4px rgba(0, 168, 132, 0.2);
+}
+
+.engagement-ranking-table-cell {
+  padding: 10px 12px;
+  color: #e9edef;
+  border-bottom: 1px solid #2a3942;
+  font-size: 12px;
+}
+
+.engagement-ranking-rank-cell {
+  font-weight: 600;
+  text-align: center;
+}
+
+.engagement-ranking-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.engagement-ranking-avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.engagement-ranking-user-name {
+  font-weight: 600;
+}
+
+.engagement-ranking-user-name {
+  font-weight: 600;
+  color: #d0d0d0;
+  font-size: 14px;
+}
+
+.engagement-ranking-user-email {
+  color: #8696a0;
+  font-size: 12px;
+}
+
+/* Input field styling */
+.engagement-ranking-search-input .MuiOutlinedInput-root {
+  color: #e9edef;
+  border-color: #202c33;
+}
+
+.engagement-ranking-search-input .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #00a884;
+}
+
+.engagement-ranking-search-input .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #00a884;
+}
+
+.engagement-ranking-search-input .MuiInputBase-input::placeholder {
+  color: #8696a0;
+  opacity: 1;
+}
+
+.engagement-ranking-filter .MuiOutlinedInput-root {
+  color: #e9edef;
+}
+
+.engagement-ranking-filter .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #00a884;
+}
+
+.engagement-ranking-filter .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #00a884;
+}
+
+.engagement-ranking-filter .MuiSvgIcon-root {
+  color: #8696a0;
+}
+
+.engagement-ranking-metric-cell {
+  text-align: right;
+}
+
+.engagement-ranking-metric-likes {
+  color: #d32f2f;
+}
+
+.engagement-ranking-metric-comments {
+  color: #1976d2;
+}
+
+.engagement-ranking-metric-shares {
+  color: #388e3c;
+}
+
+.engagement-ranking-score-cell {
+  font-weight: 600;
+  color: #00a884;
+  text-align: right;
+}

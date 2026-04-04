@@ -1,0 +1,173 @@
+/* Ads Ranking Component Styles */
+
+.ads-ranking-container {
+  padding: 16px;
+  background: #111b21;
+  border-radius: 8px;
+  border: 1px solid #202c33;
+}
+
+.ads-ranking-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: flex-end;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.ads-ranking-control-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ads-ranking-control-group .label {
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.ads-ranking-control-group .input,
+.ads-ranking-control-group .select {
+  flex-shrink: 0;
+  height: 32px;
+  font-size: 12px;
+  background: #0b1216;
+}
+
+.ads-ranking-table-container {
+  background: transparent;
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.ads-ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #111b21;
+  border: 1px solid #2a3942;
+  border-radius: 6px;
+}
+
+.ads-ranking-table-head {
+  background-color: #1e293b;
+}
+
+.ads-ranking-table-header-cell {
+  font-weight: 600;
+  color: #8696a0;
+  padding: 10px 12px;
+  border-bottom: 1px solid #2a3942;
+  text-align: left;
+  font-size: 13px;
+}
+
+.ads-ranking-table-cell {
+  padding: 10px 12px;
+  color: #e9edef;
+  border-bottom: 1px solid #2a3942;
+  font-size: 12px;
+}
+
+.ads-ranking-title-cell {
+  max-width: 250px;
+}
+
+.ads-ranking-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #d0d0d0;
+  font-size: 14px;
+}
+
+.ads-ranking-metric-cell {
+  font-size: 14px;
+}
+
+.ads-ranking-right {
+  text-align: right;
+}
+
+.ads-ranking-ctr-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.ads-ranking-progress-bar {
+  height: 6px;
+  border-radius: 3px;
+  min-width: 60px;
+  background: rgba(0, 168, 132, 0.2);
+  display: block;
+}
+
+.ads-ranking-ctr-text {
+  color: #d0d0d0;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 40px;
+}
+
+.ads-ranking-score-cell {
+  font-weight: 600;
+  color: #00a884;
+}
+
+/* Input field styling */
+.ads-ranking-search-input {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #202c33;
+  color: #d0d0d0;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.ads-ranking-search-input::placeholder {
+  color: #8696a0;
+}
+
+.ads-ranking-search-input:hover {
+  border-color: #00a884;
+}
+
+.ads-ranking-search-input:focus {
+  outline: none;
+  border-color: #00a884;
+  box-shadow: 0 0 8px rgba(0, 168, 132, 0.3);
+}
+
+.ads-ranking-filter {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #202c33;
+  color: #d0d0d0;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.ads-ranking-filter:hover {
+  border-color: #00a884;
+}
+
+.ads-ranking-filter:focus {
+  outline: none;
+  border-color: #00a884;
+  box-shadow: 0 0 8px rgba(0, 168, 132, 0.3);
+}
+
+.ads-ranking-filter option {
+  background: #1e293b;
+  color: #d0d0d0;
+}

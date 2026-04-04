@@ -12,7 +12,7 @@ import {
   trackPastPaperView,
   togglePastPaperLike,
   togglePastPaperBookmark
-} from '../Books/Admin/pastPapersApi';
+} from '../../Admin/pastPapersApi';
 import {
   fetchUniversities,
   rateUniversity,
@@ -20,7 +20,7 @@ import {
   getUniversityRatingStats,
   trackUniversityView,
   toggleUniversityLike
-} from '../Books/Admin/campusApi';
+} from '../../Admin/campusApi';
 import { ShareButton } from './PastpaperShare';
 import { Download } from './PastpaperDownload';
 import { AuthModal } from '../Books/AuthModal';
@@ -30,7 +30,7 @@ import SecureReader from '../Books/SecureReader';
 import SimpleScrollReader from '../Books/SimpleScrollReader';
 import { FaSearch, FaFacebook, FaLinkedin, FaWhatsapp } from 'react-icons/fa';
 import { SiX, SiGoogledrive } from 'react-icons/si';
-import { AdBanner } from '../Ads/AdBanner';
+import { AdBanner } from '../../Ads/AdBanner';
 import { 
   FiSearch, FiFileText, FiFilter, FiChevronRight, FiChevronLeft, FiX, 
   FiTrendingUp, FiDownload, FiArrowLeft, FiEye, FiStar, FiMapPin, FiUpload, FiBook, FiBookmark, FiShare2, FiCopy, FiLink
